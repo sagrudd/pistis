@@ -14,3 +14,4 @@ recovery, backup, audit, and incident-response guidance.
 - [Local discovery and direct exchange operations](discovery.md)
 - [Recovery, revocation, and multi-device operations](device-lifecycle.md)
 - [Security hardening and independent review](security-hardening.md)
+- [Release installation, upgrade, backup, and publication](release-packaging.md)

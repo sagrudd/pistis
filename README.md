@@ -49,6 +49,13 @@ See [`CONTRIBUTING.md`](CONTRIBUTING.md) and the normative
 Continuous integration runs on the project-owned Mnemosyne
 Expedition/Jenkins infrastructure. See
 [`docs/development/jenkins-ci.md`](docs/development/jenkins-ci.md).
+Release packaging, provenance, clean-host lifecycle, and publication gates are
+defined in
+[`docs/development/release-packaging.md`](docs/development/release-packaging.md)
+and the
+[`operator release runbook`](docs/operations/release-packaging.md). These
+documents are readiness contracts; no production Pistis package or signed
+v1.0 release exists yet.
 
 ## Security
 

@@ -21,7 +21,7 @@ repository = "https://github.com/sagrudd/pistis"
 [workspace.dependencies]
 base64 = "0.22.1"
 getrandom = "0.3.3"
-jsonwebtoken = "9.3.1"
+jsonwebtoken = { version = "10.3.0", default-features = false, features = ["aws_lc_rs", "use_pem"] }
 p256 = { version = "0.13.2", default-features = false, features = ["ecdsa", "sha256"] }
 pistis-canonical = { version = "0.1.0", path = "crates/pistis-canonical" }
 pistis-crypto = { version = "0.1.0", path = "crates/pistis-crypto" }

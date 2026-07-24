@@ -1,0 +1,13 @@
+[package]
+name = "pistis-assurance"
+version = "0.1.0"
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "Revision-bound security assurance readiness contract for Pistis"
+
+[dependencies]
+
+[lints]
+workspace = true

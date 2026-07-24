@@ -17,3 +17,5 @@ current bootstrap workflow.
   boundaries.
 - `device-lifecycle.md`: multi-device, replacement, recovery, historic
   verification, and acceptance boundaries.
+- `security-hardening.md`: threat, supply-chain, mobile, penetration-test,
+  privacy, cryptographic-review, and evidence gates.

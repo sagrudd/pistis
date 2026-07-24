@@ -1,6 +1,7 @@
 [workspace]
 resolver = "3"
 members = [
+    "crates/pistis-assurance",
     "crates/pistis-authentication",
     "crates/pistis-canonical",
     "crates/pistis-crypto",
@@ -30,6 +31,7 @@ base64 = "0.22.1"
 getrandom = "0.3.3"
 jsonwebtoken = { version = "10.3.0", default-features = false, features = ["aws_lc_rs", "use_pem"] }
 p256 = { version = "0.13.2", default-features = false, features = ["ecdsa", "sha256"] }
+pistis-assurance = { version = "0.1.0", path = "crates/pistis-assurance" }
 pistis-authentication = { version = "0.1.0", path = "crates/pistis-authentication" }
 pistis-canonical = { version = "0.1.0", path = "crates/pistis-canonical" }
 pistis-crypto = { version = "0.1.0", path = "crates/pistis-crypto" }

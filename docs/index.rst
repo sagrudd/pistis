@@ -44,6 +44,7 @@ Architecture and operations
    adr/0002-signature-suites
    adr/0003-github-trust-enrolment
    adr/0004-google-trust-enrolment
+   adr/0005-device-registry-storage
    protocol/README
    protocol/domain-model
    protocol

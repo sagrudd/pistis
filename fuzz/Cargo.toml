@@ -14,6 +14,7 @@ pistis-canonical = { version = "0.1.0", path = "../crates/pistis-canonical" }
 pistis-crypto = { version = "0.1.0", path = "../crates/pistis-crypto" }
 pistis-domain = { version = "0.1.0", path = "../crates/pistis-domain" }
 pistis-protocol = { version = "0.1.0", path = "../crates/pistis-protocol" }
+pistis-qr = { version = "0.1.0", path = "../crates/pistis-qr" }
 pistis-verifier = { version = "0.1.0", path = "../crates/pistis-verifier" }
 
 [[bin]]
@@ -33,6 +34,13 @@ bench = false
 [[bin]]
 name = "crypto_verifier"
 path = "fuzz_targets/crypto_verifier.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "qr_decoder"
+path = "fuzz_targets/qr_decoder.rs"
 test = false
 doc = false
 bench = false

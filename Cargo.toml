@@ -1,6 +1,7 @@
 [workspace]
 resolver = "3"
 members = [
+    "crates/pistis-authentication",
     "crates/pistis-canonical",
     "crates/pistis-crypto",
     "crates/pistis-device-registry",
@@ -9,6 +10,7 @@ members = [
     "crates/pistis-google",
     "crates/pistis-identity",
     "crates/pistis-protocol",
+    "crates/pistis-qr",
     "crates/pistis-verifier",
     "xtask",
 ]
@@ -24,6 +26,7 @@ base64 = "0.22.1"
 getrandom = "0.3.3"
 jsonwebtoken = { version = "10.3.0", default-features = false, features = ["aws_lc_rs", "use_pem"] }
 p256 = { version = "0.13.2", default-features = false, features = ["ecdsa", "sha256"] }
+pistis-authentication = { version = "0.1.0", path = "crates/pistis-authentication" }
 pistis-canonical = { version = "0.1.0", path = "crates/pistis-canonical" }
 pistis-crypto = { version = "0.1.0", path = "crates/pistis-crypto" }
 pistis-device-registry = { version = "0.1.0", path = "crates/pistis-device-registry" }
@@ -32,9 +35,11 @@ pistis-github = { version = "0.1.0", path = "crates/pistis-github" }
 pistis-google = { version = "0.1.0", path = "crates/pistis-google" }
 pistis-identity = { version = "0.1.0", path = "crates/pistis-identity" }
 pistis-protocol = { version = "0.1.0", path = "crates/pistis-protocol" }
+pistis-qr = { version = "0.1.0", path = "crates/pistis-qr" }
+qrcode = { version = "0.14.1", default-features = false }
+rusqlite = { version = "=0.37.0", features = ["bundled"] }
 serde = "1.0.228"
 serde_json = "1.0.145"
-rusqlite = { version = "=0.37.0", features = ["bundled"] }
 sha2 = "0.10.9"
 subtle = "2.6.1"
 url = "2.5.7"

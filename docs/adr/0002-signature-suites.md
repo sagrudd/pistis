@@ -22,9 +22,11 @@ reject algorithm substitution.
 keys. It is not a v1 mobile conformance requirement and must use a distinct
 algorithm identifier and key-type policy.
 
-Keys are identified by a collision-resistant digest of their canonical public
-key representation. The precise identifier construction and cryptographic
-implementation belong to EPIC-2 and must not change signed protocol fields.
+Keys are identified by the complete 256-bit domain-separated digest
+`SHA-256("pistis:key-id:v1\0" || compressed-sec1-public-key)`. Verifiers accept
+valid compressed or uncompressed P-256 SEC1 points at an input boundary and
+canonicalize them to the 33-byte compressed representation before deriving the
+identifier.
 
 ## Consequences
 

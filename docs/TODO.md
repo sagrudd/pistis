@@ -67,13 +67,13 @@
 
 # EPIC 2 — Crypto
 
-- [ ] Select signature suite
-- [ ] Implement hashing
-- [ ] Implement signature verification
-- [ ] Implement key identifier generation
-- [ ] Implement verifier API
-- [ ] Fuzz canonical parser
-- [ ] Fuzz verifier
+- [x] Select signature suite
+- [x] Implement hashing
+- [x] Implement signature verification
+- [x] Implement key identifier generation
+- [x] Implement verifier API
+- [x] Fuzz canonical parser
+- [x] Fuzz verifier
 
 ---
 

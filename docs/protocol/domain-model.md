@@ -18,15 +18,17 @@ ASCII hexadecimal characters:
 | `DeviceId` | `device_` | `device_000112233445566778899aabbccddeff` |
 | `ChallengeId` | `challenge_` | `challenge_000112233445566778899aabbccddeff` |
 | `EvidenceId` | `evidence_` | `evidence_000112233445566778899aabbccddeff` |
-| `KeyId` | `key_` | `key_000112233445566778899aabbccddeff` |
+| `KeyId` | `key_` | `key_` followed by 64 lowercase hex characters |
 | `ExternalIdentityId` | `external_identity_` | `external_identity_000112233445566778899aabbccddeff` |
 
-The prefix is part of the canonical value. Parsers reject a missing or
-incorrect prefix, uppercase hexadecimal, whitespace, separators, and payloads
-that are not exactly 128 bits. There is no permissive or normalising parser.
-This fail-closed behavior prevents identifier classes from being substituted
-at stringly typed boundaries and ensures each accepted string has one
-representation.
+The prefix is part of the canonical value. Entity identifiers contain 128-bit
+opaque payloads. `KeyId` contains the complete 256-bit domain-separated
+SHA-256 digest defined by `pistis-crypto`, preserving the suite's 128-bit
+collision-security target. Parsers reject a missing or incorrect prefix,
+uppercase hexadecimal, whitespace, separators, and payloads of the wrong
+length. There is no permissive or normalising parser. This fail-closed behavior
+prevents identifier classes from being substituted at stringly typed
+boundaries and ensures each accepted string has one representation.
 
 Serde encodes and decodes identifiers using the canonical string form. Raw
 byte-array serialization is intentionally not supported by these types.

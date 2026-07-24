@@ -26,6 +26,7 @@ Development
 
    development/README
    development/code-structure
+   development/fuzzing
    development/issue-model
    development/jenkins-ci
    development/documentation
@@ -43,6 +44,7 @@ Architecture and operations
    protocol/README
    protocol/domain-model
    protocol
+   crypto
    encoding
    assurance
    security/README

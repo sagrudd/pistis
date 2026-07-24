@@ -6,3 +6,4 @@ current bootstrap workflow.
 
 - `code-structure.md`: normative crate/module hierarchy and automated
   source-size guardrails.
+- `fuzzing.md`: bounded parser, cryptographic, and verifier fuzz campaigns.

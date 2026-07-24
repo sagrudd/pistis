@@ -38,30 +38,30 @@
 
 ## Domain model
 
-- [ ] Define InstallationId
-- [ ] Define UserId
-- [ ] Define DeviceId
-- [ ] Define ChallengeId
-- [ ] Define EvidenceId
-- [ ] Define KeyId
-- [ ] Define ExternalIdentityId
+- [x] Define InstallationId
+- [x] Define UserId
+- [x] Define DeviceId
+- [x] Define ChallengeId
+- [x] Define EvidenceId
+- [x] Define KeyId
+- [x] Define ExternalIdentityId
 
 ## Canonical encoding
 
-- [ ] Choose encoding (CBOR/COSE)
-- [ ] Implement canonical serializer
-- [ ] Implement canonical parser
-- [ ] Produce golden fixtures
-- [ ] Write round-trip tests
+- [x] Choose encoding (CBOR/COSE)
+- [x] Implement canonical serializer
+- [x] Implement canonical parser
+- [x] Produce golden fixtures
+- [x] Write round-trip tests
 
 ## Challenge lifecycle
 
-- [ ] Generate nonce
-- [ ] Generate expiry
-- [ ] Generate challenge identifiers
-- [ ] Validate expiry
-- [ ] Prevent replay
-- [ ] Prevent double consumption
+- [x] Generate nonce
+- [x] Generate expiry
+- [x] Generate challenge identifiers
+- [x] Validate expiry
+- [x] Prevent replay
+- [x] Prevent double consumption
 
 ---
 

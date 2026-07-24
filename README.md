@@ -4,9 +4,9 @@ Pistis is a local-first cryptographic identity and trust framework. It binds
 trusted external identities to device-held keys for passwordless
 authentication, explicit approval, and portable verifiable evidence.
 
-Pistis is currently in repository bootstrap. Product implementation begins
-only after the bootstrap acceptance criteria in
-[`docs/BOOTSTRAP.md`](docs/BOOTSTRAP.md) are met.
+Repository bootstrap and EPIC-0 are complete. EPIC-1 establishes the typed
+protocol domain, deterministic encoding, and single-use challenge lifecycle;
+later epics add cryptographic verification and application integrations.
 
 ## Design principles
 
@@ -29,9 +29,8 @@ decisions are recorded in [`docs/adr`](docs/adr).
 
 ## Development
 
-The project targets Rust 1.90.0 and the Rust 2024 edition. The workspace is
-intentionally empty during bootstrap; crates will be introduced through
-reviewed implementation issues.
+The project targets Rust 1.90.0 and the Rust 2024 edition. Protocol crates live
+under `crates/` and are introduced only through reviewed implementation issues.
 
 ```console
 cargo fmt --all --check

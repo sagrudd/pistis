@@ -8,3 +8,8 @@ a Changelog and releases follow Semantic Versioning.
 ### Added
 
 - Repository governance, planning, automation, and quality-gate bootstrap.
+- Strongly typed protocol identifiers with canonical textual forms.
+- Strict deterministic-CBOR serialization, parsing, and golden fixtures.
+- Secure, expiring, atomically single-use challenge lifecycle primitives.
+- Protocol, encoding, assurance, signature-suite, and threat-model
+  specifications.

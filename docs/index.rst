@@ -37,6 +37,12 @@ Architecture and operations
 
    adr/README
    adr/0000-template
+   adr/0001-canonical-encoding
+   adr/0002-signature-suites
    protocol/README
+   protocol/domain-model
+   protocol
+   encoding
+   assurance
    security/README
    operations/README

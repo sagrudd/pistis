@@ -6,3 +6,4 @@ recovery, backup, audit, and incident-response guidance.
 - [GitHub trust enrolment](github-enrolment.md)
 - [Google trust enrolment](google-enrolment.md)
 - [Device registry operations](device-registry.md)
+- [QR authentication operations](qr-authentication.md)

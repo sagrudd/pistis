@@ -45,6 +45,7 @@ Architecture and operations
    adr/0003-github-trust-enrolment
    adr/0004-google-trust-enrolment
    adr/0005-device-registry-storage
+   adr/0006-qr-authentication-reference-flow
    protocol/README
    protocol/domain-model
    protocol
@@ -56,3 +57,4 @@ Architecture and operations
    operations/device-registry
    operations/github-enrolment
    operations/google-enrolment
+   operations/qr-authentication

@@ -1,0 +1,17 @@
+[package]
+name = "pistis-qr"
+version = "0.1.0"
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "Bounded QR transport framing and rendering for Pistis"
+
+[dependencies]
+base64.workspace = true
+pistis-canonical.workspace = true
+pistis-crypto.workspace = true
+qrcode.workspace = true
+
+[lints]
+workspace = true

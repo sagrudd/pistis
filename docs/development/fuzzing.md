@@ -28,6 +28,12 @@ Run the reviewed public-key and ES256 verification boundary:
 cargo +nightly fuzz run crypto_verifier -- -max_len=65536
 ```
 
+Run the bounded QR transport decoder against challenge and response kinds:
+
+```console
+cargo +nightly fuzz run qr_decoder -- -max_len=2331
+```
+
 The checked-in seed corpora under `fuzz/corpus/` contain representative valid
 and invalid inputs. New regression-provoking inputs should be minimized before
 being retained:
@@ -36,6 +42,7 @@ being retained:
 cargo +nightly fuzz cmin canonical_parser
 cargo +nightly fuzz cmin verifier
 cargo +nightly fuzz cmin crypto_verifier
+cargo +nightly fuzz cmin qr_decoder
 ```
 
 Fuzzing is a bounded developer and review activity. The ordinary Jenkins gate

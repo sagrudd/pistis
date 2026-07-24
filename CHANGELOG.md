@@ -29,8 +29,21 @@ a Changelog and releases follow Semantic Versioning.
   public-key-only records, structured assurance metadata, optimistic
   concurrency, reversible suspension, terminal revocation, and retained
   lifecycle history.
+- Bounded deterministic QR challenge and response framing, QR matrix rendering,
+  closed authentication schemas, redacted browser polling, verified reference
+  completion, atomic in-memory session/audit transitions, and offline
+  acceptance coverage for response-QR and direct-local transfer.
+
+### Changed
+
+- Replace the incomplete generic challenge diagnostic schema with closed
+  authentication challenge and response diagnostic schemas. These JSON views
+  remain non-normative and are never signed or accepted on protocol boundaries.
 
 ### Security
 
 - Upgrade `jsonwebtoken` to the patched 10.x validation implementation and use
   the reviewed AWS-LC cryptographic backend, resolving CVE-2026-25537.
+- Reject malformed, oversized, corrupt, substituted, replayed, and conflicting
+  QR authentication transfers while keeping polling redacted and binding
+  challenge consumption, session rotation, and audit creation atomically.

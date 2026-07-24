@@ -1,14 +1,41 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://pistis.example/schemas/challenge-v1.schema.json",
-  "title": "Pistis challenge v1 diagnostic representation",
+  "title": "Pistis authentication challenge v1 diagnostic representation",
+  "description": "Non-normative diagnostic JSON for the closed canonical-CBOR authentication challenge schema. This JSON is never signed or accepted on a protocol boundary.",
   "type": "object",
   "additionalProperties": false,
-  "required": ["version", "purpose", "challenge_id", "nonce", "expires_at_ms"],
+  "required": [
+    "version",
+    "purpose",
+    "issued_at_ms",
+    "expires_at_ms",
+    "installation_id",
+    "key_id",
+    "challenge_id",
+    "nonce",
+    "user_id",
+    "external_identity_id",
+    "requested_action",
+    "audience",
+    "installation_name",
+    "local_username",
+    "display_context_digest",
+    "installation_fingerprint",
+    "endpoint_hints"
+  ],
   "properties": {
     "version": { "const": 1 },
-    "purpose": {
-      "enum": ["authentication", "approval", "artifact-signing"]
+    "purpose": { "const": "pistis.authentication-challenge.v1" },
+    "issued_at_ms": { "type": "integer", "minimum": 0 },
+    "expires_at_ms": { "type": "integer", "minimum": 0 },
+    "installation_id": {
+      "type": "string",
+      "pattern": "^installation_[0-9a-f]{32}$"
+    },
+    "key_id": {
+      "type": "string",
+      "pattern": "^key_[0-9a-f]{64}$"
     },
     "challenge_id": {
       "type": "string",
@@ -18,9 +45,36 @@
       "type": "string",
       "pattern": "^[0-9a-f]{64}$"
     },
-    "expires_at_ms": {
-      "type": "integer",
-      "minimum": 0
+    "user_id": {
+      "type": "string",
+      "pattern": "^user_[0-9a-f]{32}$"
+    },
+    "external_identity_id": {
+      "type": "string",
+      "pattern": "^external_identity_[0-9a-f]{32}$"
+    },
+    "requested_action": { "const": "authenticate-session" },
+    "audience": { "type": "string", "minLength": 1, "maxLength": 128 },
+    "installation_name": { "type": "string", "minLength": 1, "maxLength": 128 },
+    "local_username": { "type": "string", "minLength": 1, "maxLength": 128 },
+    "display_context_digest": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "installation_fingerprint": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "endpoint_hints": {
+      "type": "array",
+      "maxItems": 2,
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "format": "uri",
+        "pattern": "^https://",
+        "maxLength": 256
+      }
     }
   }
 }

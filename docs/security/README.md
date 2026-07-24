@@ -48,3 +48,38 @@ the binding before inserting the device and must surface cross-store failure;
 an unresolved reference never establishes trust. Operational backup and
 forward-only migration procedures are documented in
 [Device registry operations](../operations/device-registry.md).
+
+## QR authentication boundary
+
+Browsers, cameras, QR displays, copied transfer text, endpoint hints, and local
+networks are untrusted transports. A QR checksum detects accidental corruption
+only. It cannot establish installation or device authenticity, and an attacker
+who replaces a frame can recompute it. Authority comes only from verification
+of the exact signed canonical payload and its locally stored challenge,
+identity, device, key, lifecycle, purpose, audience, and expiry bindings.
+
+Challenge and response frames have distinct closed kinds and schemas.
+Decoders reject unsupported versions, unknown fields, non-canonical data,
+invalid checksums, padding, trailing data, fragmentation, and oversized input.
+Endpoint hints never override local HTTPS or endpoint policy. Local-network
+failure does not weaken verification or silently switch to a bearer mechanism;
+the response-QR path remains the offline fallback.
+
+Polling is capability-bound and redacted. It returns no nonce, signed response,
+signature, session identifier, capability, audit record, or complete challenge
+identifier, and polling alone never mutates authentication state. Logs likewise
+exclude transfer bodies, capabilities, nonces, signatures, private keys,
+provider credentials, and complete challenge identifiers.
+
+Completion verifies before mutation. Challenge consumption,
+pre-authentication session invalidation, authenticated-session rotation, audit
+record creation, and terminal completion share one atomic boundary. Denials do
+not create sessions; injected failure leaves the challenge unconsumed; and
+concurrent or replayed completions cannot establish a second session.
+
+The EPIC-6 implementation demonstrates these rules in memory. It is not a
+durable production security boundary. Production HTTP must additionally
+provide TLS, request and content-type bounds, no-store responses, CSRF and
+cookie protections, rate limiting, durable transactions, and operational
+monitoring. Production COSE parsing and mobile interoperability also remain
+deferred.

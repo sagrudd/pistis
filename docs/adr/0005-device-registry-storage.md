@@ -121,4 +121,3 @@ milestone acceptance/documentation scope. Their review required constrained
 SQLite storage, public-key-only persistence, optimistic concurrency, terminal
 revocation, explicit suspension recovery, retained historic evidence, and
 fail-closed handling of corrupt or unavailable state.
-

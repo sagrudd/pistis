@@ -30,6 +30,7 @@ Development
    development/provider-conformance
    development/ios
    development/android
+   development/synoptikon
    development/issue-model
    development/jenkins-ci
    development/documentation
@@ -65,3 +66,4 @@ Architecture and operations
    operations/qr-authentication
    operations/ios
    operations/android
+   operations/synoptikon

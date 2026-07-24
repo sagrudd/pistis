@@ -9,3 +9,4 @@ recovery, backup, audit, and incident-response guidance.
 - [QR authentication operations](qr-authentication.md)
 - [iOS application operations](ios.md)
 - [Android application operations](android.md)
+- [Synoptikon integration operations](synoptikon.md)

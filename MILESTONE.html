@@ -1,0 +1,3410 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="./">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Pistis v1.0 — MILESTONE.md &mdash; Pistis 0.0.0</title>
+      <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=e59714d7" />
+      <link rel="stylesheet" type="text/css" href="_static/pistis.css?v=168623c6" />
+
+  
+      <script src="_static/jquery.js?v=5d32c60e"></script>
+      <script src="_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="_static/documentation_options.js?v=7026087e"></script>
+      <script src="_static/doctools.js?v=9bcbadda"></script>
+      <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="TODO.md" href="TODO.html" />
+    <link rel="prev" title="Project Charter — Pistis" href="PROJECT_CHARTER.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="index.html" class="icon icon-home">
+            Pistis
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="README.html">Pistis documentation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="PROJECT_CHARTER.html">Project Charter — Pistis</a></li>
+<li class="toctree-l1"><a class="reference internal" href="PROJECT_CHARTER.html#vision">1. Vision</a></li>
+<li class="toctree-l1"><a class="reference internal" href="PROJECT_CHARTER.html#scope">2. Scope</a></li>
+<li class="toctree-l1"><a class="reference internal" href="PROJECT_CHARTER.html#guiding-principles">3. Guiding Principles</a></li>
+<li class="toctree-l1"><a class="reference internal" href="PROJECT_CHARTER.html#primary-use-cases">4. Primary Use Cases</a></li>
+<li class="toctree-l1"><a class="reference internal" href="PROJECT_CHARTER.html#architecture">5. Architecture</a></li>
+<li class="toctree-l1"><a class="reference internal" href="PROJECT_CHARTER.html#deployment-modes">6. Deployment Modes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="PROJECT_CHARTER.html#technology">7. Technology</a></li>
+<li class="toctree-l1"><a class="reference internal" href="PROJECT_CHARTER.html#mvp-deliverables">8. MVP Deliverables</a></li>
+<li class="toctree-l1"><a class="reference internal" href="PROJECT_CHARTER.html#version-1-0">9. Version 1.0</a></li>
+<li class="toctree-l1"><a class="reference internal" href="PROJECT_CHARTER.html#future-roadmap">10. Future Roadmap</a></li>
+<li class="toctree-l1"><a class="reference internal" href="PROJECT_CHARTER.html#deliverables">11. Deliverables</a></li>
+<li class="toctree-l1"><a class="reference internal" href="PROJECT_CHARTER.html#success-criteria">12. Success Criteria</a></li>
+<li class="toctree-l1"><a class="reference internal" href="PROJECT_CHARTER.html#non-goals">13. Non-Goals</a></li>
+<li class="toctree-l1"><a class="reference internal" href="PROJECT_CHARTER.html#long-term-vision">14. Long-Term Vision</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Pistis v1.0 — MILESTONE.md</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#purpose-of-this-document">1. Purpose of this document</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#v1-0-product-definition">2. v1.0 product definition</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#explicit-v1-0-scope">3. Explicit v1.0 scope</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#included">3.1 Included</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#excluded-from-v1-0">3.2 Excluded from v1.0</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#architectural-invariants">4. Architectural invariants</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#no-central-server-dependency">4.1 No central server dependency</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#device-private-keys-never-leave-the-device">4.2 Device private keys never leave the device</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#discovery-is-not-authentication">4.3 Discovery is not authentication</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#external-identity-is-not-local-authority">4.4 External identity is not local authority</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#stable-identifiers-are-mandatory">4.5 Stable identifiers are mandatory</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#evidence-must-be-portable">4.6 Evidence must be portable</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#protocol-before-transport">4.7 Protocol before transport</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#no-silent-approval">4.8 No silent approval</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#proposed-rust-workspace">5. Proposed Rust workspace</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#crate-responsibilities">Crate responsibilities</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#pistis-core"><code class="docutils literal notranslate"><span class="pre">pistis-core</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#pistis-protocol"><code class="docutils literal notranslate"><span class="pre">pistis-protocol</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#pistis-canonical"><code class="docutils literal notranslate"><span class="pre">pistis-canonical</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#pistis-crypto"><code class="docutils literal notranslate"><span class="pre">pistis-crypto</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#pistis-claims"><code class="docutils literal notranslate"><span class="pre">pistis-claims</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#pistis-evidence"><code class="docutils literal notranslate"><span class="pre">pistis-evidence</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#pistis-policy"><code class="docutils literal notranslate"><span class="pre">pistis-policy</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#pistis-verifier"><code class="docutils literal notranslate"><span class="pre">pistis-verifier</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#pistis-oidc"><code class="docutils literal notranslate"><span class="pre">pistis-oidc</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#pistis-github"><code class="docutils literal notranslate"><span class="pre">pistis-github</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#pistis-google"><code class="docutils literal notranslate"><span class="pre">pistis-google</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#pistis-qr"><code class="docutils literal notranslate"><span class="pre">pistis-qr</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#pistis-discovery"><code class="docutils literal notranslate"><span class="pre">pistis-discovery</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#pistis-store"><code class="docutils literal notranslate"><span class="pre">pistis-store</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#pistis-audit"><code class="docutils literal notranslate"><span class="pre">pistis-audit</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#pistis-server"><code class="docutils literal notranslate"><span class="pre">pistis-server</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#pistis-cli"><code class="docutils literal notranslate"><span class="pre">pistis-cli</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#pistis-synoptikon"><code class="docutils literal notranslate"><span class="pre">pistis-synoptikon</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#pistis-monas"><code class="docutils literal notranslate"><span class="pre">pistis-monas</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#delivery-summary">6. Delivery summary</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="#milestone-m0-charter-reconciliation-and-delivery-baseline">Milestone M0 — Charter reconciliation and delivery baseline</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#work-items">Work items</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#m0-1-resolve-terminology">M0.1 Resolve terminology</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#m0-2-confirm-v1-0-platform-interpretation">M0.2 Confirm v1.0 platform interpretation</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#m0-3-freeze-initial-protocol-assumptions">M0.3 Freeze initial protocol assumptions</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#m0-4-establish-repository-and-governance">M0.4 Establish repository and governance</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#m0-5-define-supported-platform-baseline">M0.5 Define supported platform baseline</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#deliverables">Deliverables</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#acceptance-criteria">Acceptance criteria</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#exit-gate">Exit gate</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="#milestone-m1-threat-model-and-protocol-specification">Milestone M1 — Threat model and protocol specification</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#id1">Work items</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#m1-1-define-actors-and-trust-boundaries">M1.1 Define actors and trust boundaries</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#m1-2-define-threat-scenarios">M1.2 Define threat scenarios</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#m1-3-define-canonical-signed-messages">M1.3 Define canonical signed messages</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#m1-4-select-canonical-encoding">M1.4 Select canonical encoding</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#m1-5-select-signature-suites">M1.5 Select signature suites</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#m1-6-define-protocol-state-machines">M1.6 Define protocol state machines</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#m1-7-define-assurance-model">M1.7 Define assurance model</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#m1-8-produce-conformance-fixtures">M1.8 Produce conformance fixtures</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#id2">Deliverables</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#id3">Acceptance criteria</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#id4">Exit gate</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="#milestone-m2-rust-workspace-and-cryptographic-foundation">Milestone M2 — Rust workspace and cryptographic foundation</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#id5">Work items</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#m2-1-create-workspace-and-dependency-policy">M2.1 Create workspace and dependency policy</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#m2-2-implement-domain-identifiers">M2.2 Implement domain identifiers</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#m2-3-implement-canonical-encoding">M2.3 Implement canonical encoding</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#m2-4-implement-cryptographic-abstraction">M2.4 Implement cryptographic abstraction</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#m2-5-implement-challenge-generation">M2.5 Implement challenge generation</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#m2-6-implement-verification-pipeline">M2.6 Implement verification pipeline</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#m2-7-implement-protocol-fixtures-and-fuzzing">M2.7 Implement protocol fixtures and fuzzing</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#id6">Deliverables</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#id7">Acceptance criteria</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#id8">Exit gate</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="#milestone-m3-github-and-google-trust-anchor-enrolment">Milestone M3 — GitHub and Google trust-anchor enrolment</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#id9">Work items</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#m3-1-provider-abstraction">M3.1 Provider abstraction</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#m3-2-github-enrolment">M3.2 GitHub enrolment</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#m3-3-google-enrolment">M3.3 Google enrolment</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#m3-4-bind-provider-identity-to-device-key">M3.4 Bind provider identity to device key</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#m3-5-installation-trust-matching">M3.5 Installation trust matching</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#m3-6-reauthentication-policy">M3.6 Reauthentication policy</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#id10">Deliverables</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#id11">Acceptance criteria</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#id12">Exit gate</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="#milestone-m4-local-installation-identity-and-device-registry">Milestone M4 — Local installation identity and device registry</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#id13">Work items</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#m4-1-installation-identity">M4.1 Installation identity</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#m4-2-local-user-trust-policy">M4.2 Local user trust policy</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#m4-3-device-registry">M4.3 Device registry</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#m4-4-challenge-store">M4.4 Challenge store</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#m4-5-storage-implementations">M4.5 Storage implementations</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#m4-6-administration-api">M4.6 Administration API</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#id14">Deliverables</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#id15">Acceptance criteria</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#id16">Exit gate</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="#milestone-m5-qr-authentication-end-to-end">Milestone M5 — QR authentication end-to-end</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#id17">Work items</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#m5-1-login-initiation">M5.1 Login initiation</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#m5-2-qr-challenge-format">M5.2 QR challenge format</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#m5-3-mobile-challenge-validation">M5.3 Mobile challenge validation</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#m5-4-response-transfer">M5.4 Response transfer</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#m5-5-session-establishment">M5.5 Session establishment</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#m5-6-failure-and-cancellation-ux">M5.6 Failure and cancellation UX</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#id18">Deliverables</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#id19">Acceptance criteria</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#id20">Exit gate</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="#milestone-m6-ios-mvp-application">Milestone M6 — iOS MVP application</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#id21">Work items</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#m6-1-application-shell">M6.1 Application shell</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#m6-2-secure-key-generation">M6.2 Secure key generation</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#m6-3-local-authentication">M6.3 Local authentication</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#m6-4-external-identity-enrolment">M6.4 External identity enrolment</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#m6-5-qr-scanning-and-response">M6.5 QR scanning and response</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#m6-6-installation-pairing">M6.6 Installation pairing</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#m6-7-local-history">M6.7 Local history</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#m6-8-app-lifecycle-and-recovery">M6.8 App lifecycle and recovery</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#m6-9-distribution">M6.9 Distribution</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#id22">Deliverables</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#id23">Acceptance criteria</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#id24">Exit gate</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="#milestone-m7-synoptikon-integration">Milestone M7 — Synoptikon integration</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#id25">Work items</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#m7-1-configuration">M7.1 Configuration</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#m7-2-bootstrap-administrator">M7.2 Bootstrap administrator</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#m7-3-web-authentication">M7.3 Web authentication</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#m7-4-authorization-separation">M7.4 Authorization separation</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#m7-5-audit-integration">M7.5 Audit integration</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#m7-6-administrative-ui">M7.6 Administrative UI</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#id26">Deliverables</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#id27">Acceptance criteria</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#id28">Exit gate</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="#milestone-m8-monas-standalone-integration-and-cli">Milestone M8 — Monas standalone integration and CLI</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#id29">Work items</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#m8-1-standalone-service-profile">M8.1 Standalone service profile</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#m8-2-embedding-api">M8.2 Embedding API</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#m8-3-cli">M8.3 CLI</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#m8-4-reference-application">M8.4 Reference application</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#m8-5-packaging">M8.5 Packaging</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#id30">Deliverables</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#id31">Acceptance criteria</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#id32">Exit gate</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="#milestone-m9-local-network-discovery-and-direct-exchange">Milestone M9 — Local-network discovery and direct exchange</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#id33">Work items</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#m9-1-discovery-design">M9.1 Discovery design</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#m9-2-dns-sd-mdns-implementation">M9.2 DNS-SD/mDNS implementation</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#m9-3-pairwise-secure-channel">M9.3 Pairwise secure channel</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#m9-4-direct-challenge-retrieval">M9.4 Direct challenge retrieval</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#m9-5-fallback-hierarchy">M9.5 Fallback hierarchy</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#m9-6-browser-limitations">M9.6 Browser limitations</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#id34">Deliverables</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#id35">Acceptance criteria</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#id36">Exit gate</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="#milestone-m10-artefact-report-signing-and-portable-evidence">Milestone M10 — Artefact/report signing and portable evidence</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#id37">Work items</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#m10-1-artefact-digest-model">M10.1 Artefact digest model</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#m10-2-signing-claims">M10.2 Signing claims</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#m10-3-mobile-signing-ux">M10.3 Mobile signing UX</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#m10-4-evidence-envelope">M10.4 Evidence envelope</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#m10-5-verification-cli-and-library">M10.5 Verification CLI and library</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#m10-6-pdf-integration-boundary">M10.6 PDF integration boundary</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#m10-7-multi-signature-primitives">M10.7 Multi-signature primitives</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#id38">Deliverables</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#id39">Acceptance criteria</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#id40">Exit gate</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="#milestone-m11-android-application">Milestone M11 — Android application</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#id41">Work items</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#m11-1-application-shell">M11.1 Application shell</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#m11-2-android-keystore-key-generation">M11.2 Android Keystore key generation</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#m11-3-biometricprompt">M11.3 BiometricPrompt</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#m11-4-external-provider-enrolment">M11.4 External provider enrolment</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#m11-5-qr-and-local-network-support">M11.5 QR and local-network support</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#m11-6-device-capability-policy">M11.6 Device capability policy</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#m11-7-key-attestation-decision">M11.7 Key attestation decision</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#m11-8-device-test-matrix">M11.8 Device test matrix</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#m11-9-distribution">M11.9 Distribution</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#id42">Deliverables</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#id43">Acceptance criteria</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#id44">Exit gate</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="#milestone-m12-recovery-revocation-and-multi-device-lifecycle">Milestone M12 — Recovery, revocation and multi-device lifecycle</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#id45">Work items</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#m12-1-multi-device-enrolment">M12.1 Multi-device enrolment</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#m12-2-device-replacement">M12.2 Device replacement</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#m12-3-revocation">M12.3 Revocation</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#m12-4-historic-evidence-semantics">M12.4 Historic evidence semantics</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#m12-5-bootstrap-recovery">M12.5 Bootstrap recovery</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#m12-6-external-identity-loss">M12.6 External identity loss</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#id46">Deliverables</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#id47">Acceptance criteria</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#id48">Exit gate</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="#milestone-m13-security-hardening-and-independent-review">Milestone M13 — Security hardening and independent review</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#id49">Work items</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#m13-1-code-hardening">M13.1 Code hardening</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#m13-2-protocol-attack-tests">M13.2 Protocol attack tests</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#m13-3-mobile-security-review">M13.3 Mobile security review</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#m13-4-privacy-review">M13.4 Privacy review</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#m13-5-independent-penetration-test">M13.5 Independent penetration test</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#m13-6-cryptographic-review">M13.6 Cryptographic review</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#m13-7-security-incident-readiness">M13.7 Security incident readiness</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#id50">Deliverables</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#id51">Acceptance criteria</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#id52">Exit gate</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="#milestone-m14-packaging-operations-and-documentation">Milestone M14 — Packaging, operations and documentation</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#id53">Work items</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#m14-1-release-packaging">M14.1 Release packaging</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#m14-2-configuration-reference">M14.2 Configuration reference</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#m14-3-operations">M14.3 Operations</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#m14-4-pistis-doctor">M14.4 <code class="docutils literal notranslate"><span class="pre">pistis</span> <span class="pre">doctor</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#m14-5-user-documentation">M14.5 User documentation</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#m14-6-developer-documentation">M14.6 Developer documentation</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#id54">Deliverables</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#id55">Acceptance criteria</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#id56">Exit gate</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="#milestone-m15-release-candidate-and-v1-0-acceptance">Milestone M15 — Release candidate and v1.0 acceptance</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#id57">Work items</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#m15-1-freeze-protocol-v1">M15.1 Freeze protocol v1</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#m15-2-end-to-end-acceptance-matrix">M15.2 End-to-end acceptance matrix</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#m15-3-performance-and-usability-targets">M15.3 Performance and usability targets</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#m15-4-compatibility-declaration">M15.4 Compatibility declaration</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#m15-5-release-approval">M15.5 Release approval</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#id58">Deliverables</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#id59">Acceptance criteria</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#id60">Exit gate</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="#cross-cutting-engineering-requirements">7. Cross-cutting engineering requirements</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#testing">7.1 Testing</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#observability">7.2 Observability</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#versioning">7.3 Versioning</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#clock-handling">7.4 Clock handling</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#accessibility">7.5 Accessibility</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#internationalisation">7.6 Internationalisation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#privacy">7.7 Privacy</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#supply-chain-integrity">7.8 Supply-chain integrity</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="#dependency-graph">8. Dependency graph</a></li>
+<li class="toctree-l1"><a class="reference internal" href="#recommended-implementation-sequence-by-release">9. Recommended implementation sequence by release</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#prototype-0-1">Prototype 0.1</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#developer-preview-0-2">Developer Preview 0.2</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#synoptikon-alpha-0-3">Synoptikon Alpha 0.3</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#ios-mvp-0-5">iOS MVP 0.5</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#cross-platform-beta-0-8">Cross-platform Beta 0.8</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#release-candidate-1-0-0-rc-1">Release Candidate 1.0.0-rc.1</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#v1-0-0">v1.0.0</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="#principal-risks-and-mitigations">10. Principal risks and mitigations</a></li>
+<li class="toctree-l1"><a class="reference internal" href="#definition-of-done-for-every-milestone">11. Definition of done for every milestone</a></li>
+<li class="toctree-l1"><a class="reference internal" href="#deferred-post-v1-0-backlog">12. Deferred post-v1.0 backlog</a></li>
+<li class="toctree-l1"><a class="reference internal" href="#reference-implementation-technologies">13. Reference implementation technologies</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#rust">Rust</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#ios">iOS</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#android">Android</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="#source-notes">14. Source notes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="#final-v1-0-boundary">15. Final v1.0 boundary</a></li>
+<li class="toctree-l1"><a class="reference internal" href="TODO.html">TODO.md</a></li>
+<li class="toctree-l1"><a class="reference internal" href="TODO.html#epic-0-repository">EPIC 0 — Repository</a></li>
+<li class="toctree-l1"><a class="reference internal" href="TODO.html#epic-1-protocol">EPIC 1 — Protocol</a></li>
+<li class="toctree-l1"><a class="reference internal" href="TODO.html#epic-2-crypto">EPIC 2 — Crypto</a></li>
+<li class="toctree-l1"><a class="reference internal" href="TODO.html#epic-3-github-trust">EPIC 3 — GitHub trust</a></li>
+<li class="toctree-l1"><a class="reference internal" href="TODO.html#epic-4-google-trust">EPIC 4 — Google trust</a></li>
+<li class="toctree-l1"><a class="reference internal" href="TODO.html#epic-5-device-registry">EPIC 5 — Device registry</a></li>
+<li class="toctree-l1"><a class="reference internal" href="TODO.html#epic-6-qr-authentication">EPIC 6 — QR authentication</a></li>
+<li class="toctree-l1"><a class="reference internal" href="TODO.html#epic-7-ios">EPIC 7 — iOS</a></li>
+<li class="toctree-l1"><a class="reference internal" href="TODO.html#epic-8-android">EPIC 8 — Android</a></li>
+<li class="toctree-l1"><a class="reference internal" href="TODO.html#epic-9-synoptikon">EPIC 9 — Synoptikon</a></li>
+<li class="toctree-l1"><a class="reference internal" href="TODO.html#epic-10-monas">EPIC 10 — Monas</a></li>
+<li class="toctree-l1"><a class="reference internal" href="TODO.html#epic-11-local-discovery">EPIC 11 — Local discovery</a></li>
+<li class="toctree-l1"><a class="reference internal" href="TODO.html#epic-12-evidence">EPIC 12 — Evidence</a></li>
+<li class="toctree-l1"><a class="reference internal" href="TODO.html#epic-13-recovery">EPIC 13 — Recovery</a></li>
+<li class="toctree-l1"><a class="reference internal" href="TODO.html#epic-14-security">EPIC 14 — Security</a></li>
+<li class="toctree-l1"><a class="reference internal" href="TODO.html#epic-15-release">EPIC 15 — Release</a></li>
+<li class="toctree-l1"><a class="reference internal" href="TODO.html#continuous-tasks">Continuous tasks</a></li>
+<li class="toctree-l1"><a class="reference internal" href="BOOTSTRAP.html">BOOTSTRAP.md</a></li>
+<li class="toctree-l1"><a class="reference internal" href="BOOTSTRAP.html#purpose">Purpose</a></li>
+<li class="toctree-l1"><a class="reference internal" href="BOOTSTRAP.html#bootstrap-objectives">Bootstrap Objectives</a></li>
+<li class="toctree-l1"><a class="reference internal" href="BOOTSTRAP.html#deliverables">Deliverables</a></li>
+<li class="toctree-l1"><a class="reference internal" href="BOOTSTRAP.html#agents-md">AGENTS.md</a></li>
+<li class="toctree-l1"><a class="reference internal" href="BOOTSTRAP.html#github-corpus">GitHub Corpus</a></li>
+<li class="toctree-l1"><a class="reference internal" href="BOOTSTRAP.html#branch-strategy">Branch Strategy</a></li>
+<li class="toctree-l1"><a class="reference internal" href="BOOTSTRAP.html#commit-policy">Commit Policy</a></li>
+<li class="toctree-l1"><a class="reference internal" href="BOOTSTRAP.html#semantic-versioning">Semantic Versioning</a></li>
+<li class="toctree-l1"><a class="reference internal" href="BOOTSTRAP.html#pull-requests">Pull Requests</a></li>
+<li class="toctree-l1"><a class="reference internal" href="BOOTSTRAP.html#documentation">Documentation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="BOOTSTRAP.html#testing">Testing</a></li>
+<li class="toctree-l1"><a class="reference internal" href="BOOTSTRAP.html#adrs">ADRs</a></li>
+<li class="toctree-l1"><a class="reference internal" href="BOOTSTRAP.html#quality-gates">Quality Gates</a></li>
+<li class="toctree-l1"><a class="reference internal" href="BOOTSTRAP.html#security">Security</a></li>
+<li class="toctree-l1"><a class="reference internal" href="BOOTSTRAP.html#bootstrap-completion-criteria">Bootstrap Completion Criteria</a></li>
+<li class="toctree-l1"><a class="reference internal" href="BOOTSTRAP_STATUS.html">Bootstrap status</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="development/README.html">Development documentation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="development/issue-model.html">Planning issue model</a></li>
+<li class="toctree-l1"><a class="reference internal" href="development/jenkins-ci.html">Jenkins CI</a></li>
+<li class="toctree-l1"><a class="reference internal" href="development/documentation.html">Documentation workflow</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="adr/README.html">Architecture Decision Records</a></li>
+<li class="toctree-l1"><a class="reference internal" href="adr/0000-template.html">ADR-NNNN: Decision title</a></li>
+<li class="toctree-l1"><a class="reference internal" href="protocol/README.html">Protocol documentation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="security/README.html">Security documentation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="operations/README.html">Operations documentation</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">Pistis</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">Pistis v1.0 — MILESTONE.md</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="_sources/MILESTONE.md.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="pistis-v1-0-milestone-md">
+<h1>Pistis v1.0 — MILESTONE.md<a class="headerlink" href="#pistis-v1-0-milestone-md" title="Link to this heading"></a></h1>
+<p><strong>Document status:</strong> Implementation planning baseline<br />
+<strong>Project:</strong> Pistis<br />
+<strong>Target release:</strong> v1.0<br />
+<strong>Primary implementation language:</strong> Rust<br />
+<strong>Mobile clients:</strong> iOS for MVP; Android for v1.0<br />
+<strong>Primary integrations:</strong> Mnemosyne Synoptikon and Monas standalone deployments<br />
+<strong>Initial external trust anchors:</strong> GitHub and Google OpenID Connect<br />
+<strong>Default operating model:</strong> Local-first, challenge-response authentication without a continuously available Pistis server<br />
+<strong>Last revised:</strong> 24 July 2026</p>
+<hr class="docutils" />
+<section id="purpose-of-this-document">
+<h2>1. Purpose of this document<a class="headerlink" href="#purpose-of-this-document" title="Link to this heading"></a></h2>
+<p>This document breaks the work required to deliver Pistis v1.0 into explicit, testable milestones.</p>
+<p>It is intended to serve simultaneously as:</p>
+<ul class="simple">
+<li><p>the engineering delivery plan;</p></li>
+<li><p>the scope boundary for v1.0;</p></li>
+<li><p>the source of milestone acceptance criteria;</p></li>
+<li><p>the dependency map for the Rust core, mobile clients and product integrations;</p></li>
+<li><p>the baseline for security review and threat modelling;</p></li>
+<li><p>the basis for issues, epics and release gates;</p></li>
+<li><p>the definition of what “v1.0 complete” means.</p></li>
+</ul>
+<p>This is not a calendar commitment. Estimates are expressed as <strong>developer-weeks of effort</strong>, not elapsed calendar time. Parallel mobile and backend work can shorten elapsed delivery, but it does not reduce total engineering effort.</p>
+</section>
+<hr class="docutils" />
+<section id="v1-0-product-definition">
+<h2>2. v1.0 product definition<a class="headerlink" href="#v1-0-product-definition" title="Link to this heading"></a></h2>
+<p>Pistis v1.0 is a portable cryptographic identity, authentication and approval system.</p>
+<p>It allows an administrator to declare that a local application identity—for example, the Synoptikon account <code class="docutils literal notranslate"><span class="pre">stephen</span></code>—must be controlled by a named external identity, initially:</p>
+<ul class="simple">
+<li><p>a stable GitHub user identity; or</p></li>
+<li><p>a stable Google OpenID Connect subject.</p></li>
+</ul>
+<p>The user proves control of that external identity during enrolment in the Pistis mobile application. Pistis then creates a device-bound signing key and produces cryptographic evidence linking:</p>
+<ol class="arabic simple">
+<li><p>the external identity;</p></li>
+<li><p>the Pistis device key;</p></li>
+<li><p>the local application challenge;</p></li>
+<li><p>the requested authentication or approval action;</p></li>
+<li><p>the user’s explicit biometric or device-credential confirmation.</p></li>
+</ol>
+<p>Normal authentication does not require Synoptikon or Monas to contact GitHub or Google after enrolment. GitHub and Google act as <strong>trust anchors for enrolment</strong>, rather than continuously available authentication intermediaries.</p>
+<p>The default login ceremony is:</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>User enters or selects local account
+        ↓
+Synoptikon or Monas creates a short-lived challenge
+        ↓
+Application displays challenge as QR code
+        ↓
+Pistis mobile application scans challenge
+        ↓
+User reviews installation and action
+        ↓
+Biometric/device authentication authorises key use
+        ↓
+Pistis signs the canonical challenge
+        ↓
+Signed response is returned over the local network or response QR
+        ↓
+Local installation verifies signature and trust evidence
+        ↓
+Application session is established
+</pre></div>
+</div>
+<p>Local-network discovery and transfer improve usability but do not alter the trust model. QR exchange remains the universal fallback.</p>
+</section>
+<hr class="docutils" />
+<section id="explicit-v1-0-scope">
+<h2>3. Explicit v1.0 scope<a class="headerlink" href="#explicit-v1-0-scope" title="Link to this heading"></a></h2>
+<section id="included">
+<h3>3.1 Included<a class="headerlink" href="#included" title="Link to this heading"></a></h3>
+<p>Pistis v1.0 shall include:</p>
+<ul class="simple">
+<li><p>a Rust workspace containing the protocol, cryptographic, evidence, policy and verification components;</p></li>
+<li><p>GitHub enrolment as an external trust anchor;</p></li>
+<li><p>Google OpenID Connect enrolment as an external trust anchor;</p></li>
+<li><p>stable external-identity identifiers rather than mutable usernames or email addresses;</p></li>
+<li><p>device-bound signing keys;</p></li>
+<li><p>iOS application using Secure Enclave-compatible key storage and LocalAuthentication;</p></li>
+<li><p>Android application using Android Keystore and BiometricPrompt;</p></li>
+<li><p>QR challenge and response transport;</p></li>
+<li><p>local-network discovery and direct exchange where the network permits it;</p></li>
+<li><p>deterministic canonical challenge and evidence encodings;</p></li>
+<li><p>replay-resistant, short-lived authentication challenges;</p></li>
+<li><p>local trust-policy configuration;</p></li>
+<li><p>user/device enrolment, listing, suspension and revocation;</p></li>
+<li><p>authentication integration with Synoptikon;</p></li>
+<li><p>standalone authentication and verification integration for Monas;</p></li>
+<li><p>detached evidence generation;</p></li>
+<li><p>report/artefact signing primitives;</p></li>
+<li><p>a Rust verifier library;</p></li>
+<li><p>a verification command-line interface;</p></li>
+<li><p>auditable authentication and signing events;</p></li>
+<li><p>conformance fixtures shared across Rust, iOS and Android;</p></li>
+<li><p>a documented recovery and replacement-device procedure;</p></li>
+<li><p>packaging, release automation and operator documentation.</p></li>
+</ul>
+</section>
+<section id="excluded-from-v1-0">
+<h3>3.2 Excluded from v1.0<a class="headerlink" href="#excluded-from-v1-0" title="Link to this heading"></a></h3>
+<p>The following are explicitly outside v1.0:</p>
+<ul class="simple">
+<li><p>a mandatory central Pistis identity service;</p></li>
+<li><p>APNs or FCM remote push as a required authentication path;</p></li>
+<li><p>a public global identity directory;</p></li>
+<li><p>SAML;</p></li>
+<li><p>SCIM;</p></li>
+<li><p>enterprise lifecycle provisioning;</p></li>
+<li><p>password authentication;</p></li>
+<li><p>password recovery;</p></li>
+<li><p>SMS one-time passwords;</p></li>
+<li><p>TOTP;</p></li>
+<li><p>custom cryptographic algorithms;</p></li>
+<li><p>a public certificate authority;</p></li>
+<li><p>a blockchain;</p></li>
+<li><p>public transparency logs;</p></li>
+<li><p>qualified electronic signatures or formal eIDAS certification;</p></li>
+<li><p>legal assertions that a signature is equivalent to a handwritten signature;</p></li>
+<li><p>Android devices without an acceptable secure key-storage and screen-lock configuration;</p></li>
+<li><p>Huawei or other Android variants without the selected supported platform services, unless separately qualified;</p></li>
+<li><p>Apple Watch, Wear OS, NFC and USB transports;</p></li>
+<li><p>automatic phone-to-phone credential migration;</p></li>
+<li><p>cross-installation global role portability;</p></li>
+<li><p>anonymous or pseudonymous account creation;</p></li>
+<li><p>general-purpose password-manager functionality.</p></li>
+</ul>
+</section>
+</section>
+<hr class="docutils" />
+<section id="architectural-invariants">
+<h2>4. Architectural invariants<a class="headerlink" href="#architectural-invariants" title="Link to this heading"></a></h2>
+<p>The following constraints apply to every milestone and must not be traded away for convenience.</p>
+<section id="no-central-server-dependency">
+<h3>4.1 No central server dependency<a class="headerlink" href="#no-central-server-dependency" title="Link to this heading"></a></h3>
+<p>A Synoptikon or Monas installation must be capable of:</p>
+<ul class="simple">
+<li><p>enrolling a Pistis device;</p></li>
+<li><p>issuing an authentication challenge;</p></li>
+<li><p>receiving a response;</p></li>
+<li><p>validating the response;</p></li>
+<li><p>recording evidence;</p></li>
+<li><p>revoking the device;</p></li>
+</ul>
+<p>without depending upon a Mnemosyne-operated cloud service.</p>
+<p>External network access may be required during GitHub or Google enrolment, but not for routine challenge signing and verification.</p>
+</section>
+<section id="device-private-keys-never-leave-the-device">
+<h3>4.2 Device private keys never leave the device<a class="headerlink" href="#device-private-keys-never-leave-the-device" title="Link to this heading"></a></h3>
+<p>Pistis must not export, escrow, synchronise or back up the private signing key.</p>
+<p>The server stores:</p>
+<ul class="simple">
+<li><p>a public key;</p></li>
+<li><p>public enrolment evidence;</p></li>
+<li><p>device metadata;</p></li>
+<li><p>revocation state;</p></li>
+<li><p>signed responses.</p></li>
+</ul>
+</section>
+<section id="discovery-is-not-authentication">
+<h3>4.3 Discovery is not authentication<a class="headerlink" href="#discovery-is-not-authentication" title="Link to this heading"></a></h3>
+<p>mDNS, DNS-SD, QR codes, deep links and local HTTP discovery are transports. Discovery results are untrusted until a signed protocol message is verified.</p>
+</section>
+<section id="external-identity-is-not-local-authority">
+<h3>4.4 External identity is not local authority<a class="headerlink" href="#external-identity-is-not-local-authority" title="Link to this heading"></a></h3>
+<p>GitHub and Google establish the external subject identity. The local installation decides:</p>
+<ul class="simple">
+<li><p>whether that subject is trusted;</p></li>
+<li><p>which local account it controls;</p></li>
+<li><p>which roles it receives;</p></li>
+<li><p>what it may sign or approve.</p></li>
+</ul>
+</section>
+<section id="stable-identifiers-are-mandatory">
+<h3>4.5 Stable identifiers are mandatory<a class="headerlink" href="#stable-identifiers-are-mandatory" title="Link to this heading"></a></h3>
+<p>GitHub trust records must use the stable provider user identifier, not only the login name.</p>
+<p>Google trust records must use the OIDC issuer and <code class="docutils literal notranslate"><span class="pre">sub</span></code> claim, not only the email address.</p>
+<p>Mutable display identifiers may be retained as snapshots for human readability.</p>
+</section>
+<section id="evidence-must-be-portable">
+<h3>4.6 Evidence must be portable<a class="headerlink" href="#evidence-must-be-portable" title="Link to this heading"></a></h3>
+<p>A verifier must be able to validate a signed challenge or artefact using a detached evidence package and the local installation’s exported trust material.</p>
+</section>
+<section id="protocol-before-transport">
+<h3>4.7 Protocol before transport<a class="headerlink" href="#protocol-before-transport" title="Link to this heading"></a></h3>
+<p>The canonical message model and signature rules must be frozen and tested before convenience transports are treated as production-ready.</p>
+</section>
+<section id="no-silent-approval">
+<h3>4.8 No silent approval<a class="headerlink" href="#no-silent-approval" title="Link to this heading"></a></h3>
+<p>Every signature must be authorised through an explicit local user-verification ceremony appropriate to the device and action class.</p>
+</section>
+</section>
+<hr class="docutils" />
+<section id="proposed-rust-workspace">
+<h2>5. Proposed Rust workspace<a class="headerlink" href="#proposed-rust-workspace" title="Link to this heading"></a></h2>
+<p>The exact crate names may change, but v1.0 should preserve these responsibility boundaries.</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>pistis/
+├── Cargo.toml
+├── crates/
+│   ├── pistis-core/
+│   ├── pistis-protocol/
+│   ├── pistis-canonical/
+│   ├── pistis-crypto/
+│   ├── pistis-claims/
+│   ├── pistis-evidence/
+│   ├── pistis-policy/
+│   ├── pistis-verifier/
+│   ├── pistis-oidc/
+│   ├── pistis-github/
+│   ├── pistis-google/
+│   ├── pistis-qr/
+│   ├── pistis-discovery/
+│   ├── pistis-store/
+│   ├── pistis-audit/
+│   ├── pistis-server/
+│   ├── pistis-cli/
+│   ├── pistis-synoptikon/
+│   └── pistis-monas/
+├── apps/
+│   ├── ios/
+│   └── android/
+├── fixtures/
+├── schemas/
+├── docs/
+├── threat-model/
+└── xtask/
+</pre></div>
+</div>
+<section id="crate-responsibilities">
+<h3>Crate responsibilities<a class="headerlink" href="#crate-responsibilities" title="Link to this heading"></a></h3>
+<section id="pistis-core">
+<h4><code class="docutils literal notranslate"><span class="pre">pistis-core</span></code><a class="headerlink" href="#pistis-core" title="Link to this heading"></a></h4>
+<p>Shared identifiers, timestamps, errors, state enumerations and domain types. It must contain no transport-specific logic.</p>
+</section>
+<section id="pistis-protocol">
+<h4><code class="docutils literal notranslate"><span class="pre">pistis-protocol</span></code><a class="headerlink" href="#pistis-protocol" title="Link to this heading"></a></h4>
+<p>Request and response state machines, challenge types, protocol version negotiation and validation rules.</p>
+</section>
+<section id="pistis-canonical">
+<h4><code class="docutils literal notranslate"><span class="pre">pistis-canonical</span></code><a class="headerlink" href="#pistis-canonical" title="Link to this heading"></a></h4>
+<p>Deterministic canonical byte encoding for signed objects. It must expose test vectors and reject non-canonical or ambiguous inputs.</p>
+</section>
+<section id="pistis-crypto">
+<h4><code class="docutils literal notranslate"><span class="pre">pistis-crypto</span></code><a class="headerlink" href="#pistis-crypto" title="Link to this heading"></a></h4>
+<p>Signature-suite abstraction, hashing, signature verification and safe key-identifier derivation. It must not implement novel cryptography.</p>
+</section>
+<section id="pistis-claims">
+<h4><code class="docutils literal notranslate"><span class="pre">pistis-claims</span></code><a class="headerlink" href="#pistis-claims" title="Link to this heading"></a></h4>
+<p>External identity claims and local binding statements.</p>
+</section>
+<section id="pistis-evidence">
+<h4><code class="docutils literal notranslate"><span class="pre">pistis-evidence</span></code><a class="headerlink" href="#pistis-evidence" title="Link to this heading"></a></h4>
+<p>Detached evidence envelopes, artefact-digest records, signature chains and export/import formats.</p>
+</section>
+<section id="pistis-policy">
+<h4><code class="docutils literal notranslate"><span class="pre">pistis-policy</span></code><a class="headerlink" href="#pistis-policy" title="Link to this heading"></a></h4>
+<p>Local trust and approval policy parsing and evaluation.</p>
+</section>
+<section id="pistis-verifier">
+<h4><code class="docutils literal notranslate"><span class="pre">pistis-verifier</span></code><a class="headerlink" href="#pistis-verifier" title="Link to this heading"></a></h4>
+<p>High-level verification API returning structured verdicts, warnings and failure reasons.</p>
+</section>
+<section id="pistis-oidc">
+<h4><code class="docutils literal notranslate"><span class="pre">pistis-oidc</span></code><a class="headerlink" href="#pistis-oidc" title="Link to this heading"></a></h4>
+<p>OIDC discovery, authorization-code flow support, ID-token validation and subject extraction.</p>
+</section>
+<section id="pistis-github">
+<h4><code class="docutils literal notranslate"><span class="pre">pistis-github</span></code><a class="headerlink" href="#pistis-github" title="Link to this heading"></a></h4>
+<p>GitHub-specific enrolment adapter and stable-user-ID retrieval.</p>
+</section>
+<section id="pistis-google">
+<h4><code class="docutils literal notranslate"><span class="pre">pistis-google</span></code><a class="headerlink" href="#pistis-google" title="Link to this heading"></a></h4>
+<p>Google OIDC enrolment adapter.</p>
+</section>
+<section id="pistis-qr">
+<h4><code class="docutils literal notranslate"><span class="pre">pistis-qr</span></code><a class="headerlink" href="#pistis-qr" title="Link to this heading"></a></h4>
+<p>Compact QR payload framing, fragmentation where required, checksums and visual-transfer error handling.</p>
+</section>
+<section id="pistis-discovery">
+<h4><code class="docutils literal notranslate"><span class="pre">pistis-discovery</span></code><a class="headerlink" href="#pistis-discovery" title="Link to this heading"></a></h4>
+<p>mDNS/DNS-SD advertisement and discovery, local endpoint resolution and transport negotiation.</p>
+</section>
+<section id="pistis-store">
+<h4><code class="docutils literal notranslate"><span class="pre">pistis-store</span></code><a class="headerlink" href="#pistis-store" title="Link to this heading"></a></h4>
+<p>Storage interfaces and implementations. Initial implementations should support SQLite and the Mnemosyne database abstraction where appropriate.</p>
+</section>
+<section id="pistis-audit">
+<h4><code class="docutils literal notranslate"><span class="pre">pistis-audit</span></code><a class="headerlink" href="#pistis-audit" title="Link to this heading"></a></h4>
+<p>Structured immutable audit-event definitions and sinks.</p>
+</section>
+<section id="pistis-server">
+<h4><code class="docutils literal notranslate"><span class="pre">pistis-server</span></code><a class="headerlink" href="#pistis-server" title="Link to this heading"></a></h4>
+<p>Axum endpoints for enrolment, challenges, response submission, device administration and evidence retrieval.</p>
+</section>
+<section id="pistis-cli">
+<h4><code class="docutils literal notranslate"><span class="pre">pistis-cli</span></code><a class="headerlink" href="#pistis-cli" title="Link to this heading"></a></h4>
+<p>Operator, developer and standalone verification commands.</p>
+</section>
+<section id="pistis-synoptikon">
+<h4><code class="docutils literal notranslate"><span class="pre">pistis-synoptikon</span></code><a class="headerlink" href="#pistis-synoptikon" title="Link to this heading"></a></h4>
+<p>Synoptikon-specific integration layer.</p>
+</section>
+<section id="pistis-monas">
+<h4><code class="docutils literal notranslate"><span class="pre">pistis-monas</span></code><a class="headerlink" href="#pistis-monas" title="Link to this heading"></a></h4>
+<p>Standalone Monas integration layer and embedding examples.</p>
+</section>
+</section>
+</section>
+<hr class="docutils" />
+<section id="delivery-summary">
+<h2>6. Delivery summary<a class="headerlink" href="#delivery-summary" title="Link to this heading"></a></h2>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>Milestone</p></th>
+<th class="head"><p>Outcome</p></th>
+<th class="head text-right"><p>Estimated effort</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>M0</p></td>
+<td><p>Charter reconciliation and delivery baseline</p></td>
+<td class="text-right"><p>1 developer-week</p></td>
+</tr>
+<tr class="row-odd"><td><p>M1</p></td>
+<td><p>Threat model and protocol specification</p></td>
+<td class="text-right"><p>3 developer-weeks</p></td>
+</tr>
+<tr class="row-even"><td><p>M2</p></td>
+<td><p>Rust workspace and cryptographic foundation</p></td>
+<td class="text-right"><p>4 developer-weeks</p></td>
+</tr>
+<tr class="row-odd"><td><p>M3</p></td>
+<td><p>External trust-anchor enrolment</p></td>
+<td class="text-right"><p>4 developer-weeks</p></td>
+</tr>
+<tr class="row-even"><td><p>M4</p></td>
+<td><p>Local installation identity and device registry</p></td>
+<td class="text-right"><p>3 developer-weeks</p></td>
+</tr>
+<tr class="row-odd"><td><p>M5</p></td>
+<td><p>QR authentication end-to-end</p></td>
+<td class="text-right"><p>4 developer-weeks</p></td>
+</tr>
+<tr class="row-even"><td><p>M6</p></td>
+<td><p>iOS MVP application</p></td>
+<td class="text-right"><p>6 developer-weeks</p></td>
+</tr>
+<tr class="row-odd"><td><p>M7</p></td>
+<td><p>Synoptikon integration</p></td>
+<td class="text-right"><p>3 developer-weeks</p></td>
+</tr>
+<tr class="row-even"><td><p>M8</p></td>
+<td><p>Monas standalone integration and CLI</p></td>
+<td class="text-right"><p>3 developer-weeks</p></td>
+</tr>
+<tr class="row-odd"><td><p>M9</p></td>
+<td><p>Local-network discovery and direct exchange</p></td>
+<td class="text-right"><p>4 developer-weeks</p></td>
+</tr>
+<tr class="row-even"><td><p>M10</p></td>
+<td><p>Artefact/report signing and portable evidence</p></td>
+<td class="text-right"><p>4 developer-weeks</p></td>
+</tr>
+<tr class="row-odd"><td><p>M11</p></td>
+<td><p>Android application</p></td>
+<td class="text-right"><p>7 developer-weeks</p></td>
+</tr>
+<tr class="row-even"><td><p>M12</p></td>
+<td><p>Recovery, revocation and multi-device lifecycle</p></td>
+<td class="text-right"><p>3 developer-weeks</p></td>
+</tr>
+<tr class="row-odd"><td><p>M13</p></td>
+<td><p>Security hardening and independent review</p></td>
+<td class="text-right"><p>5 developer-weeks</p></td>
+</tr>
+<tr class="row-even"><td><p>M14</p></td>
+<td><p>Packaging, operations and documentation</p></td>
+<td class="text-right"><p>3 developer-weeks</p></td>
+</tr>
+<tr class="row-odd"><td><p>M15</p></td>
+<td><p>Release candidate and v1.0 acceptance</p></td>
+<td class="text-right"><p>2 developer-weeks</p></td>
+</tr>
+<tr class="row-even"><td><p><strong>Total</strong></p></td>
+<td><p></p></td>
+<td class="text-right"><p><strong>59 developer-weeks</strong></p></td>
+</tr>
+</tbody>
+</table>
+<p>The estimate is deliberately broader than the earlier concept estimate because this plan defines a complete, supportable v1.0 rather than a demonstration prototype. A focused team can execute workstreams in parallel. A plausible staffing model is:</p>
+<ul class="simple">
+<li><p>one Rust/backend engineer;</p></li>
+<li><p>one iOS engineer;</p></li>
+<li><p>one Android engineer joining before M11;</p></li>
+<li><p>part-time product/security/QA support.</p></li>
+</ul>
+<p>Under that model, an elapsed programme of approximately <strong>24–32 weeks</strong> is plausible, while retaining the total effort above.</p>
+</section>
+</section>
+<hr class="docutils" />
+<section id="milestone-m0-charter-reconciliation-and-delivery-baseline">
+<h1>Milestone M0 — Charter reconciliation and delivery baseline<a class="headerlink" href="#milestone-m0-charter-reconciliation-and-delivery-baseline" title="Link to this heading"></a></h1>
+<p><strong>Objective:</strong> Convert the product concept into a controlled engineering baseline before implementation begins.</p>
+<p><strong>Estimated effort:</strong> 1 developer-week</p>
+<section id="work-items">
+<h2>Work items<a class="headerlink" href="#work-items" title="Link to this heading"></a></h2>
+<section id="m0-1-resolve-terminology">
+<h3>M0.1 Resolve terminology<a class="headerlink" href="#m0-1-resolve-terminology" title="Link to this heading"></a></h3>
+<p>Define and freeze the meanings of:</p>
+<ul class="simple">
+<li><p>local user;</p></li>
+<li><p>external identity;</p></li>
+<li><p>trust anchor;</p></li>
+<li><p>device;</p></li>
+<li><p>device key;</p></li>
+<li><p>enrolment;</p></li>
+<li><p>binding;</p></li>
+<li><p>challenge;</p></li>
+<li><p>approval;</p></li>
+<li><p>authentication;</p></li>
+<li><p>signature;</p></li>
+<li><p>evidence envelope;</p></li>
+<li><p>installation;</p></li>
+<li><p>realm, if the term is retained;</p></li>
+<li><p>verifier;</p></li>
+<li><p>transport;</p></li>
+<li><p>recovery;</p></li>
+<li><p>revocation.</p></li>
+</ul>
+</section>
+<section id="m0-2-confirm-v1-0-platform-interpretation">
+<h3>M0.2 Confirm v1.0 platform interpretation<a class="headerlink" href="#m0-2-confirm-v1-0-platform-interpretation" title="Link to this heading"></a></h3>
+<p>Record explicitly that:</p>
+<ul class="simple">
+<li><p>iOS is the MVP mobile platform;</p></li>
+<li><p>Android is the second platform required for v1.0;</p></li>
+<li><p>“Google app” in the original charter is interpreted as the Android application;</p></li>
+<li><p>Google is also an external OIDC trust anchor;</p></li>
+<li><p>Synoptikon and Monas are independent relying applications sharing the same Pistis core.</p></li>
+</ul>
+</section>
+<section id="m0-3-freeze-initial-protocol-assumptions">
+<h3>M0.3 Freeze initial protocol assumptions<a class="headerlink" href="#m0-3-freeze-initial-protocol-assumptions" title="Link to this heading"></a></h3>
+<p>Confirm:</p>
+<ul class="simple">
+<li><p>no central Pistis server;</p></li>
+<li><p>QR as mandatory fallback;</p></li>
+<li><p>local-network transfer as convenience;</p></li>
+<li><p>direct signed challenge response;</p></li>
+<li><p>local application retains user and authorization state;</p></li>
+<li><p>GitHub/Google are used at enrolment;</p></li>
+<li><p>device key is subsequently sufficient for routine login until revoked.</p></li>
+</ul>
+</section>
+<section id="m0-4-establish-repository-and-governance">
+<h3>M0.4 Establish repository and governance<a class="headerlink" href="#m0-4-establish-repository-and-governance" title="Link to this heading"></a></h3>
+<p>Create:</p>
+<ul class="simple">
+<li><p>repository;</p></li>
+<li><p>issue labels;</p></li>
+<li><p>milestones;</p></li>
+<li><p>contribution policy;</p></li>
+<li><p>security reporting policy;</p></li>
+<li><p>branch protection;</p></li>
+<li><p>required CI checks;</p></li>
+<li><p>architecture-decision-record directory;</p></li>
+<li><p>release versioning policy;</p></li>
+<li><p>licence decision.</p></li>
+</ul>
+</section>
+<section id="m0-5-define-supported-platform-baseline">
+<h3>M0.5 Define supported platform baseline<a class="headerlink" href="#m0-5-define-supported-platform-baseline" title="Link to this heading"></a></h3>
+<p>Propose and record:</p>
+<ul class="simple">
+<li><p>minimum supported iOS major versions;</p></li>
+<li><p>minimum supported Android API level;</p></li>
+<li><p>supported desktop/browser matrix for QR and local discovery;</p></li>
+<li><p>supported Linux distributions for server and CLI;</p></li>
+<li><p>supported database backends;</p></li>
+<li><p>FIPS requirements, if any;</p></li>
+<li><p>offline and air-gapped expectations.</p></li>
+</ul>
+</section>
+</section>
+<section id="deliverables">
+<h2>Deliverables<a class="headerlink" href="#deliverables" title="Link to this heading"></a></h2>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">PROJECT_CHARTER.md</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">MILESTONE.md</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">GLOSSARY.md</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">CONTRIBUTING.md</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">SECURITY.md</span></code></p></li>
+<li><p>initial ADRs</p></li>
+<li><p>v1.0 product requirements baseline</p></li>
+</ul>
+</section>
+<section id="acceptance-criteria">
+<h2>Acceptance criteria<a class="headerlink" href="#acceptance-criteria" title="Link to this heading"></a></h2>
+<ul class="simple">
+<li><p>No unresolved contradiction remains between local-first operation and any proposed mandatory central component.</p></li>
+<li><p>iOS MVP and Android v1.0 boundaries are explicit.</p></li>
+<li><p>All product terms used in later milestones have normative definitions.</p></li>
+<li><p>Repository protections and CI skeleton are operational.</p></li>
+<li><p>All subsequent milestones have named owners or workstream placeholders.</p></li>
+</ul>
+</section>
+<section id="exit-gate">
+<h2>Exit gate<a class="headerlink" href="#exit-gate" title="Link to this heading"></a></h2>
+<p>Engineering may begin only after the protocol owner and Synoptikon integration owner approve the baseline.</p>
+</section>
+</section>
+<hr class="docutils" />
+<section id="milestone-m1-threat-model-and-protocol-specification">
+<h1>Milestone M1 — Threat model and protocol specification<a class="headerlink" href="#milestone-m1-threat-model-and-protocol-specification" title="Link to this heading"></a></h1>
+<p><strong>Objective:</strong> Specify what is signed, what is trusted and how attacks are rejected before production code fixes accidental behaviour into the protocol.</p>
+<p><strong>Estimated effort:</strong> 3 developer-weeks</p>
+<section id="id1">
+<h2>Work items<a class="headerlink" href="#id1" title="Link to this heading"></a></h2>
+<section id="m1-1-define-actors-and-trust-boundaries">
+<h3>M1.1 Define actors and trust boundaries<a class="headerlink" href="#m1-1-define-actors-and-trust-boundaries" title="Link to this heading"></a></h3>
+<p>Model:</p>
+<ul class="simple">
+<li><p>local user;</p></li>
+<li><p>local administrator;</p></li>
+<li><p>browser;</p></li>
+<li><p>Synoptikon/Monas server;</p></li>
+<li><p>Pistis mobile application;</p></li>
+<li><p>GitHub;</p></li>
+<li><p>Google;</p></li>
+<li><p>local network;</p></li>
+<li><p>malicious local-network participant;</p></li>
+<li><p>compromised browser;</p></li>
+<li><p>compromised installation;</p></li>
+<li><p>stolen phone;</p></li>
+<li><p>malicious or rooted/jailbroken device;</p></li>
+<li><p>offline verifier;</p></li>
+<li><p>report recipient.</p></li>
+</ul>
+</section>
+<section id="m1-2-define-threat-scenarios">
+<h3>M1.2 Define threat scenarios<a class="headerlink" href="#m1-2-define-threat-scenarios" title="Link to this heading"></a></h3>
+<p>At minimum:</p>
+<ul class="simple">
+<li><p>replay of a valid signed login;</p></li>
+<li><p>challenge substitution;</p></li>
+<li><p>QR-code replacement;</p></li>
+<li><p>response substitution;</p></li>
+<li><p>local-network man-in-the-middle;</p></li>
+<li><p>malicious mDNS advertisements;</p></li>
+<li><p>identity-binding substitution;</p></li>
+<li><p>mutable GitHub username confusion;</p></li>
+<li><p>Google email reuse or account-domain confusion;</p></li>
+<li><p>malicious installer assigning the wrong external identity;</p></li>
+<li><p>stolen unlocked phone;</p></li>
+<li><p>changed biometric enrolment;</p></li>
+<li><p>device backup/restore;</p></li>
+<li><p>key loss;</p></li>
+<li><p>user departure;</p></li>
+<li><p>device revocation after historic signatures;</p></li>
+<li><p>clock manipulation;</p></li>
+<li><p>protocol downgrade;</p></li>
+<li><p>canonicalisation ambiguity;</p></li>
+<li><p>cross-installation replay;</p></li>
+<li><p>cross-purpose replay;</p></li>
+<li><p>login signature reused as report approval;</p></li>
+<li><p>approval fatigue;</p></li>
+<li><p>denial of service;</p></li>
+<li><p>local evidence-store tampering.</p></li>
+</ul>
+</section>
+<section id="m1-3-define-canonical-signed-messages">
+<h3>M1.3 Define canonical signed messages<a class="headerlink" href="#m1-3-define-canonical-signed-messages" title="Link to this heading"></a></h3>
+<p>Specify normative structures for:</p>
+<ul class="simple">
+<li><p>enrolment intent;</p></li>
+<li><p>external-identity binding statement;</p></li>
+<li><p>device registration;</p></li>
+<li><p>authentication challenge;</p></li>
+<li><p>authentication response;</p></li>
+<li><p>artefact-signing challenge;</p></li>
+<li><p>artefact-signing response;</p></li>
+<li><p>revocation statement;</p></li>
+<li><p>exported trust bundle.</p></li>
+</ul>
+<p>Each signed object must include:</p>
+<ul class="simple">
+<li><p>protocol version;</p></li>
+<li><p>object type/purpose;</p></li>
+<li><p>unique identifier;</p></li>
+<li><p>random nonce where applicable;</p></li>
+<li><p>issuing installation identifier;</p></li>
+<li><p>intended local user;</p></li>
+<li><p>requested external identity;</p></li>
+<li><p>requesting application;</p></li>
+<li><p>issued time;</p></li>
+<li><p>expiry;</p></li>
+<li><p>requested action;</p></li>
+<li><p>key identifier;</p></li>
+<li><p>signature suite;</p></li>
+<li><p>canonical payload digest.</p></li>
+</ul>
+</section>
+<section id="m1-4-select-canonical-encoding">
+<h3>M1.4 Select canonical encoding<a class="headerlink" href="#m1-4-select-canonical-encoding" title="Link to this heading"></a></h3>
+<p>Evaluate deterministic CBOR/COSE and tightly specified canonical JSON/JWS.</p>
+<p>The decision must consider:</p>
+<ul class="simple">
+<li><p>native iOS and Android implementation;</p></li>
+<li><p>Rust ecosystem maturity;</p></li>
+<li><p>QR size;</p></li>
+<li><p>deterministic encoding;</p></li>
+<li><p>debugging and audit readability;</p></li>
+<li><p>offline verification;</p></li>
+<li><p>future extensibility.</p></li>
+</ul>
+<p>Record the decision in an ADR. If CBOR/COSE is selected, provide JSON diagnostic forms for debugging.</p>
+</section>
+<section id="m1-5-select-signature-suites">
+<h3>M1.5 Select signature suites<a class="headerlink" href="#m1-5-select-signature-suites" title="Link to this heading"></a></h3>
+<p>The mobile platform capabilities must drive the decision.</p>
+<p>The design should prefer a signature suite available through:</p>
+<ul class="simple">
+<li><p>Apple Secure Enclave-compatible APIs;</p></li>
+<li><p>Android Keystore;</p></li>
+<li><p>stable Rust verification libraries.</p></li>
+</ul>
+<p>A likely common denominator is P-256 ECDSA with SHA-256. Ed25519 may remain available for software or non-mobile keys but must not be assumed to be Secure Enclave-backed on all target devices.</p>
+</section>
+<section id="m1-6-define-protocol-state-machines">
+<h3>M1.6 Define protocol state machines<a class="headerlink" href="#m1-6-define-protocol-state-machines" title="Link to this heading"></a></h3>
+<p>Authentication request states:</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>created → presented → claimed → approved → consumed
+                     ↘ denied
+                     ↘ expired
+                     ↘ cancelled
+</pre></div>
+</div>
+<p>Rules:</p>
+<ul class="simple">
+<li><p>approval is not equivalent to consumption;</p></li>
+<li><p>consumption is atomic and single-use;</p></li>
+<li><p>an expired or cancelled challenge cannot be revived;</p></li>
+<li><p>a response must be bound to the exact challenge;</p></li>
+<li><p>retries create new challenge identifiers and nonces.</p></li>
+</ul>
+</section>
+<section id="m1-7-define-assurance-model">
+<h3>M1.7 Define assurance model<a class="headerlink" href="#m1-7-define-assurance-model" title="Link to this heading"></a></h3>
+<p>At minimum record:</p>
+<ul class="simple">
+<li><p>external identity was freshly authenticated at enrolment;</p></li>
+<li><p>device key was generated by the application;</p></li>
+<li><p>hardware-backed status known/unknown;</p></li>
+<li><p>biometric or device credential required for each signature;</p></li>
+<li><p>platform attestation available/not available;</p></li>
+<li><p>device integrity signal available/not available.</p></li>
+</ul>
+<p>Do not collapse all enrolled devices into one indistinguishable assurance level.</p>
+</section>
+<section id="m1-8-produce-conformance-fixtures">
+<h3>M1.8 Produce conformance fixtures<a class="headerlink" href="#m1-8-produce-conformance-fixtures" title="Link to this heading"></a></h3>
+<p>Create language-neutral test vectors:</p>
+<ul class="simple">
+<li><p>valid challenge;</p></li>
+<li><p>valid response;</p></li>
+<li><p>invalid signature;</p></li>
+<li><p>wrong installation;</p></li>
+<li><p>wrong purpose;</p></li>
+<li><p>expired challenge;</p></li>
+<li><p>replayed challenge;</p></li>
+<li><p>non-canonical encoding;</p></li>
+<li><p>unknown critical field;</p></li>
+<li><p>revoked key;</p></li>
+<li><p>provider-identity mismatch.</p></li>
+</ul>
+</section>
+</section>
+<section id="id2">
+<h2>Deliverables<a class="headerlink" href="#id2" title="Link to this heading"></a></h2>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">docs/protocol.md</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">docs/encoding.md</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">docs/assurance.md</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">threat-model/THREAT_MODEL.md</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">schemas/</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">fixtures/protocol-v1/</span></code></p></li>
+<li><p>protocol ADRs</p></li>
+</ul>
+</section>
+<section id="id3">
+<h2>Acceptance criteria<a class="headerlink" href="#id3" title="Link to this heading"></a></h2>
+<ul class="simple">
+<li><p>Independent implementations can produce byte-identical canonical payloads from the test fixtures.</p></li>
+<li><p>Every threat has a mitigation, accepted residual risk or explicit deferral.</p></li>
+<li><p>Login and artefact-signing messages are cryptographically separated by purpose.</p></li>
+<li><p>Cross-installation and cross-user replay are impossible under the specified verifier rules.</p></li>
+<li><p>The selected signature suite is implementable on both iOS and Android secure key stores.</p></li>
+<li><p>Protocol versioning and unknown-field behaviour are explicit.</p></li>
+</ul>
+</section>
+<section id="id4">
+<h2>Exit gate<a class="headerlink" href="#id4" title="Link to this heading"></a></h2>
+<p>No external mobile or Synoptikon integration begins against an undocumented wire format.</p>
+</section>
+</section>
+<hr class="docutils" />
+<section id="milestone-m2-rust-workspace-and-cryptographic-foundation">
+<h1>Milestone M2 — Rust workspace and cryptographic foundation<a class="headerlink" href="#milestone-m2-rust-workspace-and-cryptographic-foundation" title="Link to this heading"></a></h1>
+<p><strong>Objective:</strong> Deliver the protocol-independent Rust core with deterministic encoding, verification and conformance tests.</p>
+<p><strong>Estimated effort:</strong> 4 developer-weeks</p>
+<section id="id5">
+<h2>Work items<a class="headerlink" href="#id5" title="Link to this heading"></a></h2>
+<section id="m2-1-create-workspace-and-dependency-policy">
+<h3>M2.1 Create workspace and dependency policy<a class="headerlink" href="#m2-1-create-workspace-and-dependency-policy" title="Link to this heading"></a></h3>
+<ul class="simple">
+<li><p>pin minimum supported Rust version;</p></li>
+<li><p>configure <code class="docutils literal notranslate"><span class="pre">cargo-deny</span></code>;</p></li>
+<li><p>configure licence allow-list;</p></li>
+<li><p>configure vulnerability scanning;</p></li>
+<li><p>disallow unsafe code by default;</p></li>
+<li><p>document justified exceptions;</p></li>
+<li><p>configure reproducible release builds;</p></li>
+<li><p>establish feature-flag policy.</p></li>
+</ul>
+</section>
+<section id="m2-2-implement-domain-identifiers">
+<h3>M2.2 Implement domain identifiers<a class="headerlink" href="#m2-2-implement-domain-identifiers" title="Link to this heading"></a></h3>
+<p>Introduce typed identifiers for:</p>
+<ul class="simple">
+<li><p>installation;</p></li>
+<li><p>local user;</p></li>
+<li><p>external identity;</p></li>
+<li><p>device;</p></li>
+<li><p>key;</p></li>
+<li><p>challenge;</p></li>
+<li><p>evidence;</p></li>
+<li><p>artefact;</p></li>
+<li><p>policy;</p></li>
+<li><p>session.</p></li>
+</ul>
+<p>Avoid free-form string substitution between identifier classes.</p>
+</section>
+<section id="m2-3-implement-canonical-encoding">
+<h3>M2.3 Implement canonical encoding<a class="headerlink" href="#m2-3-implement-canonical-encoding" title="Link to this heading"></a></h3>
+<ul class="simple">
+<li><p>deterministic field ordering;</p></li>
+<li><p>integer and timestamp rules;</p></li>
+<li><p>byte-string handling;</p></li>
+<li><p>Unicode normalisation decision;</p></li>
+<li><p>unknown-field handling;</p></li>
+<li><p>maximum message sizes;</p></li>
+<li><p>canonical decoder validation;</p></li>
+<li><p>differential fixture tests.</p></li>
+</ul>
+</section>
+<section id="m2-4-implement-cryptographic-abstraction">
+<h3>M2.4 Implement cryptographic abstraction<a class="headerlink" href="#m2-4-implement-cryptographic-abstraction" title="Link to this heading"></a></h3>
+<p>Provide:</p>
+<ul class="simple">
+<li><p>SHA-256 digest;</p></li>
+<li><p>supported public-key parsing;</p></li>
+<li><p>key identifier derivation;</p></li>
+<li><p>signature verification;</p></li>
+<li><p>constant-time comparisons where applicable;</p></li>
+<li><p>algorithm allow-list;</p></li>
+<li><p>rejection of algorithm confusion;</p></li>
+<li><p>structured cryptographic errors.</p></li>
+</ul>
+</section>
+<section id="m2-5-implement-challenge-generation">
+<h3>M2.5 Implement challenge generation<a class="headerlink" href="#m2-5-implement-challenge-generation" title="Link to this heading"></a></h3>
+<ul class="simple">
+<li><p>cryptographically secure random nonce;</p></li>
+<li><p>monotonic challenge identifiers;</p></li>
+<li><p>configurable expiry within safe bounds;</p></li>
+<li><p>installation and purpose binding;</p></li>
+<li><p>state persistence interface;</p></li>
+<li><p>no predictable challenge material.</p></li>
+</ul>
+</section>
+<section id="m2-6-implement-verification-pipeline">
+<h3>M2.6 Implement verification pipeline<a class="headerlink" href="#m2-6-implement-verification-pipeline" title="Link to this heading"></a></h3>
+<p>Return a structured result:</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>Valid
+InvalidSignature
+Expired
+AlreadyConsumed
+WrongInstallation
+WrongUser
+WrongPurpose
+UnknownKey
+RevokedKey
+PolicyRejected
+Malformed
+UnsupportedVersion
+UnsupportedAlgorithm
+NonCanonical
+</pre></div>
+</div>
+<p>Avoid a single boolean verdict.</p>
+</section>
+<section id="m2-7-implement-protocol-fixtures-and-fuzzing">
+<h3>M2.7 Implement protocol fixtures and fuzzing<a class="headerlink" href="#m2-7-implement-protocol-fixtures-and-fuzzing" title="Link to this heading"></a></h3>
+<ul class="simple">
+<li><p>property tests;</p></li>
+<li><p>parser fuzz targets;</p></li>
+<li><p>canonicalisation fuzz targets;</p></li>
+<li><p>signature-verification negative tests;</p></li>
+<li><p>malformed length and allocation limits;</p></li>
+<li><p>corpus retained in repository.</p></li>
+</ul>
+</section>
+</section>
+<section id="id6">
+<h2>Deliverables<a class="headerlink" href="#id6" title="Link to this heading"></a></h2>
+<ul class="simple">
+<li><p>initial Rust crates;</p></li>
+<li><p>public API documentation;</p></li>
+<li><p>fixture runner;</p></li>
+<li><p>fuzz harness;</p></li>
+<li><p>CI matrix;</p></li>
+<li><p>example challenge/verifier program.</p></li>
+</ul>
+</section>
+<section id="id7">
+<h2>Acceptance criteria<a class="headerlink" href="#id7" title="Link to this heading"></a></h2>
+<ul class="simple">
+<li><p>All normative fixtures pass.</p></li>
+<li><p>Fuzz targets run continuously in scheduled CI.</p></li>
+<li><p>No private-key handling exists in the server-side Rust core.</p></li>
+<li><p>Unsupported algorithms are rejected rather than dynamically accepted.</p></li>
+<li><p>A challenge cannot be consumed twice under concurrent verification.</p></li>
+<li><p>Public Rust APIs have documentation and examples.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">cargo</span> <span class="pre">audit</span></code>/equivalent and licence checks pass.</p></li>
+</ul>
+</section>
+<section id="id8">
+<h2>Exit gate<a class="headerlink" href="#id8" title="Link to this heading"></a></h2>
+<p>A command-line demonstration must create a challenge, sign it with a test key and verify it using only the Rust libraries.</p>
+</section>
+</section>
+<hr class="docutils" />
+<section id="milestone-m3-github-and-google-trust-anchor-enrolment">
+<h1>Milestone M3 — GitHub and Google trust-anchor enrolment<a class="headerlink" href="#milestone-m3-github-and-google-trust-anchor-enrolment" title="Link to this heading"></a></h1>
+<p><strong>Objective:</strong> Allow Pistis to establish a durable external identity binding using GitHub and Google.</p>
+<p><strong>Estimated effort:</strong> 4 developer-weeks</p>
+<section id="id9">
+<h2>Work items<a class="headerlink" href="#id9" title="Link to this heading"></a></h2>
+<section id="m3-1-provider-abstraction">
+<h3>M3.1 Provider abstraction<a class="headerlink" href="#m3-1-provider-abstraction" title="Link to this heading"></a></h3>
+<p>Define a provider adapter interface that yields:</p>
+<ul class="simple">
+<li><p>provider type;</p></li>
+<li><p>issuer/authority;</p></li>
+<li><p>stable subject identifier;</p></li>
+<li><p>current display name;</p></li>
+<li><p>current email snapshot where available and consented;</p></li>
+<li><p>profile URL where appropriate;</p></li>
+<li><p>authentication time;</p></li>
+<li><p>token-validation evidence;</p></li>
+<li><p>provider-specific metadata.</p></li>
+</ul>
+</section>
+<section id="m3-2-github-enrolment">
+<h3>M3.2 GitHub enrolment<a class="headerlink" href="#m3-2-github-enrolment" title="Link to this heading"></a></h3>
+<p>Implement a standards-compliant GitHub authorization flow suitable for the mobile app.</p>
+<p>Requirements:</p>
+<ul class="simple">
+<li><p>authorization code with PKCE where supported/appropriate;</p></li>
+<li><p>CSRF <code class="docutils literal notranslate"><span class="pre">state</span></code> validation;</p></li>
+<li><p>system browser rather than embedded credential capture;</p></li>
+<li><p>access-token confidentiality;</p></li>
+<li><p>minimal scopes;</p></li>
+<li><p>call authenticated-user endpoint;</p></li>
+<li><p>capture stable numeric GitHub user ID;</p></li>
+<li><p>capture login as display metadata only;</p></li>
+<li><p>discard or securely remove provider access token once binding evidence is complete unless refresh is explicitly required;</p></li>
+<li><p>record provider response time and selected identity fields.</p></li>
+</ul>
+</section>
+<section id="m3-3-google-enrolment">
+<h3>M3.3 Google enrolment<a class="headerlink" href="#m3-3-google-enrolment" title="Link to this heading"></a></h3>
+<p>Implement Google OpenID Connect:</p>
+<ul class="simple">
+<li><p>discovery metadata;</p></li>
+<li><p>authorization code with PKCE;</p></li>
+<li><p>nonce;</p></li>
+<li><p>ID-token signature validation;</p></li>
+<li><p>issuer validation;</p></li>
+<li><p>audience validation;</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">azp</span></code> handling where applicable;</p></li>
+<li><p>expiry and issued-at validation;</p></li>
+<li><p>stable <code class="docutils literal notranslate"><span class="pre">sub</span></code> extraction;</p></li>
+<li><p>email retained only as display metadata;</p></li>
+<li><p>hosted-domain information treated as a claim, not identity key;</p></li>
+<li><p>minimal scopes (<code class="docutils literal notranslate"><span class="pre">openid</span></code>, profile as needed, email only if needed).</p></li>
+</ul>
+</section>
+<section id="m3-4-bind-provider-identity-to-device-key">
+<h3>M3.4 Bind provider identity to device key<a class="headerlink" href="#m3-4-bind-provider-identity-to-device-key" title="Link to this heading"></a></h3>
+<p>The mobile app generates its device key before completing enrolment evidence.</p>
+<p>The binding statement must include:</p>
+<ul class="simple">
+<li><p>external identity;</p></li>
+<li><p>device public key;</p></li>
+<li><p>provider authentication event metadata;</p></li>
+<li><p>app instance identifier;</p></li>
+<li><p>protocol version;</p></li>
+<li><p>creation time;</p></li>
+<li><p>optional installation enrolment intent.</p></li>
+</ul>
+</section>
+<section id="m3-5-installation-trust-matching">
+<h3>M3.5 Installation trust matching<a class="headerlink" href="#m3-5-installation-trust-matching" title="Link to this heading"></a></h3>
+<p>Support administrator policy such as:</p>
+<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="nt">users</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">stephen</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">trust</span><span class="p">:</span>
+<span class="w">      </span><span class="nt">any_of</span><span class="p">:</span>
+<span class="w">        </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">provider</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">github</span>
+<span class="w">          </span><span class="nt">subject</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;12345678&quot;</span>
+<span class="w">        </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">provider</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">google</span>
+<span class="w">          </span><span class="nt">issuer</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;https://accounts.google.com&quot;</span>
+<span class="w">          </span><span class="nt">subject</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;109876543210987654321&quot;</span>
+</pre></div>
+</div>
+<p>Display names must never satisfy the match.</p>
+</section>
+<section id="m3-6-reauthentication-policy">
+<h3>M3.6 Reauthentication policy<a class="headerlink" href="#m3-6-reauthentication-policy" title="Link to this heading"></a></h3>
+<p>Document when provider reauthentication is required:</p>
+<ul class="simple">
+<li><p>initial enrolment;</p></li>
+<li><p>identity rebinding;</p></li>
+<li><p>recovery/replacement device;</p></li>
+<li><p>administrator-requested revalidation;</p></li>
+<li><p>provider metadata refresh where policy requires it.</p></li>
+</ul>
+<p>Routine local login does not require provider access.</p>
+</section>
+</section>
+<section id="id10">
+<h2>Deliverables<a class="headerlink" href="#id10" title="Link to this heading"></a></h2>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">pistis-oidc</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">pistis-github</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">pistis-google</span></code></p></li>
+<li><p>provider conformance tests;</p></li>
+<li><p>example binding statements;</p></li>
+<li><p>privacy/data-retention documentation.</p></li>
+</ul>
+</section>
+<section id="id11">
+<h2>Acceptance criteria<a class="headerlink" href="#id11" title="Link to this heading"></a></h2>
+<ul class="simple">
+<li><p>Changing a GitHub login name does not invalidate a binding to the same stable GitHub user ID.</p></li>
+<li><p>Changing a Google email address does not alter the identity key.</p></li>
+<li><p>ID tokens with incorrect issuer, audience, nonce or expiry are rejected.</p></li>
+<li><p>GitHub/Google access tokens are not retained without a documented reason.</p></li>
+<li><p>The application cannot substitute one provider subject for another in a signed binding statement.</p></li>
+<li><p>Provider cancellation and network failure leave no partially trusted enrolment.</p></li>
+</ul>
+</section>
+<section id="id12">
+<h2>Exit gate<a class="headerlink" href="#id12" title="Link to this heading"></a></h2>
+<p>A test device can produce independently verifiable GitHub and Google binding evidence using non-production test accounts.</p>
+</section>
+</section>
+<hr class="docutils" />
+<section id="milestone-m4-local-installation-identity-and-device-registry">
+<h1>Milestone M4 — Local installation identity and device registry<a class="headerlink" href="#milestone-m4-local-installation-identity-and-device-registry" title="Link to this heading"></a></h1>
+<p><strong>Objective:</strong> Give each Synoptikon or Monas installation the local state required to trust, manage and revoke Pistis devices.</p>
+<p><strong>Estimated effort:</strong> 3 developer-weeks</p>
+<section id="id13">
+<h2>Work items<a class="headerlink" href="#id13" title="Link to this heading"></a></h2>
+<section id="m4-1-installation-identity">
+<h3>M4.1 Installation identity<a class="headerlink" href="#m4-1-installation-identity" title="Link to this heading"></a></h3>
+<p>Generate and persist an installation identity containing:</p>
+<ul class="simple">
+<li><p>installation identifier;</p></li>
+<li><p>human-readable name;</p></li>
+<li><p>canonical base URL where available;</p></li>
+<li><p>local signing/sealing public key where required;</p></li>
+<li><p>protocol capabilities;</p></li>
+<li><p>creation time;</p></li>
+<li><p>key-rotation metadata.</p></li>
+</ul>
+<p>The installation identity is not a global Pistis account.</p>
+</section>
+<section id="m4-2-local-user-trust-policy">
+<h3>M4.2 Local user trust policy<a class="headerlink" href="#m4-2-local-user-trust-policy" title="Link to this heading"></a></h3>
+<p>Support:</p>
+<ul class="simple">
+<li><p>one or more accepted trust anchors per local user;</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">any_of</span></code> and <code class="docutils literal notranslate"><span class="pre">all_of</span></code> rules;</p></li>
+<li><p>disabled user;</p></li>
+<li><p>expiry;</p></li>
+<li><p>administrative comments;</p></li>
+<li><p>source/configuration provenance;</p></li>
+<li><p>validation at startup;</p></li>
+<li><p>no ambiguous duplicate local usernames.</p></li>
+</ul>
+</section>
+<section id="m4-3-device-registry">
+<h3>M4.3 Device registry<a class="headerlink" href="#m4-3-device-registry" title="Link to this heading"></a></h3>
+<p>Persist:</p>
+<ul class="simple">
+<li><p>device ID;</p></li>
+<li><p>local user;</p></li>
+<li><p>external identity;</p></li>
+<li><p>public key;</p></li>
+<li><p>key algorithm;</p></li>
+<li><p>platform;</p></li>
+<li><p>app version;</p></li>
+<li><p>assurance metadata;</p></li>
+<li><p>enrolment evidence;</p></li>
+<li><p>status;</p></li>
+<li><p>enrolled time;</p></li>
+<li><p>last-used time;</p></li>
+<li><p>revoked time and reason.</p></li>
+</ul>
+</section>
+<section id="m4-4-challenge-store">
+<h3>M4.4 Challenge store<a class="headerlink" href="#m4-4-challenge-store" title="Link to this heading"></a></h3>
+<p>Persist:</p>
+<ul class="simple">
+<li><p>challenge;</p></li>
+<li><p>state;</p></li>
+<li><p>expiry;</p></li>
+<li><p>intended user;</p></li>
+<li><p>installation;</p></li>
+<li><p>purpose;</p></li>
+<li><p>response metadata;</p></li>
+<li><p>consumption transaction;</p></li>
+<li><p>audit correlation identifier.</p></li>
+</ul>
+</section>
+<section id="m4-5-storage-implementations">
+<h3>M4.5 Storage implementations<a class="headerlink" href="#m4-5-storage-implementations" title="Link to this heading"></a></h3>
+<p>Provide:</p>
+<ul class="simple">
+<li><p>SQLite implementation for standalone/development;</p></li>
+<li><p>MySQL-compatible or Hebe-backed implementation for Synoptikon;</p></li>
+<li><p>migration framework;</p></li>
+<li><p>backup/restore documentation;</p></li>
+<li><p>integrity constraints;</p></li>
+<li><p>transactional single-use consumption.</p></li>
+</ul>
+</section>
+<section id="m4-6-administration-api">
+<h3>M4.6 Administration API<a class="headerlink" href="#m4-6-administration-api" title="Link to this heading"></a></h3>
+<p>Implement endpoints/commands to:</p>
+<ul class="simple">
+<li><p>list users and trusted identities;</p></li>
+<li><p>list enrolled devices;</p></li>
+<li><p>inspect device assurance;</p></li>
+<li><p>suspend device;</p></li>
+<li><p>revoke device;</p></li>
+<li><p>view recent authentication events;</p></li>
+<li><p>export public verification material.</p></li>
+</ul>
+</section>
+</section>
+<section id="id14">
+<h2>Deliverables<a class="headerlink" href="#id14" title="Link to this heading"></a></h2>
+<ul class="simple">
+<li><p>persistence schema;</p></li>
+<li><p>migrations;</p></li>
+<li><p>repository/store traits;</p></li>
+<li><p>administration endpoints;</p></li>
+<li><p>operator CLI commands.</p></li>
+</ul>
+</section>
+<section id="id15">
+<h2>Acceptance criteria<a class="headerlink" href="#id15" title="Link to this heading"></a></h2>
+<ul class="simple">
+<li><p>Concurrent response submissions cannot consume the same challenge twice.</p></li>
+<li><p>Revoked devices cannot authenticate.</p></li>
+<li><p>Historic evidence remains readable after revocation.</p></li>
+<li><p>Installation state survives backup/restore without changing installation identity unintentionally.</p></li>
+<li><p>Trust-policy configuration errors prevent unsafe startup rather than silently weakening policy.</p></li>
+<li><p>Device records contain no private key.</p></li>
+</ul>
+</section>
+<section id="id16">
+<h2>Exit gate<a class="headerlink" href="#id16" title="Link to this heading"></a></h2>
+<p>A local installation can be fully operated with no central Pistis database or account.</p>
+</section>
+</section>
+<hr class="docutils" />
+<section id="milestone-m5-qr-authentication-end-to-end">
+<h1>Milestone M5 — QR authentication end-to-end<a class="headerlink" href="#milestone-m5-qr-authentication-end-to-end" title="Link to this heading"></a></h1>
+<p><strong>Objective:</strong> Deliver a complete serverless/local authentication flow using visual challenge and response exchange.</p>
+<p><strong>Estimated effort:</strong> 4 developer-weeks</p>
+<section id="id17">
+<h2>Work items<a class="headerlink" href="#id17" title="Link to this heading"></a></h2>
+<section id="m5-1-login-initiation">
+<h3>M5.1 Login initiation<a class="headerlink" href="#m5-1-login-initiation" title="Link to this heading"></a></h3>
+<ul class="simple">
+<li><p>user enters/selects local account;</p></li>
+<li><p>installation resolves required trust policy;</p></li>
+<li><p>challenge generated;</p></li>
+<li><p>browser displays installation identity, expiry and QR;</p></li>
+<li><p>browser polls or listens for completion;</p></li>
+<li><p>no authenticated session is created yet.</p></li>
+</ul>
+</section>
+<section id="m5-2-qr-challenge-format">
+<h3>M5.2 QR challenge format<a class="headerlink" href="#m5-2-qr-challenge-format" title="Link to this heading"></a></h3>
+<p>Include:</p>
+<ul class="simple">
+<li><p>protocol magic/version;</p></li>
+<li><p>challenge URL or embedded challenge;</p></li>
+<li><p>challenge identifier;</p></li>
+<li><p>installation fingerprint;</p></li>
+<li><p>expiry;</p></li>
+<li><p>checksum;</p></li>
+<li><p>optional local endpoint hints.</p></li>
+</ul>
+<p>No secret embedded in the QR may be sufficient to authenticate without the device signature.</p>
+</section>
+<section id="m5-3-mobile-challenge-validation">
+<h3>M5.3 Mobile challenge validation<a class="headerlink" href="#m5-3-mobile-challenge-validation" title="Link to this heading"></a></h3>
+<p>Before prompting for approval, display:</p>
+<ul class="simple">
+<li><p>installation name;</p></li>
+<li><p>installation fingerprint or previously trusted status;</p></li>
+<li><p>local username;</p></li>
+<li><p>action;</p></li>
+<li><p>expiry;</p></li>
+<li><p>whether the installation is new;</p></li>
+<li><p>whether the request arrived via QR or local transfer.</p></li>
+</ul>
+<p>Reject:</p>
+<ul class="simple">
+<li><p>expired challenge;</p></li>
+<li><p>malformed challenge;</p></li>
+<li><p>unsupported version;</p></li>
+<li><p>wrong external identity;</p></li>
+<li><p>unknown critical fields;</p></li>
+<li><p>implausible payload sizes.</p></li>
+</ul>
+</section>
+<section id="m5-4-response-transfer">
+<h3>M5.4 Response transfer<a class="headerlink" href="#m5-4-response-transfer" title="Link to this heading"></a></h3>
+<p>Support two v1.0 baseline modes:</p>
+<ol class="arabic simple">
+<li><p>direct HTTPS/local submission where reachable;</p></li>
+<li><p>response QR displayed by the phone and captured by the browser/workstation.</p></li>
+</ol>
+<p>If browser camera access is unavailable, provide a manual compact transfer fallback only if it can be implemented safely; otherwise document camera requirements.</p>
+</section>
+<section id="m5-5-session-establishment">
+<h3>M5.5 Session establishment<a class="headerlink" href="#m5-5-session-establishment" title="Link to this heading"></a></h3>
+<p>After verification:</p>
+<ul class="simple">
+<li><p>atomically consume challenge;</p></li>
+<li><p>rotate pre-authentication session;</p></li>
+<li><p>establish local authenticated session;</p></li>
+<li><p>bind audit event;</p></li>
+<li><p>show successful device and identity;</p></li>
+<li><p>reject further responses.</p></li>
+</ul>
+</section>
+<section id="m5-6-failure-and-cancellation-ux">
+<h3>M5.6 Failure and cancellation UX<a class="headerlink" href="#m5-6-failure-and-cancellation-ux" title="Link to this heading"></a></h3>
+<p>Handle:</p>
+<ul class="simple">
+<li><p>user denial;</p></li>
+<li><p>timeout;</p></li>
+<li><p>mobile app missing;</p></li>
+<li><p>camera denial;</p></li>
+<li><p>wrong Pistis identity;</p></li>
+<li><p>revoked device;</p></li>
+<li><p>installation key changed;</p></li>
+<li><p>response too large;</p></li>
+<li><p>local network unreachable.</p></li>
+</ul>
+</section>
+</section>
+<section id="id18">
+<h2>Deliverables<a class="headerlink" href="#id18" title="Link to this heading"></a></h2>
+<ul class="simple">
+<li><p>QR encoder/decoder;</p></li>
+<li><p>browser login component;</p></li>
+<li><p>response ingestion API;</p></li>
+<li><p>end-to-end test harness;</p></li>
+<li><p>accessibility review for QR fallback instructions.</p></li>
+</ul>
+</section>
+<section id="id19">
+<h2>Acceptance criteria<a class="headerlink" href="#id19" title="Link to this heading"></a></h2>
+<ul class="simple">
+<li><p>Authentication succeeds without APNs, FCM or Mnemosyne cloud services.</p></li>
+<li><p>Authentication can succeed with both devices offline from the public internet.</p></li>
+<li><p>A photographed or replayed old response cannot establish a new session.</p></li>
+<li><p>The phone never signs a challenge for an external identity it does not hold.</p></li>
+<li><p>The browser does not establish a session before successful response verification.</p></li>
+<li><p>Installation fingerprint changes are prominently surfaced.</p></li>
+<li><p>End-to-end median interaction is practical for routine use.</p></li>
+</ul>
+</section>
+<section id="id20">
+<h2>Exit gate<a class="headerlink" href="#id20" title="Link to this heading"></a></h2>
+<p>A Synoptikon-independent demo application authenticates using QR challenge and response with a test mobile signer.</p>
+</section>
+</section>
+<hr class="docutils" />
+<section id="milestone-m6-ios-mvp-application">
+<h1>Milestone M6 — iOS MVP application<a class="headerlink" href="#milestone-m6-ios-mvp-application" title="Link to this heading"></a></h1>
+<p><strong>Objective:</strong> Deliver the first production-shaped Pistis mobile client.</p>
+<p><strong>Estimated effort:</strong> 6 developer-weeks</p>
+<section id="id21">
+<h2>Work items<a class="headerlink" href="#id21" title="Link to this heading"></a></h2>
+<section id="m6-1-application-shell">
+<h3>M6.1 Application shell<a class="headerlink" href="#m6-1-application-shell" title="Link to this heading"></a></h3>
+<p>Implement in Swift/SwiftUI:</p>
+<ul class="simple">
+<li><p>onboarding;</p></li>
+<li><p>identities;</p></li>
+<li><p>installations;</p></li>
+<li><p>scan;</p></li>
+<li><p>pending action;</p></li>
+<li><p>approval result;</p></li>
+<li><p>history;</p></li>
+<li><p>device security/settings;</p></li>
+<li><p>diagnostics;</p></li>
+<li><p>legal/privacy information.</p></li>
+</ul>
+</section>
+<section id="m6-2-secure-key-generation">
+<h3>M6.2 Secure key generation<a class="headerlink" href="#m6-2-secure-key-generation" title="Link to this heading"></a></h3>
+<p>Use Apple-supported key storage compatible with the Secure Enclave where available.</p>
+<p>Requirements:</p>
+<ul class="simple">
+<li><p>non-exportable device key;</p></li>
+<li><p>explicit user authentication requirement for signature;</p></li>
+<li><p>key tag namespacing;</p></li>
+<li><p>key lifecycle errors handled;</p></li>
+<li><p>key invalidation detected;</p></li>
+<li><p>key regeneration never silently reuses the old device identity;</p></li>
+<li><p>public-key extraction;</p></li>
+<li><p>algorithm aligned with M1 decision.</p></li>
+</ul>
+</section>
+<section id="m6-3-local-authentication">
+<h3>M6.3 Local authentication<a class="headerlink" href="#m6-3-local-authentication" title="Link to this heading"></a></h3>
+<p>Use LocalAuthentication to require Face ID, Touch ID or the documented fallback policy.</p>
+<p>The app must distinguish:</p>
+<ul class="simple">
+<li><p>biometry available;</p></li>
+<li><p>biometry enrolled;</p></li>
+<li><p>lockout;</p></li>
+<li><p>device passcode fallback;</p></li>
+<li><p>cancellation;</p></li>
+<li><p>system error.</p></li>
+</ul>
+<p>The chosen fallback policy must be visible in evidence assurance metadata.</p>
+</section>
+<section id="m6-4-external-identity-enrolment">
+<h3>M6.4 External identity enrolment<a class="headerlink" href="#m6-4-external-identity-enrolment" title="Link to this heading"></a></h3>
+<p>Implement:</p>
+<ul class="simple">
+<li><p>GitHub browser flow;</p></li>
+<li><p>Google browser/OIDC flow;</p></li>
+<li><p>callback handling;</p></li>
+<li><p>cancellation;</p></li>
+<li><p>provider error reporting;</p></li>
+<li><p>identity display;</p></li>
+<li><p>removal/re-enrolment;</p></li>
+<li><p>binding evidence generation.</p></li>
+</ul>
+</section>
+<section id="m6-5-qr-scanning-and-response">
+<h3>M6.5 QR scanning and response<a class="headerlink" href="#m6-5-qr-scanning-and-response" title="Link to this heading"></a></h3>
+<ul class="simple">
+<li><p>camera permission;</p></li>
+<li><p>QR scanning;</p></li>
+<li><p>payload parsing;</p></li>
+<li><p>installation trust display;</p></li>
+<li><p>biometric-gated signing;</p></li>
+<li><p>direct response submission;</p></li>
+<li><p>response QR fallback;</p></li>
+<li><p>screen brightness and size optimisation;</p></li>
+<li><p>protection against accidental screenshots where practical;</p></li>
+<li><p>no sensitive provider token in QR.</p></li>
+</ul>
+</section>
+<section id="m6-6-installation-pairing">
+<h3>M6.6 Installation pairing<a class="headerlink" href="#m6-6-installation-pairing" title="Link to this heading"></a></h3>
+<p>Allow an installation to be remembered after first successful pairing:</p>
+<ul class="simple">
+<li><p>installation ID;</p></li>
+<li><p>display name;</p></li>
+<li><p>public fingerprint;</p></li>
+<li><p>endpoint hints;</p></li>
+<li><p>last-used time;</p></li>
+<li><p>local aliases.</p></li>
+</ul>
+<p>Changing installation trust material must trigger a warning and re-pairing.</p>
+</section>
+<section id="m6-7-local-history">
+<h3>M6.7 Local history<a class="headerlink" href="#m6-7-local-history" title="Link to this heading"></a></h3>
+<p>Store a local summary of:</p>
+<ul class="simple">
+<li><p>successful approvals;</p></li>
+<li><p>denials;</p></li>
+<li><p>installation;</p></li>
+<li><p>action type;</p></li>
+<li><p>time;</p></li>
+<li><p>local user;</p></li>
+<li><p>key used.</p></li>
+</ul>
+<p>History is informational and not the authoritative evidence store.</p>
+</section>
+<section id="m6-8-app-lifecycle-and-recovery">
+<h3>M6.8 App lifecycle and recovery<a class="headerlink" href="#m6-8-app-lifecycle-and-recovery" title="Link to this heading"></a></h3>
+<p>Handle:</p>
+<ul class="simple">
+<li><p>device restore;</p></li>
+<li><p>app reinstall;</p></li>
+<li><p>missing keychain entry;</p></li>
+<li><p>changed biometric set according to chosen policy;</p></li>
+<li><p>backgrounding during approval;</p></li>
+<li><p>interrupted OAuth;</p></li>
+<li><p>phone clock changes;</p></li>
+<li><p>app version migration.</p></li>
+</ul>
+</section>
+<section id="m6-9-distribution">
+<h3>M6.9 Distribution<a class="headerlink" href="#m6-9-distribution" title="Link to this heading"></a></h3>
+<ul class="simple">
+<li><p>Apple Developer organisation setup;</p></li>
+<li><p>bundle ID;</p></li>
+<li><p>entitlements;</p></li>
+<li><p>privacy manifest;</p></li>
+<li><p>TestFlight;</p></li>
+<li><p>crash-symbol handling;</p></li>
+<li><p>release signing;</p></li>
+<li><p>App Store submission preparation.</p></li>
+</ul>
+</section>
+</section>
+<section id="id22">
+<h2>Deliverables<a class="headerlink" href="#id22" title="Link to this heading"></a></h2>
+<ul class="simple">
+<li><p>iOS application;</p></li>
+<li><p>TestFlight build;</p></li>
+<li><p>iOS security design note;</p></li>
+<li><p>UI test suite;</p></li>
+<li><p>protocol conformance test execution against Rust fixtures.</p></li>
+</ul>
+</section>
+<section id="id23">
+<h2>Acceptance criteria<a class="headerlink" href="#id23" title="Link to this heading"></a></h2>
+<ul class="simple">
+<li><p>Private signing key cannot be exported through application functionality.</p></li>
+<li><p>Each signing operation invokes the configured local user-verification policy.</p></li>
+<li><p>GitHub and Google enrolment produce evidence accepted by the Rust verifier.</p></li>
+<li><p>iOS signatures match Rust conformance fixtures.</p></li>
+<li><p>App reinstall without recovery requires explicit new-device enrolment.</p></li>
+<li><p>No provider access token is exposed in logs, QR payloads or crash reports.</p></li>
+<li><p>Accessibility labels and Dynamic Type support cover the core ceremony.</p></li>
+<li><p>TestFlight build passes end-to-end tests with Synoptikon-independent server.</p></li>
+</ul>
+</section>
+<section id="id24">
+<h2>Exit gate<a class="headerlink" href="#id24" title="Link to this heading"></a></h2>
+<p>The iOS application is the reference mobile implementation for the protocol.</p>
+</section>
+</section>
+<hr class="docutils" />
+<section id="milestone-m7-synoptikon-integration">
+<h1>Milestone M7 — Synoptikon integration<a class="headerlink" href="#milestone-m7-synoptikon-integration" title="Link to this heading"></a></h1>
+<p><strong>Objective:</strong> Make Pistis a supported authentication and approval mechanism within Synoptikon.</p>
+<p><strong>Estimated effort:</strong> 3 developer-weeks</p>
+<section id="id25">
+<h2>Work items<a class="headerlink" href="#id25" title="Link to this heading"></a></h2>
+<section id="m7-1-configuration">
+<h3>M7.1 Configuration<a class="headerlink" href="#m7-1-configuration" title="Link to this heading"></a></h3>
+<p>Provide installation configuration for:</p>
+<ul class="simple">
+<li><p>enabling Pistis;</p></li>
+<li><p>declaring local users;</p></li>
+<li><p>selecting trusted provider identities;</p></li>
+<li><p>requiring one or multiple trust anchors;</p></li>
+<li><p>challenge expiry;</p></li>
+<li><p>allowed device assurance;</p></li>
+<li><p>recovery administrators;</p></li>
+<li><p>audit retention;</p></li>
+<li><p>fallback policy.</p></li>
+</ul>
+</section>
+<section id="m7-2-bootstrap-administrator">
+<h3>M7.2 Bootstrap administrator<a class="headerlink" href="#m7-2-bootstrap-administrator" title="Link to this heading"></a></h3>
+<p>Implement a safe first-install flow:</p>
+<ul class="simple">
+<li><p>installer declares initial administrator;</p></li>
+<li><p>installer declares expected GitHub and/or Google stable identity;</p></li>
+<li><p>installation creates bootstrap pairing challenge;</p></li>
+<li><p>Pistis enrols first administrator device;</p></li>
+<li><p>bootstrap credential is invalidated after completion;</p></li>
+<li><p>no default password remains.</p></li>
+</ul>
+<p>Support a controlled console-based recovery path for initial installation failure.</p>
+</section>
+<section id="m7-3-web-authentication">
+<h3>M7.3 Web authentication<a class="headerlink" href="#m7-3-web-authentication" title="Link to this heading"></a></h3>
+<p>Integrate:</p>
+<ul class="simple">
+<li><p>login page;</p></li>
+<li><p>challenge generation;</p></li>
+<li><p>QR display;</p></li>
+<li><p>local-discovery status;</p></li>
+<li><p>timeout;</p></li>
+<li><p>denial;</p></li>
+<li><p>session creation;</p></li>
+<li><p>logout;</p></li>
+<li><p>session listing;</p></li>
+<li><p>fresh-approval/step-up hooks.</p></li>
+</ul>
+</section>
+<section id="m7-4-authorization-separation">
+<h3>M7.4 Authorization separation<a class="headerlink" href="#m7-4-authorization-separation" title="Link to this heading"></a></h3>
+<p>Ensure Pistis controls authentication only. Synoptikon continues to own:</p>
+<ul class="simple">
+<li><p>tenant membership;</p></li>
+<li><p>project roles;</p></li>
+<li><p>data access;</p></li>
+<li><p>compute permissions;</p></li>
+<li><p>administrative authorization.</p></li>
+</ul>
+</section>
+<section id="m7-5-audit-integration">
+<h3>M7.5 Audit integration<a class="headerlink" href="#m7-5-audit-integration" title="Link to this heading"></a></h3>
+<p>Record:</p>
+<ul class="simple">
+<li><p>local username;</p></li>
+<li><p>external identity;</p></li>
+<li><p>device;</p></li>
+<li><p>challenge;</p></li>
+<li><p>verification result;</p></li>
+<li><p>source IP;</p></li>
+<li><p>user agent;</p></li>
+<li><p>installation;</p></li>
+<li><p>policy version;</p></li>
+<li><p>session ID.</p></li>
+</ul>
+</section>
+<section id="m7-6-administrative-ui">
+<h3>M7.6 Administrative UI<a class="headerlink" href="#m7-6-administrative-ui" title="Link to this heading"></a></h3>
+<p>Provide:</p>
+<ul class="simple">
+<li><p>trusted identities;</p></li>
+<li><p>enrolled devices;</p></li>
+<li><p>device assurance;</p></li>
+<li><p>suspend/revoke;</p></li>
+<li><p>last used;</p></li>
+<li><p>enrol replacement device;</p></li>
+<li><p>export verification bundle;</p></li>
+<li><p>authentication failures.</p></li>
+</ul>
+</section>
+</section>
+<section id="id26">
+<h2>Deliverables<a class="headerlink" href="#id26" title="Link to this heading"></a></h2>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">pistis-synoptikon</span></code>;</p></li>
+<li><p>Synoptikon migrations;</p></li>
+<li><p>authentication UI;</p></li>
+<li><p>bootstrap workflow;</p></li>
+<li><p>administrator documentation;</p></li>
+<li><p>integration tests.</p></li>
+</ul>
+</section>
+<section id="id27">
+<h2>Acceptance criteria<a class="headerlink" href="#id27" title="Link to this heading"></a></h2>
+<ul class="simple">
+<li><p>A fresh Synoptikon installation can bootstrap an administrator without creating a password.</p></li>
+<li><p>A valid Pistis response creates a normal Synoptikon session.</p></li>
+<li><p>Pistis identity does not bypass Synoptikon authorization.</p></li>
+<li><p>Revocation takes effect for new authentication immediately.</p></li>
+<li><p>Login events appear in the central auditor with correlation identifiers.</p></li>
+<li><p>Disabling Pistis cannot accidentally expose an unauthenticated administrator route.</p></li>
+<li><p>Existing deployments have a documented migration path.</p></li>
+</ul>
+</section>
+<section id="id28">
+<h2>Exit gate<a class="headerlink" href="#id28" title="Link to this heading"></a></h2>
+<p>Pistis can be selected as the supported authentication method in a Synoptikon development release.</p>
+</section>
+</section>
+<hr class="docutils" />
+<section id="milestone-m8-monas-standalone-integration-and-cli">
+<h1>Milestone M8 — Monas standalone integration and CLI<a class="headerlink" href="#milestone-m8-monas-standalone-integration-and-cli" title="Link to this heading"></a></h1>
+<p><strong>Objective:</strong> Ensure Pistis is an independent product capability rather than a Synoptikon-only feature.</p>
+<p><strong>Estimated effort:</strong> 3 developer-weeks</p>
+<section id="id29">
+<h2>Work items<a class="headerlink" href="#id29" title="Link to this heading"></a></h2>
+<section id="m8-1-standalone-service-profile">
+<h3>M8.1 Standalone service profile<a class="headerlink" href="#m8-1-standalone-service-profile" title="Link to this heading"></a></h3>
+<p>Provide a minimal deployable service containing:</p>
+<ul class="simple">
+<li><p>local users;</p></li>
+<li><p>trust policies;</p></li>
+<li><p>device registry;</p></li>
+<li><p>challenge API;</p></li>
+<li><p>verifier;</p></li>
+<li><p>evidence store;</p></li>
+<li><p>administration API;</p></li>
+<li><p>SQLite support.</p></li>
+</ul>
+</section>
+<section id="m8-2-embedding-api">
+<h3>M8.2 Embedding API<a class="headerlink" href="#m8-2-embedding-api" title="Link to this heading"></a></h3>
+<p>Expose Rust APIs for Monas applications to:</p>
+<ul class="simple">
+<li><p>create challenge;</p></li>
+<li><p>render challenge payload;</p></li>
+<li><p>submit response;</p></li>
+<li><p>verify response;</p></li>
+<li><p>consume challenge;</p></li>
+<li><p>retrieve authentication principal;</p></li>
+<li><p>create artefact-signing request;</p></li>
+<li><p>verify detached evidence.</p></li>
+</ul>
+</section>
+<section id="m8-3-cli">
+<h3>M8.3 CLI<a class="headerlink" href="#m8-3-cli" title="Link to this heading"></a></h3>
+<p>Commands should include:</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>pistis init
+pistis user add
+pistis trust add-github
+pistis trust add-google
+pistis device list
+pistis device revoke
+pistis challenge create
+pistis response verify
+pistis evidence inspect
+pistis evidence verify
+pistis trust export
+pistis doctor
+</pre></div>
+</div>
+</section>
+<section id="m8-4-reference-application">
+<h3>M8.4 Reference application<a class="headerlink" href="#m8-4-reference-application" title="Link to this heading"></a></h3>
+<p>Build a small Monas-style reference web application demonstrating:</p>
+<ul class="simple">
+<li><p>bootstrap;</p></li>
+<li><p>local user login;</p></li>
+<li><p>QR exchange;</p></li>
+<li><p>local discovery;</p></li>
+<li><p>report signing;</p></li>
+<li><p>detached verification.</p></li>
+</ul>
+</section>
+<section id="m8-5-packaging">
+<h3>M8.5 Packaging<a class="headerlink" href="#m8-5-packaging" title="Link to this heading"></a></h3>
+<ul class="simple">
+<li><p>standalone binary;</p></li>
+<li><p>configuration file;</p></li>
+<li><p>systemd unit;</p></li>
+<li><p>container image where compatible with project policy;</p></li>
+<li><p>RPM/SRPM integration path through Phoreus;</p></li>
+<li><p>database migration commands.</p></li>
+</ul>
+</section>
+</section>
+<section id="id30">
+<h2>Deliverables<a class="headerlink" href="#id30" title="Link to this heading"></a></h2>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">pistis-monas</span></code>;</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">pistis-cli</span></code>;</p></li>
+<li><p>reference app;</p></li>
+<li><p>deployment guide;</p></li>
+<li><p>RPM packaging specification.</p></li>
+</ul>
+</section>
+<section id="id31">
+<h2>Acceptance criteria<a class="headerlink" href="#id31" title="Link to this heading"></a></h2>
+<ul class="simple">
+<li><p>A non-Synoptikon application can integrate Pistis without importing Synoptikon types.</p></li>
+<li><p>CLI verification works offline.</p></li>
+<li><p>Standalone deployment runs with SQLite and no cloud services.</p></li>
+<li><p>The reference application passes the same protocol fixtures as Synoptikon.</p></li>
+<li><p>Upgrade and backup procedures are documented.</p></li>
+</ul>
+</section>
+<section id="id32">
+<h2>Exit gate<a class="headerlink" href="#id32" title="Link to this heading"></a></h2>
+<p>Pistis has an independent release artefact and integration surface.</p>
+</section>
+</section>
+<hr class="docutils" />
+<section id="milestone-m9-local-network-discovery-and-direct-exchange">
+<h1>Milestone M9 — Local-network discovery and direct exchange<a class="headerlink" href="#milestone-m9-local-network-discovery-and-direct-exchange" title="Link to this heading"></a></h1>
+<p><strong>Objective:</strong> Remove routine QR response scanning when the phone and installation can communicate on the same local network.</p>
+<p><strong>Estimated effort:</strong> 4 developer-weeks</p>
+<section id="id33">
+<h2>Work items<a class="headerlink" href="#id33" title="Link to this heading"></a></h2>
+<section id="m9-1-discovery-design">
+<h3>M9.1 Discovery design<a class="headerlink" href="#m9-1-discovery-design" title="Link to this heading"></a></h3>
+<p>Decide which endpoint advertises:</p>
+<ul class="simple">
+<li><p>the installation advertises a temporary approval service; or</p></li>
+<li><p>the phone advertises availability; or</p></li>
+<li><p>both.</p></li>
+</ul>
+<p>The preferred privacy-preserving model is for the installation to advertise a short-lived, non-user-specific service. The phone discovers it only after scanning an initial pairing/login QR or selecting the installation.</p>
+<p>Do not broadcast:</p>
+<ul class="simple">
+<li><p>username;</p></li>
+<li><p>external identity;</p></li>
+<li><p>public profile;</p></li>
+<li><p>report title;</p></li>
+<li><p>project name;</p></li>
+<li><p>persistent device identifier.</p></li>
+</ul>
+</section>
+<section id="m9-2-dns-sd-mdns-implementation">
+<h3>M9.2 DNS-SD/mDNS implementation<a class="headerlink" href="#m9-2-dns-sd-mdns-implementation" title="Link to this heading"></a></h3>
+<p>Rust service:</p>
+<ul class="simple">
+<li><p>advertise <code class="docutils literal notranslate"><span class="pre">_pistis._tcp.local</span></code> or approved service name;</p></li>
+<li><p>include protocol version and opaque endpoint identifier;</p></li>
+<li><p>handle multiple interfaces;</p></li>
+<li><p>handle interface changes;</p></li>
+<li><p>handle sleep/wake;</p></li>
+<li><p>apply TTL;</p></li>
+<li><p>unregister cleanly;</p></li>
+<li><p>tolerate multicast being blocked.</p></li>
+</ul>
+<p>Mobile:</p>
+<ul class="simple">
+<li><p>local network permission on iOS;</p></li>
+<li><p>network service discovery on Android;</p></li>
+<li><p>scoped browsing;</p></li>
+<li><p>endpoint resolution;</p></li>
+<li><p>UX explaining permission;</p></li>
+<li><p>fallback when permission denied.</p></li>
+</ul>
+</section>
+<section id="m9-3-pairwise-secure-channel">
+<h3>M9.3 Pairwise secure channel<a class="headerlink" href="#m9-3-pairwise-secure-channel" title="Link to this heading"></a></h3>
+<p>Discovery must lead to an authenticated channel.</p>
+<p>Options include:</p>
+<ul class="simple">
+<li><p>installation HTTPS certificate pinned from QR/pairing;</p></li>
+<li><p>ephemeral key agreement authenticated by installation identity;</p></li>
+<li><p>signed challenge submission over untrusted HTTP with confidentiality limitations documented.</p></li>
+</ul>
+<p>The selected design must prevent endpoint substitution and must not trust the local CA environment by default.</p>
+</section>
+<section id="m9-4-direct-challenge-retrieval">
+<h3>M9.4 Direct challenge retrieval<a class="headerlink" href="#m9-4-direct-challenge-retrieval" title="Link to this heading"></a></h3>
+<p>After discovery:</p>
+<ul class="simple">
+<li><p>phone retrieves pending challenge;</p></li>
+<li><p>phone checks exact installation identity;</p></li>
+<li><p>phone signs;</p></li>
+<li><p>phone posts response;</p></li>
+<li><p>browser receives completion event.</p></li>
+</ul>
+</section>
+<section id="m9-5-fallback-hierarchy">
+<h3>M9.5 Fallback hierarchy<a class="headerlink" href="#m9-5-fallback-hierarchy" title="Link to this heading"></a></h3>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>paired local endpoint reachable
+        ↓ no
+QR direct endpoint reachable
+        ↓ no
+response QR
+</pre></div>
+</div>
+<p>No indefinite “searching” state.</p>
+</section>
+<section id="m9-6-browser-limitations">
+<h3>M9.6 Browser limitations<a class="headerlink" href="#m9-6-browser-limitations" title="Link to this heading"></a></h3>
+<p>A normal browser cannot directly perform arbitrary mDNS discovery. Synoptikon’s backend therefore performs discovery advertisement and receives the phone response; browser state is updated by polling, SSE or WebSocket.</p>
+<p>Document this explicitly to prevent an impossible browser-only design.</p>
+</section>
+</section>
+<section id="id34">
+<h2>Deliverables<a class="headerlink" href="#id34" title="Link to this heading"></a></h2>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">pistis-discovery</span></code>;</p></li>
+<li><p>discovery protocol;</p></li>
+<li><p>iOS local-network implementation;</p></li>
+<li><p>Android discovery implementation;</p></li>
+<li><p>secure channel design;</p></li>
+<li><p>network test suite.</p></li>
+</ul>
+</section>
+<section id="id35">
+<h2>Acceptance criteria<a class="headerlink" href="#id35" title="Link to this heading"></a></h2>
+<ul class="simple">
+<li><p>Local login can complete without scanning a response QR where multicast and direct connectivity are available.</p></li>
+<li><p>Authentication remains secure when an attacker publishes a conflicting mDNS service.</p></li>
+<li><p>Blocking multicast causes clean fallback to QR.</p></li>
+<li><p>Discovery advertisements disclose no user identity.</p></li>
+<li><p>Multiple Pistis installations on one LAN are distinguishable.</p></li>
+<li><p>IPv4, IPv6 and multiple-interface behaviour are tested.</p></li>
+<li><p>Guest Wi-Fi client isolation is handled as an expected fallback condition.</p></li>
+</ul>
+</section>
+<section id="id36">
+<h2>Exit gate<a class="headerlink" href="#id36" title="Link to this heading"></a></h2>
+<p>Local-network direct exchange is a convenience layer with no change to verifier semantics.</p>
+</section>
+</section>
+<hr class="docutils" />
+<section id="milestone-m10-artefact-report-signing-and-portable-evidence">
+<h1>Milestone M10 — Artefact/report signing and portable evidence<a class="headerlink" href="#milestone-m10-artefact-report-signing-and-portable-evidence" title="Link to this heading"></a></h1>
+<p><strong>Objective:</strong> Extend the authentication primitive into durable scientific artefact approval.</p>
+<p><strong>Estimated effort:</strong> 4 developer-weeks</p>
+<section id="id37">
+<h2>Work items<a class="headerlink" href="#id37" title="Link to this heading"></a></h2>
+<section id="m10-1-artefact-digest-model">
+<h3>M10.1 Artefact digest model<a class="headerlink" href="#m10-1-artefact-digest-model" title="Link to this heading"></a></h3>
+<p>Support:</p>
+<ul class="simple">
+<li><p>SHA-256;</p></li>
+<li><p>file size;</p></li>
+<li><p>media type;</p></li>
+<li><p>artefact identifier;</p></li>
+<li><p>version;</p></li>
+<li><p>generation time;</p></li>
+<li><p>workflow/provenance references;</p></li>
+<li><p>digest computed after finalisation.</p></li>
+</ul>
+</section>
+<section id="m10-2-signing-claims">
+<h3>M10.2 Signing claims<a class="headerlink" href="#m10-2-signing-claims" title="Link to this heading"></a></h3>
+<p>Define initial claim types:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">auth.login</span></code>;</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">report.reviewed</span></code>;</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">report.approved</span></code>;</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">dataset.released</span></code>;</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">workflow.approved</span></code>;</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">software.release-approved</span></code>;</p></li>
+<li><p>generic <code class="docutils literal notranslate"><span class="pre">artefact.attested</span></code>.</p></li>
+</ul>
+<p>Each claim must state its semantics. “Signed” alone is insufficient.</p>
+</section>
+<section id="m10-3-mobile-signing-ux">
+<h3>M10.3 Mobile signing UX<a class="headerlink" href="#m10-3-mobile-signing-ux" title="Link to this heading"></a></h3>
+<p>Display:</p>
+<ul class="simple">
+<li><p>action;</p></li>
+<li><p>artefact title;</p></li>
+<li><p>artefact ID;</p></li>
+<li><p>digest abbreviation;</p></li>
+<li><p>installation;</p></li>
+<li><p>local role/capacity;</p></li>
+<li><p>requested declaration;</p></li>
+<li><p>expiry.</p></li>
+</ul>
+<p>The app must not display metadata that is not included in, or cryptographically bound to, the signed payload.</p>
+</section>
+<section id="m10-4-evidence-envelope">
+<h3>M10.4 Evidence envelope<a class="headerlink" href="#m10-4-evidence-envelope" title="Link to this heading"></a></h3>
+<p>Include:</p>
+<ul class="simple">
+<li><p>canonical claim;</p></li>
+<li><p>artefact digest;</p></li>
+<li><p>signer external identity;</p></li>
+<li><p>local user;</p></li>
+<li><p>local signing capacity;</p></li>
+<li><p>device key;</p></li>
+<li><p>installation;</p></li>
+<li><p>policy;</p></li>
+<li><p>signature;</p></li>
+<li><p>signing time claim;</p></li>
+<li><p>verification metadata;</p></li>
+<li><p>revocation/status references;</p></li>
+<li><p>protocol version.</p></li>
+</ul>
+</section>
+<section id="m10-5-verification-cli-and-library">
+<h3>M10.5 Verification CLI and library<a class="headerlink" href="#m10-5-verification-cli-and-library" title="Link to this heading"></a></h3>
+<p>Verifier output:</p>
+<ul class="simple">
+<li><p>content digest match;</p></li>
+<li><p>cryptographic signature valid/invalid;</p></li>
+<li><p>device key trusted/untrusted;</p></li>
+<li><p>device status at signing;</p></li>
+<li><p>external identity binding valid/invalid;</p></li>
+<li><p>local capacity evidence;</p></li>
+<li><p>policy status;</p></li>
+<li><p>warnings;</p></li>
+<li><p>inability to establish trusted time.</p></li>
+</ul>
+</section>
+<section id="m10-6-pdf-integration-boundary">
+<h3>M10.6 PDF integration boundary<a class="headerlink" href="#m10-6-pdf-integration-boundary" title="Link to this heading"></a></h3>
+<p>Pistis should generate detached evidence by default. Grammateus may embed:</p>
+<ul class="simple">
+<li><p>document ID;</p></li>
+<li><p>signature ID;</p></li>
+<li><p>QR verification reference;</p></li>
+<li><p>visible approval summary.</p></li>
+</ul>
+<p>The authoritative cryptographic evidence remains detached or embedded as a clearly specified attachment, avoiding accidental PDF mutation after signing.</p>
+</section>
+<section id="m10-7-multi-signature-primitives">
+<h3>M10.7 Multi-signature primitives<a class="headerlink" href="#m10-7-multi-signature-primitives" title="Link to this heading"></a></h3>
+<p>Implement evidence structures capable of carrying multiple independent signatures, even if sophisticated workflow policy remains limited.</p>
+</section>
+</section>
+<section id="id38">
+<h2>Deliverables<a class="headerlink" href="#id38" title="Link to this heading"></a></h2>
+<ul class="simple">
+<li><p>artefact claim schemas;</p></li>
+<li><p>evidence envelope;</p></li>
+<li><p>signer UI;</p></li>
+<li><p>verifier CLI;</p></li>
+<li><p>Grammateus integration example;</p></li>
+<li><p>signed fixture corpus.</p></li>
+</ul>
+</section>
+<section id="id39">
+<h2>Acceptance criteria<a class="headerlink" href="#id39" title="Link to this heading"></a></h2>
+<ul class="simple">
+<li><p>Any byte change to a signed artefact is detected.</p></li>
+<li><p>Evidence can be verified offline.</p></li>
+<li><p>The verifier differentiates cryptographic validity from scientific correctness and organizational authorization.</p></li>
+<li><p>Login signatures cannot satisfy report-approval claims.</p></li>
+<li><p>Visible metadata shown to the signer is cryptographically bound to the signature.</p></li>
+<li><p>Historic evidence remains verifiable after normal device retirement.</p></li>
+<li><p>Multi-signature envelopes do not require signatures to be merged into a mutable structure that invalidates prior signatures.</p></li>
+</ul>
+</section>
+<section id="id40">
+<h2>Exit gate<a class="headerlink" href="#id40" title="Link to this heading"></a></h2>
+<p>A sample scientific report can be signed on iOS and verified using only the report, detached evidence and exported installation trust material.</p>
+</section>
+</section>
+<hr class="docutils" />
+<section id="milestone-m11-android-application">
+<h1>Milestone M11 — Android application<a class="headerlink" href="#milestone-m11-android-application" title="Link to this heading"></a></h1>
+<p><strong>Objective:</strong> Deliver functional parity for the Pistis v1.0 ceremonies on supported Android devices.</p>
+<p><strong>Estimated effort:</strong> 7 developer-weeks</p>
+<section id="id41">
+<h2>Work items<a class="headerlink" href="#id41" title="Link to this heading"></a></h2>
+<section id="m11-1-application-shell">
+<h3>M11.1 Application shell<a class="headerlink" href="#m11-1-application-shell" title="Link to this heading"></a></h3>
+<p>Implement in Kotlin/Jetpack Compose:</p>
+<ul class="simple">
+<li><p>onboarding;</p></li>
+<li><p>identities;</p></li>
+<li><p>installations;</p></li>
+<li><p>scanner;</p></li>
+<li><p>pending action;</p></li>
+<li><p>approval;</p></li>
+<li><p>response QR;</p></li>
+<li><p>history;</p></li>
+<li><p>device/security status;</p></li>
+<li><p>diagnostics.</p></li>
+</ul>
+</section>
+<section id="m11-2-android-keystore-key-generation">
+<h3>M11.2 Android Keystore key generation<a class="headerlink" href="#m11-2-android-keystore-key-generation" title="Link to this heading"></a></h3>
+<ul class="simple">
+<li><p>non-exportable signing key;</p></li>
+<li><p>require user authentication;</p></li>
+<li><p>prefer hardware-backed storage;</p></li>
+<li><p>detect security level;</p></li>
+<li><p>capture StrongBox/TEE/software status;</p></li>
+<li><p>handle devices without required capabilities;</p></li>
+<li><p>public-key extraction;</p></li>
+<li><p>key invalidation;</p></li>
+<li><p>app reinstall behaviour;</p></li>
+<li><p>no silent downgrade.</p></li>
+</ul>
+</section>
+<section id="m11-3-biometricprompt">
+<h3>M11.3 BiometricPrompt<a class="headerlink" href="#m11-3-biometricprompt" title="Link to this heading"></a></h3>
+<ul class="simple">
+<li><p>biometric/device credential policy;</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">CryptoObject</span></code>-bound signing where appropriate;</p></li>
+<li><p>cancellation;</p></li>
+<li><p>lockout;</p></li>
+<li><p>fallback;</p></li>
+<li><p>evidence assurance metadata;</p></li>
+<li><p>explicit failure messaging.</p></li>
+</ul>
+</section>
+<section id="m11-4-external-provider-enrolment">
+<h3>M11.4 External provider enrolment<a class="headerlink" href="#m11-4-external-provider-enrolment" title="Link to this heading"></a></h3>
+<p>Implement GitHub and Google system-browser flows with the same protocol and evidence semantics as iOS.</p>
+</section>
+<section id="m11-5-qr-and-local-network-support">
+<h3>M11.5 QR and local-network support<a class="headerlink" href="#m11-5-qr-and-local-network-support" title="Link to this heading"></a></h3>
+<ul class="simple">
+<li><p>camera scanning;</p></li>
+<li><p>Android app links where used;</p></li>
+<li><p>response QR;</p></li>
+<li><p>local network discovery;</p></li>
+<li><p>network changes;</p></li>
+<li><p>battery/background constraints;</p></li>
+<li><p>notification permissions not required for v1.0 core.</p></li>
+</ul>
+</section>
+<section id="m11-6-device-capability-policy">
+<h3>M11.6 Device capability policy<a class="headerlink" href="#m11-6-device-capability-policy" title="Link to this heading"></a></h3>
+<p>Define support tiers, for example:</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>PST-A3: hardware-backed key, strong biometric, validated attestation
+PST-A2: hardware-backed key, device credential or biometric
+PST-A1: software-backed or unverified key
+</pre></div>
+</div>
+<p>v1.0 must state which tiers can:</p>
+<ul class="simple">
+<li><p>authenticate;</p></li>
+<li><p>sign reports;</p></li>
+<li><p>perform administrator approval.</p></li>
+</ul>
+</section>
+<section id="m11-7-key-attestation-decision">
+<h3>M11.7 Key attestation decision<a class="headerlink" href="#m11-7-key-attestation-decision" title="Link to this heading"></a></h3>
+<p>Implement or explicitly defer full Android hardware-key attestation.</p>
+<p>If included:</p>
+<ul class="simple">
+<li><p>validate attestation chain server-side;</p></li>
+<li><p>pin/maintain accepted roots;</p></li>
+<li><p>bind challenge to key generation;</p></li>
+<li><p>handle revocation and known device anomalies.</p></li>
+</ul>
+<p>If deferred:</p>
+<ul class="simple">
+<li><p>record hardware-backed status as locally reported and avoid overstating assurance.</p></li>
+</ul>
+</section>
+<section id="m11-8-device-test-matrix">
+<h3>M11.8 Device test matrix<a class="headerlink" href="#m11-8-device-test-matrix" title="Link to this heading"></a></h3>
+<p>At minimum:</p>
+<ul class="simple">
+<li><p>current Google Pixel;</p></li>
+<li><p>current Samsung flagship/mid-range;</p></li>
+<li><p>one lower-cost supported device;</p></li>
+<li><p>minimum supported API level;</p></li>
+<li><p>device with StrongBox;</p></li>
+<li><p>device without StrongBox;</p></li>
+<li><p>fingerprint;</p></li>
+<li><p>supported face biometric where available;</p></li>
+<li><p>work-profile behaviour if in scope.</p></li>
+</ul>
+</section>
+<section id="m11-9-distribution">
+<h3>M11.9 Distribution<a class="headerlink" href="#m11-9-distribution" title="Link to this heading"></a></h3>
+<ul class="simple">
+<li><p>Play Console;</p></li>
+<li><p>application signing;</p></li>
+<li><p>internal testing;</p></li>
+<li><p>closed testing;</p></li>
+<li><p>data safety declaration;</p></li>
+<li><p>release track;</p></li>
+<li><p>crash reporting;</p></li>
+<li><p>reproducible build documentation.</p></li>
+</ul>
+</section>
+</section>
+<section id="id42">
+<h2>Deliverables<a class="headerlink" href="#id42" title="Link to this heading"></a></h2>
+<ul class="simple">
+<li><p>Android application;</p></li>
+<li><p>Play internal/closed testing release;</p></li>
+<li><p>Android security design;</p></li>
+<li><p>device capability matrix;</p></li>
+<li><p>conformance-test report.</p></li>
+</ul>
+</section>
+<section id="id43">
+<h2>Acceptance criteria<a class="headerlink" href="#id43" title="Link to this heading"></a></h2>
+<ul class="simple">
+<li><p>Android-generated signatures verify identically through the Rust verifier.</p></li>
+<li><p>No private key export path exists.</p></li>
+<li><p>Unsupported or insecure device configurations receive an explicit result, not silent fallback.</p></li>
+<li><p>GitHub and Google enrolment semantics match iOS.</p></li>
+<li><p>QR response and local-network direct exchange work on the supported test matrix.</p></li>
+<li><p>Evidence truthfully reports key assurance.</p></li>
+<li><p>App reinstall produces a new device identity and requires re-enrolment.</p></li>
+<li><p>Android v1.0 feature parity covers all mandatory ceremonies, though UI need not be pixel-identical.</p></li>
+</ul>
+</section>
+<section id="id44">
+<h2>Exit gate<a class="headerlink" href="#id44" title="Link to this heading"></a></h2>
+<p>Both mobile platforms pass the shared protocol conformance suite.</p>
+</section>
+</section>
+<hr class="docutils" />
+<section id="milestone-m12-recovery-revocation-and-multi-device-lifecycle">
+<h1>Milestone M12 — Recovery, revocation and multi-device lifecycle<a class="headerlink" href="#milestone-m12-recovery-revocation-and-multi-device-lifecycle" title="Link to this heading"></a></h1>
+<p><strong>Objective:</strong> Ensure passwordless operation remains supportable when devices are lost, replaced or compromised.</p>
+<p><strong>Estimated effort:</strong> 3 developer-weeks</p>
+<section id="id45">
+<h2>Work items<a class="headerlink" href="#id45" title="Link to this heading"></a></h2>
+<section id="m12-1-multi-device-enrolment">
+<h3>M12.1 Multi-device enrolment<a class="headerlink" href="#m12-1-multi-device-enrolment" title="Link to this heading"></a></h3>
+<p>Allow a local user to enrol multiple devices subject to local policy.</p>
+<p>Record each as a distinct key and device identity.</p>
+</section>
+<section id="m12-2-device-replacement">
+<h3>M12.2 Device replacement<a class="headerlink" href="#m12-2-device-replacement" title="Link to this heading"></a></h3>
+<p>Supported route:</p>
+<ul class="simple">
+<li><p>authenticate with an existing trusted device; or</p></li>
+<li><p>reauthenticate against the required external trust anchor and complete installation-controlled recovery approval; or</p></li>
+<li><p>perform governed local administrator recovery.</p></li>
+</ul>
+<p>No automatic private-key migration.</p>
+</section>
+<section id="m12-3-revocation">
+<h3>M12.3 Revocation<a class="headerlink" href="#m12-3-revocation" title="Link to this heading"></a></h3>
+<p>Support:</p>
+<ul class="simple">
+<li><p>user-requested lost device;</p></li>
+<li><p>administrator revocation;</p></li>
+<li><p>compromise;</p></li>
+<li><p>retirement;</p></li>
+<li><p>replacement;</p></li>
+<li><p>temporary suspension.</p></li>
+</ul>
+</section>
+<section id="m12-4-historic-evidence-semantics">
+<h3>M12.4 Historic evidence semantics<a class="headerlink" href="#m12-4-historic-evidence-semantics" title="Link to this heading"></a></h3>
+<p>Verification must distinguish:</p>
+<ul class="simple">
+<li><p>key valid at signing;</p></li>
+<li><p>key currently revoked;</p></li>
+<li><p>revocation reason;</p></li>
+<li><p>signing time independently trusted or merely claimed;</p></li>
+<li><p>policy treatment of compromise.</p></li>
+</ul>
+</section>
+<section id="m12-5-bootstrap-recovery">
+<h3>M12.5 Bootstrap recovery<a class="headerlink" href="#m12-5-bootstrap-recovery" title="Link to this heading"></a></h3>
+<p>Document a controlled server-console recovery process for a sole administrator who loses all Pistis devices.</p>
+<p>Requirements:</p>
+<ul class="simple">
+<li><p>local machine privileged access;</p></li>
+<li><p>explicit recovery command;</p></li>
+<li><p>audit event;</p></li>
+<li><p>recovery token or ceremony;</p></li>
+<li><p>old devices revoked;</p></li>
+<li><p>no unaudited database edit;</p></li>
+<li><p>optional delay/two-person procedure for institutional deployments.</p></li>
+</ul>
+</section>
+<section id="m12-6-external-identity-loss">
+<h3>M12.6 External identity loss<a class="headerlink" href="#m12-6-external-identity-loss" title="Link to this heading"></a></h3>
+<p>Handle:</p>
+<ul class="simple">
+<li><p>deleted GitHub account;</p></li>
+<li><p>inaccessible Google account;</p></li>
+<li><p>organization policy change;</p></li>
+<li><p>provider outage;</p></li>
+<li><p>changed display metadata.</p></li>
+</ul>
+<p>Existing device signatures may continue according to local policy, but new recovery/rebinding must follow explicit rules.</p>
+</section>
+</section>
+<section id="id46">
+<h2>Deliverables<a class="headerlink" href="#id46" title="Link to this heading"></a></h2>
+<ul class="simple">
+<li><p>recovery protocol;</p></li>
+<li><p>revocation schema;</p></li>
+<li><p>admin commands/UI;</p></li>
+<li><p>support runbook;</p></li>
+<li><p>historic-verification rules.</p></li>
+</ul>
+</section>
+<section id="id47">
+<h2>Acceptance criteria<a class="headerlink" href="#id47" title="Link to this heading"></a></h2>
+<ul class="simple">
+<li><p>Loss of one phone does not force a password reset mechanism.</p></li>
+<li><p>A revoked device cannot create new valid approvals.</p></li>
+<li><p>Existing valid evidence is not indiscriminately destroyed by normal retirement.</p></li>
+<li><p>Sole-administrator recovery is possible but conspicuous and auditable.</p></li>
+<li><p>Recovery cannot silently replace the external identity trusted for a local account.</p></li>
+<li><p>All lifecycle transitions are covered by integration tests.</p></li>
+</ul>
+</section>
+<section id="id48">
+<h2>Exit gate<a class="headerlink" href="#id48" title="Link to this heading"></a></h2>
+<p>A full lost-device exercise is completed for both iOS and Android.</p>
+</section>
+</section>
+<hr class="docutils" />
+<section id="milestone-m13-security-hardening-and-independent-review">
+<h1>Milestone M13 — Security hardening and independent review<a class="headerlink" href="#milestone-m13-security-hardening-and-independent-review" title="Link to this heading"></a></h1>
+<p><strong>Objective:</strong> Validate that Pistis can safely protect scientific-computing installations and signed artefacts.</p>
+<p><strong>Estimated effort:</strong> 5 developer-weeks</p>
+<section id="id49">
+<h2>Work items<a class="headerlink" href="#id49" title="Link to this heading"></a></h2>
+<section id="m13-1-code-hardening">
+<h3>M13.1 Code hardening<a class="headerlink" href="#m13-1-code-hardening" title="Link to this heading"></a></h3>
+<ul class="simple">
+<li><p>dependency review;</p></li>
+<li><p>unsafe-code review;</p></li>
+<li><p>secret-zeroisation where relevant;</p></li>
+<li><p>logging review;</p></li>
+<li><p>panic handling;</p></li>
+<li><p>resource limits;</p></li>
+<li><p>rate limiting;</p></li>
+<li><p>input size limits;</p></li>
+<li><p>secure default configuration;</p></li>
+<li><p>production error redaction.</p></li>
+</ul>
+</section>
+<section id="m13-2-protocol-attack-tests">
+<h3>M13.2 Protocol attack tests<a class="headerlink" href="#m13-2-protocol-attack-tests" title="Link to this heading"></a></h3>
+<p>Test:</p>
+<ul class="simple">
+<li><p>replay;</p></li>
+<li><p>downgrade;</p></li>
+<li><p>cross-purpose signatures;</p></li>
+<li><p>cross-installation signatures;</p></li>
+<li><p>race consumption;</p></li>
+<li><p>malformed QR;</p></li>
+<li><p>malicious CBOR/JSON;</p></li>
+<li><p>signature malleability handling;</p></li>
+<li><p>key-ID collision handling;</p></li>
+<li><p>expired challenge;</p></li>
+<li><p>clock skew;</p></li>
+<li><p>mDNS spoofing;</p></li>
+<li><p>local endpoint substitution;</p></li>
+<li><p>OAuth/OIDC callback attacks;</p></li>
+<li><p>CSRF;</p></li>
+<li><p>open redirect;</p></li>
+<li><p>token leakage.</p></li>
+</ul>
+</section>
+<section id="m13-3-mobile-security-review">
+<h3>M13.3 Mobile security review<a class="headerlink" href="#m13-3-mobile-security-review" title="Link to this heading"></a></h3>
+<p>iOS:</p>
+<ul class="simple">
+<li><p>Keychain/Secure Enclave configuration;</p></li>
+<li><p>LocalAuthentication policy;</p></li>
+<li><p>URL callback handling;</p></li>
+<li><p>clipboard;</p></li>
+<li><p>screenshots;</p></li>
+<li><p>logs;</p></li>
+<li><p>backups;</p></li>
+<li><p>app groups;</p></li>
+<li><p>jailbreak response policy.</p></li>
+</ul>
+<p>Android:</p>
+<ul class="simple">
+<li><p>Keystore policy;</p></li>
+<li><p>BiometricPrompt binding;</p></li>
+<li><p>exported activities;</p></li>
+<li><p>deep links;</p></li>
+<li><p>backup configuration;</p></li>
+<li><p>rooted-device response policy;</p></li>
+<li><p>logs;</p></li>
+<li><p>intent spoofing;</p></li>
+<li><p>WebView avoidance.</p></li>
+</ul>
+</section>
+<section id="m13-4-privacy-review">
+<h3>M13.4 Privacy review<a class="headerlink" href="#m13-4-privacy-review" title="Link to this heading"></a></h3>
+<p>Document data collected:</p>
+<ul class="simple">
+<li><p>provider subject;</p></li>
+<li><p>display metadata;</p></li>
+<li><p>device metadata;</p></li>
+<li><p>authentication events;</p></li>
+<li><p>IP/user agent on server;</p></li>
+<li><p>local phone history.</p></li>
+</ul>
+<p>Provide retention and deletion behaviour.</p>
+</section>
+<section id="m13-5-independent-penetration-test">
+<h3>M13.5 Independent penetration test<a class="headerlink" href="#m13-5-independent-penetration-test" title="Link to this heading"></a></h3>
+<p>Scope:</p>
+<ul class="simple">
+<li><p>Rust service;</p></li>
+<li><p>Synoptikon integration;</p></li>
+<li><p>iOS app;</p></li>
+<li><p>Android app;</p></li>
+<li><p>QR protocol;</p></li>
+<li><p>local discovery;</p></li>
+<li><p>provider enrolment.</p></li>
+</ul>
+<p>Classify and remediate findings.</p>
+</section>
+<section id="m13-6-cryptographic-review">
+<h3>M13.6 Cryptographic review<a class="headerlink" href="#m13-6-cryptographic-review" title="Link to this heading"></a></h3>
+<p>Independent review must confirm:</p>
+<ul class="simple">
+<li><p>selected algorithms;</p></li>
+<li><p>canonicalisation;</p></li>
+<li><p>domain separation;</p></li>
+<li><p>nonce generation;</p></li>
+<li><p>signature encoding;</p></li>
+<li><p>key identifiers;</p></li>
+<li><p>verifier status rules;</p></li>
+<li><p>evidence semantics.</p></li>
+</ul>
+</section>
+<section id="m13-7-security-incident-readiness">
+<h3>M13.7 Security incident readiness<a class="headerlink" href="#m13-7-security-incident-readiness" title="Link to this heading"></a></h3>
+<ul class="simple">
+<li><p>vulnerability disclosure;</p></li>
+<li><p>key compromise response;</p></li>
+<li><p>mobile app emergency release;</p></li>
+<li><p>compromised dependency response;</p></li>
+<li><p>protocol version revocation;</p></li>
+<li><p>operator notification route.</p></li>
+</ul>
+</section>
+</section>
+<section id="id50">
+<h2>Deliverables<a class="headerlink" href="#id50" title="Link to this heading"></a></h2>
+<ul class="simple">
+<li><p>hardened release branch;</p></li>
+<li><p>penetration-test report;</p></li>
+<li><p>remediation report;</p></li>
+<li><p>cryptographic review;</p></li>
+<li><p>privacy assessment;</p></li>
+<li><p>incident runbook;</p></li>
+<li><p>residual-risk register.</p></li>
+</ul>
+</section>
+<section id="id51">
+<h2>Acceptance criteria<a class="headerlink" href="#id51" title="Link to this heading"></a></h2>
+<ul class="simple">
+<li><p>No open critical or high-severity security findings.</p></li>
+<li><p>Medium findings have accepted remediation plans and owners.</p></li>
+<li><p>Secrets and provider tokens do not appear in normal logs.</p></li>
+<li><p>All protocol attack tests are automated where practical.</p></li>
+<li><p>Security defaults do not require operator opt-in.</p></li>
+<li><p>Rust, iOS and Android release artefacts are traceable to reviewed source commits.</p></li>
+<li><p>Threat model is updated to reflect implementation reality.</p></li>
+</ul>
+</section>
+<section id="id52">
+<h2>Exit gate<a class="headerlink" href="#id52" title="Link to this heading"></a></h2>
+<p>Security owner approves progression to release candidate.</p>
+</section>
+</section>
+<hr class="docutils" />
+<section id="milestone-m14-packaging-operations-and-documentation">
+<h1>Milestone M14 — Packaging, operations and documentation<a class="headerlink" href="#milestone-m14-packaging-operations-and-documentation" title="Link to this heading"></a></h1>
+<p><strong>Objective:</strong> Make Pistis installable, diagnosable, upgradeable and supportable.</p>
+<p><strong>Estimated effort:</strong> 3 developer-weeks</p>
+<section id="id53">
+<h2>Work items<a class="headerlink" href="#id53" title="Link to this heading"></a></h2>
+<section id="m14-1-release-packaging">
+<h3>M14.1 Release packaging<a class="headerlink" href="#m14-1-release-packaging" title="Link to this heading"></a></h3>
+<ul class="simple">
+<li><p>Rust binaries;</p></li>
+<li><p>Rust library crates;</p></li>
+<li><p>RPM/SRPM;</p></li>
+<li><p>container image only where required;</p></li>
+<li><p>iOS archive;</p></li>
+<li><p>Android bundle;</p></li>
+<li><p>SBOM;</p></li>
+<li><p>checksums;</p></li>
+<li><p>signatures;</p></li>
+<li><p>provenance.</p></li>
+</ul>
+</section>
+<section id="m14-2-configuration-reference">
+<h3>M14.2 Configuration reference<a class="headerlink" href="#m14-2-configuration-reference" title="Link to this heading"></a></h3>
+<p>Document:</p>
+<ul class="simple">
+<li><p>installation identity;</p></li>
+<li><p>trust policies;</p></li>
+<li><p>database;</p></li>
+<li><p>challenge lifetime;</p></li>
+<li><p>clock-skew policy;</p></li>
+<li><p>local discovery;</p></li>
+<li><p>TLS;</p></li>
+<li><p>device assurance;</p></li>
+<li><p>audit;</p></li>
+<li><p>recovery;</p></li>
+<li><p>feature flags.</p></li>
+</ul>
+</section>
+<section id="m14-3-operations">
+<h3>M14.3 Operations<a class="headerlink" href="#m14-3-operations" title="Link to this heading"></a></h3>
+<p>Provide:</p>
+<ul class="simple">
+<li><p>health endpoint;</p></li>
+<li><p>readiness endpoint;</p></li>
+<li><p>metrics;</p></li>
+<li><p>structured logs;</p></li>
+<li><p>database migration;</p></li>
+<li><p>backup;</p></li>
+<li><p>restore;</p></li>
+<li><p>key rotation;</p></li>
+<li><p>device-revocation procedure;</p></li>
+<li><p>discovery diagnostics;</p></li>
+<li><p>OIDC diagnostics.</p></li>
+</ul>
+</section>
+<section id="m14-4-pistis-doctor">
+<h3>M14.4 <code class="docutils literal notranslate"><span class="pre">pistis</span> <span class="pre">doctor</span></code><a class="headerlink" href="#m14-4-pistis-doctor" title="Link to this heading"></a></h3>
+<p>Check:</p>
+<ul class="simple">
+<li><p>clock;</p></li>
+<li><p>installation identity;</p></li>
+<li><p>database;</p></li>
+<li><p>migrations;</p></li>
+<li><p>TLS;</p></li>
+<li><p>mDNS interfaces;</p></li>
+<li><p>provider discovery;</p></li>
+<li><p>callback URLs;</p></li>
+<li><p>trust policies;</p></li>
+<li><p>unsupported algorithms;</p></li>
+<li><p>audit sink;</p></li>
+<li><p>mobile reachability hints.</p></li>
+</ul>
+</section>
+<section id="m14-5-user-documentation">
+<h3>M14.5 User documentation<a class="headerlink" href="#m14-5-user-documentation" title="Link to this heading"></a></h3>
+<ul class="simple">
+<li><p>enrol GitHub;</p></li>
+<li><p>enrol Google;</p></li>
+<li><p>pair installation;</p></li>
+<li><p>login by QR;</p></li>
+<li><p>login on local network;</p></li>
+<li><p>sign report;</p></li>
+<li><p>replace phone;</p></li>
+<li><p>revoke lost phone;</p></li>
+<li><p>understand warnings.</p></li>
+</ul>
+</section>
+<section id="m14-6-developer-documentation">
+<h3>M14.6 Developer documentation<a class="headerlink" href="#m14-6-developer-documentation" title="Link to this heading"></a></h3>
+<ul class="simple">
+<li><p>embedding API;</p></li>
+<li><p>challenge lifecycle;</p></li>
+<li><p>verifier API;</p></li>
+<li><p>provider adapter;</p></li>
+<li><p>transport adapter;</p></li>
+<li><p>test fixtures;</p></li>
+<li><p>version negotiation;</p></li>
+<li><p>sample integration.</p></li>
+</ul>
+</section>
+</section>
+<section id="id54">
+<h2>Deliverables<a class="headerlink" href="#id54" title="Link to this heading"></a></h2>
+<ul class="simple">
+<li><p>operator guide;</p></li>
+<li><p>user guide;</p></li>
+<li><p>API reference;</p></li>
+<li><p>architecture guide;</p></li>
+<li><p>troubleshooting guide;</p></li>
+<li><p>release packages;</p></li>
+<li><p>SBOM and provenance.</p></li>
+</ul>
+</section>
+<section id="id55">
+<h2>Acceptance criteria<a class="headerlink" href="#id55" title="Link to this heading"></a></h2>
+<ul class="simple">
+<li><p>A clean supported host can install and bootstrap Pistis from released packages.</p></li>
+<li><p>Upgrade from the previous release candidate preserves devices and evidence.</p></li>
+<li><p>Backup/restore exercise succeeds.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">pistis</span> <span class="pre">doctor</span></code> diagnoses common discovery and provider failures.</p></li>
+<li><p>Synoptikon and Monas integration examples are reproducible from documentation.</p></li>
+<li><p>Mobile-store submission material is complete.</p></li>
+</ul>
+</section>
+<section id="id56">
+<h2>Exit gate<a class="headerlink" href="#id56" title="Link to this heading"></a></h2>
+<p>Release candidate can be deployed by someone outside the core engineering team using only the documentation.</p>
+</section>
+</section>
+<hr class="docutils" />
+<section id="milestone-m15-release-candidate-and-v1-0-acceptance">
+<h1>Milestone M15 — Release candidate and v1.0 acceptance<a class="headerlink" href="#milestone-m15-release-candidate-and-v1-0-acceptance" title="Link to this heading"></a></h1>
+<p><strong>Objective:</strong> Demonstrate that the complete v1.0 meets product, interoperability, security and operational requirements.</p>
+<p><strong>Estimated effort:</strong> 2 developer-weeks</p>
+<section id="id57">
+<h2>Work items<a class="headerlink" href="#id57" title="Link to this heading"></a></h2>
+<section id="m15-1-freeze-protocol-v1">
+<h3>M15.1 Freeze protocol v1<a class="headerlink" href="#m15-1-freeze-protocol-v1" title="Link to this heading"></a></h3>
+<ul class="simple">
+<li><p>freeze schemas;</p></li>
+<li><p>freeze signature suites;</p></li>
+<li><p>freeze canonical encoding;</p></li>
+<li><p>assign protocol version;</p></li>
+<li><p>publish compatibility policy;</p></li>
+<li><p>prohibit unreviewed changes.</p></li>
+</ul>
+</section>
+<section id="m15-2-end-to-end-acceptance-matrix">
+<h3>M15.2 End-to-end acceptance matrix<a class="headerlink" href="#m15-2-end-to-end-acceptance-matrix" title="Link to this heading"></a></h3>
+<p>Run each scenario on iOS and Android:</p>
+<ol class="arabic simple">
+<li><p>GitHub enrolment.</p></li>
+<li><p>Google enrolment.</p></li>
+<li><p>Synoptikon administrator bootstrap.</p></li>
+<li><p>Synoptikon login by QR.</p></li>
+<li><p>Synoptikon login by local direct exchange.</p></li>
+<li><p>Monas standalone login.</p></li>
+<li><p>Report signing.</p></li>
+<li><p>Offline evidence verification.</p></li>
+<li><p>Multi-device enrolment.</p></li>
+<li><p>Device suspension.</p></li>
+<li><p>Device revocation.</p></li>
+<li><p>Lost-device recovery.</p></li>
+<li><p>Provider display-name change.</p></li>
+<li><p>Installation backup/restore.</p></li>
+<li><p>Upgrade from release candidate.</p></li>
+<li><p>Multicast blocked fallback.</p></li>
+<li><p>Wrong identity rejection.</p></li>
+<li><p>Replay rejection.</p></li>
+<li><p>Expired challenge rejection.</p></li>
+<li><p>Installation fingerprint-change warning.</p></li>
+</ol>
+</section>
+<section id="m15-3-performance-and-usability-targets">
+<h3>M15.3 Performance and usability targets<a class="headerlink" href="#m15-3-performance-and-usability-targets" title="Link to this heading"></a></h3>
+<p>Suggested targets:</p>
+<ul class="simple">
+<li><p>challenge creation: under 100 ms excluding storage contention;</p></li>
+<li><p>signature verification: under 100 ms on supported server hardware;</p></li>
+<li><p>QR scan to approval screen: under 2 seconds under normal conditions;</p></li>
+<li><p>local direct response after approval: under 2 seconds on normal LAN;</p></li>
+<li><p>authentication flow: normally under 20 seconds for an enrolled user;</p></li>
+<li><p>no unbounded challenge-store growth;</p></li>
+<li><p>no material battery drain from passive discovery.</p></li>
+</ul>
+<p>These are acceptance targets, not protocol guarantees.</p>
+</section>
+<section id="m15-4-compatibility-declaration">
+<h3>M15.4 Compatibility declaration<a class="headerlink" href="#m15-4-compatibility-declaration" title="Link to this heading"></a></h3>
+<p>Publish:</p>
+<ul class="simple">
+<li><p>supported iOS versions/devices;</p></li>
+<li><p>supported Android versions/security tiers;</p></li>
+<li><p>supported browsers;</p></li>
+<li><p>supported Synoptikon version;</p></li>
+<li><p>supported Monas embedding API;</p></li>
+<li><p>supported database versions;</p></li>
+<li><p>unsupported environments.</p></li>
+</ul>
+</section>
+<section id="m15-5-release-approval">
+<h3>M15.5 Release approval<a class="headerlink" href="#m15-5-release-approval" title="Link to this heading"></a></h3>
+<p>Require signed approvals from:</p>
+<ul class="simple">
+<li><p>product owner;</p></li>
+<li><p>Rust/backend owner;</p></li>
+<li><p>iOS owner;</p></li>
+<li><p>Android owner;</p></li>
+<li><p>Synoptikon owner;</p></li>
+<li><p>security reviewer;</p></li>
+<li><p>release manager.</p></li>
+</ul>
+<p>Pistis should use its own artefact-signing capability to sign the v1.0 release evidence where practical.</p>
+</section>
+</section>
+<section id="id58">
+<h2>Deliverables<a class="headerlink" href="#id58" title="Link to this heading"></a></h2>
+<ul class="simple">
+<li><p>v1.0 release notes;</p></li>
+<li><p>protocol v1 specification;</p></li>
+<li><p>compatibility matrix;</p></li>
+<li><p>acceptance report;</p></li>
+<li><p>signed release artefacts;</p></li>
+<li><p>known limitations;</p></li>
+<li><p>migration guide;</p></li>
+<li><p>public security contact.</p></li>
+</ul>
+</section>
+<section id="id59">
+<h2>Acceptance criteria<a class="headerlink" href="#id59" title="Link to this heading"></a></h2>
+<p>Pistis v1.0 is complete only when all of the following are true:</p>
+<ul class="simple">
+<li><p>Synoptikon supports passwordless Pistis administrator bootstrap and login.</p></li>
+<li><p>Monas can consume Pistis independently.</p></li>
+<li><p>GitHub and Google external identities can be enrolled.</p></li>
+<li><p>iOS and Android clients pass the same protocol conformance suite.</p></li>
+<li><p>Routine authentication requires no central Pistis service.</p></li>
+<li><p>QR authentication functions without public internet after enrolment.</p></li>
+<li><p>Local-network direct exchange has a reliable QR fallback.</p></li>
+<li><p>Device revocation is immediate for new approvals.</p></li>
+<li><p>Signed report evidence can be verified offline.</p></li>
+<li><p>No open critical/high security defects remain.</p></li>
+<li><p>Operator, recovery and user documentation is complete.</p></li>
+<li><p>Reproducible release artefacts, SBOMs and checksums are published.</p></li>
+<li><p>Protocol v1 is frozen and versioned.</p></li>
+</ul>
+</section>
+<section id="id60">
+<h2>Exit gate<a class="headerlink" href="#id60" title="Link to this heading"></a></h2>
+<p>Tag and publish <code class="docutils literal notranslate"><span class="pre">v1.0.0</span></code>.</p>
+</section>
+</section>
+<hr class="docutils" />
+<section id="cross-cutting-engineering-requirements">
+<h1>7. Cross-cutting engineering requirements<a class="headerlink" href="#cross-cutting-engineering-requirements" title="Link to this heading"></a></h1>
+<p>These requirements apply to every milestone.</p>
+<section id="testing">
+<h2>7.1 Testing<a class="headerlink" href="#testing" title="Link to this heading"></a></h2>
+<p>Required test layers:</p>
+<ul class="simple">
+<li><p>Rust unit tests;</p></li>
+<li><p>property tests;</p></li>
+<li><p>protocol fixtures;</p></li>
+<li><p>fuzzing;</p></li>
+<li><p>database integration tests;</p></li>
+<li><p>browser integration tests;</p></li>
+<li><p>iOS unit/UI tests;</p></li>
+<li><p>Android unit/instrumentation tests;</p></li>
+<li><p>cross-language conformance tests;</p></li>
+<li><p>end-to-end tests;</p></li>
+<li><p>recovery exercises;</p></li>
+<li><p>upgrade tests;</p></li>
+<li><p>negative security tests.</p></li>
+</ul>
+<p>Every bug in protocol validation should produce a permanent regression fixture.</p>
+</section>
+<section id="observability">
+<h2>7.2 Observability<a class="headerlink" href="#observability" title="Link to this heading"></a></h2>
+<p>Structured events must include correlation identifiers but must not leak:</p>
+<ul class="simple">
+<li><p>provider tokens;</p></li>
+<li><p>full ID tokens;</p></li>
+<li><p>private keys;</p></li>
+<li><p>raw biometric information;</p></li>
+<li><p>sensitive report contents;</p></li>
+<li><p>complete response QR payloads at normal log levels.</p></li>
+</ul>
+</section>
+<section id="versioning">
+<h2>7.3 Versioning<a class="headerlink" href="#versioning" title="Link to this heading"></a></h2>
+<p>Maintain distinct versions for:</p>
+<ul class="simple">
+<li><p>protocol;</p></li>
+<li><p>evidence schema;</p></li>
+<li><p>Rust crate APIs;</p></li>
+<li><p>server application;</p></li>
+<li><p>mobile applications;</p></li>
+<li><p>database schema.</p></li>
+</ul>
+<p>A mobile app and server must negotiate protocol support explicitly.</p>
+</section>
+<section id="clock-handling">
+<h2>7.4 Clock handling<a class="headerlink" href="#clock-handling" title="Link to this heading"></a></h2>
+<p>Challenges use server-issued times and bounded expiry. The phone may display time based on its local clock but must not establish authoritative validity from that clock alone.</p>
+<p>Allow configurable small skew; never accept unbounded expiry.</p>
+</section>
+<section id="accessibility">
+<h2>7.5 Accessibility<a class="headerlink" href="#accessibility" title="Link to this heading"></a></h2>
+<p>QR is not the only explanation of the task. Provide text and assistive-technology descriptions.</p>
+<p>Core approval buttons and identity details must be accessible.</p>
+</section>
+<section id="internationalisation">
+<h2>7.6 Internationalisation<a class="headerlink" href="#internationalisation" title="Link to this heading"></a></h2>
+<p>v1.0 may ship English-only, but strings must not be hard-coded into protocol payloads or domain logic. Human-readable display fields should be separable from canonical machine semantics.</p>
+</section>
+<section id="privacy">
+<h2>7.7 Privacy<a class="headerlink" href="#privacy" title="Link to this heading"></a></h2>
+<p>Collect the minimum provider data needed to establish identity. Avoid retaining GitHub/Google access tokens after enrolment.</p>
+</section>
+<section id="supply-chain-integrity">
+<h2>7.8 Supply-chain integrity<a class="headerlink" href="#supply-chain-integrity" title="Link to this heading"></a></h2>
+<ul class="simple">
+<li><p>dependency allow-list;</p></li>
+<li><p>locked dependencies;</p></li>
+<li><p>SBOM;</p></li>
+<li><p>signed build artefacts;</p></li>
+<li><p>CI provenance;</p></li>
+<li><p>mobile signing-key governance;</p></li>
+<li><p>reproducible Rust builds where practical.</p></li>
+</ul>
+</section>
+</section>
+<hr class="docutils" />
+<section id="dependency-graph">
+<h1>8. Dependency graph<a class="headerlink" href="#dependency-graph" title="Link to this heading"></a></h1>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>M0
+└── M1
+    └── M2
+        ├── M3
+        │   └── M6
+        ├── M4
+        │   ├── M5
+        │   │   ├── M7
+        │   │   ├── M8
+        │   │   └── M9
+        │   └── M12
+        └── M10
+            └── M6 / M11 UI support
+
+M6 + M7 + M8 + M9 + M10
+└── M11
+    └── M12
+        └── M13
+            └── M14
+                └── M15
+</pre></div>
+</div>
+<p>Parallelisation notes:</p>
+<ul class="simple">
+<li><p>iOS UI shell can begin during M2, but signing integration waits for M1/M2.</p></li>
+<li><p>Synoptikon UI preparation can begin during M4.</p></li>
+<li><p>Android application shell may begin before M10, but protocol parity depends on frozen fixtures.</p></li>
+<li><p>Documentation should be written continuously rather than deferred entirely to M14.</p></li>
+<li><p>Security review should begin during M1 and M2; M13 is the final hardening gate, not the first security activity.</p></li>
+</ul>
+</section>
+<hr class="docutils" />
+<section id="recommended-implementation-sequence-by-release">
+<h1>9. Recommended implementation sequence by release<a class="headerlink" href="#recommended-implementation-sequence-by-release" title="Link to this heading"></a></h1>
+<section id="prototype-0-1">
+<h2>Prototype 0.1<a class="headerlink" href="#prototype-0-1" title="Link to this heading"></a></h2>
+<ul class="simple">
+<li><p>Rust challenge and verifier;</p></li>
+<li><p>software test key;</p></li>
+<li><p>QR round trip;</p></li>
+<li><p>no external provider;</p></li>
+<li><p>no production mobile app.</p></li>
+</ul>
+</section>
+<section id="developer-preview-0-2">
+<h2>Developer Preview 0.2<a class="headerlink" href="#developer-preview-0-2" title="Link to this heading"></a></h2>
+<ul class="simple">
+<li><p>GitHub and Google enrolment;</p></li>
+<li><p>iOS test app;</p></li>
+<li><p>local registry;</p></li>
+<li><p>QR login;</p></li>
+<li><p>standalone reference server.</p></li>
+</ul>
+</section>
+<section id="synoptikon-alpha-0-3">
+<h2>Synoptikon Alpha 0.3<a class="headerlink" href="#synoptikon-alpha-0-3" title="Link to this heading"></a></h2>
+<ul class="simple">
+<li><p>administrator bootstrap;</p></li>
+<li><p>Synoptikon session integration;</p></li>
+<li><p>device administration;</p></li>
+<li><p>audit.</p></li>
+</ul>
+</section>
+<section id="ios-mvp-0-5">
+<h2>iOS MVP 0.5<a class="headerlink" href="#ios-mvp-0-5" title="Link to this heading"></a></h2>
+<ul class="simple">
+<li><p>production-shaped iOS app;</p></li>
+<li><p>GitHub/Google;</p></li>
+<li><p>QR login;</p></li>
+<li><p>basic report signing;</p></li>
+<li><p>Monas CLI;</p></li>
+<li><p>recovery documentation.</p></li>
+</ul>
+</section>
+<section id="cross-platform-beta-0-8">
+<h2>Cross-platform Beta 0.8<a class="headerlink" href="#cross-platform-beta-0-8" title="Link to this heading"></a></h2>
+<ul class="simple">
+<li><p>Android app;</p></li>
+<li><p>local-network discovery;</p></li>
+<li><p>direct response;</p></li>
+<li><p>multi-device lifecycle;</p></li>
+<li><p>detached evidence.</p></li>
+</ul>
+</section>
+<section id="release-candidate-1-0-0-rc-1">
+<h2>Release Candidate 1.0.0-rc.1<a class="headerlink" href="#release-candidate-1-0-0-rc-1" title="Link to this heading"></a></h2>
+<ul class="simple">
+<li><p>security hardening;</p></li>
+<li><p>penetration-test remediation;</p></li>
+<li><p>packaging;</p></li>
+<li><p>compatibility freeze;</p></li>
+<li><p>documentation.</p></li>
+</ul>
+</section>
+<section id="v1-0-0">
+<h2>v1.0.0<a class="headerlink" href="#v1-0-0" title="Link to this heading"></a></h2>
+<ul class="simple">
+<li><p>acceptance matrix passed;</p></li>
+<li><p>protocol frozen;</p></li>
+<li><p>mobile releases approved;</p></li>
+<li><p>signed release artefacts.</p></li>
+</ul>
+</section>
+</section>
+<hr class="docutils" />
+<section id="principal-risks-and-mitigations">
+<h1>10. Principal risks and mitigations<a class="headerlink" href="#principal-risks-and-mitigations" title="Link to this heading"></a></h1>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>Risk</p></th>
+<th class="head"><p>Consequence</p></th>
+<th class="head"><p>Mitigation</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>Treating mutable usernames/emails as identity</p></td>
+<td><p>Account misbinding</p></td>
+<td><p>Store stable provider subjects</p></td>
+</tr>
+<tr class="row-odd"><td><p>Divergent iOS/Android canonical encoding</p></td>
+<td><p>Cross-platform verification failure</p></td>
+<td><p>Shared normative fixtures and byte-level tests</p></td>
+</tr>
+<tr class="row-even"><td><p>Secure Enclave/Keystore capability mismatch</p></td>
+<td><p>Inconsistent assurance</p></td>
+<td><p>Select common signature suite and report capability truthfully</p></td>
+</tr>
+<tr class="row-odd"><td><p>mDNS blocked by enterprise networks</p></td>
+<td><p>Poor convenience</p></td>
+<td><p>QR fallback is mandatory</p></td>
+</tr>
+<tr class="row-even"><td><p>Browser expected to discover mDNS directly</p></td>
+<td><p>Unimplementable UX</p></td>
+<td><p>Backend advertises/receives; browser observes state</p></td>
+</tr>
+<tr class="row-odd"><td><p>Lost sole-admin phone</p></td>
+<td><p>Installation lockout</p></td>
+<td><p>Audited console recovery and second-device recommendation</p></td>
+</tr>
+<tr class="row-even"><td><p>Provider outage</p></td>
+<td><p>New enrolment unavailable</p></td>
+<td><p>Routine login remains local</p></td>
+</tr>
+<tr class="row-odd"><td><p>Compromised external account after enrolment</p></td>
+<td><p>Recovery risk</p></td>
+<td><p>Local device remains separate; rebinding requires explicit policy</p></td>
+</tr>
+<tr class="row-even"><td><p>Stolen unlocked phone</p></td>
+<td><p>Unauthorized signing</p></td>
+<td><p>Per-signature biometric/device authentication</p></td>
+</tr>
+<tr class="row-odd"><td><p>Key invalidation after biometric changes</p></td>
+<td><p>User lockout</p></td>
+<td><p>Clear re-enrolment and recovery flow</p></td>
+</tr>
+<tr class="row-even"><td><p>Local database tampering</p></td>
+<td><p>Trust substitution</p></td>
+<td><p>audit sealing, OS controls, exported verification material, future transparency option</p></td>
+</tr>
+<tr class="row-odd"><td><p>QR phishing/substitution</p></td>
+<td><p>Approval of wrong installation</p></td>
+<td><p>display installation identity/fingerprint and sign exact installation ID</p></td>
+</tr>
+<tr class="row-even"><td><p>Protocol scope expansion</p></td>
+<td><p>Project becomes IAM platform</p></td>
+<td><p>enforce v1.0 non-goals</p></td>
+</tr>
+<tr class="row-odd"><td><p>App-store delays</p></td>
+<td><p>Release slip</p></td>
+<td><p>TestFlight/Play internal tracks early</p></td>
+</tr>
+<tr class="row-even"><td><p>Android device fragmentation</p></td>
+<td><p>Unsupported assurance</p></td>
+<td><p>explicit device tiers and test matrix</p></td>
+</tr>
+<tr class="row-odd"><td><p>Legal overstatement of signatures</p></td>
+<td><p>Compliance exposure</p></td>
+<td><p>describe cryptographic attestation accurately; no legal equivalence claim</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+<hr class="docutils" />
+<section id="definition-of-done-for-every-milestone">
+<h1>11. Definition of done for every milestone<a class="headerlink" href="#definition-of-done-for-every-milestone" title="Link to this heading"></a></h1>
+<p>A milestone is not complete until:</p>
+<ul class="simple">
+<li><p>code is merged;</p></li>
+<li><p>tests are automated;</p></li>
+<li><p>user/operator behaviour is documented;</p></li>
+<li><p>security implications are reviewed;</p></li>
+<li><p>errors and failure states are implemented;</p></li>
+<li><p>metrics/logging are present where operationally relevant;</p></li>
+<li><p>database migration and rollback implications are known;</p></li>
+<li><p>compatibility fixtures are updated;</p></li>
+<li><p>acceptance criteria have recorded evidence;</p></li>
+<li><p>no critical TODO remains hidden in code comments.</p></li>
+</ul>
+</section>
+<hr class="docutils" />
+<section id="deferred-post-v1-0-backlog">
+<h1>12. Deferred post-v1.0 backlog<a class="headerlink" href="#deferred-post-v1-0-backlog" title="Link to this heading"></a></h1>
+<p>Likely post-v1.0 work includes:</p>
+<ul class="simple">
+<li><p>APNs and FCM remote push relay;</p></li>
+<li><p>ORCID;</p></li>
+<li><p>Microsoft Entra ID;</p></li>
+<li><p>Apple identity;</p></li>
+<li><p>institutional generic OIDC configuration;</p></li>
+<li><p>hardware attestation strengthening;</p></li>
+<li><p>trusted timestamp service;</p></li>
+<li><p>transparency anchoring;</p></li>
+<li><p>formal delegated authority;</p></li>
+<li><p>richer multi-person policy engine;</p></li>
+<li><p>Apple Watch/Wear OS approval;</p></li>
+<li><p>NFC;</p></li>
+<li><p>SSH-agent integration;</p></li>
+<li><p>Kubernetes admission approval;</p></li>
+<li><p>software-release signing;</p></li>
+<li><p>public verification portal;</p></li>
+<li><p>encrypted phone-to-phone recovery transfer;</p></li>
+<li><p>regulated-signature profiles;</p></li>
+<li><p>organisation-managed mobile deployment;</p></li>
+<li><p>global Pistis identity continuity, only if a clear requirement emerges.</p></li>
+</ul>
+<p>None of these should be allowed to delay v1.0 unless a security review establishes that omission would make the baseline unsafe.</p>
+</section>
+<hr class="docutils" />
+<section id="reference-implementation-technologies">
+<h1>13. Reference implementation technologies<a class="headerlink" href="#reference-implementation-technologies" title="Link to this heading"></a></h1>
+<p>The following are current implementation candidates rather than mandatory dependencies:</p>
+<section id="rust">
+<h2>Rust<a class="headerlink" href="#rust" title="Link to this heading"></a></h2>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">axum</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">tokio</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">serde</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">openidconnect</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">sha2</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">p256</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">coset</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">ciborium</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">qrcode</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">mdns-sd</span></code>, <code class="docutils literal notranslate"><span class="pre">simple-mdns</span></code>, or an OS-native DNS-SD abstraction</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">rustls</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">sqlx</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">tracing</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">thiserror</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">zeroize</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">proptest</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">cargo-fuzz</span></code></p></li>
+</ul>
+</section>
+<section id="ios">
+<h2>iOS<a class="headerlink" href="#ios" title="Link to this heading"></a></h2>
+<ul class="simple">
+<li><p>Swift</p></li>
+<li><p>SwiftUI</p></li>
+<li><p>Security framework</p></li>
+<li><p>CryptoKit where suitable</p></li>
+<li><p>LocalAuthentication</p></li>
+<li><p>AuthenticationServices</p></li>
+<li><p>AVFoundation for QR scanning</p></li>
+<li><p>Network framework / Bonjour APIs</p></li>
+</ul>
+</section>
+<section id="android">
+<h2>Android<a class="headerlink" href="#android" title="Link to this heading"></a></h2>
+<ul class="simple">
+<li><p>Kotlin</p></li>
+<li><p>Jetpack Compose</p></li>
+<li><p>Android Keystore</p></li>
+<li><p>BiometricPrompt</p></li>
+<li><p>AppAuth or platform-compatible OAuth/OIDC flow</p></li>
+<li><p>CameraX / ML Kit or a selected QR library</p></li>
+<li><p>Network service discovery APIs</p></li>
+</ul>
+<p>Dependency selection must occur through an ADR and security/maintenance review. Crate or platform availability alone is not sufficient justification.</p>
+</section>
+</section>
+<hr class="docutils" />
+<section id="source-notes">
+<h1>14. Source notes<a class="headerlink" href="#source-notes" title="Link to this heading"></a></h1>
+<p>The implementation plan assumes established platform capabilities:</p>
+<ul class="simple">
+<li><p>Apple’s LocalAuthentication framework provides the system interface for Face ID and Touch ID-gated operations.</p></li>
+<li><p>Apple’s Security/CryptoKit APIs provide device-protected cryptographic-key operations, subject to the selected key type and platform capabilities.</p></li>
+<li><p>Android Keystore supports application-scoped cryptographic keys and reports hardware-backed characteristics.</p></li>
+<li><p>Android BiometricPrompt provides a system biometric authentication dialog and can bind authentication to cryptographic operations.</p></li>
+<li><p>OpenID Connect supplies a verifiable identity layer over OAuth 2.0; Google provides an OpenID Connect implementation.</p></li>
+<li><p>Rust’s <code class="docutils literal notranslate"><span class="pre">openidconnect</span></code> crate provides strongly typed OpenID Connect interfaces.</p></li>
+<li><p>Rust mDNS/DNS-SD crates exist, but the project must evaluate pure-Rust versus operating-system-native discovery stacks.</p></li>
+</ul>
+<p>Authoritative/current references consulted during planning:</p>
+<ul class="simple">
+<li><p>Apple LocalAuthentication: https://developer.apple.com/documentation/localauthentication</p></li>
+<li><p>Apple Keychain access with Face ID/Touch ID: https://developer.apple.com/documentation/localauthentication/accessing-keychain-items-with-face-id-or-touch-id</p></li>
+<li><p>Android Keystore: https://developer.android.com/privacy-and-security/keystore</p></li>
+<li><p>Android biometric authentication: https://developer.android.com/identity/sign-in/biometric-auth</p></li>
+<li><p>Google OpenID Connect: https://developers.google.com/identity/openid-connect/openid-connect</p></li>
+<li><p>OpenID Connect Core: https://openid.net/specs/openid-connect-core-1_0.html</p></li>
+<li><p>Rust <code class="docutils literal notranslate"><span class="pre">openidconnect</span></code>: https://docs.rs/openidconnect</p></li>
+<li><p>Rust <code class="docutils literal notranslate"><span class="pre">mdns-sd</span></code>: https://docs.rs/mdns-sd</p></li>
+<li><p>Rust <code class="docutils literal notranslate"><span class="pre">simple-mdns</span></code>: https://docs.rs/simple-mdns</p></li>
+</ul>
+</section>
+<hr class="docutils" />
+<section id="final-v1-0-boundary">
+<h1>15. Final v1.0 boundary<a class="headerlink" href="#final-v1-0-boundary" title="Link to this heading"></a></h1>
+<p>Pistis v1.0 is successful when it provides a small, auditable and independently reusable trust layer—not when it reproduces Okta, Auth0 or Keycloak.</p>
+<p>The final v1.0 architecture must preserve this division:</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>GitHub or Google
+    proves control of an external identity during enrolment
+
+Pistis mobile application
+    protects a device key and signs explicit challenges
+
+Synoptikon or Monas
+    defines the local account, permissions and requested action
+
+Rust Pistis verifier
+    validates the cryptographic evidence
+
+QR/local network
+    transports the challenge and response
+
+Local installation
+    remains sovereign and operable without a central Pistis service
+</pre></div>
+</div>
+<p>This boundary is the primary mechanism for controlling development scope and retaining the conceptual simplicity that makes Pistis distinctive.</p>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="PROJECT_CHARTER.html" class="btn btn-neutral float-left" title="Project Charter — Pistis" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="TODO.html" class="btn btn-neutral float-right" title="TODO.md" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026, Pistis contributors.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

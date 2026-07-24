@@ -1,0 +1,497 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="./">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Project Charter — Pistis &mdash; Pistis 0.0.0</title>
+      <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=e59714d7" />
+      <link rel="stylesheet" type="text/css" href="_static/pistis.css?v=168623c6" />
+
+  
+      <script src="_static/jquery.js?v=5d32c60e"></script>
+      <script src="_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="_static/documentation_options.js?v=7026087e"></script>
+      <script src="_static/doctools.js?v=9bcbadda"></script>
+      <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Pistis v1.0 — MILESTONE.md" href="MILESTONE.html" />
+    <link rel="prev" title="Pistis documentation" href="README.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="index.html" class="icon icon-home">
+            Pistis
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="README.html">Pistis documentation</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Project Charter — Pistis</a></li>
+<li class="toctree-l1"><a class="reference internal" href="#vision">1. Vision</a></li>
+<li class="toctree-l1"><a class="reference internal" href="#scope">2. Scope</a></li>
+<li class="toctree-l1"><a class="reference internal" href="#guiding-principles">3. Guiding Principles</a></li>
+<li class="toctree-l1"><a class="reference internal" href="#primary-use-cases">4. Primary Use Cases</a></li>
+<li class="toctree-l1"><a class="reference internal" href="#architecture">5. Architecture</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#trust-anchors">Trust Anchors</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#device">Device</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#communication">Communication</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="#deployment-modes">6. Deployment Modes</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#embedded">Embedded</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#standalone-monas">Standalone (Monas)</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="#technology">7. Technology</a></li>
+<li class="toctree-l1"><a class="reference internal" href="#mvp-deliverables">8. MVP Deliverables</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#backend">Backend</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#ios">iOS</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#synoptikon-integration">Synoptikon Integration</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#monas-integration">Monas Integration</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="#version-1-0">9. Version 1.0</a></li>
+<li class="toctree-l1"><a class="reference internal" href="#future-roadmap">10. Future Roadmap</a></li>
+<li class="toctree-l1"><a class="reference internal" href="#deliverables">11. Deliverables</a></li>
+<li class="toctree-l1"><a class="reference internal" href="#success-criteria">12. Success Criteria</a></li>
+<li class="toctree-l1"><a class="reference internal" href="#non-goals">13. Non-Goals</a></li>
+<li class="toctree-l1"><a class="reference internal" href="#long-term-vision">14. Long-Term Vision</a></li>
+<li class="toctree-l1"><a class="reference internal" href="MILESTONE.html">Pistis v1.0 — MILESTONE.md</a></li>
+<li class="toctree-l1"><a class="reference internal" href="MILESTONE.html#milestone-m0-charter-reconciliation-and-delivery-baseline">Milestone M0 — Charter reconciliation and delivery baseline</a></li>
+<li class="toctree-l1"><a class="reference internal" href="MILESTONE.html#milestone-m1-threat-model-and-protocol-specification">Milestone M1 — Threat model and protocol specification</a></li>
+<li class="toctree-l1"><a class="reference internal" href="MILESTONE.html#milestone-m2-rust-workspace-and-cryptographic-foundation">Milestone M2 — Rust workspace and cryptographic foundation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="MILESTONE.html#milestone-m3-github-and-google-trust-anchor-enrolment">Milestone M3 — GitHub and Google trust-anchor enrolment</a></li>
+<li class="toctree-l1"><a class="reference internal" href="MILESTONE.html#milestone-m4-local-installation-identity-and-device-registry">Milestone M4 — Local installation identity and device registry</a></li>
+<li class="toctree-l1"><a class="reference internal" href="MILESTONE.html#milestone-m5-qr-authentication-end-to-end">Milestone M5 — QR authentication end-to-end</a></li>
+<li class="toctree-l1"><a class="reference internal" href="MILESTONE.html#milestone-m6-ios-mvp-application">Milestone M6 — iOS MVP application</a></li>
+<li class="toctree-l1"><a class="reference internal" href="MILESTONE.html#milestone-m7-synoptikon-integration">Milestone M7 — Synoptikon integration</a></li>
+<li class="toctree-l1"><a class="reference internal" href="MILESTONE.html#milestone-m8-monas-standalone-integration-and-cli">Milestone M8 — Monas standalone integration and CLI</a></li>
+<li class="toctree-l1"><a class="reference internal" href="MILESTONE.html#milestone-m9-local-network-discovery-and-direct-exchange">Milestone M9 — Local-network discovery and direct exchange</a></li>
+<li class="toctree-l1"><a class="reference internal" href="MILESTONE.html#milestone-m10-artefact-report-signing-and-portable-evidence">Milestone M10 — Artefact/report signing and portable evidence</a></li>
+<li class="toctree-l1"><a class="reference internal" href="MILESTONE.html#milestone-m11-android-application">Milestone M11 — Android application</a></li>
+<li class="toctree-l1"><a class="reference internal" href="MILESTONE.html#milestone-m12-recovery-revocation-and-multi-device-lifecycle">Milestone M12 — Recovery, revocation and multi-device lifecycle</a></li>
+<li class="toctree-l1"><a class="reference internal" href="MILESTONE.html#milestone-m13-security-hardening-and-independent-review">Milestone M13 — Security hardening and independent review</a></li>
+<li class="toctree-l1"><a class="reference internal" href="MILESTONE.html#milestone-m14-packaging-operations-and-documentation">Milestone M14 — Packaging, operations and documentation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="MILESTONE.html#milestone-m15-release-candidate-and-v1-0-acceptance">Milestone M15 — Release candidate and v1.0 acceptance</a></li>
+<li class="toctree-l1"><a class="reference internal" href="MILESTONE.html#cross-cutting-engineering-requirements">7. Cross-cutting engineering requirements</a></li>
+<li class="toctree-l1"><a class="reference internal" href="MILESTONE.html#dependency-graph">8. Dependency graph</a></li>
+<li class="toctree-l1"><a class="reference internal" href="MILESTONE.html#recommended-implementation-sequence-by-release">9. Recommended implementation sequence by release</a></li>
+<li class="toctree-l1"><a class="reference internal" href="MILESTONE.html#principal-risks-and-mitigations">10. Principal risks and mitigations</a></li>
+<li class="toctree-l1"><a class="reference internal" href="MILESTONE.html#definition-of-done-for-every-milestone">11. Definition of done for every milestone</a></li>
+<li class="toctree-l1"><a class="reference internal" href="MILESTONE.html#deferred-post-v1-0-backlog">12. Deferred post-v1.0 backlog</a></li>
+<li class="toctree-l1"><a class="reference internal" href="MILESTONE.html#reference-implementation-technologies">13. Reference implementation technologies</a></li>
+<li class="toctree-l1"><a class="reference internal" href="MILESTONE.html#source-notes">14. Source notes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="MILESTONE.html#final-v1-0-boundary">15. Final v1.0 boundary</a></li>
+<li class="toctree-l1"><a class="reference internal" href="TODO.html">TODO.md</a></li>
+<li class="toctree-l1"><a class="reference internal" href="TODO.html#epic-0-repository">EPIC 0 — Repository</a></li>
+<li class="toctree-l1"><a class="reference internal" href="TODO.html#epic-1-protocol">EPIC 1 — Protocol</a></li>
+<li class="toctree-l1"><a class="reference internal" href="TODO.html#epic-2-crypto">EPIC 2 — Crypto</a></li>
+<li class="toctree-l1"><a class="reference internal" href="TODO.html#epic-3-github-trust">EPIC 3 — GitHub trust</a></li>
+<li class="toctree-l1"><a class="reference internal" href="TODO.html#epic-4-google-trust">EPIC 4 — Google trust</a></li>
+<li class="toctree-l1"><a class="reference internal" href="TODO.html#epic-5-device-registry">EPIC 5 — Device registry</a></li>
+<li class="toctree-l1"><a class="reference internal" href="TODO.html#epic-6-qr-authentication">EPIC 6 — QR authentication</a></li>
+<li class="toctree-l1"><a class="reference internal" href="TODO.html#epic-7-ios">EPIC 7 — iOS</a></li>
+<li class="toctree-l1"><a class="reference internal" href="TODO.html#epic-8-android">EPIC 8 — Android</a></li>
+<li class="toctree-l1"><a class="reference internal" href="TODO.html#epic-9-synoptikon">EPIC 9 — Synoptikon</a></li>
+<li class="toctree-l1"><a class="reference internal" href="TODO.html#epic-10-monas">EPIC 10 — Monas</a></li>
+<li class="toctree-l1"><a class="reference internal" href="TODO.html#epic-11-local-discovery">EPIC 11 — Local discovery</a></li>
+<li class="toctree-l1"><a class="reference internal" href="TODO.html#epic-12-evidence">EPIC 12 — Evidence</a></li>
+<li class="toctree-l1"><a class="reference internal" href="TODO.html#epic-13-recovery">EPIC 13 — Recovery</a></li>
+<li class="toctree-l1"><a class="reference internal" href="TODO.html#epic-14-security">EPIC 14 — Security</a></li>
+<li class="toctree-l1"><a class="reference internal" href="TODO.html#epic-15-release">EPIC 15 — Release</a></li>
+<li class="toctree-l1"><a class="reference internal" href="TODO.html#continuous-tasks">Continuous tasks</a></li>
+<li class="toctree-l1"><a class="reference internal" href="BOOTSTRAP.html">BOOTSTRAP.md</a></li>
+<li class="toctree-l1"><a class="reference internal" href="BOOTSTRAP.html#purpose">Purpose</a></li>
+<li class="toctree-l1"><a class="reference internal" href="BOOTSTRAP.html#bootstrap-objectives">Bootstrap Objectives</a></li>
+<li class="toctree-l1"><a class="reference internal" href="BOOTSTRAP.html#deliverables">Deliverables</a></li>
+<li class="toctree-l1"><a class="reference internal" href="BOOTSTRAP.html#agents-md">AGENTS.md</a></li>
+<li class="toctree-l1"><a class="reference internal" href="BOOTSTRAP.html#github-corpus">GitHub Corpus</a></li>
+<li class="toctree-l1"><a class="reference internal" href="BOOTSTRAP.html#branch-strategy">Branch Strategy</a></li>
+<li class="toctree-l1"><a class="reference internal" href="BOOTSTRAP.html#commit-policy">Commit Policy</a></li>
+<li class="toctree-l1"><a class="reference internal" href="BOOTSTRAP.html#semantic-versioning">Semantic Versioning</a></li>
+<li class="toctree-l1"><a class="reference internal" href="BOOTSTRAP.html#pull-requests">Pull Requests</a></li>
+<li class="toctree-l1"><a class="reference internal" href="BOOTSTRAP.html#documentation">Documentation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="BOOTSTRAP.html#testing">Testing</a></li>
+<li class="toctree-l1"><a class="reference internal" href="BOOTSTRAP.html#adrs">ADRs</a></li>
+<li class="toctree-l1"><a class="reference internal" href="BOOTSTRAP.html#quality-gates">Quality Gates</a></li>
+<li class="toctree-l1"><a class="reference internal" href="BOOTSTRAP.html#security">Security</a></li>
+<li class="toctree-l1"><a class="reference internal" href="BOOTSTRAP.html#bootstrap-completion-criteria">Bootstrap Completion Criteria</a></li>
+<li class="toctree-l1"><a class="reference internal" href="BOOTSTRAP_STATUS.html">Bootstrap status</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="development/README.html">Development documentation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="development/issue-model.html">Planning issue model</a></li>
+<li class="toctree-l1"><a class="reference internal" href="development/jenkins-ci.html">Jenkins CI</a></li>
+<li class="toctree-l1"><a class="reference internal" href="development/documentation.html">Documentation workflow</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="adr/README.html">Architecture Decision Records</a></li>
+<li class="toctree-l1"><a class="reference internal" href="adr/0000-template.html">ADR-NNNN: Decision title</a></li>
+<li class="toctree-l1"><a class="reference internal" href="protocol/README.html">Protocol documentation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="security/README.html">Security documentation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="operations/README.html">Operations documentation</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">Pistis</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">Project Charter — Pistis</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="_sources/PROJECT_CHARTER.md.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="project-charter-pistis">
+<h1>Project Charter — Pistis<a class="headerlink" href="#project-charter-pistis" title="Link to this heading"></a></h1>
+<p><strong>Status:</strong> Draft Charter v0.1<br />
+<strong>Project:</strong> Pistis<br />
+<strong>Language:</strong> Rust (core services and libraries)</p>
+</section>
+<hr class="docutils" />
+<section id="vision">
+<h1>1. Vision<a class="headerlink" href="#vision" title="Link to this heading"></a></h1>
+<p>Pistis is a <strong>portable cryptographic trust and attestation system</strong>
+designed for scientific computing.</p>
+<p>Unlike conventional identity providers, Pistis does <strong>not</strong> own user
+identities. Instead, it binds trusted external identities (initially
+GitHub and Google) to hardware-backed device credentials and produces
+durable, verifiable evidence of human approval.</p>
+<p>Pistis is intended to become the trust layer underpinning
+authentication, report signing, workflow approval and governance
+throughout the Mnemosyne ecosystem while remaining usable as a
+standalone open system.</p>
+</section>
+<hr class="docutils" />
+<section id="scope">
+<h1>2. Scope<a class="headerlink" href="#scope" title="Link to this heading"></a></h1>
+<p>Pistis shall:</p>
+<ul class="simple">
+<li><p>prove control of trusted external identities;</p></li>
+<li><p>authenticate users through cryptographic challenge/response;</p></li>
+<li><p>generate durable approval evidence;</p></li>
+<li><p>support offline and air-gapped operation;</p></li>
+<li><p>operate without requiring a central identity server;</p></li>
+<li><p>expose clean Rust APIs and CLI tooling.</p></li>
+</ul>
+<p>Pistis shall <strong>not</strong>:</p>
+<ul class="simple">
+<li><p>become a general enterprise IAM platform;</p></li>
+<li><p>replace GitHub, Google or institutional identity providers;</p></li>
+<li><p>maintain user passwords;</p></li>
+<li><p>require cloud infrastructure for normal operation.</p></li>
+</ul>
+</section>
+<hr class="docutils" />
+<section id="guiding-principles">
+<h1>3. Guiding Principles<a class="headerlink" href="#guiding-principles" title="Link to this heading"></a></h1>
+<ol class="arabic simple">
+<li><p>Local-first.</p></li>
+<li><p>Cryptography over shared secrets.</p></li>
+<li><p>Evidence over sessions.</p></li>
+<li><p>Portable and verifiable artefacts.</p></li>
+<li><p>Minimal infrastructure.</p></li>
+<li><p>Human-readable audit trails.</p></li>
+<li><p>Open standards wherever practical.</p></li>
+</ol>
+</section>
+<hr class="docutils" />
+<section id="primary-use-cases">
+<h1>4. Primary Use Cases<a class="headerlink" href="#primary-use-cases" title="Link to this heading"></a></h1>
+<ul class="simple">
+<li><p>Browser login approval.</p></li>
+<li><p>Scientific report signing.</p></li>
+<li><p>Dataset publication approval.</p></li>
+<li><p>Workflow release.</p></li>
+<li><p>Software release approval.</p></li>
+<li><p>Administrative approval.</p></li>
+<li><p>Multi-person governance approval.</p></li>
+</ul>
+</section>
+<hr class="docutils" />
+<section id="architecture">
+<h1>5. Architecture<a class="headerlink" href="#architecture" title="Link to this heading"></a></h1>
+<section id="trust-anchors">
+<h2>Trust Anchors<a class="headerlink" href="#trust-anchors" title="Link to this heading"></a></h2>
+<p>Initial MVP:</p>
+<ul class="simple">
+<li><p>GitHub</p></li>
+<li><p>Google</p></li>
+</ul>
+<p>Future:</p>
+<ul class="simple">
+<li><p>ORCID</p></li>
+<li><p>Microsoft Entra ID</p></li>
+<li><p>Apple</p></li>
+<li><p>Institutional OIDC providers</p></li>
+</ul>
+<p>Trust anchors establish identity <strong>once</strong>. Pistis subsequently proves
+possession of the enrolled device credential.</p>
+</section>
+<section id="device">
+<h2>Device<a class="headerlink" href="#device" title="Link to this heading"></a></h2>
+<p>MVP:</p>
+<ul class="simple">
+<li><p>iOS</p></li>
+<li><p>Secure Enclave</p></li>
+<li><p>Face ID / Touch ID</p></li>
+</ul>
+<p>Version 1.0:</p>
+<ul class="simple">
+<li><p>Android</p></li>
+<li><p>Android Keystore</p></li>
+<li><p>BiometricPrompt</p></li>
+</ul>
+</section>
+<section id="communication">
+<h2>Communication<a class="headerlink" href="#communication" title="Link to this heading"></a></h2>
+<p>Priority order:</p>
+<ol class="arabic simple">
+<li><p>Local discovery (mDNS)</p></li>
+<li><p>QR code</p></li>
+<li><p>Optional remote notification (future)</p></li>
+</ol>
+<p>Authentication is always challenge/response using signed nonces.</p>
+</section>
+</section>
+<hr class="docutils" />
+<section id="deployment-modes">
+<h1>6. Deployment Modes<a class="headerlink" href="#deployment-modes" title="Link to this heading"></a></h1>
+<section id="embedded">
+<h2>Embedded<a class="headerlink" href="#embedded" title="Link to this heading"></a></h2>
+<p>Integrated into Mnemosyne Synoptikon.</p>
+<p>Responsibilities:</p>
+<ul class="simple">
+<li><p>login approval</p></li>
+<li><p>report signing</p></li>
+<li><p>workflow approval</p></li>
+</ul>
+</section>
+<section id="standalone-monas">
+<h2>Standalone (Monas)<a class="headerlink" href="#standalone-monas" title="Link to this heading"></a></h2>
+<p>Monas deployments may consume Pistis as an independent trust service
+without requiring Synoptikon.</p>
+</section>
+</section>
+<hr class="docutils" />
+<section id="technology">
+<h1>7. Technology<a class="headerlink" href="#technology" title="Link to this heading"></a></h1>
+<p>Core implementation:</p>
+<ul class="simple">
+<li><p>Rust</p></li>
+<li><p>Axum</p></li>
+<li><p>Rustls</p></li>
+<li><p>Serde</p></li>
+<li><p>CBOR</p></li>
+<li><p>Ed25519</p></li>
+<li><p>SHA-256</p></li>
+</ul>
+<p>Expected ecosystem:</p>
+<ul class="simple">
+<li><p>openidconnect</p></li>
+<li><p>ed25519-dalek</p></li>
+<li><p>coset</p></li>
+<li><p>ciborium</p></li>
+<li><p>qrcode</p></li>
+<li><p>mdns-sd</p></li>
+</ul>
+<p>Native applications:</p>
+<ul class="simple">
+<li><p>Swift / SwiftUI (MVP)</p></li>
+<li><p>Kotlin / Jetpack Compose (v1.0)</p></li>
+</ul>
+</section>
+<hr class="docutils" />
+<section id="mvp-deliverables">
+<h1>8. MVP Deliverables<a class="headerlink" href="#mvp-deliverables" title="Link to this heading"></a></h1>
+<section id="backend">
+<h2>Backend<a class="headerlink" href="#backend" title="Link to this heading"></a></h2>
+<ul class="simple">
+<li><p>Device enrolment</p></li>
+<li><p>GitHub authentication</p></li>
+<li><p>Google authentication</p></li>
+<li><p>Challenge generation</p></li>
+<li><p>Challenge verification</p></li>
+<li><p>Signature verification</p></li>
+<li><p>Local evidence store</p></li>
+<li><p>Audit trail</p></li>
+<li><p>REST API</p></li>
+</ul>
+</section>
+<section id="ios">
+<h2>iOS<a class="headerlink" href="#ios" title="Link to this heading"></a></h2>
+<ul class="simple">
+<li><p>Identity enrolment</p></li>
+<li><p>Secure Enclave key generation</p></li>
+<li><p>Face ID approval</p></li>
+<li><p>QR scanning</p></li>
+<li><p>Approval history</p></li>
+<li><p>Device management</p></li>
+</ul>
+</section>
+<section id="synoptikon-integration">
+<h2>Synoptikon Integration<a class="headerlink" href="#synoptikon-integration" title="Link to this heading"></a></h2>
+<ul class="simple">
+<li><p>Login approval</p></li>
+<li><p>User enrolment</p></li>
+<li><p>Local trust policy</p></li>
+</ul>
+</section>
+<section id="monas-integration">
+<h2>Monas Integration<a class="headerlink" href="#monas-integration" title="Link to this heading"></a></h2>
+<ul class="simple">
+<li><p>Standalone authentication</p></li>
+<li><p>CLI verification</p></li>
+<li><p>Detached evidence generation</p></li>
+</ul>
+</section>
+</section>
+<hr class="docutils" />
+<section id="version-1-0">
+<h1>9. Version 1.0<a class="headerlink" href="#version-1-0" title="Link to this heading"></a></h1>
+<ul class="simple">
+<li><p>Android application</p></li>
+<li><p>Local network discovery (mDNS)</p></li>
+<li><p>Multiple identities per device</p></li>
+<li><p>Multi-device support</p></li>
+<li><p>Report signing</p></li>
+<li><p>Workflow approval</p></li>
+<li><p>Multi-signature approval</p></li>
+<li><p>Verification CLI</p></li>
+<li><p>Rust verification library</p></li>
+</ul>
+</section>
+<hr class="docutils" />
+<section id="future-roadmap">
+<h1>10. Future Roadmap<a class="headerlink" href="#future-roadmap" title="Link to this heading"></a></h1>
+<ul class="simple">
+<li><p>ORCID</p></li>
+<li><p>Microsoft Entra</p></li>
+<li><p>Apple Sign In</p></li>
+<li><p>NFC transport</p></li>
+<li><p>APNs / FCM convenience notifications</p></li>
+<li><p>Transparency log</p></li>
+<li><p>Trusted timestamping</p></li>
+<li><p>Delegated authority</p></li>
+<li><p>Professional identity assertions</p></li>
+</ul>
+</section>
+<hr class="docutils" />
+<section id="deliverables">
+<h1>11. Deliverables<a class="headerlink" href="#deliverables" title="Link to this heading"></a></h1>
+<ul class="simple">
+<li><p>Rust workspace</p></li>
+<li><p>REST API</p></li>
+<li><p>CLI</p></li>
+<li><p>iOS application (MVP)</p></li>
+<li><p>Android application (v1.0)</p></li>
+<li><p>Verification library</p></li>
+<li><p>Documentation</p></li>
+<li><p>Architecture diagrams</p></li>
+<li><p>Security review</p></li>
+<li><p>Threat model</p></li>
+</ul>
+</section>
+<hr class="docutils" />
+<section id="success-criteria">
+<h1>12. Success Criteria<a class="headerlink" href="#success-criteria" title="Link to this heading"></a></h1>
+<p>Pistis shall demonstrate that:</p>
+<ul class="simple">
+<li><p>no passwords are required;</p></li>
+<li><p>no central identity server is required;</p></li>
+<li><p>authentication succeeds using GitHub and Google trust anchors;</p></li>
+<li><p>login approval works through QR challenge/response;</p></li>
+<li><p>report signatures produce portable evidence;</p></li>
+<li><p>evidence can be verified independently of the originating
+installation;</p></li>
+<li><p>the same protocol supports Synoptikon and standalone Monas
+deployments.</p></li>
+</ul>
+</section>
+<hr class="docutils" />
+<section id="non-goals">
+<h1>13. Non-Goals<a class="headerlink" href="#non-goals" title="Link to this heading"></a></h1>
+<ul class="simple">
+<li><p>Enterprise directory replacement.</p></li>
+<li><p>Password management.</p></li>
+<li><p>SAML implementation in MVP.</p></li>
+<li><p>Cloud-hosted identity platform.</p></li>
+<li><p>Custom cryptographic algorithms.</p></li>
+</ul>
+</section>
+<hr class="docutils" />
+<section id="long-term-vision">
+<h1>14. Long-Term Vision<a class="headerlink" href="#long-term-vision" title="Link to this heading"></a></h1>
+<p>Pistis will become the trust foundation for the Mnemosyne ecosystem.</p>
+<p>Rather than acting solely as an authentication component, it will
+provide a reusable cryptographic evidence layer capable of supporting
+authentication, approval, report signing, software release, scientific
+governance and durable provenance across both integrated Mnemosyne
+products and independent third-party applications.</p>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="README.html" class="btn btn-neutral float-left" title="Pistis documentation" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="MILESTONE.html" class="btn btn-neutral float-right" title="Pistis v1.0 — MILESTONE.md" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026, Pistis contributors.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

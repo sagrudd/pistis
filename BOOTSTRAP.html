@@ -1,0 +1,457 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="./">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>BOOTSTRAP.md &mdash; Pistis 0.0.0</title>
+      <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=e59714d7" />
+      <link rel="stylesheet" type="text/css" href="_static/pistis.css?v=168623c6" />
+
+  
+      <script src="_static/jquery.js?v=5d32c60e"></script>
+      <script src="_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="_static/documentation_options.js?v=7026087e"></script>
+      <script src="_static/doctools.js?v=9bcbadda"></script>
+      <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Bootstrap status" href="BOOTSTRAP_STATUS.html" />
+    <link rel="prev" title="TODO.md" href="TODO.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="index.html" class="icon icon-home">
+            Pistis
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="README.html">Pistis documentation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="PROJECT_CHARTER.html">Project Charter — Pistis</a></li>
+<li class="toctree-l1"><a class="reference internal" href="PROJECT_CHARTER.html#vision">1. Vision</a></li>
+<li class="toctree-l1"><a class="reference internal" href="PROJECT_CHARTER.html#scope">2. Scope</a></li>
+<li class="toctree-l1"><a class="reference internal" href="PROJECT_CHARTER.html#guiding-principles">3. Guiding Principles</a></li>
+<li class="toctree-l1"><a class="reference internal" href="PROJECT_CHARTER.html#primary-use-cases">4. Primary Use Cases</a></li>
+<li class="toctree-l1"><a class="reference internal" href="PROJECT_CHARTER.html#architecture">5. Architecture</a></li>
+<li class="toctree-l1"><a class="reference internal" href="PROJECT_CHARTER.html#deployment-modes">6. Deployment Modes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="PROJECT_CHARTER.html#technology">7. Technology</a></li>
+<li class="toctree-l1"><a class="reference internal" href="PROJECT_CHARTER.html#mvp-deliverables">8. MVP Deliverables</a></li>
+<li class="toctree-l1"><a class="reference internal" href="PROJECT_CHARTER.html#version-1-0">9. Version 1.0</a></li>
+<li class="toctree-l1"><a class="reference internal" href="PROJECT_CHARTER.html#future-roadmap">10. Future Roadmap</a></li>
+<li class="toctree-l1"><a class="reference internal" href="PROJECT_CHARTER.html#deliverables">11. Deliverables</a></li>
+<li class="toctree-l1"><a class="reference internal" href="PROJECT_CHARTER.html#success-criteria">12. Success Criteria</a></li>
+<li class="toctree-l1"><a class="reference internal" href="PROJECT_CHARTER.html#non-goals">13. Non-Goals</a></li>
+<li class="toctree-l1"><a class="reference internal" href="PROJECT_CHARTER.html#long-term-vision">14. Long-Term Vision</a></li>
+<li class="toctree-l1"><a class="reference internal" href="MILESTONE.html">Pistis v1.0 — MILESTONE.md</a></li>
+<li class="toctree-l1"><a class="reference internal" href="MILESTONE.html#milestone-m0-charter-reconciliation-and-delivery-baseline">Milestone M0 — Charter reconciliation and delivery baseline</a></li>
+<li class="toctree-l1"><a class="reference internal" href="MILESTONE.html#milestone-m1-threat-model-and-protocol-specification">Milestone M1 — Threat model and protocol specification</a></li>
+<li class="toctree-l1"><a class="reference internal" href="MILESTONE.html#milestone-m2-rust-workspace-and-cryptographic-foundation">Milestone M2 — Rust workspace and cryptographic foundation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="MILESTONE.html#milestone-m3-github-and-google-trust-anchor-enrolment">Milestone M3 — GitHub and Google trust-anchor enrolment</a></li>
+<li class="toctree-l1"><a class="reference internal" href="MILESTONE.html#milestone-m4-local-installation-identity-and-device-registry">Milestone M4 — Local installation identity and device registry</a></li>
+<li class="toctree-l1"><a class="reference internal" href="MILESTONE.html#milestone-m5-qr-authentication-end-to-end">Milestone M5 — QR authentication end-to-end</a></li>
+<li class="toctree-l1"><a class="reference internal" href="MILESTONE.html#milestone-m6-ios-mvp-application">Milestone M6 — iOS MVP application</a></li>
+<li class="toctree-l1"><a class="reference internal" href="MILESTONE.html#milestone-m7-synoptikon-integration">Milestone M7 — Synoptikon integration</a></li>
+<li class="toctree-l1"><a class="reference internal" href="MILESTONE.html#milestone-m8-monas-standalone-integration-and-cli">Milestone M8 — Monas standalone integration and CLI</a></li>
+<li class="toctree-l1"><a class="reference internal" href="MILESTONE.html#milestone-m9-local-network-discovery-and-direct-exchange">Milestone M9 — Local-network discovery and direct exchange</a></li>
+<li class="toctree-l1"><a class="reference internal" href="MILESTONE.html#milestone-m10-artefact-report-signing-and-portable-evidence">Milestone M10 — Artefact/report signing and portable evidence</a></li>
+<li class="toctree-l1"><a class="reference internal" href="MILESTONE.html#milestone-m11-android-application">Milestone M11 — Android application</a></li>
+<li class="toctree-l1"><a class="reference internal" href="MILESTONE.html#milestone-m12-recovery-revocation-and-multi-device-lifecycle">Milestone M12 — Recovery, revocation and multi-device lifecycle</a></li>
+<li class="toctree-l1"><a class="reference internal" href="MILESTONE.html#milestone-m13-security-hardening-and-independent-review">Milestone M13 — Security hardening and independent review</a></li>
+<li class="toctree-l1"><a class="reference internal" href="MILESTONE.html#milestone-m14-packaging-operations-and-documentation">Milestone M14 — Packaging, operations and documentation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="MILESTONE.html#milestone-m15-release-candidate-and-v1-0-acceptance">Milestone M15 — Release candidate and v1.0 acceptance</a></li>
+<li class="toctree-l1"><a class="reference internal" href="MILESTONE.html#cross-cutting-engineering-requirements">7. Cross-cutting engineering requirements</a></li>
+<li class="toctree-l1"><a class="reference internal" href="MILESTONE.html#dependency-graph">8. Dependency graph</a></li>
+<li class="toctree-l1"><a class="reference internal" href="MILESTONE.html#recommended-implementation-sequence-by-release">9. Recommended implementation sequence by release</a></li>
+<li class="toctree-l1"><a class="reference internal" href="MILESTONE.html#principal-risks-and-mitigations">10. Principal risks and mitigations</a></li>
+<li class="toctree-l1"><a class="reference internal" href="MILESTONE.html#definition-of-done-for-every-milestone">11. Definition of done for every milestone</a></li>
+<li class="toctree-l1"><a class="reference internal" href="MILESTONE.html#deferred-post-v1-0-backlog">12. Deferred post-v1.0 backlog</a></li>
+<li class="toctree-l1"><a class="reference internal" href="MILESTONE.html#reference-implementation-technologies">13. Reference implementation technologies</a></li>
+<li class="toctree-l1"><a class="reference internal" href="MILESTONE.html#source-notes">14. Source notes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="MILESTONE.html#final-v1-0-boundary">15. Final v1.0 boundary</a></li>
+<li class="toctree-l1"><a class="reference internal" href="TODO.html">TODO.md</a></li>
+<li class="toctree-l1"><a class="reference internal" href="TODO.html#epic-0-repository">EPIC 0 — Repository</a></li>
+<li class="toctree-l1"><a class="reference internal" href="TODO.html#epic-1-protocol">EPIC 1 — Protocol</a></li>
+<li class="toctree-l1"><a class="reference internal" href="TODO.html#epic-2-crypto">EPIC 2 — Crypto</a></li>
+<li class="toctree-l1"><a class="reference internal" href="TODO.html#epic-3-github-trust">EPIC 3 — GitHub trust</a></li>
+<li class="toctree-l1"><a class="reference internal" href="TODO.html#epic-4-google-trust">EPIC 4 — Google trust</a></li>
+<li class="toctree-l1"><a class="reference internal" href="TODO.html#epic-5-device-registry">EPIC 5 — Device registry</a></li>
+<li class="toctree-l1"><a class="reference internal" href="TODO.html#epic-6-qr-authentication">EPIC 6 — QR authentication</a></li>
+<li class="toctree-l1"><a class="reference internal" href="TODO.html#epic-7-ios">EPIC 7 — iOS</a></li>
+<li class="toctree-l1"><a class="reference internal" href="TODO.html#epic-8-android">EPIC 8 — Android</a></li>
+<li class="toctree-l1"><a class="reference internal" href="TODO.html#epic-9-synoptikon">EPIC 9 — Synoptikon</a></li>
+<li class="toctree-l1"><a class="reference internal" href="TODO.html#epic-10-monas">EPIC 10 — Monas</a></li>
+<li class="toctree-l1"><a class="reference internal" href="TODO.html#epic-11-local-discovery">EPIC 11 — Local discovery</a></li>
+<li class="toctree-l1"><a class="reference internal" href="TODO.html#epic-12-evidence">EPIC 12 — Evidence</a></li>
+<li class="toctree-l1"><a class="reference internal" href="TODO.html#epic-13-recovery">EPIC 13 — Recovery</a></li>
+<li class="toctree-l1"><a class="reference internal" href="TODO.html#epic-14-security">EPIC 14 — Security</a></li>
+<li class="toctree-l1"><a class="reference internal" href="TODO.html#epic-15-release">EPIC 15 — Release</a></li>
+<li class="toctree-l1"><a class="reference internal" href="TODO.html#continuous-tasks">Continuous tasks</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">BOOTSTRAP.md</a></li>
+<li class="toctree-l1"><a class="reference internal" href="#purpose">Purpose</a></li>
+<li class="toctree-l1"><a class="reference internal" href="#bootstrap-objectives">Bootstrap Objectives</a></li>
+<li class="toctree-l1"><a class="reference internal" href="#deliverables">Deliverables</a></li>
+<li class="toctree-l1"><a class="reference internal" href="#agents-md">AGENTS.md</a></li>
+<li class="toctree-l1"><a class="reference internal" href="#github-corpus">GitHub Corpus</a></li>
+<li class="toctree-l1"><a class="reference internal" href="#branch-strategy">Branch Strategy</a></li>
+<li class="toctree-l1"><a class="reference internal" href="#commit-policy">Commit Policy</a></li>
+<li class="toctree-l1"><a class="reference internal" href="#semantic-versioning">Semantic Versioning</a></li>
+<li class="toctree-l1"><a class="reference internal" href="#pull-requests">Pull Requests</a></li>
+<li class="toctree-l1"><a class="reference internal" href="#documentation">Documentation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="#testing">Testing</a></li>
+<li class="toctree-l1"><a class="reference internal" href="#adrs">ADRs</a></li>
+<li class="toctree-l1"><a class="reference internal" href="#quality-gates">Quality Gates</a></li>
+<li class="toctree-l1"><a class="reference internal" href="#security">Security</a></li>
+<li class="toctree-l1"><a class="reference internal" href="#bootstrap-completion-criteria">Bootstrap Completion Criteria</a></li>
+<li class="toctree-l1"><a class="reference internal" href="BOOTSTRAP_STATUS.html">Bootstrap status</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="development/README.html">Development documentation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="development/issue-model.html">Planning issue model</a></li>
+<li class="toctree-l1"><a class="reference internal" href="development/jenkins-ci.html">Jenkins CI</a></li>
+<li class="toctree-l1"><a class="reference internal" href="development/documentation.html">Documentation workflow</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="adr/README.html">Architecture Decision Records</a></li>
+<li class="toctree-l1"><a class="reference internal" href="adr/0000-template.html">ADR-NNNN: Decision title</a></li>
+<li class="toctree-l1"><a class="reference internal" href="protocol/README.html">Protocol documentation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="security/README.html">Security documentation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="operations/README.html">Operations documentation</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">Pistis</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">BOOTSTRAP.md</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="_sources/BOOTSTRAP.md.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="bootstrap-md">
+<h1>BOOTSTRAP.md<a class="headerlink" href="#bootstrap-md" title="Link to this heading"></a></h1>
+</section>
+<section id="purpose">
+<h1>Purpose<a class="headerlink" href="#purpose" title="Link to this heading"></a></h1>
+<p>This document instructs a CODEX implementation agent how to initialise and manage the Pistis repository before feature development begins.</p>
+<p>The agent SHALL treat this document as the bootstrap contract.</p>
+<p>The authoritative design inputs are:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">PROJECT_CHARTER.md</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">MILESTONE.md</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">TODO.md</span></code></p></li>
+</ul>
+<p>The following planning documents are intentionally ignored during bootstrap:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">EPIC.md</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">FEATURE.md</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">TASK.md</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">SUBTASK.md</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">ACCEPTANCE_CRITERIA.md</span></code></p></li>
+</ul>
+<p>They may be regenerated later from the canonical sources above.</p>
+</section>
+<hr class="docutils" />
+<section id="bootstrap-objectives">
+<h1>Bootstrap Objectives<a class="headerlink" href="#bootstrap-objectives" title="Link to this heading"></a></h1>
+<p>The bootstrap phase has five goals:</p>
+<ol class="arabic simple">
+<li><p>Create a production-quality repository.</p></li>
+<li><p>Generate a comprehensive GitHub planning corpus from the charter, milestones and TODO list.</p></li>
+<li><p>Establish engineering governance.</p></li>
+<li><p>Configure automation and quality gates.</p></li>
+<li><p>Leave the repository in a state ready for iterative implementation.</p></li>
+</ol>
+<p>Bootstrap MUST NOT begin implementation of Pistis features.</p>
+</section>
+<hr class="docutils" />
+<section id="deliverables">
+<h1>Deliverables<a class="headerlink" href="#deliverables" title="Link to this heading"></a></h1>
+<p>Bootstrap SHALL produce at minimum:</p>
+<ul class="simple">
+<li><p>AGENTS.md</p></li>
+<li><p>README.md</p></li>
+<li><p>CONTRIBUTING.md</p></li>
+<li><p>SECURITY.md</p></li>
+<li><p>CODE_OF_CONDUCT.md</p></li>
+<li><p>LICENSE</p></li>
+<li><p>CHANGELOG.md</p></li>
+<li><p>VERSION</p></li>
+<li><p>ADR directory</p></li>
+<li><p>docs/ hierarchy</p></li>
+<li><p>issue templates</p></li>
+<li><p>pull request template</p></li>
+<li><p>GitHub labels</p></li>
+<li><p>GitHub milestones</p></li>
+<li><p>GitHub project (if available)</p></li>
+<li><p>comprehensive issue corpus</p></li>
+</ul>
+</section>
+<hr class="docutils" />
+<section id="agents-md">
+<h1>AGENTS.md<a class="headerlink" href="#agents-md" title="Link to this heading"></a></h1>
+<p>Generate an <code class="docutils literal notranslate"><span class="pre">AGENTS.md</span></code> describing:</p>
+<ul class="simple">
+<li><p>repository goals</p></li>
+<li><p>coding standards</p></li>
+<li><p>Rust edition and MSRV</p></li>
+<li><p>testing expectations</p></li>
+<li><p>documentation expectations</p></li>
+<li><p>review requirements</p></li>
+<li><p>branching strategy</p></li>
+<li><p>commit policy</p></li>
+<li><p>semantic versioning policy</p></li>
+<li><p>issue workflow</p></li>
+<li><p>pull request workflow</p></li>
+<li><p>release workflow</p></li>
+<li><p>security reporting</p></li>
+<li><p>architectural decision records</p></li>
+<li><p>expectations for future autonomous agents</p></li>
+</ul>
+<p>Treat AGENTS.md as normative.</p>
+</section>
+<hr class="docutils" />
+<section id="github-corpus">
+<h1>GitHub Corpus<a class="headerlink" href="#github-corpus" title="Link to this heading"></a></h1>
+<p>Generate GitHub Issues directly from:</p>
+<ul class="simple">
+<li><p>PROJECT_CHARTER.md</p></li>
+<li><p>MILESTONE.md</p></li>
+<li><p>TODO.md</p></li>
+</ul>
+<p>Expand them into:</p>
+<ul class="simple">
+<li><p>Epics</p></li>
+<li><p>Features</p></li>
+<li><p>Tasks</p></li>
+<li><p>Subtasks</p></li>
+</ul>
+<p>Each issue SHALL include:</p>
+<ul class="simple">
+<li><p>identifier</p></li>
+<li><p>title</p></li>
+<li><p>detailed description</p></li>
+<li><p>dependencies</p></li>
+<li><p>estimated effort</p></li>
+<li><p>acceptance notes</p></li>
+<li><p>documentation requirements</p></li>
+<li><p>labels</p></li>
+<li><p>milestone</p></li>
+<li><p>priority</p></li>
+</ul>
+<p>Tasks should generally represent one to two days of engineering effort.</p>
+<p>Subtasks should generally represent less than four hours.</p>
+<p>The generated issue graph should be sufficiently detailed that implementation can proceed without re-analysis.</p>
+</section>
+<hr class="docutils" />
+<section id="branch-strategy">
+<h1>Branch Strategy<a class="headerlink" href="#branch-strategy" title="Link to this heading"></a></h1>
+<p>Main branch SHALL remain releasable.</p>
+<p>Feature work SHALL normally occur in short-lived branches.</p>
+<p>Recommended naming:</p>
+<ul class="simple">
+<li><p>feature/<name></p></li>
+<li><p>fix/<name></p></li>
+<li><p>docs/<name></p></li>
+<li><p>refactor/<name></p></li>
+<li><p>security/<name></p></li>
+<li><p>release/<version></p></li>
+</ul>
+<p>Branches SHALL be pushed to origin.</p>
+<p>Completed branches SHALL be merged promptly.</p>
+<p>Dangling branches SHALL NOT be tolerated.</p>
+<p>Merged branches SHALL be deleted locally and remotely.</p>
+</section>
+<hr class="docutils" />
+<section id="commit-policy">
+<h1>Commit Policy<a class="headerlink" href="#commit-policy" title="Link to this heading"></a></h1>
+<p>Commit frequently.</p>
+<p>Commits SHOULD normally represent one logical change.</p>
+<p>Every prompt resulting in repository modification SHALL conclude with:</p>
+<ol class="arabic simple">
+<li><p>tests</p></li>
+<li><p>documentation updates where required</p></li>
+<li><p>commit</p></li>
+<li><p>push</p></li>
+</ol>
+<p>Work MUST NOT accumulate as large uncommitted changesets.</p>
+</section>
+<hr class="docutils" />
+<section id="semantic-versioning">
+<h1>Semantic Versioning<a class="headerlink" href="#semantic-versioning" title="Link to this heading"></a></h1>
+<p>Adhere strictly to Semantic Versioning.</p>
+<p>Rules:</p>
+<p>PATCH</p>
+<ul class="simple">
+<li><p>bug fixes</p></li>
+<li><p>documentation</p></li>
+<li><p>refactoring</p></li>
+<li><p>internal improvements</p></li>
+</ul>
+<p>MINOR</p>
+<ul class="simple">
+<li><p>backwards-compatible functionality</p></li>
+<li><p>new APIs</p></li>
+<li><p>new capabilities</p></li>
+</ul>
+<p>MAJOR</p>
+<ul class="simple">
+<li><p>incompatible protocol changes</p></li>
+<li><p>incompatible API changes</p></li>
+<li><p>schema incompatibility</p></li>
+<li><p>canonical encoding changes</p></li>
+</ul>
+<p>A MAJOR version increment SHALL occur ONLY after explicit agreement between:</p>
+<ul class="simple">
+<li><p>Project Owner</p></li>
+<li><p>Development Agent(s)</p></li>
+</ul>
+<p>Autonomous agents MUST NOT independently perform a major version increment.</p>
+<p>Version updates SHALL only occur when tasks or groups of tasks are complete.</p>
+<p>Never bump versions simply because commits have been made.</p>
+</section>
+<hr class="docutils" />
+<section id="pull-requests">
+<h1>Pull Requests<a class="headerlink" href="#pull-requests" title="Link to this heading"></a></h1>
+<p>Each feature branch SHALL conclude with a Pull Request.</p>
+<p>PRs SHALL include:</p>
+<ul class="simple">
+<li><p>purpose</p></li>
+<li><p>linked issues</p></li>
+<li><p>testing evidence</p></li>
+<li><p>documentation updates</p></li>
+<li><p>migration notes if required</p></li>
+</ul>
+</section>
+<hr class="docutils" />
+<section id="documentation">
+<h1>Documentation<a class="headerlink" href="#documentation" title="Link to this heading"></a></h1>
+<p>Documentation SHALL evolve continuously.</p>
+<p>Every implementation change should update relevant documentation before merge.</p>
+<p>Broken or stale documentation is considered a defect.</p>
+</section>
+<hr class="docutils" />
+<section id="testing">
+<h1>Testing<a class="headerlink" href="#testing" title="Link to this heading"></a></h1>
+<p>Every implemented task SHALL include:</p>
+<ul class="simple">
+<li><p>unit tests</p></li>
+<li><p>integration tests where appropriate</p></li>
+<li><p>regression tests for discovered defects</p></li>
+</ul>
+<p>No bug fix is complete without a regression test.</p>
+</section>
+<hr class="docutils" />
+<section id="adrs">
+<h1>ADRs<a class="headerlink" href="#adrs" title="Link to this heading"></a></h1>
+<p>Architectural decisions SHALL be captured in numbered ADRs.</p>
+<p>Protocol changes require ADRs before implementation.</p>
+</section>
+<hr class="docutils" />
+<section id="quality-gates">
+<h1>Quality Gates<a class="headerlink" href="#quality-gates" title="Link to this heading"></a></h1>
+<p>Before merge:</p>
+<ul class="simple">
+<li><p>formatting</p></li>
+<li><p>linting</p></li>
+<li><p>tests</p></li>
+<li><p>documentation</p></li>
+<li><p>dependency audit</p></li>
+<li><p>licence audit</p></li>
+</ul>
+<p>must succeed.</p>
+</section>
+<hr class="docutils" />
+<section id="security">
+<h1>Security<a class="headerlink" href="#security" title="Link to this heading"></a></h1>
+<p>Bootstrap SHALL establish:</p>
+<ul class="simple">
+<li><p>SECURITY.md</p></li>
+<li><p>private vulnerability reporting guidance</p></li>
+<li><p>dependency auditing</p></li>
+<li><p>supply-chain checks</p></li>
+<li><p>reproducible build aspirations</p></li>
+</ul>
+</section>
+<hr class="docutils" />
+<section id="bootstrap-completion-criteria">
+<h1>Bootstrap Completion Criteria<a class="headerlink" href="#bootstrap-completion-criteria" title="Link to this heading"></a></h1>
+<p>Bootstrap is complete only when:</p>
+<ul class="simple">
+<li><p>repository governance exists</p></li>
+<li><p>AGENTS.md exists</p></li>
+<li><p>issue corpus has been generated</p></li>
+<li><p>milestones exist</p></li>
+<li><p>labels exist</p></li>
+<li><p>templates exist</p></li>
+<li><p>CI passes</p></li>
+<li><p>documentation builds</p></li>
+<li><p>repository is ready for feature implementation</p></li>
+</ul>
+<p>Only after bootstrap completion should work begin on Milestone M1.</p>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="TODO.html" class="btn btn-neutral float-left" title="TODO.md" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="BOOTSTRAP_STATUS.html" class="btn btn-neutral float-right" title="Bootstrap status" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026, Pistis contributors.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

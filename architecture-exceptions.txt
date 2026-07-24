@@ -1,0 +1,6 @@
+# Oversized Rust source exceptions.
+#
+# Format: relative/path.rs | concrete rationale of at least 20 characters
+# Keep this list empty by default. Every entry requires explicit review and a
+# follow-up issue to restore normal modularity unless splitting is demonstrably
+# more harmful than the exception.

@@ -25,6 +25,7 @@ Development
    :maxdepth: 2
 
    development/README
+   development/code-structure
    development/issue-model
    development/jenkins-ci
    development/documentation

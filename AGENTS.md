@@ -19,6 +19,24 @@ features.
 - Cryptographic code must use reviewed libraries; never invent cryptography.
 - Run rustfmt and clippy with warnings denied.
 
+## Code structure and modularity
+
+- Organize product code hierarchically as narrowly responsible crates, modules,
+  and domain types with explicit dependency direction.
+- Separate protocol, cryptography, policy, persistence, transport, and adapter
+  concerns. Do not create broad utility modules or cyclic architectural
+  dependencies.
+- Split code whenever a file or module has multiple reasons to change,
+  unrelated public responsibilities, or independently testable behavior.
+- Prefer Rust source files below 1,000 physical lines. CI rejects larger files
+  unless their exact path and a concrete, reviewed rationale appear in
+  `architecture-exceptions.txt`.
+- Treat an exception as exceptional: splitting is the default, generated code
+  is not automatically exempt, and temporary exceptions require a follow-up
+  issue.
+- Follow `docs/development/code-structure.md` and run
+  `cargo run --locked -p xtask -- architecture` before review.
+
 ## Testing
 
 - Every task includes unit tests.

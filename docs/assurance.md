@@ -60,6 +60,28 @@ Historic evidence preserves the assurance observed at signing time. Later
 revocation changes current authorization but does not rewrite a previously
 valid historic record.
 
+## Registry representation
+
+The device registry stores each assurance dimension as a constrained,
+structured value rather than an opaque document or aggregate trust score.
+`verified` means Pistis validated evidence through the corresponding supported
+verification path. `reported` records a device or application assertion that
+was not independently verified. `unavailable` records that the signal could
+not be provided, while `unknown` records that Pistis has no reliable
+classification.
+
+Missing, malformed, or unrecognized assurance data fails registry hydration;
+it is not defaulted to `verified`, `reported`, or another permissive value.
+Lifecycle changes do not rewrite assurance observed during enrolment.
+Suspension and revocation affect whether the device may satisfy a current
+operation, while retained assurance and lifecycle history remain available for
+historic verification.
+
+Only public verification material is stored with these claims. The registry
+has no private-key representation, and assurance about non-exportable or
+hardware-backed key storage does not imply that the installation possesses the
+device key.
+
 ## Platform interpretation
 
 - Apple Secure Enclave or Android StrongBox/TEE evidence may establish

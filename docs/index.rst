@@ -53,5 +53,6 @@ Architecture and operations
    assurance
    security/README
    operations/README
+   operations/device-registry
    operations/github-enrolment
    operations/google-enrolment

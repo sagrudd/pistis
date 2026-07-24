@@ -15,8 +15,7 @@ documentation builder. Its reviewed task:
 - keeps doctrees outside the publication directory; and
 - retains `docs-html.tar.gz` in the Expedition dossier.
 
-Jenkins validates and packages documentation but never publishes it. Obtain the
-reviewed artifact from the Base Camp portal or CLI:
+Jenkins packages the reviewed artifact in the Base Camp dossier:
 
 ```sh
 expedition expedition-artifact \
@@ -27,8 +26,7 @@ mkdir -p public
 tar --extract --gzip --file docs-html.tar.gz --directory public
 ```
 
-Inspect the dossier acceptance result and verify the artifact digest before
-publication.
+Use this retrieval flow for inspection, audit, or recovery.
 
 ## Optional local container preview
 
@@ -65,25 +63,19 @@ Open `public/index.html` locally and review navigation, code blocks, tables,
 links, and narrow-screen behavior. Never commit credentials, private material,
 or generated environment details into documentation or rendered pages.
 
-## Manual GitHub Pages publication
+## Jenkins GitHub Pages publication
 
-Publication uses the `gh-pages` branch as a static artifact branch. No GitHub
-Actions, Pages builder, webhook, scheduled task, or other deployment automation
-is permitted.
+After every successful CI run, the centrally reviewed Jenkins adapter compares
+the tested revision with the current `refs/heads/main`. Pull-request, stale, and
+failed builds stop without publishing. A matching build validates
+`docs-html.tar.gz`, removes links from the extracted tree, adds `.nojekyll`, and
+updates the `gh-pages` artifact branch with the pre-rendered site.
 
-After downloading and reviewing the Jenkins artifact:
+The publisher uses the Jenkins secret-text credential
+`pistis-pages-publisher`. It must contain a least-privileged GitHub token with
+Contents write access to this repository. The credential is available only to
+the fixed publisher container after the project-controlled CI command has
+finished; Sphinx and repository code cannot read it.
 
-```sh
-git fetch origin gh-pages
-git worktree add /tmp/pistis-pages origin/gh-pages
-rsync --archive --delete public/ /tmp/pistis-pages/
-touch /tmp/pistis-pages/.nojekyll
-git -C /tmp/pistis-pages add --all
-git -C /tmp/pistis-pages commit -m "Publish documentation"
-git -C /tmp/pistis-pages push origin HEAD:gh-pages
-git worktree remove /tmp/pistis-pages
-```
-
-Inspect the staged artifact before committing. The publication commit must
-contain pre-rendered HTML and assets only. Source changes remain on the normal
-development branch.
+GitHub Pages serves `gh-pages` as static content. Do not add GitHub Actions or
+another Pages build or deployment workflow.

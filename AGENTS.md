@@ -40,11 +40,13 @@ features.
   the pre-rendered HTML as dossier evidence.
 - The repository's pinned Docker image is for optional local preview only; do
   not depend on globally installed Sphinx or theme packages.
-- Review the retained Jenkins pages before publication.
 - Publish only pre-rendered HTML to the `gh-pages` branch. GitHub Pages is a
   static host, not a documentation builder.
-- Documentation publication is manual. Do not add GitHub Actions, Pages build
-  workflows, webhooks, scheduled jobs, or other publication automation.
+- Jenkins publishes the retained HTML automatically after every successful
+  build of the current `main` revision. Pull-request and stale-revision builds
+  must never publish.
+- Do not add GitHub Actions or GitHub-hosted documentation build/deployment
+  workflows. Jenkins remains the sole build and publication automation.
 
 ## Reviews
 

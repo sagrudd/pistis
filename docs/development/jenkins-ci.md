@@ -47,3 +47,9 @@ webhook adapter. It reports the stable `mnemosyne/expedition` commit status;
 branch protection should require that context only after webhook delivery has
 been verified. Until then, the retained Expedition dossier is the merge
 evidence.
+
+After every successful run, the Jenkins adapter publishes the retained Sphinx
+archive only if the tested revision equals the current `main`. Configure the
+least-privileged Jenkins secret-text credential `pistis-pages-publisher` with
+Contents write access to this repository. The credential is isolated from the
+repository-controlled CI command, and no GitHub Actions workflow is used.

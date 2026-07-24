@@ -134,7 +134,7 @@ fn validate_rust_file(
 ) -> Result<(), String> {
     if !valid_rust_location(relative) {
         return Err(format!(
-            "{}: Rust source must live in `crates/<crate>/(src|tests|benches|examples)`, `xtask/src`, or a root integration directory",
+            "{}: Rust source must live in a reviewed crate, xtask, integration, example, benchmark, or fuzz-target hierarchy",
             relative.display()
         ));
     }
@@ -158,6 +158,7 @@ fn valid_rust_location(path: &Path) -> bool {
         ["xtask", "src", ..]
             | ["crates", _, "src" | "tests" | "benches" | "examples", ..]
             | ["tests" | "benches" | "examples", ..]
+            | ["fuzz", "fuzz_targets", ..]
     )
 }
 
@@ -186,6 +187,18 @@ mod tests {
         )
         .unwrap_err();
         assert!(error.contains("must live"));
+    }
+
+    #[test]
+    fn accepts_cargo_fuzz_target_hierarchy() {
+        assert!(
+            validate_rust_file(
+                Path::new("fuzz/fuzz_targets/canonical_parser.rs"),
+                "fn target() {}\n",
+                &BTreeMap::new()
+            )
+            .is_ok()
+        );
     }
 
     #[test]

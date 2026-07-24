@@ -9,6 +9,8 @@ direction; it is not merely a place to accumulate implementation.
 - Put product Rust code in `crates/<crate>/src`.
 - Put crate integration tests, benchmarks, and examples in their corresponding
   `tests`, `benches`, and `examples` directories.
+- Put cargo-fuzz entry points in `fuzz/fuzz_targets`; retain reusable fuzz
+  logic in the production crate or a narrowly scoped test-support module.
 - Keep transport, persistence, cryptography, protocol, and policy concerns in
   separate modules or crates with explicit interfaces.
 - Prefer cohesive domain modules and private implementation details over broad

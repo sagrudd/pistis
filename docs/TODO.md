@@ -101,13 +101,13 @@
 
 # EPIC 5 — Device registry
 
-- [ ] Create database schema
-- [ ] Create migration
-- [ ] Implement repositories
-- [ ] Store public keys
-- [ ] Store assurance metadata
-- [ ] Implement revocation
-- [ ] Implement suspension
+- [x] Create database schema
+- [x] Create migration
+- [x] Implement repositories
+- [x] Store public keys
+- [x] Store assurance metadata
+- [x] Implement revocation
+- [x] Implement suspension
 
 ---
 

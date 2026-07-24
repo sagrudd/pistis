@@ -25,6 +25,10 @@ a Changelog and releases follow Semantic Versioning.
 - Google OpenID Connect trust enrolment with pinned discovery, PKCE S256,
   one-use callback correlation, local RS256/JWKS verification, canonical issuer
   handling, stable subject extraction, and durable `(issuer, sub)` bindings.
+- A constrained SQLite device registry with embedded checksummed migrations,
+  public-key-only records, structured assurance metadata, optimistic
+  concurrency, reversible suspension, terminal revocation, and retained
+  lifecycle history.
 
 ### Security
 

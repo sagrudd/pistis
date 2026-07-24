@@ -25,3 +25,8 @@ a Changelog and releases follow Semantic Versioning.
 - Google OpenID Connect trust enrolment with pinned discovery, PKCE S256,
   one-use callback correlation, local RS256/JWKS verification, canonical issuer
   handling, stable subject extraction, and durable `(issuer, sub)` bindings.
+
+### Security
+
+- Upgrade `jsonwebtoken` to the patched 10.x validation implementation and use
+  the reviewed AWS-LC cryptographic backend, resolving CVE-2026-25537.

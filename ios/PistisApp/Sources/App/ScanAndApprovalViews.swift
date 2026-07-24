@@ -7,8 +7,8 @@ struct ScanView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: MnSpacing.x6) {
                 MnSectionHeading(
-                    "Scan a Pistis request",
-                    orientation: "Point the camera at a challenge QR code. Nothing is approved until you review the evidence."
+                    "Scanner design",
+                    orientation: "This placeholder shows the intended QR acquisition area. It does not access the camera in this unvalidated source build."
                 )
 
                 ZStack {
@@ -28,8 +28,7 @@ struct ScanView: View {
                         .padding(MnSpacing.x4)
                 }
                 .accessibilityElement(children: .ignore)
-                .accessibilityLabel("QR scanner camera preview")
-                .accessibilityHint("Hold a Pistis challenge code within view")
+                .accessibilityLabel("Scanner design placeholder")
 
                 MnPanel {
                     VStack(alignment: .leading, spacing: MnSpacing.x2) {

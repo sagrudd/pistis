@@ -43,6 +43,10 @@ cargo doc --workspace --all-features --no-deps
 See [`CONTRIBUTING.md`](CONTRIBUTING.md) and the normative
 [`AGENTS.md`](AGENTS.md) before contributing.
 
+Continuous integration runs on the project-owned Mnemosyne
+Expedition/Jenkins infrastructure. See
+[`docs/development/jenkins-ci.md`](docs/development/jenkins-ci.md).
+
 ## Security
 
 Do not report vulnerabilities in public issues. Follow

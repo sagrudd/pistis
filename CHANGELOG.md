@@ -13,3 +13,5 @@ a Changelog and releases follow Semantic Versioning.
 - Secure, expiring, atomically single-use challenge lifecycle primitives.
 - Protocol, encoding, assurance, signature-suite, and threat-model
   specifications.
+- Enforced hierarchical Rust source placement and a reviewed 1,000-line
+  source-file limit through the repository architecture gate.

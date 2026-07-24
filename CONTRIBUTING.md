@@ -17,6 +17,7 @@ Developer Certificate of Origin sign-off (`git commit -s`) is encouraged.
 
 ```console
 cargo fmt --all --check
+cargo run --locked -p xtask -- architecture
 cargo clippy --workspace --all-targets --all-features -- -D warnings
 cargo test --workspace --all-features
 cargo doc --workspace --all-features --no-deps
@@ -25,6 +26,11 @@ cargo deny check
 ```
 
 Markdown files must pass markdownlint. CI is authoritative.
+
+Keep code hierarchical and modular according to
+`docs/development/code-structure.md`. Rust files over 1,000 physical lines fail
+the architecture gate unless a reviewer accepts a concrete entry in
+`architecture-exceptions.txt`.
 
 Jenkins must build documentation without Sphinx warnings and retain the
 pre-rendered site. The pinned local container described in

@@ -138,7 +138,7 @@ blocked rather than complete.
 
 ## Foundation
 
-- [ ] Create SwiftUI project
+- [x] Create SwiftUI project
 - [ ] Configure signing
 - [ ] Configure TestFlight
 

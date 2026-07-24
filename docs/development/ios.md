@@ -61,6 +61,20 @@ The Linux Jenkins stage proves only the portable Swift core. It cannot prove
 SwiftUI compilation, camera behavior, Secure Enclave behavior, signing, or
 TestFlight distribution.
 
+## Current native evidence
+
+On 2026-07-24, Xcode 26.6 built and tested the signing-disabled application on
+the iOS 26.5 iPhone 17 Pro simulator:
+
+- the application and iOS-only platform-adapter branches compiled and linked;
+- all eight platform policy tests passed; and
+- both UI tests passed, covering primary navigation and the approval evidence
+  presentation.
+
+This closes the SwiftUI project-creation gate. Simulator evidence does not
+close real-device Secure Enclave, camera, accessibility, signing, archive, or
+TestFlight gates.
+
 ## Design maintenance
 
 Changes to tokens or product presentation must be reconciled with

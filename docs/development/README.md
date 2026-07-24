@@ -13,3 +13,5 @@ current bootstrap workflow.
 - `android.md`: Android module boundaries, toolchain, tests, and CI gates.
 - `synoptikon.md`: host boundary, login/device UX, and contract-test rules.
 - `monas.md`: standalone host/CLI boundaries and cross-repository CI contract.
+- `discovery.md`: untrusted discovery, secure direct exchange, fallback, and CI
+  boundaries.

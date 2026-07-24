@@ -11,3 +11,4 @@ recovery, backup, audit, and incident-response guidance.
 - [Android application operations](android.md)
 - [Synoptikon integration operations](synoptikon.md)
 - [Monas standalone integration operations](monas.md)
+- [Local discovery and direct exchange operations](discovery.md)

@@ -701,6 +701,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "pistis-discovery"
+version = "0.1.0"
+dependencies = [
+ "pistis-domain",
+ "pistis-protocol",
+]
+
+[[package]]
 name = "pistis-domain"
 version = "0.1.0"
 dependencies = [

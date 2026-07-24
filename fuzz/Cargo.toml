@@ -1,0 +1,41 @@
+[package]
+name = "pistis-fuzz"
+version = "0.0.0"
+publish = false
+edition = "2024"
+license = "MPL-2.0"
+
+[package.metadata]
+cargo-fuzz = true
+
+[dependencies]
+libfuzzer-sys = "=0.4.10"
+pistis-canonical = { version = "0.1.0", path = "../crates/pistis-canonical" }
+pistis-crypto = { version = "0.1.0", path = "../crates/pistis-crypto" }
+pistis-domain = { version = "0.1.0", path = "../crates/pistis-domain" }
+pistis-protocol = { version = "0.1.0", path = "../crates/pistis-protocol" }
+pistis-verifier = { version = "0.1.0", path = "../crates/pistis-verifier" }
+
+[[bin]]
+name = "canonical_parser"
+path = "fuzz_targets/canonical_parser.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "verifier"
+path = "fuzz_targets/verifier.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "crypto_verifier"
+path = "fuzz_targets/crypto_verifier.rs"
+test = false
+doc = false
+bench = false
+
+[workspace]
+members = ["."]

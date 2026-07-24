@@ -9,8 +9,8 @@
 use core::{fmt, str::FromStr};
 use serde::{Deserialize, Deserializer, Serialize, Serializer, de};
 
-const PAYLOAD_BYTES: usize = 16;
-const PAYLOAD_HEX_CHARS: usize = PAYLOAD_BYTES * 2;
+const ENTITY_ID_BYTES: usize = 16;
+const KEY_ID_BYTES: usize = 32;
 
 /// An error returned when parsing a typed Pistis identifier.
 ///
@@ -56,8 +56,11 @@ impl fmt::Display for ParseIdentifierError {
 
 impl std::error::Error for ParseIdentifierError {}
 
-fn parse_payload(input: &str, prefix: &str) -> Result<[u8; PAYLOAD_BYTES], ParseIdentifierError> {
-    let expected = prefix.len() + PAYLOAD_HEX_CHARS;
+fn parse_payload<const N: usize>(
+    input: &str,
+    prefix: &str,
+) -> Result<[u8; N], ParseIdentifierError> {
+    let expected = prefix.len() + N * 2;
     if input.len() != expected {
         return Err(ParseIdentifierError::InvalidLength {
             expected,
@@ -68,7 +71,7 @@ fn parse_payload(input: &str, prefix: &str) -> Result<[u8; PAYLOAD_BYTES], Parse
         return Err(ParseIdentifierError::InvalidPrefix);
     }
 
-    let mut payload = [0_u8; PAYLOAD_BYTES];
+    let mut payload = [0_u8; N];
     let hexadecimal = input.as_bytes()[prefix.len()..].chunks_exact(2);
     for (byte_index, (output, pair)) in payload.iter_mut().zip(hexadecimal).enumerate() {
         let high = decode_nibble(pair[0]).ok_or(ParseIdentifierError::InvalidCharacter {
@@ -90,10 +93,10 @@ const fn decode_nibble(byte: u8) -> Option<u8> {
     }
 }
 
-fn format_identifier(
+fn format_identifier<const N: usize>(
     formatter: &mut fmt::Formatter<'_>,
     prefix: &str,
-    payload: &[u8; PAYLOAD_BYTES],
+    payload: &[u8; N],
 ) -> fmt::Result {
     formatter.write_str(prefix)?;
     for byte in payload {
@@ -103,38 +106,38 @@ fn format_identifier(
 }
 
 macro_rules! identifier {
-    ($name:ident, $prefix:literal, $description:literal) => {
+    ($name:ident, $bytes:expr, $bits:literal, $prefix:literal, $description:literal) => {
         #[doc = $description]
         #[derive(Clone, Copy, Eq, Hash, Ord, PartialEq, PartialOrd)]
-        pub struct $name([u8; PAYLOAD_BYTES]);
+        pub struct $name([u8; $bytes]);
 
         impl $name {
-            /// Constructs an identifier from its opaque 128-bit payload.
+            #[doc = concat!("Constructs an identifier from its opaque ", $bits, "-bit payload.")]
             #[must_use]
-            pub const fn from_bytes(bytes: [u8; PAYLOAD_BYTES]) -> Self {
+            pub const fn from_bytes(bytes: [u8; $bytes]) -> Self {
                 Self(bytes)
             }
 
-            /// Returns the identifier's opaque 128-bit payload.
+            #[doc = concat!("Returns the identifier's opaque ", $bits, "-bit payload.")]
             #[must_use]
-            pub const fn as_bytes(&self) -> &[u8; PAYLOAD_BYTES] {
+            pub const fn as_bytes(&self) -> &[u8; $bytes] {
                 &self.0
             }
 
-            /// Consumes the identifier and returns its opaque 128-bit payload.
+            #[doc = concat!("Consumes the identifier and returns its opaque ", $bits, "-bit payload.")]
             #[must_use]
-            pub const fn into_bytes(self) -> [u8; PAYLOAD_BYTES] {
+            pub const fn into_bytes(self) -> [u8; $bytes] {
                 self.0
             }
         }
 
-        impl From<[u8; PAYLOAD_BYTES]> for $name {
-            fn from(bytes: [u8; PAYLOAD_BYTES]) -> Self {
+        impl From<[u8; $bytes]> for $name {
+            fn from(bytes: [u8; $bytes]) -> Self {
                 Self::from_bytes(bytes)
             }
         }
 
-        impl From<$name> for [u8; PAYLOAD_BYTES] {
+        impl From<$name> for [u8; $bytes] {
             fn from(identifier: $name) -> Self {
                 identifier.into_bytes()
             }
@@ -199,36 +202,50 @@ macro_rules! identifier {
 
 identifier!(
     InstallationId,
+    ENTITY_ID_BYTES,
+    "128",
     "installation_",
     "Identifies one independently administered Pistis installation."
 );
 identifier!(
     UserId,
+    ENTITY_ID_BYTES,
+    "128",
     "user_",
     "Identifies a user within the Pistis domain model."
 );
 identifier!(
     DeviceId,
+    ENTITY_ID_BYTES,
+    "128",
     "device_",
     "Identifies one enrolled physical device."
 );
 identifier!(
     ChallengeId,
+    ENTITY_ID_BYTES,
+    "128",
     "challenge_",
     "Identifies one authentication or approval challenge."
 );
 identifier!(
     EvidenceId,
+    ENTITY_ID_BYTES,
+    "128",
     "evidence_",
     "Identifies one portable evidence package."
 );
 identifier!(
     KeyId,
+    KEY_ID_BYTES,
+    "256",
     "key_",
     "Identifies a cryptographic public key without containing key material."
 );
 identifier!(
     ExternalIdentityId,
+    ENTITY_ID_BYTES,
+    "128",
     "external_identity_",
     "Identifies a stable identity asserted by an external provider."
 );
@@ -237,30 +254,31 @@ identifier!(
 mod tests {
     use super::*;
 
-    const PAYLOAD: [u8; PAYLOAD_BYTES] = [
+    const ENTITY_PAYLOAD: [u8; ENTITY_ID_BYTES] = [
         0x00, 0x01, 0x12, 0x23, 0x34, 0x45, 0x56, 0x67, 0x78, 0x89, 0x9a, 0xab, 0xbc, 0xcd, 0xde,
         0xff,
     ];
 
     macro_rules! identifier_tests {
-        ($module:ident, $type:ident, $prefix:literal) => {
+        ($module:ident, $type:ident, $prefix:literal, $payload:expr, $canonical:literal) => {
             mod $module {
                 use super::*;
 
-                const CANONICAL: &str = concat!($prefix, "000112233445566778899aabbccddeff");
+                const CANONICAL: &str = concat!($prefix, $canonical);
 
                 #[test]
                 fn formats_and_parses_canonical_form() {
-                    let identifier = $type::from_bytes(PAYLOAD);
+                    let payload = $payload;
+                    let identifier = $type::from_bytes(payload);
                     assert_eq!(identifier.to_string(), CANONICAL);
                     assert_eq!(CANONICAL.parse::<$type>(), Ok(identifier));
-                    assert_eq!(identifier.as_bytes(), &PAYLOAD);
-                    assert_eq!(identifier.into_bytes(), PAYLOAD);
+                    assert_eq!(identifier.as_bytes(), &payload);
+                    assert_eq!(identifier.into_bytes(), payload);
                 }
 
                 #[test]
                 fn serde_uses_canonical_string_form() {
-                    let identifier = $type::from_bytes(PAYLOAD);
+                    let identifier = $type::from_bytes($payload);
                     let json = serde_json::to_string(&identifier).expect("identifier serializes");
                     assert_eq!(json, format!("\"{CANONICAL}\""));
                     assert_eq!(
@@ -290,8 +308,10 @@ mod tests {
 
                 #[test]
                 fn rejects_uppercase_and_non_hexadecimal_payloads() {
-                    let uppercase = concat!($prefix, "000112233445566778899AABBCCDDEFF");
-                    let punctuation = concat!($prefix, "000112233445566778899aabbccdde!f");
+                    let mut uppercase = CANONICAL.to_owned();
+                    uppercase.replace_range(uppercase.len() - 1.., "F");
+                    let mut punctuation = CANONICAL.to_owned();
+                    punctuation.replace_range(punctuation.len() - 1.., "!");
                     assert!(matches!(
                         uppercase.parse::<$type>(),
                         Err(ParseIdentifierError::InvalidCharacter { .. })
@@ -310,16 +330,54 @@ mod tests {
         };
     }
 
-    identifier_tests!(installation_id, InstallationId, "installation_");
-    identifier_tests!(user_id, UserId, "user_");
-    identifier_tests!(device_id, DeviceId, "device_");
-    identifier_tests!(challenge_id, ChallengeId, "challenge_");
-    identifier_tests!(evidence_id, EvidenceId, "evidence_");
-    identifier_tests!(key_id, KeyId, "key_");
+    identifier_tests!(
+        installation_id,
+        InstallationId,
+        "installation_",
+        ENTITY_PAYLOAD,
+        "000112233445566778899aabbccddeff"
+    );
+    identifier_tests!(
+        user_id,
+        UserId,
+        "user_",
+        ENTITY_PAYLOAD,
+        "000112233445566778899aabbccddeff"
+    );
+    identifier_tests!(
+        device_id,
+        DeviceId,
+        "device_",
+        ENTITY_PAYLOAD,
+        "000112233445566778899aabbccddeff"
+    );
+    identifier_tests!(
+        challenge_id,
+        ChallengeId,
+        "challenge_",
+        ENTITY_PAYLOAD,
+        "000112233445566778899aabbccddeff"
+    );
+    identifier_tests!(
+        evidence_id,
+        EvidenceId,
+        "evidence_",
+        ENTITY_PAYLOAD,
+        "000112233445566778899aabbccddeff"
+    );
+    identifier_tests!(
+        key_id,
+        KeyId,
+        "key_",
+        [0x5a; KEY_ID_BYTES],
+        "5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a"
+    );
     identifier_tests!(
         external_identity_id,
         ExternalIdentityId,
-        "external_identity_"
+        "external_identity_",
+        ENTITY_PAYLOAD,
+        "000112233445566778899aabbccddeff"
     );
 
     #[test]

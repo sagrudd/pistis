@@ -204,6 +204,13 @@ matrix remain open until their external evidence exists.
 
 # EPIC 9 — Synoptikon
 
+ADR 0009 defines the cross-repository integration boundary. Framework-neutral
+host contracts and fail-closed readiness tests may proceed now. Production
+bootstrap, QR login, session issuance, device administration, and central
+audit remain blocked until EPIC-8, the accepted COSE profile and shared mobile
+fixtures, durable binding/ceremony adapters, and Synoptikon's server-only
+session-cookie boundary are delivered and accepted.
+
 - [ ] Bootstrap administrator workflow
 - [ ] Login page integration
 - [ ] QR generation

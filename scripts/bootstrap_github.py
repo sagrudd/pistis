@@ -20,6 +20,7 @@ LABELS = {
     "status:triage": ("ededed", "Needs triage"),
     "status:ready": ("0e8a16", "Ready for implementation"),
     "status:blocked": ("b60205", "Blocked by a dependency"),
+    "status:complete": ("1f883d", "Delivered and verified"),
     "priority:P0": ("b60205", "Critical priority"),
     "priority:P1": ("d93f0b", "High priority"),
     "priority:P2": ("fbca04", "Normal priority"),

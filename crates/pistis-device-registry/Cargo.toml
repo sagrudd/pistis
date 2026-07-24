@@ -1,0 +1,18 @@
+[package]
+name = "pistis-device-registry"
+version = "0.1.0"
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "Device registry domain and SQLite persistence for Pistis"
+
+[dependencies]
+pistis-crypto.workspace = true
+pistis-domain.workspace = true
+pistis-protocol.workspace = true
+rusqlite.workspace = true
+sha2.workspace = true
+
+[lints]
+workspace = true

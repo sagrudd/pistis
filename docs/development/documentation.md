@@ -29,6 +29,7 @@ docker run --rm \
   --fail-on-warning \
   --keep-going \
   --builder html \
+  --doctree-dir /tmp/pistis-doctrees \
   docs \
   /output
 ```

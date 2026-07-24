@@ -19,6 +19,9 @@ charter, milestone plan, TODO, and bootstrap contract.
   epics, features, tasks, and bounded subtasks.
 - Idempotent planning-corpus reconciliation in
   `scripts/bootstrap_github.py`.
+- EPIC-0 issue hierarchy reconciled with delivery evidence: tasks
+  `PIS-E00-F01-T01` through `PIS-E00-F01-T14`, feature `PIS-E00-F01`, and epic
+  `PIS-E00` are closed as completed and labelled `status:complete`.
 
 No Pistis product feature was implemented.
 
@@ -32,6 +35,7 @@ No Pistis product feature was implemented.
 - `cargo deny check`
 - `markdownlint-cli2 "**/*.md"`
 - GitHub planning reconciliation rerun with zero new resources
+- EPIC-0 child-to-parent closure audit and M0 open-item count verification
 
 The retained Jenkins Expedition dossier is the authoritative CI evidence.
 

@@ -1,0 +1,26 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://pistis.example/schemas/challenge-v1.schema.json",
+  "title": "Pistis challenge v1 diagnostic representation",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["version", "purpose", "challenge_id", "nonce", "expires_at_ms"],
+  "properties": {
+    "version": { "const": 1 },
+    "purpose": {
+      "enum": ["authentication", "approval", "artifact-signing"]
+    },
+    "challenge_id": {
+      "type": "string",
+      "pattern": "^challenge_[0-9a-f]{32}$"
+    },
+    "nonce": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "expires_at_ms": {
+      "type": "integer",
+      "minimum": 0
+    }
+  }
+}

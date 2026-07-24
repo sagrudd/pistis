@@ -1,0 +1,15 @@
+[package]
+name = "pistis-protocol"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.90"
+license = "MPL-2.0"
+description = "Protocol state and challenge lifecycle primitives for Pistis"
+
+[dependencies]
+getrandom.workspace = true
+pistis-domain.workspace = true
+subtle.workspace = true
+
+[lints]
+workspace = true

@@ -1,0 +1,8 @@
+.wy-nav-content {
+  max-width: 72rem;
+}
+
+code,
+pre {
+  font-variant-ligatures: none;
+}

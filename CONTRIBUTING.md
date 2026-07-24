@@ -26,6 +26,13 @@ cargo deny check
 
 Markdown files must pass markdownlint. CI is authoritative.
 
+Jenkins must build documentation without Sphinx warnings and retain the
+pre-rendered site. The pinned local container described in
+`docs/development/documentation.md` is an optional preview. Publication to
+Jenkins publishes the pre-rendered site to GitHub Pages only after all gates
+pass for the current `main` revision. Do not add GitHub Actions or another
+documentation deployment path.
+
 ## Compatibility and security
 
 Protocol, schema, canonical encoding, or cryptographic changes require an ADR.

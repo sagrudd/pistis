@@ -29,6 +29,7 @@ Development
    development/fuzzing
    development/provider-conformance
    development/ios
+   development/android
    development/issue-model
    development/jenkins-ci
    development/documentation
@@ -62,3 +63,4 @@ Architecture and operations
    operations/google-enrolment
    operations/qr-authentication
    operations/ios
+   operations/android

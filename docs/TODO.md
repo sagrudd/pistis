@@ -168,6 +168,12 @@ blocked rather than complete.
 
 # EPIC 8 — Android
 
+The EPIC-8 source foundation is governed by ADR 0008. A Compose project,
+portable ceremony core, platform-policy adapters, and Jenkins build evidence
+may close independently when their tests pass. Play Console, physical-device
+assurance, production QR/COSE interoperability, and the complete M11 device
+matrix remain open until their external evidence exists.
+
 ## Foundation
 
 - [ ] Create Compose project

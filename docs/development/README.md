@@ -9,3 +9,4 @@ current bootstrap workflow.
 - `fuzzing.md`: bounded parser, cryptographic, and verifier fuzz campaigns.
 - `provider-conformance.md`: deterministic external-provider adapter fixtures
   and failure cases.
+- `ios.md`: portable/native iOS source boundaries and validation gates.

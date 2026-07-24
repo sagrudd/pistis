@@ -1,0 +1,391 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 77;
+	objects = {
+
+/* Begin PBXContainerItemProxy section */
+		10A000000000000000000021 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 10A000000000000000000001 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 10A000000000000000000011;
+			remoteInfo = Pistis;
+		};
+		10A000000000000000000022 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 10A000000000000000000001 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 10A000000000000000000011;
+			remoteInfo = Pistis;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXFileReference section */
+		10A000000000000000000031 /* Pistis.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Pistis.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		10A000000000000000000032 /* PistisTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = PistisTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		10A000000000000000000033 /* PistisUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = PistisUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+/* End PBXFileReference section */
+
+/* Begin PBXFileSystemSynchronizedRootGroup section */
+		10A000000000000000000041 /* Sources */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = Sources;
+			sourceTree = "<group>";
+		};
+		10A000000000000000000042 /* Resources */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = Resources;
+			sourceTree = "<group>";
+		};
+		10A000000000000000000043 /* Tests */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = Tests;
+			sourceTree = "<group>";
+		};
+		10A000000000000000000044 /* UITests */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = UITests;
+			sourceTree = "<group>";
+		};
+/* End PBXFileSystemSynchronizedRootGroup section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		10A000000000000000000051 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		10A000000000000000000052 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		10A000000000000000000053 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		10A000000000000000000002 = {
+			isa = PBXGroup;
+			children = (
+				10A000000000000000000041 /* Sources */,
+				10A000000000000000000042 /* Resources */,
+				10A000000000000000000043 /* Tests */,
+				10A000000000000000000044 /* UITests */,
+				10A000000000000000000003 /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		10A000000000000000000003 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				10A000000000000000000031 /* Pistis.app */,
+				10A000000000000000000032 /* PistisTests.xctest */,
+				10A000000000000000000033 /* PistisUITests.xctest */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		10A000000000000000000011 /* Pistis */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 10A000000000000000000071 /* Build configuration list for PBXNativeTarget "Pistis" */;
+			buildPhases = (
+				10A000000000000000000061 /* Sources */,
+				10A000000000000000000051 /* Frameworks */,
+				10A000000000000000000064 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			fileSystemSynchronizedGroups = (
+				10A000000000000000000041 /* Sources */,
+				10A000000000000000000042 /* Resources */,
+			);
+			name = Pistis;
+			productName = Pistis;
+			productReference = 10A000000000000000000031 /* Pistis.app */;
+			productType = "com.apple.product-type.application";
+		};
+		10A000000000000000000012 /* PistisTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 10A000000000000000000072 /* Build configuration list for PBXNativeTarget "PistisTests" */;
+			buildPhases = (
+				10A000000000000000000062 /* Sources */,
+				10A000000000000000000052 /* Frameworks */,
+				10A000000000000000000065 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				10A000000000000000000023 /* PBXTargetDependency */,
+			);
+			fileSystemSynchronizedGroups = (
+				10A000000000000000000043 /* Tests */,
+			);
+			name = PistisTests;
+			productName = PistisTests;
+			productReference = 10A000000000000000000032 /* PistisTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
+		10A000000000000000000013 /* PistisUITests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 10A000000000000000000073 /* Build configuration list for PBXNativeTarget "PistisUITests" */;
+			buildPhases = (
+				10A000000000000000000063 /* Sources */,
+				10A000000000000000000053 /* Frameworks */,
+				10A000000000000000000066 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				10A000000000000000000024 /* PBXTargetDependency */,
+			);
+			fileSystemSynchronizedGroups = (
+				10A000000000000000000044 /* UITests */,
+			);
+			name = PistisUITests;
+			productName = PistisUITests;
+			productReference = 10A000000000000000000033 /* PistisUITests.xctest */;
+			productType = "com.apple.product-type.bundle.ui-testing";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		10A000000000000000000001 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = 1;
+				LastSwiftUpdateCheck = 2630;
+				LastUpgradeCheck = 2630;
+				TargetAttributes = {
+					10A000000000000000000011 = {
+						CreatedOnToolsVersion = 26.3;
+					};
+					10A000000000000000000012 = {
+						CreatedOnToolsVersion = 26.3;
+						TestTargetID = 10A000000000000000000011;
+					};
+					10A000000000000000000013 = {
+						CreatedOnToolsVersion = 26.3;
+						TestTargetID = 10A000000000000000000011;
+					};
+				};
+			};
+			buildConfigurationList = 10A000000000000000000074 /* Build configuration list for PBXProject "Pistis" */;
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				en,
+				Base,
+			);
+			mainGroup = 10A000000000000000000002;
+			minimizedProjectReferenceProxies = 1;
+			preferredProjectObjectVersion = 77;
+			productRefGroup = 10A000000000000000000003 /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				10A000000000000000000011 /* Pistis */,
+				10A000000000000000000012 /* PistisTests */,
+				10A000000000000000000013 /* PistisUITests */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		10A000000000000000000064 /* Resources */ = {isa = PBXResourcesBuildPhase; buildActionMask = 2147483647; files = (); runOnlyForDeploymentPostprocessing = 0; };
+		10A000000000000000000065 /* Resources */ = {isa = PBXResourcesBuildPhase; buildActionMask = 2147483647; files = (); runOnlyForDeploymentPostprocessing = 0; };
+		10A000000000000000000066 /* Resources */ = {isa = PBXResourcesBuildPhase; buildActionMask = 2147483647; files = (); runOnlyForDeploymentPostprocessing = 0; };
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		10A000000000000000000061 /* Sources */ = {isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = (); runOnlyForDeploymentPostprocessing = 0; };
+		10A000000000000000000062 /* Sources */ = {isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = (); runOnlyForDeploymentPostprocessing = 0; };
+		10A000000000000000000063 /* Sources */ = {isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = (); runOnlyForDeploymentPostprocessing = 0; };
+/* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		10A000000000000000000023 /* PBXTargetDependency */ = {isa = PBXTargetDependency; target = 10A000000000000000000011 /* Pistis */; targetProxy = 10A000000000000000000021 /* PBXContainerItemProxy */; };
+		10A000000000000000000024 /* PBXTargetDependency */ = {isa = PBXTargetDependency; target = 10A000000000000000000011 /* Pistis */; targetProxy = 10A000000000000000000022 /* PBXContainerItemProxy */; };
+/* End PBXTargetDependency section */
+
+/* Begin XCBuildConfiguration section */
+		10A000000000000000000081 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				CLANG_ENABLE_MODULES = YES;
+				CODE_SIGN_ENTITLEMENTS = Resources/Pistis.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = Resources/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				MARKETING_VERSION = 0.1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = org.mnemosynebiosciences.pistis;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = NO;
+				SWIFT_STRICT_CONCURRENCY = complete;
+				SWIFT_VERSION = 6.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		10A000000000000000000082 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				CLANG_ENABLE_MODULES = YES;
+				CODE_SIGN_ENTITLEMENTS = Resources/Pistis.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = Resources/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				MARKETING_VERSION = 0.1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = org.mnemosynebiosciences.pistis;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = NO;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_STRICT_CONCURRENCY = complete;
+				SWIFT_VERSION = 6.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				VALIDATE_PRODUCT = YES;
+			};
+			name = Release;
+		};
+		10A000000000000000000083 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				PRODUCT_BUNDLE_IDENTIFIER = org.mnemosynebiosciences.pistis.tests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_VERSION = 6.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Pistis.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/Pistis";
+			};
+			name = Debug;
+		};
+		10A000000000000000000084 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				PRODUCT_BUNDLE_IDENTIFIER = org.mnemosynebiosciences.pistis.tests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_VERSION = 6.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Pistis.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/Pistis";
+			};
+			name = Release;
+		};
+		10A000000000000000000085 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				PRODUCT_BUNDLE_IDENTIFIER = org.mnemosynebiosciences.pistis.uitests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_VERSION = 6.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_TARGET_NAME = Pistis;
+			};
+			name = Debug;
+		};
+		10A000000000000000000086 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				PRODUCT_BUNDLE_IDENTIFIER = org.mnemosynebiosciences.pistis.uitests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_VERSION = 6.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_TARGET_NAME = Pistis;
+			};
+			name = Release;
+		};
+		10A000000000000000000087 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_TESTABILITY = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				ONLY_ACTIVE_ARCH = YES;
+				SDKROOT = iphoneos;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG $(inherited)";
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+			};
+			name = Debug;
+		};
+		10A000000000000000000088 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_NS_ASSERTIONS = NO;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				SDKROOT = iphoneos;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				VALIDATE_PRODUCT = YES;
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		10A000000000000000000071 /* Build configuration list for PBXNativeTarget "Pistis" */ = {isa = XCConfigurationList; buildConfigurations = (10A000000000000000000081 /* Debug */, 10A000000000000000000082 /* Release */); defaultConfigurationIsVisible = 0; defaultConfigurationName = Release; };
+		10A000000000000000000072 /* Build configuration list for PBXNativeTarget "PistisTests" */ = {isa = XCConfigurationList; buildConfigurations = (10A000000000000000000083 /* Debug */, 10A000000000000000000084 /* Release */); defaultConfigurationIsVisible = 0; defaultConfigurationName = Release; };
+		10A000000000000000000073 /* Build configuration list for PBXNativeTarget "PistisUITests" */ = {isa = XCConfigurationList; buildConfigurations = (10A000000000000000000085 /* Debug */, 10A000000000000000000086 /* Release */); defaultConfigurationIsVisible = 0; defaultConfigurationName = Release; };
+		10A000000000000000000074 /* Build configuration list for PBXProject "Pistis" */ = {isa = XCConfigurationList; buildConfigurations = (10A000000000000000000087 /* Debug */, 10A000000000000000000088 /* Release */); defaultConfigurationIsVisible = 0; defaultConfigurationName = Release; };
+/* End XCConfigurationList section */
+	};
+	rootObject = 10A000000000000000000001 /* Project object */;
+}

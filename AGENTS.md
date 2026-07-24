@@ -35,10 +35,12 @@ features.
 - Treat stale or broken documentation as a defect.
 - Record architectural and protocol decisions as numbered ADRs in `docs/adr`.
 - Maintain the documentation as a Sphinx project using the Read the Docs theme.
-- Render documentation locally with the repository's pinned Docker image; do
+- Jenkins is the authoritative documentation builder. Its pinned Expedition
+  task must render Sphinx in a container, treat warnings as errors, and retain
+  the pre-rendered HTML as dossier evidence.
+- The repository's pinned Docker image is for optional local preview only; do
   not depend on globally installed Sphinx or theme packages.
-- Treat Sphinx warnings as errors and review the rendered pages before
-  publication.
+- Review the retained Jenkins pages before publication.
 - Publish only pre-rendered HTML to the `gh-pages` branch. GitHub Pages is a
   static host, not a documentation builder.
 - Documentation publication is manual. Do not add GitHub Actions, Pages build

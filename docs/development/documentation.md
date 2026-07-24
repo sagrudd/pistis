@@ -5,9 +5,36 @@ Markdown is parsed through MyST, so the canonical planning, governance,
 protocol, security, and operator documents remain readable as source while
 participating in one versioned documentation tree.
 
-## Local container build
+## Authoritative Jenkins build
 
-Docker is required. Build the pinned renderer from the repository root:
+The project-owned Mnemosyne Expedition/Jenkins lane is the authoritative
+documentation builder. Its reviewed task:
+
+- installs the exact versions in `docs/requirements.txt`;
+- runs Sphinx with warnings treated as errors;
+- keeps doctrees outside the publication directory; and
+- retains `docs-html.tar.gz` in the Expedition dossier.
+
+Jenkins validates and packages documentation but never publishes it. Obtain the
+reviewed artifact from the Base Camp portal or CLI:
+
+```sh
+expedition expedition-artifact \
+  --expedition-id <uuid> \
+  --name docs-html.tar.gz \
+  --output docs-html.tar.gz
+mkdir -p public
+tar --extract --gzip --file docs-html.tar.gz --directory public
+```
+
+Inspect the dossier acceptance result and verify the artifact digest before
+publication.
+
+## Optional local container preview
+
+The repository Docker image reproduces the Jenkins Sphinx environment for
+developer preview. It is not release evidence. Build it from the repository
+root:
 
 ```sh
 docker build \
@@ -44,7 +71,7 @@ Publication uses the `gh-pages` branch as a static artifact branch. No GitHub
 Actions, Pages builder, webhook, scheduled task, or other deployment automation
 is permitted.
 
-After a reviewed render:
+After downloading and reviewing the Jenkins artifact:
 
 ```sh
 git fetch origin gh-pages

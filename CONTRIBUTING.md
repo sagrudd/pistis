@@ -26,8 +26,9 @@ cargo deny check
 
 Markdown files must pass markdownlint. CI is authoritative.
 
-Documentation must also build without Sphinx warnings in the pinned local
-container described in `docs/development/documentation.md`. Publication to
+Jenkins must build documentation without Sphinx warnings and retain the
+pre-rendered site. The pinned local container described in
+`docs/development/documentation.md` is an optional preview. Publication to
 GitHub Pages is a separate manual review step; do not add deployment
 automation.
 

@@ -9,7 +9,7 @@ charter, milestone plan, TODO, and bootstrap contract.
   versioning, ownership, issue, and pull-request policies.
 - Rust 1.90.0 / edition 2024 workspace with a maintenance-only `xtask` target.
 - Formatting, clippy, tests, rustdoc, vulnerability, license, source, and
-  Markdown gates in CI.
+  Markdown gates in the project-owned Mnemosyne Expedition/Jenkins CI.
 - Dependabot, weekly security audit, private vulnerability reporting, and
   dependency alerts.
 - Branch protection requiring pull requests, code-owner review, resolved
@@ -33,7 +33,7 @@ No Pistis product feature was implemented.
 - `markdownlint-cli2 "**/*.md"`
 - GitHub planning reconciliation rerun with zero new resources
 
-CI must also pass on the pushed branch before bootstrap is considered merged.
+The retained Jenkins Expedition dossier is the authoritative CI evidence.
 
 ## Conditional GitHub Project
 

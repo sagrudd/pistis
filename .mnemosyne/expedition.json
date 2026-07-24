@@ -1,0 +1,40 @@
+{
+  "schema_version": "1.4.0",
+  "expedition": {
+    "id": "pistis-ci",
+    "title": "Pistis repository CI"
+  },
+  "extends": {
+    "id": "mnemosyne/pistis-ci",
+    "version": "1.0.0"
+  },
+  "source": {
+    "repository": "https://github.com/sagrudd/pistis",
+    "revision": "7bbcf958d55b9cf2198409221fe84604aec7e33b"
+  },
+  "trust": "trusted_revision",
+  "modules": [],
+  "targets": ["linux_amd64"],
+  "retention_days": 30,
+  "requested_capabilities": ["read_only_source", "network"],
+  "stages": [
+    {
+      "id": "repository-ci-amd64",
+      "target": "linux_amd64",
+      "container": {
+        "image": "docker.io/library/rust",
+        "digest": "sha256:3914072ca0c3b8aad871db9169a651ccfce30cf58303e5d6f2db16d1d8a7e58f"
+      },
+      "task": {
+        "kind": "approved_task",
+        "task": "pistis-repository-ci",
+        "parameters": {}
+      },
+      "resources": {
+        "cpu_millicores": 4000,
+        "memory_mib": 8192
+      }
+    }
+  ],
+  "acceptance": []
+}

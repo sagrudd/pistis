@@ -15,3 +15,5 @@ a Changelog and releases follow Semantic Versioning.
   specifications.
 - Enforced hierarchical Rust source placement and a reviewed 1,000-line
   source-file limit through the repository architecture gate.
+- ES256 verification, SHA-256 hashing, full-width key identifiers, structured
+  verifier outcomes, conformance fixtures, and bounded fuzz targets.

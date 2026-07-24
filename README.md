@@ -6,7 +6,8 @@ authentication, explicit approval, and portable verifiable evidence.
 
 Repository bootstrap and EPIC-0 are complete. EPIC-1 establishes the typed
 protocol domain, deterministic encoding, and single-use challenge lifecycle;
-later epics add cryptographic verification and application integrations.
+EPIC-2 adds ES256 cryptographic verification and the structured verification
+pipeline. Later epics add trust anchors and application integrations.
 
 ## Design principles
 

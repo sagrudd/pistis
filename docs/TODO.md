@@ -113,11 +113,16 @@
 
 # EPIC 6 — QR authentication
 
-- [ ] Encode challenge QR
-- [ ] Decode response QR
-- [ ] Browser polling endpoint
-- [ ] Browser completion endpoint
-- [ ] Authentication acceptance tests
+- [x] Encode challenge QR
+- [x] Decode response QR
+- [x] Browser polling endpoint
+- [x] Browser completion endpoint
+- [x] Authentication acceptance tests
+
+EPIC-6 completes the reviewed in-memory QR authentication reference flow.
+Production HTTP, durable session/audit persistence, installation policy,
+mobile COSE interoperability, and the remaining M5 user experience work stay
+open under milestone M5.
 
 ---
 

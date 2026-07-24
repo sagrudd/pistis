@@ -57,3 +57,4 @@ Architecture and operations
    operations/device-registry
    operations/github-enrolment
    operations/google-enrolment
+   operations/qr-authentication

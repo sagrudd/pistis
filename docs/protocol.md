@@ -20,8 +20,10 @@ extensions must fail closed. A verifier must never reinterpret a byte string
 under a different message purpose. Authentication, approval, artefact signing,
 enrolment and revocation use distinct domain-separation labels and schemas.
 
-The JSON schema in `schemas/challenge-v1.schema.json` is a diagnostic and
-validation representation, not the canonical signature encoding.
+The JSON schemas in `schemas/challenge-v1.schema.json` and
+`schemas/authentication-response-v1.schema.json` are diagnostic and validation
+representations, not canonical signature encodings. JSON is never accepted at
+a signed protocol boundary.
 
 ## Normative structures
 
@@ -73,6 +75,13 @@ It is installation-signed. `audience` names the installation endpoint that may
 accept the response. The requested action must unambiguously mean session
 authentication and must not authorize an approval or artefact signature.
 
+The EPIC-6 v1 reference schema additionally binds `issued_at_ms`,
+`installation_id`, `key_id`, `external_identity_id`, installation name,
+installation fingerprint, local username, and a bounded list of HTTPS endpoint
+hints. `requested_action` is exactly `authenticate-session`. Names and endpoint
+hints aid display and transport only; identifiers, signatures, and local policy
+remain authoritative.
+
 ### Authentication response
 
 Purpose: `pistis.authentication-response.v1`.
@@ -84,6 +93,40 @@ device-signed after explicit local user verification. An approved response may
 be consumed only when its challenge signature, digest, nonce, identifiers,
 audience, expiry, device status, and signature all validate. A denial is
 evidence of the decision but never authenticates a session.
+
+The EPIC-6 v1 reference schema additionally binds `issued_at_ms`,
+`installation_id`, and the device `key_id`. Response expiry is not
+claimant-controlled: completion applies the stored challenge's exclusive
+expiry. The exact closed canonical-CBOR field assignments and QR framing are
+defined by [ADR 0006](adr/0006-qr-authentication-reference-flow.md).
+
+## QR authentication reference flow
+
+QR frames are untrusted transport input. A `PISTIS1:` frame carries one closed
+canonical-CBOR transport map, an exact canonical signed payload, a fixed-width
+detached ES256 signature, and a truncated SHA-256 scanning checksum. The
+checksum detects transcription or scanning errors; it does not authenticate
+the installation, device, action, or user. The decoder rejects oversized,
+fragmented, padded, non-ASCII, non-canonical, unsupported, trailing, or
+wrong-kind input without downgrade.
+
+The detached signature is an internal reference-harness boundary. It does not
+replace the COSE structures selected by ADR 0001, and no external mobile
+interoperability claim may be made until a separate COSE decision and
+conformance fixtures are accepted.
+
+Direct-local and response-QR submission enter the same verification path.
+Polling exposes only a coarse lifecycle state and cannot verify, consume, or
+authenticate. Completion verifies the signature and every stored binding
+before holding one atomic mutation boundary across challenge consumption,
+pre-authentication session invalidation, authenticated-session creation,
+immutable audit creation, and terminal state. A denial never creates a
+session. A failed atomic mutation leaves the earlier state intact, and exactly
+one concurrent completion may succeed.
+
+The EPIC-6 service is framework-neutral and in-memory. Production HTTP, TLS,
+durable transaction, installation-identity, local-policy, and operator UI
+adapters remain necessary to complete milestone M5.
 
 ### Artefact challenge
 

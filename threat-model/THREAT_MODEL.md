@@ -28,8 +28,10 @@ participant is an explicit adversary rather than an implicit trusted actor.
 | --- | --- | --- |
 | Replay of signed login | Atomic single-use challenge consumption; bind response to ID, nonce, user, installation, purpose and expiry | Store availability can deny service |
 | Challenge or response substitution | Sign canonical context and compare every verifier-supplied binding | Compromised endpoints can misrepresent UI |
-| QR replacement | Display installation, user, purpose and action on the signing device; validate signed bindings | Users may ignore warnings |
-| Local-network MITM | Treat discovery as hints; authenticate protocol objects end to end | Traffic analysis remains |
+| QR replacement | Distinguish challenge/response frames; verify signatures and exact stored bindings; display installation fingerprint, user, purpose and action on the signing device | The scanning checksum is not authentication; users may ignore warnings |
+| Corrupt or oversized QR input | Enforce ASCII, framing, canonical-CBOR, checksum and fixed size bounds before semantic parsing; reject fragmentation in v1 | Repeated scanning can still consume local resources |
+| Response replay or concurrent completion | Bind the response to the exact challenge digest, nonce, identities and purpose; atomically consume, rotate session and create audit evidence | Store availability can deny service |
+| Local-network MITM | Treat endpoint hints as untrusted; require local HTTPS policy and authenticate protocol objects end to end; retain response QR as fallback | Traffic analysis and connection denial remain |
 | Malicious mDNS advertisement | Never derive trust from mDNS; require signed challenge bindings | Connection attempts can be diverted or delayed |
 | Identity-binding substitution | Bind stable provider issuer and subject during fresh enrolment | Provider compromise is outside Pistis control |
 | Mutable GitHub username | Key identities by numeric provider subject, never login name | Historic display names may become stale |
@@ -62,10 +64,16 @@ participant is an explicit adversary rather than an implicit trusted actor.
 - Parser failure, missing context, unknown critical data, and unavailable
   required assurance fail closed.
 - Logs and diagnostic JSON never become signature inputs.
+- QR checksums never become authentication or authorization inputs.
+- Polling observes redacted state and cannot consume a challenge or establish a
+  session.
+- Session rotation, challenge consumption, terminal completion and immutable
+  audit creation succeed or fail together.
 
 ## Deferred validation
 
-Independent mobile keystore testing, protocol fuzzing, penetration testing,
-attestation policy, recovery ceremonies, and production rate limits are
-delivered by their named later milestones. Those deferrals do not weaken the
-wire-format and verifier invariants above.
+Independent mobile keystore testing, production COSE interoperability,
+production HTTP and durable session/audit transactions, protocol fuzzing,
+penetration testing, attestation policy, recovery ceremonies, and production
+rate limits are delivered by their named later milestones. Those deferrals do
+not weaken the reference wire-format and verifier invariants above.

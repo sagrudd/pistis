@@ -1,0 +1,62 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://pistis.example/schemas/authentication-response-v1.schema.json",
+  "title": "Pistis authentication response v1 diagnostic representation",
+  "description": "Non-normative diagnostic JSON for the closed canonical-CBOR authentication response schema. This JSON is never signed or accepted on a protocol boundary.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "version",
+    "purpose",
+    "issued_at_ms",
+    "user_verified_at_ms",
+    "installation_id",
+    "key_id",
+    "challenge_id",
+    "nonce",
+    "challenge_digest",
+    "user_id",
+    "device_id",
+    "external_identity_id",
+    "decision"
+  ],
+  "properties": {
+    "version": { "const": 1 },
+    "purpose": { "const": "pistis.authentication-response.v1" },
+    "issued_at_ms": { "type": "integer", "minimum": 0 },
+    "user_verified_at_ms": { "type": "integer", "minimum": 0 },
+    "installation_id": {
+      "type": "string",
+      "pattern": "^installation_[0-9a-f]{32}$"
+    },
+    "key_id": {
+      "type": "string",
+      "pattern": "^key_[0-9a-f]{64}$"
+    },
+    "challenge_id": {
+      "type": "string",
+      "pattern": "^challenge_[0-9a-f]{32}$"
+    },
+    "nonce": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "challenge_digest": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "user_id": {
+      "type": "string",
+      "pattern": "^user_[0-9a-f]{32}$"
+    },
+    "device_id": {
+      "type": "string",
+      "pattern": "^device_[0-9a-f]{32}$"
+    },
+    "external_identity_id": {
+      "type": "string",
+      "pattern": "^external_identity_[0-9a-f]{32}$"
+    },
+    "decision": { "enum": ["approved", "denied"] }
+  }
+}

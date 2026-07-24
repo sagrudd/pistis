@@ -1,0 +1,16 @@
+[workspace]
+resolver = "3"
+members = ["xtask"]
+
+[workspace.package]
+edition = "2024"
+rust-version = "1.90"
+license = "MPL-2.0"
+repository = "https://github.com/sagrudd/pistis"
+
+[workspace.lints.rust]
+unsafe_code = "forbid"
+
+[workspace.lints.clippy]
+all = "deny"
+pedantic = "warn"

@@ -1,0 +1,51 @@
+name: Planned work item
+description: Propose an epic, feature, task, or subtask
+title: "[ID] "
+labels: ["status:triage"]
+body:
+  - type: dropdown
+    id: kind
+    attributes:
+      label: Type
+      options: [Epic, Feature, Task, Subtask]
+    validations:
+      required: true
+  - type: textarea
+    id: description
+    attributes:
+      label: Description
+    validations:
+      required: true
+  - type: textarea
+    id: dependencies
+    attributes:
+      label: Dependencies
+      placeholder: "Issue identifiers or None"
+    validations:
+      required: true
+  - type: input
+    id: effort
+    attributes:
+      label: Estimated effort
+      placeholder: "e.g. 1 developer-day"
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance notes
+    validations:
+      required: true
+  - type: textarea
+    id: docs
+    attributes:
+      label: Documentation requirements
+    validations:
+      required: true
+  - type: dropdown
+    id: priority
+    attributes:
+      label: Priority
+      options: [P0, P1, P2, P3]
+    validations:
+      required: true

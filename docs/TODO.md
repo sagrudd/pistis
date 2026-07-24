@@ -17,20 +17,20 @@
 
 ## Repository bootstrap
 
-- [ ] Create Git repository
-- [ ] Configure branch protection
-- [ ] Configure CI
-- [ ] Configure Rust toolchain
-- [ ] Configure cargo fmt
-- [ ] Configure clippy
-- [ ] Configure cargo deny
-- [ ] Configure cargo audit
-- [ ] Add SECURITY.md
-- [ ] Add CONTRIBUTING.md
-- [ ] Add CODEOWNERS
-- [ ] Add issue templates
-- [ ] Add pull request template
-- [ ] Create Architecture Decision Record (ADR) directory
+- [x] Create Git repository
+- [x] Configure branch protection
+- [x] Configure CI
+- [x] Configure Rust toolchain
+- [x] Configure cargo fmt
+- [x] Configure clippy
+- [x] Configure cargo deny
+- [x] Configure cargo audit
+- [x] Add SECURITY.md
+- [x] Add CONTRIBUTING.md
+- [x] Add CODEOWNERS
+- [x] Add issue templates
+- [x] Add pull request template
+- [x] Create Architecture Decision Record (ADR) directory
 
 ---
 

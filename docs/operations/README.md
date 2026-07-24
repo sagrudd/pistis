@@ -12,3 +12,4 @@ recovery, backup, audit, and incident-response guidance.
 - [Synoptikon integration operations](synoptikon.md)
 - [Monas standalone integration operations](monas.md)
 - [Local discovery and direct exchange operations](discovery.md)
+- [Recovery, revocation, and multi-device operations](device-lifecycle.md)

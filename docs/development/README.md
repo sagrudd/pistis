@@ -15,3 +15,5 @@ current bootstrap workflow.
 - `monas.md`: standalone host/CLI boundaries and cross-repository CI contract.
 - `discovery.md`: untrusted discovery, secure direct exchange, fallback, and CI
   boundaries.
+- `device-lifecycle.md`: multi-device, replacement, recovery, historic
+  verification, and acceptance boundaries.

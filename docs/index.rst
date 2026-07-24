@@ -27,6 +27,7 @@ Development
    development/README
    development/code-structure
    development/fuzzing
+   development/provider-conformance
    development/issue-model
    development/jenkins-ci
    development/documentation
@@ -41,6 +42,7 @@ Architecture and operations
    adr/0000-template
    adr/0001-canonical-encoding
    adr/0002-signature-suites
+   adr/0003-github-trust-enrolment
    protocol/README
    protocol/domain-model
    protocol
@@ -49,3 +51,4 @@ Architecture and operations
    assurance
    security/README
    operations/README
+   operations/github-enrolment

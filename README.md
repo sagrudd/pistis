@@ -8,8 +8,9 @@ Repository bootstrap and EPIC-0 are complete. EPIC-1 establishes the typed
 protocol domain, deterministic encoding, and single-use challenge lifecycle;
 EPIC-2 adds ES256 cryptographic verification and the structured verification
 pipeline; EPIC-3 adds GitHub PKCE trust enrolment and durable provider-neutral
-identity bindings. Later epics add further trust anchors and application
-integrations.
+identity bindings; EPIC-4 adds locally verified Google OpenID Connect
+enrolment keyed by canonical issuer and stable subject. Later epics add device
+registration and application integrations.
 
 ## Design principles
 

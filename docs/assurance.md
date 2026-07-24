@@ -24,6 +24,19 @@ Every device registration records:
 Email addresses, GitHub usernames, display names, and device names are
 descriptive metadata, never stable identity keys.
 
+For Google, the durable external identity is the canonical issuer
+`https://accounts.google.com` plus the exact, case-sensitive `sub`. The
+documented legacy issuer spelling canonicalizes to the same authority. Email,
+email-verification state, and hosted-domain claims remain descriptive or
+policy inputs and cannot independently establish the account identity.
+
+Google authentication evidence records successful local verification of the
+ID-token signature, issuer, audience, authorized presenter where applicable,
+expiry, issued-at time, and one-use nonce. It identifies the discovery and
+verifier policy versions used, but never retains the ID token or other bearer
+credentials. A missing or failed check cannot be represented as positive
+assurance.
+
 ## Per-signature claims
 
 An authentication or approval response records the registered key identifier,

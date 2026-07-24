@@ -52,6 +52,7 @@ Architecture and operations
    adr/0007-ios-reference-application
    adr/0008-android-reference-application
    adr/0009-synoptikon-integration-boundary
+   adr/0010-monas-standalone-integration-boundary
    protocol/README
    protocol/domain-model
    protocol

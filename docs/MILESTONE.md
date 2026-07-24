@@ -323,7 +323,7 @@ Standalone Monas integration layer and embedding examples.
 ## 6. Delivery summary
 
 | Milestone | Outcome | Estimated effort |
-|---|---|---:|
+| --- | --- | ---: |
 | M0 | Charter reconciliation and delivery baseline | 1 developer-week |
 | M1 | Threat model and protocol specification | 3 developer-weeks |
 | M2 | Rust workspace and cryptographic foundation | 4 developer-weeks |
@@ -2510,7 +2510,7 @@ Parallelisation notes:
 # 10. Principal risks and mitigations
 
 | Risk | Consequence | Mitigation |
-|---|---|---|
+| --- | --- | --- |
 | Treating mutable usernames/emails as identity | Account misbinding | Store stable provider subjects |
 | Divergent iOS/Android canonical encoding | Cross-platform verification failure | Shared normative fixtures and byte-level tests |
 | Secure Enclave/Keystore capability mismatch | Inconsistent assurance | Select common signature suite and report capability truthfully |

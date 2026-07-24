@@ -79,12 +79,12 @@
 
 # EPIC 3 — GitHub trust
 
-- [ ] Register OAuth application
-- [ ] Implement PKCE flow
-- [ ] Validate callback
-- [ ] Retrieve stable GitHub user id
-- [ ] Persist identity binding
-- [ ] Add integration tests
+- [x] Define and validate the OAuth application registration contract
+- [x] Implement PKCE flow
+- [x] Validate callback
+- [x] Retrieve stable GitHub user id
+- [x] Persist identity binding
+- [x] Add integration tests
 
 ---
 

@@ -1,0 +1,15 @@
+[package]
+name = "pistis-identity"
+version = "0.1.0"
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "Provider-neutral external identity bindings for Pistis"
+
+[dependencies]
+serde = { workspace = true, features = ["derive"] }
+serde_json.workspace = true
+
+[lints]
+workspace = true

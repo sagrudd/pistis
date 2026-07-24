@@ -7,7 +7,9 @@ authentication, explicit approval, and portable verifiable evidence.
 Repository bootstrap and EPIC-0 are complete. EPIC-1 establishes the typed
 protocol domain, deterministic encoding, and single-use challenge lifecycle;
 EPIC-2 adds ES256 cryptographic verification and the structured verification
-pipeline. Later epics add trust anchors and application integrations.
+pipeline; EPIC-3 adds GitHub PKCE trust enrolment and durable provider-neutral
+identity bindings. Later epics add further trust anchors and application
+integrations.
 
 ## Design principles
 

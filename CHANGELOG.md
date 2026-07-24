@@ -17,3 +17,8 @@ a Changelog and releases follow Semantic Versioning.
   source-file limit through the repository architecture gate.
 - ES256 verification, SHA-256 hashing, full-width key identifiers, structured
   verifier outcomes, conformance fixtures, and bounded fuzz targets.
+- GitHub OAuth trust enrolment with PKCE S256, constant-time callback-state
+  validation, minimal scopes, stable numeric account identifiers, and
+  short-lived secret handling through a narrow confidential broker boundary.
+- Provider-neutral durable identity bindings with versioned, atomic,
+  fail-closed file persistence and end-to-end provider fixture coverage.

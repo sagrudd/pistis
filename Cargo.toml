@@ -1,12 +1,24 @@
 [workspace]
 resolver = "3"
-members = ["xtask"]
+members = [
+    "crates/pistis-canonical",
+    "crates/pistis-domain",
+    "crates/pistis-protocol",
+    "xtask",
+]
 
 [workspace.package]
 edition = "2024"
 rust-version = "1.90"
 license = "MPL-2.0"
 repository = "https://github.com/sagrudd/pistis"
+
+[workspace.dependencies]
+getrandom = "0.3.3"
+pistis-domain = { version = "0.1.0", path = "crates/pistis-domain" }
+serde = "1.0.228"
+serde_json = "1.0.145"
+subtle = "2.6.1"
 
 [workspace.lints.rust]
 unsafe_code = "forbid"

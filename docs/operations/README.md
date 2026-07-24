@@ -10,3 +10,4 @@ recovery, backup, audit, and incident-response guidance.
 - [iOS application operations](ios.md)
 - [Android application operations](android.md)
 - [Synoptikon integration operations](synoptikon.md)
+- [Monas standalone integration operations](monas.md)

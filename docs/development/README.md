@@ -12,3 +12,4 @@ current bootstrap workflow.
 - `ios.md`: portable/native iOS source boundaries and validation gates.
 - `android.md`: Android module boundaries, toolchain, tests, and CI gates.
 - `synoptikon.md`: host boundary, login/device UX, and contract-test rules.
+- `monas.md`: standalone host/CLI boundaries and cross-repository CI contract.

@@ -31,6 +31,7 @@ Development
    development/ios
    development/android
    development/synoptikon
+   development/monas
    development/issue-model
    development/jenkins-ci
    development/documentation
@@ -68,3 +69,4 @@ Architecture and operations
    operations/ios
    operations/android
    operations/synoptikon
+   operations/monas

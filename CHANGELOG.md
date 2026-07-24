@@ -22,3 +22,6 @@ a Changelog and releases follow Semantic Versioning.
   short-lived secret handling through a narrow confidential broker boundary.
 - Provider-neutral durable identity bindings with versioned, atomic,
   fail-closed file persistence and end-to-end provider fixture coverage.
+- Google OpenID Connect trust enrolment with pinned discovery, PKCE S256,
+  one-use callback correlation, local RS256/JWKS verification, canonical issuer
+  handling, stable subject extraction, and durable `(issuer, sub)` bindings.

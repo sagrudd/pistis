@@ -90,12 +90,12 @@
 
 # EPIC 4 — Google trust
 
-- [ ] Implement OIDC discovery
-- [ ] Validate ID token
-- [ ] Extract issuer
-- [ ] Extract subject
-- [ ] Persist identity binding
-- [ ] Add integration tests
+- [x] Implement OIDC discovery
+- [x] Validate ID token
+- [x] Extract issuer
+- [x] Extract subject
+- [x] Persist identity binding
+- [x] Add integration tests
 
 ---
 

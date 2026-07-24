@@ -13,7 +13,8 @@ mod repository;
 pub use file::FileIdentityBindingRepository;
 pub use memory::InMemoryIdentityBindingRepository;
 pub use model::{
-    BindingId, ExternalIdentity, GitHubIdentity, GitHubSubject, IdentityBinding, IdentityMetadata,
-    InvalidGitHubSubject,
+    BindingId, ExternalIdentity, GitHubIdentity, GitHubSubject, GoogleIdentity, GoogleIssuer,
+    GoogleSubject, IdentityBinding, IdentityMetadata, InvalidGitHubSubject, InvalidGoogleIssuer,
+    InvalidGoogleSubject,
 };
 pub use repository::{IdentityBindingRepository, RepositoryError, StoreOutcome};

@@ -166,7 +166,10 @@ fn sync_parent(_target: &Path) -> io::Result<()> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{ExternalIdentity, GitHubIdentity, GitHubSubject, IdentityMetadata};
+    use crate::{
+        ExternalIdentity, GitHubIdentity, GitHubSubject, GoogleIdentity, GoogleIssuer,
+        GoogleSubject, IdentityMetadata,
+    };
     use std::sync::atomic::{AtomicU64, Ordering};
 
     static DIRECTORY_SEQUENCE: AtomicU64 = AtomicU64::new(0);
@@ -210,6 +213,22 @@ mod tests {
         }
     }
 
+    fn google_binding(subject: &str, email: &str) -> IdentityBinding {
+        IdentityBinding {
+            id: BindingId::from_bytes([8; 16]),
+            identity: ExternalIdentity::Google(GoogleIdentity {
+                issuer: GoogleIssuer::new("https://accounts.google.com").expect("valid issuer"),
+                subject: GoogleSubject::new(subject).expect("valid subject"),
+                metadata: IdentityMetadata {
+                    email: Some(email.into()),
+                    ..IdentityMetadata::default()
+                },
+            }),
+            authenticated_at_ms: 3_000,
+            refreshed_at_ms: 4_000,
+        }
+    }
+
     #[test]
     fn binding_survives_repository_restart() {
         let directory = TestDirectory::new();
@@ -236,6 +255,70 @@ mod tests {
             Ok(StoreOutcome::Updated)
         );
         assert_eq!(repository.get(refreshed.id), Ok(Some(refreshed)));
+    }
+
+    #[test]
+    fn google_binding_and_metadata_refresh_survive_restart() {
+        let directory = TestDirectory::new();
+        let path = directory.repository_path();
+        let repository = FileIdentityBindingRepository::new(&path);
+        repository
+            .store(google_binding("109876543210987654321", "old@example.test"))
+            .expect("store Google binding");
+        let mut refreshed = google_binding("109876543210987654321", "new@example.test");
+        refreshed.refreshed_at_ms = 5_000;
+
+        assert_eq!(
+            repository.store(refreshed.clone()),
+            Ok(StoreOutcome::Updated)
+        );
+        let reopened = FileIdentityBindingRepository::new(path);
+        assert_eq!(reopened.get(refreshed.id), Ok(Some(refreshed)));
+    }
+
+    #[test]
+    fn google_subject_conflict_leaves_durable_record_unchanged() {
+        let directory = TestDirectory::new();
+        let path = directory.repository_path();
+        let repository = FileIdentityBindingRepository::new(&path);
+        let original = google_binding("trusted-subject", "trusted@example.test");
+        repository.store(original.clone()).expect("initial binding");
+        let original_bytes = fs::read(&path).expect("read stored representation");
+
+        assert_eq!(
+            repository.store(google_binding(
+                "substituted-subject",
+                "attacker@example.test"
+            )),
+            Err(RepositoryError::SubjectConflict)
+        );
+        assert_eq!(
+            fs::read(&path).expect("read unchanged representation"),
+            original_bytes
+        );
+        assert_eq!(repository.get(original.id), Ok(Some(original)));
+    }
+
+    #[test]
+    fn provider_substitution_leaves_durable_record_unchanged() {
+        let directory = TestDirectory::new();
+        let path = directory.repository_path();
+        let repository = FileIdentityBindingRepository::new(&path);
+        let original = binding(42, "trusted");
+        repository.store(original.clone()).expect("initial binding");
+        let original_bytes = fs::read(&path).expect("read stored representation");
+        let mut google = google_binding("42", "attacker@example.test");
+        google.id = original.id;
+
+        assert_eq!(
+            repository.store(google),
+            Err(RepositoryError::SubjectConflict)
+        );
+        assert_eq!(
+            fs::read(&path).expect("read unchanged representation"),
+            original_bytes
+        );
+        assert_eq!(repository.get(original.id), Ok(Some(original)));
     }
 
     #[test]
@@ -274,6 +357,31 @@ mod tests {
             Err(RepositoryError::Unavailable)
         );
         assert_eq!(fs::read(path).expect("read corruption"), b"not json");
+    }
+
+    #[test]
+    fn invalid_persisted_google_subject_fails_closed() {
+        let directory = TestDirectory::new();
+        let path = directory.repository_path();
+        let repository = FileIdentityBindingRepository::new(&path);
+        repository
+            .store(google_binding("valid-subject", "person@example.test"))
+            .expect("store Google binding");
+        let stored = fs::read_to_string(&path).expect("read stored representation");
+        fs::write(
+            &path,
+            stored.replace("\"valid-subject\"", "\"\"").as_bytes(),
+        )
+        .expect("corrupt subject");
+
+        assert_eq!(
+            repository.get(BindingId::from_bytes([8; 16])),
+            Err(RepositoryError::Unavailable)
+        );
+        assert_eq!(
+            repository.store(google_binding("replacement", "person@example.test")),
+            Err(RepositoryError::Unavailable)
+        );
     }
 
     #[cfg(unix)]

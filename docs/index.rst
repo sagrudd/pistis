@@ -43,6 +43,7 @@ Architecture and operations
    adr/0001-canonical-encoding
    adr/0002-signature-suites
    adr/0003-github-trust-enrolment
+   adr/0004-google-trust-enrolment
    protocol/README
    protocol/domain-model
    protocol
@@ -52,3 +53,4 @@ Architecture and operations
    security/README
    operations/README
    operations/github-enrolment
+   operations/google-enrolment

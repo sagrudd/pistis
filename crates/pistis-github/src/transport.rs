@@ -39,7 +39,7 @@ impl AccessToken {
     /// Returns [`TransportError::MalformedResponse`] for an empty token.
     pub fn new(value: impl Into<String>) -> Result<Self, TransportError> {
         let value = value.into();
-        if value.is_empty() {
+        if value.is_empty() || value.len() > crate::MAX_OAUTH_SECRET_BYTES {
             Err(TransportError::MalformedResponse)
         } else {
             Ok(Self(value))
@@ -97,4 +97,22 @@ pub trait UserTransport {
     ///
     /// Returns a structured transport failure when lookup cannot complete.
     fn authenticated_user(&mut self, token: &AccessToken) -> Result<UserPayload, TransportError>;
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn access_tokens_are_nonempty_and_bounded() {
+        assert!(matches!(
+            AccessToken::new(""),
+            Err(TransportError::MalformedResponse)
+        ));
+        assert!(matches!(
+            AccessToken::new("x".repeat(crate::MAX_OAUTH_SECRET_BYTES + 1)),
+            Err(TransportError::MalformedResponse)
+        ));
+        assert!(AccessToken::new("bounded-token").is_ok());
+    }
 }

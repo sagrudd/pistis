@@ -83,6 +83,8 @@ pub enum AuthorizationError {
     EmptyClientId,
     /// Callback authorization code must not be empty.
     EmptyAuthorizationCode,
+    /// Callback authorization code exceeded the bounded input size.
+    OversizedAuthorizationCode,
 }
 
 impl Drop for AuthorizationAttempt {
@@ -172,6 +174,9 @@ impl AuthorizationAttempt {
         }
         if callback.code.is_empty() {
             return Err(AuthorizationError::EmptyAuthorizationCode);
+        }
+        if callback.code.len() > crate::MAX_AUTHORIZATION_CODE_BYTES {
+            return Err(AuthorizationError::OversizedAuthorizationCode);
         }
         let nonce = Zeroizing::new(encode(&self.nonce));
         let verifier = Zeroizing::new(encode(&self.verifier));
@@ -312,6 +317,29 @@ mod tests {
                 state
             }),
             Err(AuthorizationError::EmptyAuthorizationCode)
+        ));
+
+        let (attempt, request) = AuthorizationAttempt::start(
+            &discovery(),
+            "client",
+            &redirect,
+            ClaimScopes::default(),
+            &mut Entropy(7),
+        )
+        .unwrap();
+        let state = request
+            .url
+            .query_pairs()
+            .find(|(key, _)| key == "state")
+            .unwrap()
+            .1
+            .into_owned();
+        assert!(matches!(
+            attempt.complete(AuthorizationCallback {
+                code: Zeroizing::new("x".repeat(crate::MAX_AUTHORIZATION_CODE_BYTES + 1)),
+                state
+            }),
+            Err(AuthorizationError::OversizedAuthorizationCode)
         ));
     }
 }

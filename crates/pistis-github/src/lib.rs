@@ -21,3 +21,12 @@ pub use pkce::{EntropyError, EntropySource, Pkce, PkceError, PkceVerifier, State
 pub use transport::{
     AccessToken, TokenExchange, TokenTransport, TransportError, UserPayload, UserTransport,
 };
+
+/// Maximum accepted authenticated-user JSON response size.
+///
+/// HTTP adapters should apply a tighter response limit where practical; the
+/// identity parser enforces this fail-safe ceiling itself.
+pub const MAX_USER_PAYLOAD_BYTES: usize = 64 * 1024;
+
+/// Maximum accepted OAuth authorization-code or access-token size.
+pub const MAX_OAUTH_SECRET_BYTES: usize = 8 * 1024;

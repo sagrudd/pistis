@@ -341,6 +341,9 @@ impl JwkSet {
     ///
     /// Returns [`JwksError::InvalidDocument`] for malformed or empty input.
     pub fn parse(input: &[u8]) -> Result<Self, JwksError> {
+        if input.len() > crate::MAX_PROVIDER_DOCUMENT_BYTES {
+            return Err(JwksError::InvalidDocument);
+        }
         let wire: WireJwks =
             serde_json::from_slice(input).map_err(|_| JwksError::InvalidDocument)?;
         let keys: Vec<_> = wire

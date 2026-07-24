@@ -67,6 +67,8 @@ pub enum CallbackError {
     Provider(ProviderError),
     /// Neither a non-empty code nor a provider error was present.
     MissingCode,
+    /// Authorization code exceeded the bounded callback size.
+    OversizedCode,
 }
 
 /// Completed, authenticated GitHub identity.
@@ -151,6 +153,9 @@ impl GitHubOAuth {
         let code = code
             .filter(|value| !value.is_empty())
             .ok_or(CallbackError::MissingCode)?;
+        if code.len() > crate::MAX_OAUTH_SECRET_BYTES {
+            return Err(CallbackError::OversizedCode);
+        }
         Ok(Callback {
             code: code.to_owned(),
         })
@@ -183,6 +188,9 @@ impl GitHubOAuth {
         let user = user_transport
             .authenticated_user(&token)
             .map_err(OAuthError::UserLookup)?;
+        if user.body.len() > crate::MAX_USER_PAYLOAD_BYTES {
+            return Err(OAuthError::MalformedUserResponse);
+        }
         let value: Value =
             serde_json::from_slice(&user.body).map_err(|_| OAuthError::MalformedUserResponse)?;
         let object = value.as_object().ok_or(OAuthError::MalformedUserResponse)?;
@@ -267,6 +275,15 @@ mod tests {
             adapter().validate_callback(&state, Some(&state.expose()), None, None),
             Err(CallbackError::MissingCode)
         );
+        assert_eq!(
+            adapter().validate_callback(
+                &state,
+                Some(&state.expose()),
+                Some(&"x".repeat(crate::MAX_OAUTH_SECRET_BYTES + 1)),
+                None
+            ),
+            Err(CallbackError::OversizedCode)
+        );
     }
 
     #[test]
@@ -319,6 +336,26 @@ mod tests {
         assert_eq!(
             adapter().complete(callback, pkce.into_verifier(), &mut tokens, &mut users),
             Err(OAuthError::InvalidUserId)
+        );
+    }
+
+    #[test]
+    fn rejects_oversized_authenticated_user_body_before_json_parsing() {
+        let state = State::generate(&mut FixedEntropy).unwrap();
+        let pkce = Pkce::generate(&mut FixedEntropy).unwrap();
+        let callback = adapter()
+            .validate_callback(&state, Some(&state.expose()), Some("code"), None)
+            .unwrap();
+        let mut tokens = MockToken {
+            saw_s256_verifier: false,
+        };
+        let mut users = MockUser {
+            token_seen: false,
+            body: vec![b' '; crate::MAX_USER_PAYLOAD_BYTES + 1],
+        };
+        assert_eq!(
+            adapter().complete(callback, pkce.into_verifier(), &mut tokens, &mut users),
+            Err(OAuthError::MalformedUserResponse)
         );
     }
 }

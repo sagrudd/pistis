@@ -19,6 +19,7 @@ LABELS = {
     "type:bug": ("d73a4a", "Confirmed defect"),
     "status:triage": ("ededed", "Needs triage"),
     "status:ready": ("0e8a16", "Ready for implementation"),
+    "status:in-review": ("fbca04", "Implementation is under review"),
     "status:blocked": ("b60205", "Blocked by a dependency"),
     "status:complete": ("1f883d", "Delivered and verified"),
     "priority:P0": ("b60205", "Critical priority"),

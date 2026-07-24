@@ -1,5 +1,9 @@
 # Pistis documentation
 
+This directory is a Sphinx project rendered with the Read the Docs theme.
+Follow `development/documentation.md`; local rendering uses the pinned Docker
+image and GitHub Pages receives only manually published, pre-rendered HTML.
+
 - `BOOTSTRAP.md`: repository bootstrap contract.
 - `BOOTSTRAP_STATUS.md`: delivered bootstrap controls and validation evidence.
 - `PROJECT_CHARTER.md`: product vision and scope.

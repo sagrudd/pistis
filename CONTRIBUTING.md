@@ -26,6 +26,11 @@ cargo deny check
 
 Markdown files must pass markdownlint. CI is authoritative.
 
+Documentation must also build without Sphinx warnings in the pinned local
+container described in `docs/development/documentation.md`. Publication to
+GitHub Pages is a separate manual review step; do not add deployment
+automation.
+
 ## Compatibility and security
 
 Protocol, schema, canonical encoding, or cryptographic changes require an ADR.

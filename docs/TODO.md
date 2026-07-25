@@ -307,6 +307,17 @@ release candidate.
 
 # EPIC 15 — Release
 
+ADR 0014 defines immutable candidate identity, separated
+assemble/verify/approve/publish phases, credential-isolated Jenkins release
+tasks, an artefact/provenance manifest, per-artefact SBOMs, qualified
+reproducibility, packaged acceptance, signed approvals, and immutable
+publication. Credential-free manifest validation, packaging prototypes, SBOM
+reconciliation, and blocked release-task definitions may proceed now. EPIC-15
+remains blocked until all prior product and security gates pass for the exact
+packaged candidate, external signing/store prerequisites exist, required
+approvals bind the final manifest digest, publication succeeds, and the
+immutable signed `v1.0.0` tag is created.
+
 - [ ] Build SBOM
 - [ ] Package RPM
 - [ ] Publish Rust crates

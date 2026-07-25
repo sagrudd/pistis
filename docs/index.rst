@@ -35,6 +35,7 @@ Development
    development/discovery
    development/device-lifecycle
    development/security-hardening
+   development/release-packaging
    development/issue-model
    development/jenkins-ci
    development/documentation
@@ -60,6 +61,7 @@ Architecture and operations
    adr/0011-local-discovery-and-direct-exchange
    adr/0012-recovery-revocation-and-multi-device-lifecycle
    adr/0013-security-assurance-and-independent-review
+   adr/0014-release-packaging-and-provenance
    protocol/README
    protocol/domain-model
    protocol
@@ -79,3 +81,4 @@ Architecture and operations
    operations/discovery
    operations/device-lifecycle
    operations/security-hardening
+   operations/release-packaging

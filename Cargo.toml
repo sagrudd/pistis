@@ -15,6 +15,7 @@ members = [
     "crates/pistis-protocol",
     "crates/pistis-qr",
     "crates/pistis-recovery",
+    "crates/pistis-release",
     "crates/pistis-synoptikon",
     "crates/pistis-verifier",
     "xtask",
@@ -45,6 +46,7 @@ pistis-monas = { version = "0.1.0", path = "crates/pistis-monas" }
 pistis-protocol = { version = "0.1.0", path = "crates/pistis-protocol" }
 pistis-qr = { version = "0.1.0", path = "crates/pistis-qr" }
 pistis-recovery = { version = "0.1.0", path = "crates/pistis-recovery" }
+pistis-release = { version = "0.1.0", path = "crates/pistis-release" }
 pistis-synoptikon = { version = "0.1.0", path = "crates/pistis-synoptikon" }
 qrcode = { version = "0.14.1", default-features = false }
 rusqlite = { version = "=0.37.0", features = ["bundled"] }

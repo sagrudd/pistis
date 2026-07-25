@@ -795,6 +795,10 @@ dependencies = [
 ]
 
 [[package]]
+name = "pistis-release"
+version = "0.1.0"
+
+[[package]]
 name = "pistis-synoptikon"
 version = "0.1.0"
 dependencies = [

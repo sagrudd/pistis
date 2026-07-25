@@ -28,6 +28,7 @@ Development
    development/code-structure
    development/fuzzing
    development/provider-conformance
+   development/ios
    development/issue-model
    development/jenkins-ci
    development/documentation
@@ -46,6 +47,7 @@ Architecture and operations
    adr/0004-google-trust-enrolment
    adr/0005-device-registry-storage
    adr/0006-qr-authentication-reference-flow
+   adr/0007-ios-reference-application
    protocol/README
    protocol/domain-model
    protocol
@@ -58,3 +60,4 @@ Architecture and operations
    operations/github-enrolment
    operations/google-enrolment
    operations/qr-authentication
+   operations/ios

@@ -3,11 +3,18 @@
 Pistis uses the Mnemosyne Expedition/Jenkins infrastructure in `../jenkins`.
 GitHub-hosted Actions are intentionally not used.
 
-The reviewed Expedition contract is `.mnemosyne/expedition.json`. Its single
-amd64 stage runs in the digest-pinned Rust 1.90.0 image and retains the CI log,
-Cargo metadata, and dependency tree as dossier evidence. The centrally
-controlled task installs pinned cargo-audit, cargo-deny, and
-markdownlint-cli2 tooling before running the gates.
+The reviewed Expedition contract is `.mnemosyne/expedition.json`. Its
+repository stage runs in the digest-pinned Rust 1.90.0 image and retains the CI
+log, Cargo metadata, and dependency tree as dossier evidence. The centrally
+controlled task installs pinned cargo-audit, cargo-deny, and markdownlint-cli2
+tooling before running the gates.
+
+The separate `swift-core-ci-amd64` stage runs `ios/PistisCore` in a
+digest-pinned official Swift Linux image and retains its test log. It does not
+prove native SwiftUI, iOS SDK, Secure Enclave, LocalAuthentication, camera,
+signing, archive, or TestFlight behavior. Those gates require a separately
+reviewed macOS Jenkins worker with full Xcode and owner-controlled Apple
+resources.
 
 The task requires `network` to fetch those pinned tools and advisory data.
 `jenkins-submit-checkout` binds a reviewed clean checkout to an exact revision

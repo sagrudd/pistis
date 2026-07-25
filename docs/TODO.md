@@ -128,9 +128,17 @@ open under milestone M5.
 
 # EPIC 7 — iOS
 
+Implementation source and portable tests are present on the EPIC-7 delivery
+branch. These boxes remain open until the applicable evidence exists: full
+Xcode native compilation, simulator and real-device security/accessibility
+tests, Apple signing and TestFlight, broker/verifier integration, and the COSE
+ADR plus shared mobile conformance fixtures required by ADR 0006. The issue
+tracker records signing, TestFlight, and production QR interoperability as
+blocked rather than complete.
+
 ## Foundation
 
-- [ ] Create SwiftUI project
+- [x] Create SwiftUI project
 - [ ] Configure signing
 - [ ] Configure TestFlight
 

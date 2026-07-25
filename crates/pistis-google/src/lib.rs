@@ -20,3 +20,12 @@ pub use flow::{
 pub use token::{
     IdTokenError, JwkSet, JwksError, TokenValidation, ValidatedGoogleIdentity, ValidationError,
 };
+
+/// Maximum accepted Google discovery or `JWKS` document size.
+///
+/// Transport adapters should enforce tighter endpoint-specific limits where
+/// practical; the parser boundary enforces this fail-safe ceiling itself.
+pub const MAX_PROVIDER_DOCUMENT_BYTES: usize = 64 * 1024;
+
+/// Maximum accepted OAuth authorization-code size.
+pub const MAX_AUTHORIZATION_CODE_BYTES: usize = 8 * 1024;

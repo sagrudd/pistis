@@ -59,6 +59,9 @@ impl DiscoveryDocument {
     /// Returns an error if the issuer, endpoints, or required capabilities
     /// cannot be trusted by the adapter.
     pub fn parse(input: &[u8]) -> Result<Self, DiscoveryError> {
+        if input.len() > crate::MAX_PROVIDER_DOCUMENT_BYTES {
+            return Err(DiscoveryError::InvalidDocument);
+        }
         let wire: WireDocument =
             serde_json::from_slice(input).map_err(|_| DiscoveryError::InvalidDocument)?;
         if wire.issuer != GOOGLE_ISSUER && wire.issuer != "accounts.google.com" {

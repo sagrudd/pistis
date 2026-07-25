@@ -286,6 +286,17 @@ complete iOS and Android lost-device exercises are delivered.
 
 # EPIC 14 — Security
 
+ADR 0013 defines revision-bound security assurance, independent-review
+criteria, finding and residual-risk governance, threat/control traceability,
+privacy and dependency inventories, fuzz evidence, and incident readiness.
+Automated hardening and review-readiness evidence may proceed now, but they
+cannot be represented as an independent assessment. EPIC-14 remains blocked
+until the production surfaces are complete, independent penetration and
+cryptographic reviews and the privacy assessment are authenticated, critical
+and high findings are closed, medium risks are explicitly accepted with owned
+plans, incident exercises pass, and the security owner approves the exact
+release candidate.
+
 - [ ] Threat model review
 - [ ] Penetration testing
 - [ ] Dependency review

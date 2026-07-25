@@ -267,6 +267,15 @@ are complete.
 
 # EPIC 13 — Recovery
 
+ADR 0012 defines independent multi-device credentials, replacement without key
+migration, monotonic revocation and session invalidation, governed
+sole-administrator recovery, external-identity loss policy, and temporal
+historic-verification semantics. Framework-neutral lifecycle contracts and
+negative state-machine tests may proceed now. Production recovery remains
+blocked until EPIC-12 detached evidence and trusted-time semantics, durable
+host transactions and session invalidation, native recovery ceremonies, and
+complete iOS and Android lost-device exercises are delivered.
+
 - [ ] Multiple devices
 - [ ] Replace device
 - [ ] Lost device flow

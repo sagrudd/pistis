@@ -33,6 +33,7 @@ Development
    development/synoptikon
    development/monas
    development/discovery
+   development/device-lifecycle
    development/issue-model
    development/jenkins-ci
    development/documentation
@@ -56,6 +57,7 @@ Architecture and operations
    adr/0009-synoptikon-integration-boundary
    adr/0010-monas-standalone-integration-boundary
    adr/0011-local-discovery-and-direct-exchange
+   adr/0012-recovery-revocation-and-multi-device-lifecycle
    protocol/README
    protocol/domain-model
    protocol
@@ -73,3 +75,4 @@ Architecture and operations
    operations/synoptikon
    operations/monas
    operations/discovery
+   operations/device-lifecycle

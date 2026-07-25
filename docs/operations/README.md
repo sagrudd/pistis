@@ -8,3 +8,4 @@ recovery, backup, audit, and incident-response guidance.
 - [Device registry operations](device-registry.md)
 - [QR authentication operations](qr-authentication.md)
 - [iOS application operations](ios.md)
+- [Android application operations](android.md)

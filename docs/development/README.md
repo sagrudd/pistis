@@ -10,3 +10,4 @@ current bootstrap workflow.
 - `provider-conformance.md`: deterministic external-provider adapter fixtures
   and failure cases.
 - `ios.md`: portable/native iOS source boundaries and validation gates.
+- `android.md`: Android module boundaries, toolchain, tests, and CI gates.

@@ -10,7 +10,7 @@
   },
   "source": {
     "repository": "https://github.com/sagrudd/pistis",
-    "revision": "09682fe984e2fe7d49c926cd0c537e07c9a1bcc8"
+    "revision": "56e637d30f22a57e003a532b7be616df092a9c9a"
   },
   "trust": "trusted_revision",
   "modules": [],
@@ -28,6 +28,40 @@
       "task": {
         "kind": "approved_task",
         "task": "pistis-repository-ci",
+        "parameters": {}
+      },
+      "resources": {
+        "cpu_millicores": 4000,
+        "memory_mib": 8192
+      }
+    },
+    {
+      "id": "swift-core-ci-amd64",
+      "target": "linux_amd64",
+      "container": {
+        "image": "docker.io/library/swift",
+        "digest": "sha256:976e1f9747d050142343d6ca90400cf11e08cef7e204af06a8d23a342831eb60"
+      },
+      "task": {
+        "kind": "approved_task",
+        "task": "pistis-swift-core-ci",
+        "parameters": {}
+      },
+      "resources": {
+        "cpu_millicores": 2000,
+        "memory_mib": 4096
+      }
+    },
+    {
+      "id": "android-source-ci-amd64",
+      "target": "linux_amd64",
+      "container": {
+        "image": "docker.io/alvrme/alpine-android",
+        "digest": "sha256:d4736f775ca9517d9e65486446f75343bb5ddd53c464861bf386240c47bd1d16"
+      },
+      "task": {
+        "kind": "approved_task",
+        "task": "pistis-android-source-ci",
         "parameters": {}
       },
       "resources": {

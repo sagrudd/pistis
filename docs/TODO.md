@@ -222,6 +222,13 @@ session-cookie boundary are delivered and accepted.
 
 # EPIC 10 — Monas
 
+ADR 0010 defines the standalone integration, host-authority, CLI, storage, and
+packaging boundaries. A framework-neutral contract and explicitly non-production
+reference components may proceed now. Production Monas login, durable SQLite
+operation, detached evidence/report signing, local discovery, and release
+packaging remain blocked until the EPIC-9 production gates and the applicable
+EPIC-11, EPIC-12, EPIC-13, and EPIC-15 decisions and acceptance evidence exist.
+
 - [ ] Standalone server
 - [ ] CLI login demo
 - [ ] CLI verifier

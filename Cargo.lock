@@ -744,6 +744,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "pistis-monas"
+version = "0.1.0"
+dependencies = [
+ "pistis-device-registry",
+ "pistis-domain",
+ "pistis-identity",
+ "pistis-protocol",
+]
+
+[[package]]
 name = "pistis-protocol"
 version = "0.1.0"
 dependencies = [

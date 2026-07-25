@@ -31,6 +31,7 @@ Development
    development/ios
    development/android
    development/synoptikon
+   development/monas
    development/issue-model
    development/jenkins-ci
    development/documentation
@@ -52,6 +53,7 @@ Architecture and operations
    adr/0007-ios-reference-application
    adr/0008-android-reference-application
    adr/0009-synoptikon-integration-boundary
+   adr/0010-monas-standalone-integration-boundary
    protocol/README
    protocol/domain-model
    protocol
@@ -67,3 +69,4 @@ Architecture and operations
    operations/ios
    operations/android
    operations/synoptikon
+   operations/monas

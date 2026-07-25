@@ -238,6 +238,15 @@ EPIC-11, EPIC-12, EPIC-13, and EPIC-15 decisions and acceptance evidence exist.
 
 # EPIC 11 — Local discovery
 
+ADR 0011 defines privacy-minimizing installation advertisement, signed
+endpoint binding, TLS pinning, native adapter, bounded fallback, and
+host/browser boundaries. Deterministic discovery contracts and hostile-network
+tests may proceed now. Production advertisement and direct exchange remain
+blocked until EPIC-10, the accepted production signed-message profile, host and
+native permission adapters, dependency review, and the IPv4/IPv6,
+multiple-interface, multicast-blocked, and physical-device acceptance matrix
+are complete.
+
 - [ ] Evaluate mDNS implementation
 - [ ] Advertise installation
 - [ ] Discover installation

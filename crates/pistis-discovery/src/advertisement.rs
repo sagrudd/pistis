@@ -35,6 +35,12 @@ impl InstanceName {
     pub const fn from_bytes(bytes: [u8; 16]) -> Self {
         Self(bytes)
     }
+
+    /// Returns the opaque random bytes for a platform encoder.
+    #[must_use]
+    pub const fn as_bytes(&self) -> &[u8; 16] {
+        &self.0
+    }
 }
 
 /// Opaque short-lived endpoint identifier.
@@ -46,6 +52,12 @@ impl EndpointId {
     #[must_use]
     pub const fn from_bytes(bytes: [u8; 16]) -> Self {
         Self(bytes)
+    }
+
+    /// Returns the opaque identifier bytes for a platform encoder.
+    #[must_use]
+    pub const fn as_bytes(&self) -> &[u8; 16] {
+        &self.0
     }
 }
 

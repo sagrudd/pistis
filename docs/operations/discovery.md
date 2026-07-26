@@ -5,6 +5,11 @@ channel, server advertiser, mobile adapters, and supported-network test matrix
 remain absent. QR is the universal fallback and must remain available whenever
 local multicast or direct connectivity is unavailable.
 
+For the MVP, discovery runs only while the user has opened Pistis and entered
+nearby pending requests. There is no closed-app notification or cloud push
+service. Do not keep discovery running in the background to approximate
+notification behavior.
+
 ## Enablement gates
 
 Before enabling local discovery, retain evidence for:

@@ -33,6 +33,8 @@ a Changelog and releases follow Semantic Versioning.
   closed authentication schemas, redacted browser polling, verified reference
   completion, atomic in-memory session/audit transitions, and offline
   acceptance coverage for response-QR and direct-local transfer.
+- EPIC-11 foreground nearby-request MVP semantics and a reviewed discovery
+  implementation selection covering native iOS/Android and the Rust host.
 
 ### Changed
 

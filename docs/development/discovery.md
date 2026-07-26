@@ -6,6 +6,13 @@ consumption rules. Discovery names, addresses, ports, TXT records, network
 interfaces, and endpoint responses are untrusted until the exact Pistis
 bindings and signed protocol message verify.
 
+The MVP is foreground-only. Opening Pistis and selecting nearby requests starts
+a bounded browse; leaving that surface, backgrounding the app, or reaching the
+deadline stops it. Closed-app notification is deferred and is not simulated by
+continuous discovery, a cloud relay, or a public listener. The implementation
+selection is recorded in
+[`discovery-implementation-evaluation.md`](discovery-implementation-evaluation.md).
+
 There is currently no `pistis-discovery` crate, server advertiser, iOS local
 network adapter, or Android network-service-discovery adapter. The iOS bundle
 declares no Bonjour service/local-network purpose, and the Android application

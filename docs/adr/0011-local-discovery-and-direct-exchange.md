@@ -150,6 +150,14 @@ There is no indefinite searching, background scanning unrelated to an active
 user ceremony, automatic cleartext downgrade, or weaker verifier mode.
 Fallback changes transport only.
 
+For the MVP, the user opens Pistis on the phone and explicitly enters the
+nearby-requests surface. That foreground action starts one bounded browse for
+previously authenticated installations and shows their pending requests only
+after the pairwise installation binding and channel authenticate. The MVP does
+not promise a notification while the application is closed or backgrounded.
+Closed-app notification requires a later ADR and must not introduce a cloud
+relay, public advertisement, or unbounded background discovery implicitly.
+
 ### Browser and host responsibilities
 
 The Synoptikon or Monas backend advertises and receives the phone's direct
@@ -201,6 +209,22 @@ of maintained pure-Rust and operating-system-native options against:
 Selecting a crate is not itself completion of issue 137. The evaluation report,
 dependency review, and negative prototype evidence are retained before the
 implementation dependency is added.
+
+The evaluation selects native Network.framework/Bonjour on iOS and
+`NsdManager` on Android. The host Rust adapter may use pinned `mdns-sd` behind
+the narrow discovery port: it is safe Rust, does not impose an async runtime,
+supports publication, browsing, conflict handling, and daemon monitoring, and
+is actively released. `simple-mdns` and `agnostic-mdns` remain rejected for the
+MVP because they add no mobile permission/lifecycle advantage and would expand
+the host runtime or integration surface.
+
+The MVP wire projection is closed and minimal. It uses service type
+`_pistis._tcp.local.`, a fresh 128-bit lowercase-hexadecimal instance name, and
+exactly three ordered TXT entries: `v=1`, `id=<32 lowercase hexadecimal
+characters>`, and `cap=https`. TTL is the remaining whole-second advertisement
+lifetime capped at 30 seconds; an expired or subsecond record is not published.
+No additional TXT key is accepted without an additive ADR revision and privacy
+review.
 
 Deterministic tests cover forged and conflicting advertisements, wrong service
 type and endpoint identifier, TXT additions and oversize, stale TTL and

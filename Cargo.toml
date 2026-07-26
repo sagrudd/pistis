@@ -28,11 +28,11 @@ license = "MPL-2.0"
 repository = "https://github.com/sagrudd/pistis"
 
 [workspace.dependencies]
-base64 = "0.22.1"
-getrandom = "0.3.3"
-jsonwebtoken = { version = "10.3.0", default-features = false, features = ["aws_lc_rs", "use_pem"] }
+base64 = "0.23.0"
+getrandom = "0.4.3"
+jsonwebtoken = { version = "11.0.0", default-features = false, features = ["aws_lc_rs", "use_pem"] }
 mdns-sd = "=0.20.2"
-p256 = { version = "0.13.2", default-features = false, features = ["ecdsa", "sha256"] }
+p256 = { version = "0.14.0", default-features = false, features = ["ecdsa", "sha256"] }
 pistis-assurance = { version = "0.1.0", path = "crates/pistis-assurance" }
 pistis-authentication = { version = "0.1.0", path = "crates/pistis-authentication" }
 pistis-canonical = { version = "0.1.0", path = "crates/pistis-canonical" }
@@ -50,10 +50,10 @@ pistis-recovery = { version = "0.1.0", path = "crates/pistis-recovery" }
 pistis-release = { version = "0.1.0", path = "crates/pistis-release" }
 pistis-synoptikon = { version = "0.1.0", path = "crates/pistis-synoptikon" }
 qrcode = { version = "0.14.1", default-features = false }
-rusqlite = { version = "=0.37.0", features = ["bundled"] }
+rusqlite = { version = "=0.40.1", features = ["bundled"] }
 serde = "1.0.228"
 serde_json = "1.0.145"
-sha2 = "0.10.9"
+sha2 = "0.11.0"
 subtle = "2.6.1"
 url = "2.5.7"
 zeroize = "1.8.2"

@@ -13,12 +13,12 @@ continuous discovery, a cloud relay, or a public listener. The implementation
 selection is recorded in
 [`discovery-implementation-evaluation.md`](discovery-implementation-evaluation.md).
 
-The `pistis-discovery` crate now owns the portable record projection and a
-bounded Rust host advertiser. There is not yet an iOS local-network adapter or
-Android network-service-discovery adapter. The iOS bundle declares no Bonjour
-service/local-network purpose, and the Android application reports local
-discovery as `Not configured`. These are delivery blockers, not implicit
-platform support.
+The `pistis-discovery` crate now owns the portable record projection, bounded
+Rust host advertiser, and bounded Rust host browser. There is not yet an iOS
+local-network adapter or Android network-service-discovery adapter. The iOS
+bundle declares no Bonjour service/local-network purpose, and the Android
+application reports local discovery as `Not configured`. These are delivery
+blockers, not implicit platform support.
 
 ## Normative boundary
 
@@ -75,6 +75,27 @@ goodbye records; after a process crash a peer can temporarily retain only the
 opaque stale locator. The verifier/session ceremony expiry remains the
 authority and rejects that locator. Do not put identity or bearer data into TXT
 records to compensate for discovery availability.
+
+`DiscoveryBrowser` owns one foreground browse lasting one to thirty seconds.
+It subscribes only to `_pistis._tcp.local.`, stops and shuts down on its
+deadline, cancellation, receiver loss, daemon error, or daemon disconnect, and
+emits one terminal state. Resolved services are accepted only when:
+
+- the service and subtype are exactly the reviewed values;
+- the instance and endpoint identifier are 128-bit lowercase hexadecimal;
+- the hostname is exactly `pistis-<instance>.local.`;
+- TXT contains exactly `v=1`, `id=<endpoint>`, and `cap=https`;
+- the port is nonzero;
+- every address is private, link-local, or IPv6 unique-local; and
+- every address has a nonzero operating-system interface index.
+
+Each emitted `ResolvedCandidate` retains the address and a typed interface
+identifier. The candidate remains untrusted and must pass `Candidate::authorize`
+against the installation-signed endpoint binding before any connection.
+Because `mdns-sd` does not expose received record TTL, the candidate eligibility
+deadline is the current bounded browse deadline. A cached locator can therefore
+produce only a short-lived connection attempt; it cannot extend ceremony or
+binding expiry.
 
 Views do not select authority from the first discovered service. They display
 bounded state and safe fallback choices while an adapter checks the exact

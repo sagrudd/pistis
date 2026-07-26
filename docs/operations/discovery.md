@@ -70,6 +70,22 @@ an opaque stale cache entry until the peer's RFC-default cache TTL elapses.
 Such a locator must fail ceremony expiry and authenticated-channel binding; it
 must never revive a request. Record this case in controlled-network evidence.
 
+Host browsing is foreground and bounded to one through thirty seconds. Keep
+the `DiscoveryBrowser` owner only while the nearby-request surface is active
+and retain its event receiver; dropping either cancels useful work. The browser
+rejects unknown service variants, extra TXT keys, non-random names, public
+addresses, missing interface scope, and port zero without presenting them to a
+user. `Expired` and `Stopped` are ordinary QR-fallback conditions.
+`BackendFailure` is a typed availability failure and should additionally feed
+redacted diagnostics.
+
+A resolved candidate contains an address, port, endpoint identifier, and OS
+interface index, but none is authoritative. Never connect until the exact
+installation-signed endpoint binding authorizes the candidate. Bind the socket
+to the retained interface index and apply the pinned TLS public-key digest in
+the secure-transport task. Do not ask a user to choose between unverified
+same-name services.
+
 ## Expected fallback
 
 Use this availability hierarchy:

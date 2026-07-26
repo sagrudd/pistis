@@ -12,6 +12,43 @@ impl InterfaceId {
     pub const fn from_bytes(bytes: [u8; 16]) -> Self {
         Self(bytes)
     }
+
+    /// Constructs an adapter identifier from an operating-system interface index.
+    ///
+    /// Index zero is reserved for "unknown" and is rejected by discovery
+    /// adapters before this constructor is used.
+    #[must_use]
+    pub const fn from_platform_index(index: u32) -> Self {
+        let index = index.to_be_bytes();
+        Self([
+            b'p', b'i', b's', b't', b'i', b's', b'-', b'i', b'f', b'-', b'1', 0, index[0],
+            index[1], index[2], index[3],
+        ])
+    }
+
+    /// Returns the encoded operating-system interface index, when present.
+    #[must_use]
+    pub const fn platform_index(&self) -> Option<u32> {
+        if self.0[0] == b'p'
+            && self.0[1] == b'i'
+            && self.0[2] == b's'
+            && self.0[3] == b't'
+            && self.0[4] == b'i'
+            && self.0[5] == b's'
+            && self.0[6] == b'-'
+            && self.0[7] == b'i'
+            && self.0[8] == b'f'
+            && self.0[9] == b'-'
+            && self.0[10] == b'1'
+            && self.0[11] == 0
+        {
+            Some(u32::from_be_bytes([
+                self.0[12], self.0[13], self.0[14], self.0[15],
+            ]))
+        } else {
+            None
+        }
+    }
 }
 
 /// Adapter-classified address scope.

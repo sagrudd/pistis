@@ -249,7 +249,7 @@ are complete.
 
 - [x] Evaluate mDNS implementation
 - [x] Advertise installation
-- [ ] Discover installation
+- [x] Discover installation
 - [ ] Secure local transport
 - [ ] Fallback to QR
 

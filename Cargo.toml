@@ -31,6 +31,7 @@ repository = "https://github.com/sagrudd/pistis"
 base64 = "0.22.1"
 getrandom = "0.3.3"
 jsonwebtoken = { version = "10.3.0", default-features = false, features = ["aws_lc_rs", "use_pem"] }
+mdns-sd = "=0.20.2"
 p256 = { version = "0.13.2", default-features = false, features = ["ecdsa", "sha256"] }
 pistis-assurance = { version = "0.1.0", path = "crates/pistis-assurance" }
 pistis-authentication = { version = "0.1.0", path = "crates/pistis-authentication" }

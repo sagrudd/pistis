@@ -26,7 +26,7 @@ untrusted webhook path.
 From `../jenkins`, validate the contract:
 
 ```sh
-cargo run -p expedition-basecamp -- resolve \
+cargo run -p expedition-basecamp --bin expedition -- resolve \
   --policy integrations/pistis/policy.json \
   --manifest ../pistis/.mnemosyne/expedition.json
 ```

@@ -247,8 +247,8 @@ native permission adapters, dependency review, and the IPv4/IPv6,
 multiple-interface, multicast-blocked, and physical-device acceptance matrix
 are complete.
 
-- [ ] Evaluate mDNS implementation
-- [ ] Advertise installation
+- [x] Evaluate mDNS implementation
+- [x] Advertise installation
 - [ ] Discover installation
 - [ ] Secure local transport
 - [ ] Fallback to QR

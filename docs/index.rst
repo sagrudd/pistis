@@ -33,6 +33,7 @@ Development
    development/synoptikon
    development/monas
    development/discovery
+   development/discovery-implementation-evaluation
    development/device-lifecycle
    development/security-hardening
    development/release-packaging

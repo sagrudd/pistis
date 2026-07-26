@@ -10,6 +10,8 @@
 mod advertisement;
 mod candidate;
 mod fallback;
+mod publisher;
+mod wire;
 
 pub use advertisement::{
     Advertisement, AdvertisementError, Capability, EndpointId, InstanceName, ProtocolVersion,
@@ -22,3 +24,7 @@ pub use candidate::{
 pub use fallback::{
     AttemptFailure, SelectionState, TransferAttempt, TransferPlan, TransportRejection,
 };
+pub use publisher::{
+    AdvertisementPublisher, PublicationError, PublicationState, PublisherConfiguration,
+};
+pub use wire::{SERVICE_TYPE_FQDN, WireAdvertisement, WireAdvertisementError};

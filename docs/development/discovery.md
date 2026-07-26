@@ -13,11 +13,12 @@ continuous discovery, a cloud relay, or a public listener. The implementation
 selection is recorded in
 [`discovery-implementation-evaluation.md`](discovery-implementation-evaluation.md).
 
-There is currently no `pistis-discovery` crate, server advertiser, iOS local
-network adapter, or Android network-service-discovery adapter. The iOS bundle
-declares no Bonjour service/local-network purpose, and the Android application
-reports local discovery as `Not configured`. These are delivery blockers, not
-implicit platform support.
+The `pistis-discovery` crate now owns the portable record projection and a
+bounded Rust host advertiser. There is not yet an iOS local-network adapter or
+Android network-service-discovery adapter. The iOS bundle declares no Bonjour
+service/local-network purpose, and the Android application reports local
+discovery as `Not configured`. These are delivery blockers, not implicit
+platform support.
 
 ## Normative boundary
 
@@ -59,6 +60,21 @@ platform HTTP stack, or host-session types. Platform and host adapters own:
 - Android permission, discovery, resolution, and network callbacks;
 - authenticated connection establishment; and
 - host completion notification.
+
+The Rust `AdvertisementPublisher` is an RAII owner for one advertisement. Its
+configuration requires a nonzero HTTPS port and explicit private, link-local,
+or IPv6 unique-local addresses; it never asks the library to enumerate every
+host address. It derives both the DNS-SD instance and a non-semantic
+`pistis-<random>.local.` hostname from the per-ceremony random value. It stops
+and unregisters on its bounded deadline, drop, daemon failure, or DNS name
+conflict. Runtime state is observable as a closed `PublicationState` enum.
+
+The wire lifetime is not a claim about peer DNS cache TTL. The selected library
+does not expose its per-service RFC-default TTL setters. Graceful expiry sends
+goodbye records; after a process crash a peer can temporarily retain only the
+opaque stale locator. The verifier/session ceremony expiry remains the
+authority and rejects that locator. Do not put identity or bearer data into TXT
+records to compensate for discovery availability.
 
 Views do not select authority from the first discovered service. They display
 bounded state and safe fallback choices while an adapter checks the exact

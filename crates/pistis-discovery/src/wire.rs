@@ -14,7 +14,7 @@ pub struct WireAdvertisement {
     pub service_type: &'static str,
     /// Closed ordered TXT entries.
     pub txt: [String; 3],
-    /// Bounded record lifetime in seconds.
+    /// Bounded publication lifetime in seconds.
     pub ttl_seconds: u32,
 }
 

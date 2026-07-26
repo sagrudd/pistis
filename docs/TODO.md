@@ -248,7 +248,7 @@ multiple-interface, multicast-blocked, and physical-device acceptance matrix
 are complete.
 
 - [x] Evaluate mDNS implementation
-- [ ] Advertise installation
+- [x] Advertise installation
 - [ ] Discover installation
 - [ ] Secure local transport
 - [ ] Fallback to QR

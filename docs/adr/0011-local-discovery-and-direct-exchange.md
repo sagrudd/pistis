@@ -218,6 +218,15 @@ is actively released. `simple-mdns` and `agnostic-mdns` remain rejected for the
 MVP because they add no mobile permission/lifecycle advantage and would expand
 the host runtime or integration surface.
 
+The `mdns-sd` 0.20.2 API does not expose its per-service DNS cache TTL. The
+host adapter therefore enforces the capped wire lifetime as a publication
+deadline and unregisters with goodbye records. A crash may leave an opaque
+cache entry for the library's RFC-default TTL, but neither that entry nor its
+endpoint identifier conveys authority; the durable ceremony expiry and
+authenticated endpoint binding fail closed. A future dependency change may
+set the DNS TTL to the same bound only after compatibility and network
+acceptance evidence.
+
 The MVP wire projection is closed and minimal. It uses service type
 `_pistis._tcp.local.`, a fresh 128-bit lowercase-hexadecimal instance name, and
 exactly three ordered TXT entries: `v=1`, `id=<32 lowercase hexadecimal

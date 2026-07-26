@@ -55,6 +55,21 @@ a public interface without a separate network and threat review. Treat all
 friendly names as display hints and disambiguate installations with reviewed
 identity evidence.
 
+The host advertiser requires an explicit list of eligible private,
+link-local, or IPv6 unique-local listener addresses and a nonzero HTTPS port.
+It does not publish loopback, unspecified, multicast, documentation, or
+globally routable addresses and does not derive a machine hostname. Keep its
+RAII publication owner alive only for the active ceremony. Dropping it, expiry,
+a daemon error, or a DNS name conflict unregisters the service and shuts down
+the private daemon.
+
+The 30-second Pistis advertisement lifetime is enforced by unregistering; it
+is not the DNS record cache TTL because `mdns-sd` 0.20.2 does not expose that
+setting. Graceful unregister emits goodbye records. A process crash can leave
+an opaque stale cache entry until the peer's RFC-default cache TTL elapses.
+Such a locator must fail ceremony expiry and authenticated-channel binding; it
+must never revive a request. Record this case in controlled-network evidence.
+
 ## Expected fallback
 
 Use this availability hierarchy:

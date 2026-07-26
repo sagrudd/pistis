@@ -21,17 +21,32 @@ introduced.
 | Android | `NsdManager` | Native DNS-SD/mDNS discovery, network association, callbacks, and evolving local-network permission behavior. |
 | Rust host | pinned `mdns-sd` behind a Pistis port | Safe Rust, no imposed async runtime, publication and browse support, conflict handling, and monitorable daemon lifecycle. |
 
-The Rust dependency is not linked into protocol, authentication, or mobile
-core crates. The adapter converts only the reviewed minimal record into typed
-Pistis discovery events. Dependency addition remains part of the installation
-advertiser task and requires a locked version, advisory/license/source review,
-and deterministic fake-adapter tests.
+The Rust dependency is linked only into `pistis-discovery`, not protocol,
+authentication, or mobile core crates. Version `0.20.2` is pinned exactly and
+locked. The crate is dual MIT/Apache-2.0 licensed, declares MSRV 1.71, forbids
+unsafe code in its library, and supplies probing, announcements, goodbye
+records, conflict events, and daemon shutdown. Its transitive graph is retained
+by Jenkins dependency evidence and remains subject to the repository advisory,
+license, and source gates.
 
 The portable `WireAdvertisement` projection is implemented independently of
 the selected library. It emits the exact service type, random instance name,
-closed TXT set, and bounded TTL accepted by ADR 0011. This removes raw string
+closed TXT set, and bounded publication lifetime accepted by ADR 0011. This removes raw string
 construction from future platform adapters but is not itself network
-publication.
+publication. PIS-E11-F01-T02 adds the host publication owner: it accepts only
+explicit private, link-local, or IPv6 unique-local addresses; uses an opaque
+random hostname rather than the machine hostname; and unregisters at expiry,
+conflict, backend failure, or owner cancellation.
+
+The negative prototype found that `mdns-sd` does not expose per-service DNS
+record TTL setters. Pistis therefore treats the 30-second value as the
+authoritative publication lifetime and performs a graceful unregister at that
+deadline. Normal unregister sends goodbye records. If the process crashes,
+peer DNS caches can retain an opaque instance/endpoint record for the library's
+RFC-default cache TTL; that stale record has no authority and the endpoint
+ceremony rejects it after expiry. This residual availability/privacy behavior
+must be included in physical-network acceptance and must not be represented as
+a 30-second DNS cache TTL.
 
 ## Alternatives
 
@@ -63,7 +78,7 @@ Primary references:
 
 ## Acceptance and remaining work
 
-This decision completes evaluation only. It does not claim a working
-advertiser, mobile browse, authenticated channel, or physical-device
-interoperability. PIS-E11-F01-T02 through T05 remain open until their code,
+Evaluation and the bounded Rust installation advertiser are complete. This
+does not claim mobile browse, authenticated channel, or physical-device
+interoperability. PIS-E11-F01-T03 through T05 remain open until their code,
 negative cases, operations documentation, and native/network evidence pass.

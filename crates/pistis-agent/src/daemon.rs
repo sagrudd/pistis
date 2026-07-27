@@ -1,4 +1,7 @@
-use crate::{AgentHandler, AgentSocket, DispatchError, PeerAuthorizer, SocketError, dispatch_one};
+use crate::{
+    AgentHandler, AgentSocket, DispatchError, PeerAuthorizer, SocketError, dispatch_one,
+    socket::peer_uid,
+};
 use std::{os::unix::net::UnixStream, time::Duration};
 
 const CLIENT_IO_TIMEOUT: Duration = Duration::from_secs(5);
@@ -71,31 +74,6 @@ pub fn serve_until(
         }
     }
     Ok(())
-}
-
-#[cfg(any(target_os = "macos", target_os = "ios", target_os = "freebsd"))]
-fn peer_uid(stream: &UnixStream) -> Option<u32> {
-    nix::unistd::getpeereid(stream)
-        .ok()
-        .map(|(uid, _)| uid.as_raw())
-}
-
-#[cfg(any(target_os = "linux", target_os = "android"))]
-fn peer_uid(stream: &UnixStream) -> Option<u32> {
-    nix::sys::socket::getsockopt(stream, nix::sys::socket::sockopt::PeerCredentials)
-        .ok()
-        .map(|credentials| credentials.uid())
-}
-
-#[cfg(not(any(
-    target_os = "macos",
-    target_os = "ios",
-    target_os = "freebsd",
-    target_os = "linux",
-    target_os = "android"
-)))]
-fn peer_uid(_: &UnixStream) -> Option<u32> {
-    None
 }
 
 #[cfg(test)]

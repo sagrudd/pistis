@@ -24,10 +24,15 @@ not substitutes for signature or replay verification.
 
 ## Socket contract
 
-`AgentSocket` binds only beneath a non-symlinked directory with no group or
-world permissions. It never removes an existing path, sets the socket to mode
-`0600`, and removes only its own socket node on clean drop. Clients independently
-reject symlinks, non-sockets, and permissive modes.
+`AgentSocket` binds only beneath a non-symlinked directory owned by the
+daemon's effective user with no group or world permissions. It never removes
+an existing path, sets the socket to mode `0600`, and verifies that the socket
+node is owned by the same effective user. Clients independently apply the same
+parent and socket ownership policy, reject symlinks, non-sockets, and
+permissive modes, and authenticate the connected server with the kernel's peer
+credential API. Unsupported peer-credential platforms reject the connection.
+This post-connect check prevents a pathname substitution by a process running
+as a different user from becoming an authenticated agent endpoint.
 
 Messages are four-byte big-endian length-prefixed canonical Pistis values,
 bounded to 64 KiB. Empty, excessive, truncated, non-canonical, unknown-schema,

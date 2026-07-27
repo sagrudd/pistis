@@ -22,8 +22,12 @@ repairing an ambiguous deployment.
 Before enabling a future service, verify:
 
 - the daemon is code-signed and runs as the intended user;
-- the socket parent is non-symlinked and mode `0700`;
-- the socket and database are mode `0600`;
+- the socket parent is non-symlinked, owned by the daemon's effective user,
+  and mode `0700`;
+- the socket is owned by that same user and the socket and database are mode
+  `0600`;
+- the CLI verifies the connected server's native peer credential after
+  validating the socket pathname;
 - peer credentials are checked before request parsing;
 - the Keychain key is non-exportable and has reviewed access control;
 - restart, concurrent consumption, cancellation, expiry, and database-corrupt

@@ -81,15 +81,29 @@ production envelope. The simulator test proves this path fails closed.
 On a reviewed, signed **Face ID-capable** physical-device test setup, select
 the trusted device identifier and run the ceremony explicitly (normal tests
 skip it). The harness rejects Touch ID and unavailable biometry; neither is
-Face ID acceptance evidence:
+Face ID acceptance evidence. The runner passes the opt-in flag through a
+generated local `.xctestrun` configuration because app-hosted physical XCTest
+processes do not inherit the invoking shell environment:
 
 ```sh
-PISTIS_RUN_PHYSICAL_INTEROPERABILITY=1 xcodebuild \
-  -project ios/PistisApp/Pistis.xcodeproj \
-  -scheme Pistis \
-  -destination 'id=<trusted-device-udid>' \
-  test -only-testing:PistisTests/PlatformDeviceInteroperabilityTests/testPhysicalDeviceInteroperabilityCeremony
+PISTIS_INTEROPERABILITY_RESULT_BUNDLE=/absolute/path/to/physical-ceremony.xcresult \
+  scripts/run-ios-physical-interoperability <trusted-device-udid>
 ```
+
+The runner does not change a shared scheme or add a permanent enabled test
+configuration. Do not add this environment variable to the normal scheme or
+use the physical ceremony in CI.
+
+If an uncommitted local development-team setting is necessary for a personal
+Apple account, pass its non-secret team identifier only at invocation time:
+
+```sh
+PISTIS_DEVELOPMENT_TEAM=<local-development-team-id> \
+  scripts/run-ios-physical-interoperability <trusted-device-udid>
+```
+
+This override is intentionally not a substitute for checked, release-team
+signing configuration and does not write a team identifier into the project.
 
 Retrieve the XCTest attachment, independently verify it against the Rust
 verifier, and complete the evidence template. The test-only Secure Enclave
@@ -112,3 +126,23 @@ Successful output has this exact form:
 ```text
 verified key_id=key_<lowercase-hex>
 ```
+
+### EPIC-18 retained physical observation
+
+The redacted physical observation for the EPIC-18 ceremony is retained as
+[`ios-physical-interoperability-record.json`](../../fixtures/protocol-v1/cose/ios-physical-interoperability-record.json).
+It was produced from source revision
+`e58d0a21edb36af85e01d9bfa137136b673456d5` using Xcode 26.6 (17F113) on
+an iPhone 14 Pro Max running iOS 26.6. The test-only key reported Secure
+Enclave availability, required a fresh Face ID prompt for signing, and emitted
+the fixed-width, low-S ES256 record verified by the Rust command above.
+
+The observation is limited to EPIC-18 public-key encoding and Face ID-gated
+signature interoperability. It does not assert TestFlight distribution, QR
+authentication, a browser route, CLI approval, cancellation behaviour, a
+second prompt, or biometry-set invalidation; those are separate MVP gates.
+Its SHA-256 digest is
+`2c2523a88bc49ce94f0f4aa62235d44684f374f78fd80344ec5a3f95d8509349`.
+The authoritative Jenkins Expedition retains the exact observation and
+verification result as a dossier artifact; see the PR acceptance record for
+the Expedition identifier.

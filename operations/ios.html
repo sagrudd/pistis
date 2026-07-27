@@ -185,7 +185,10 @@
 <li class="toctree-l2"><a class="reference internal" href="#apple-distribution-prerequisites">Apple distribution prerequisites</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#release-evidence">Release evidence</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#current-interoperability-boundary">Current interoperability boundary</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#physical-interoperability-record">Physical interoperability record</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#physical-interoperability-record">Physical interoperability record</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#epic-18-retained-physical-observation">EPIC-18 retained physical observation</a></li>
+</ul>
+</li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="android.html">Android application operations</a></li>
@@ -301,14 +304,24 @@ production envelope. The simulator test proves this path fails closed.</p>
 <p>On a reviewed, signed <strong>Face ID-capable</strong> physical-device test setup, select
 the trusted device identifier and run the ceremony explicitly (normal tests
 skip it). The harness rejects Touch ID and unavailable biometry; neither is
-Face ID acceptance evidence:</p>
-<div class="highlight-sh notranslate"><div class="highlight"><pre><span></span><span class="nv">PISTIS_RUN_PHYSICAL_INTEROPERABILITY</span><span class="o">=</span><span class="m">1</span><span class="w"> </span>xcodebuild<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>-project<span class="w"> </span>ios/PistisApp/Pistis.xcodeproj<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>-scheme<span class="w"> </span>Pistis<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>-destination<span class="w"> </span><span class="s1">&#39;id=&lt;trusted-device-udid&gt;&#39;</span><span class="w"> </span><span class="se">\</span>
-<span class="w">  </span><span class="nb">test</span><span class="w"> </span>-only-testing:PistisTests/PlatformDeviceInteroperabilityTests/testPhysicalDeviceInteroperabilityCeremony
+Face ID acceptance evidence. The runner passes the opt-in flag through a
+generated local <code class="docutils literal notranslate"><span class="pre">.xctestrun</span></code> configuration because app-hosted physical XCTest
+processes do not inherit the invoking shell environment:</p>
+<div class="highlight-sh notranslate"><div class="highlight"><pre><span></span><span class="nv">PISTIS_INTEROPERABILITY_RESULT_BUNDLE</span><span class="o">=</span>/absolute/path/to/physical-ceremony.xcresult<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>scripts/run-ios-physical-interoperability<span class="w"> </span>&lt;trusted-device-udid&gt;
 </pre></div>
 </div>
+<p>The runner does not change a shared scheme or add a permanent enabled test
+configuration. Do not add this environment variable to the normal scheme or
+use the physical ceremony in CI.</p>
+<p>If an uncommitted local development-team setting is necessary for a personal
+Apple account, pass its non-secret team identifier only at invocation time:</p>
+<div class="highlight-sh notranslate"><div class="highlight"><pre><span></span><span class="nv">PISTIS_DEVELOPMENT_TEAM</span><span class="o">=</span>&lt;local-development-team-id&gt;<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>scripts/run-ios-physical-interoperability<span class="w"> </span>&lt;trusted-device-udid&gt;
+</pre></div>
+</div>
+<p>This override is intentionally not a substitute for checked, release-team
+signing configuration and does not write a team identifier into the project.</p>
 <p>Retrieve the XCTest attachment, independently verify it against the Rust
 verifier, and complete the evidence template. The test-only Secure Enclave
 key namespace must not be registered or used for an authentication session.</p>
@@ -326,6 +339,25 @@ signature, or file path:</p>
 <div class="highlight-text notranslate"><div class="highlight"><pre><span></span>verified key_id=key_&lt;lowercase-hex&gt;
 </pre></div>
 </div>
+<section id="epic-18-retained-physical-observation">
+<h3>EPIC-18 retained physical observation<a class="headerlink" href="#epic-18-retained-physical-observation" title="Link to this heading"></a></h3>
+<p>The redacted physical observation for the EPIC-18 ceremony is retained as
+<a class="reference download internal" download="" href="../_downloads/d14a8b8be3c147b677e46702b1b500c1/ios-physical-interoperability-record.json"><span class="xref download myst"><code class="docutils literal notranslate"><span class="pre">ios-physical-interoperability-record.json</span></code></span></a>.
+It was produced from source revision
+<code class="docutils literal notranslate"><span class="pre">e58d0a21edb36af85e01d9bfa137136b673456d5</span></code> using Xcode 26.6 (17F113) on
+an iPhone 14 Pro Max running iOS 26.6. The test-only key reported Secure
+Enclave availability, required a fresh Face ID prompt for signing, and emitted
+the fixed-width, low-S ES256 record verified by the Rust command above.</p>
+<p>The observation is limited to EPIC-18 public-key encoding and Face ID-gated
+signature interoperability. It does not assert TestFlight distribution, QR
+authentication, a browser route, CLI approval, cancellation behaviour, a
+second prompt, or biometry-set invalidation; those are separate MVP gates.
+Its SHA-256 digest is
+<code class="docutils literal notranslate"><span class="pre">2c2523a88bc49ce94f0f4aa62235d44684f374f78fd80344ec5a3f95d8509349</span></code>.
+The authoritative Jenkins Expedition retains the exact observation and
+verification result as a dossier artifact; see the PR acceptance record for
+the Expedition identifier.</p>
+</section>
 </section>
 </section>
 

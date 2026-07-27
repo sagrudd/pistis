@@ -187,7 +187,7 @@ fn run_pending(
 ) -> CliExit {
     let (profile, inverted) = match command {
         AuthCommand::Login { profile, inverted }
-        | AuthCommand::Approve {
+        | AuthCommand::Exec {
             profile, inverted, ..
         } => (*profile, *inverted),
     };

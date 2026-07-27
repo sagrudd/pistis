@@ -16,6 +16,10 @@ fn main() {
 }
 
 fn run_command(command: &pistis_cli::AuthCommand) -> CliExit {
+    if matches!(command, pistis_cli::AuthCommand::Exec { .. }) {
+        eprintln!("pistis: supervised command execution is unavailable");
+        return CliExit::Unavailable;
+    }
     let Some(socket_path) = socket_path() else {
         eprintln!("pistis: authoritative local authentication agent is unavailable");
         return CliExit::Unavailable;

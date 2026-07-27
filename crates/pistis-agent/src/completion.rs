@@ -3,6 +3,8 @@ use pistis_crypto::sha256;
 use pistis_domain::{ChallengeId, DeviceId, UserId};
 use rusqlite::{OptionalExtension as _, TransactionBehavior, params};
 
+type StoredCompletion = (Vec<u8>, Vec<u8>, Vec<u8>, i64, Vec<u8>, i64);
+
 /// How an authenticated mobile response reached the local authority.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum AuditTransfer {
@@ -267,7 +269,7 @@ impl CeremonyRepository {
         request: &CompletionRequest,
         authority_reference: &[u8],
     ) -> Result<bool, RepositoryError> {
-        let stored: Option<(Vec<u8>, Vec<u8>, Vec<u8>, i64, Vec<u8>, i64)> = self
+        let stored: Option<StoredCompletion> = self
             .connection
             .query_row(
                 "SELECT challenge_id, user_id, device_id, transfer,

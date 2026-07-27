@@ -44,7 +44,7 @@ impl AuthenticationBackend for SocketAuthenticationBackend {
     fn begin(&mut self, command: &AuthCommand) -> Result<PendingCeremony, CeremonyError> {
         let request = match command {
             AuthCommand::Login { .. } => AgentRequest::BeginLogin,
-            AuthCommand::Approve { command, .. } => AgentRequest::BeginAction {
+            AuthCommand::Exec { command, .. } => AgentRequest::BeginAction {
                 arguments: command.clone(),
             },
         };

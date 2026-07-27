@@ -12,8 +12,9 @@ identity bindings; EPIC-4 adds locally verified Google OpenID Connect
 enrolment keyed by canonical issuer and stable subject. Later epics add device
 registration and application integrations. EPIC-16 makes terminal-native
 authentication and approval a release-blocking primary product surface, using
-ASCII/Unicode QR exchange with the supported iOS and Android applications and
-requiring no browser or web application.
+ASCII/Unicode QR exchange with the supported iOS application and requiring no
+browser or web application. Android interoperability remains part of the
+broader v1.0 commitment.
 
 ## Design principles
 

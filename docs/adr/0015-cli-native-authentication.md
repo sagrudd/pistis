@@ -28,7 +28,7 @@ action approval would create an unsafe consent gap.
 The `pistis` command line is a primary product surface with two commands:
 
 - `pistis auth login` requests authentication of a terminal session; and
-- `pistis auth approve -- <program> [argument ...]` canonicalises the exact
+- `pistis auth exec -- <program> [argument ...]` canonicalises the exact
   argument vector and computes a domain-separated SHA-256 digest.
 
 Signed responses and credentials are never accepted through command-line
@@ -49,17 +49,19 @@ session issuance remain behind an `AuthenticationBackend`. The distributed
 binary fails closed until a reviewed local backend adapter is configured; it
 must not manufacture a development identity or issue a synthetic session.
 
-Exact-action approval is a reserved command surface, not a completed security
+Exact-action execution is a reserved command surface, not a completed security
 claim. Enabling it against a production backend requires an additive,
 versioned protocol document that carries the canonical action descriptor and
-digest, mobile rendering and confirmation on both supported platforms, schema
+digest, mobile rendering and confirmation on the supported iOS client, schema
 fixtures, downgrade rejection, and specialist approval in a superseding ADR.
 Until then the backend must reject action-approval initiation.
 
-Session hand-off to child programs is also deferred. No bearer token is printed
-or exported. A later decision must select a bounded inherited descriptor or a
-local credential agent and define lifetime, audience, revocation, and child
-process semantics.
+Session hand-off to child programs uses the supervised
+`pistis auth exec -- <command>` boundary approved for the MVP. No bearer token
+is printed or exported. The implementation must pass a short-lived,
+audience- and exact-action-bound capability through a protected local channel
+and define lifetime, revocation, and child-process semantics before enabling
+the command.
 
 ## Consequences
 
@@ -68,8 +70,8 @@ process semantics.
 - Parser, renderer, protected-input, and orchestration behavior can be tested
   deterministically without keys or a network.
 - The CLI cannot honestly claim production login interoperability until the
-  backend adapter and real iOS/Android scan-and-sign evidence exist.
+  backend adapter and real iOS scan-and-sign evidence exist.
 - Exact-action approval and child-session hand-off remain fail-closed release
   blockers rather than being approximated with unsafe behavior.
-- Jenkins can retain portable contract evidence now and must add native-device,
-  dual-architecture, and end-to-end dossiers before EPIC-16 is closed.
+- Jenkins can retain portable contract evidence now and must add native-device
+  iOS, dual-architecture CLI, and end-to-end dossiers before EPIC-16 is closed.

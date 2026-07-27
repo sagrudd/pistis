@@ -13,6 +13,18 @@ fn valid_auth_command_refuses_unavailable_agent() {
 }
 
 #[test]
+fn supervised_execution_remains_fail_closed() {
+    let output = Command::new(env!("CARGO_BIN_EXE_pistis"))
+        .args(["auth", "exec", "--", "tool", "argument"])
+        .output()
+        .unwrap();
+    assert_eq!(output.status.code(), Some(69));
+    let stderr = String::from_utf8(output.stderr).unwrap();
+    assert!(stderr.contains("supervised command execution is unavailable"));
+    assert!(!stderr.contains("PISTIS1:"));
+}
+
+#[test]
 fn malformed_command_has_stable_usage_exit() {
     let output = Command::new(env!("CARGO_BIN_EXE_pistis"))
         .arg("login")

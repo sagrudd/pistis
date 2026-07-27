@@ -1439,7 +1439,7 @@ pistis trust add-google
 pistis device list
 pistis device revoke
 pistis auth login
-pistis auth approve
+pistis auth exec
 pistis challenge create
 pistis response verify
 pistis evidence inspect

@@ -200,7 +200,7 @@ Native applications:
 
 -   Standalone authentication
 -   Primary CLI authentication and approval
--   ASCII/Unicode terminal QR exchange with iOS and Android
+-   ASCII/Unicode terminal QR exchange with iOS
 -   CLI verification
 -   Detached evidence generation
 
@@ -260,7 +260,7 @@ Pistis shall demonstrate that:
 -   authentication succeeds using GitHub and Google trust anchors;
 -   login approval works through QR challenge/response;
 -   console users can authenticate sessions and approve exact actions with the
-    iOS or Android application without a browser or GUI;
+    supported iOS application without a browser or GUI;
 -   report signatures produce portable evidence;
 -   evidence can be verified independently of the originating
     installation;

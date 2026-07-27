@@ -24,8 +24,8 @@ pub enum AuthCommand {
         /// Prefer light modules on a dark terminal background.
         inverted: bool,
     },
-    /// Approve an exact child command.
-    Approve {
+    /// Authenticate and supervise execution of an exact child command.
+    Exec {
         /// Requested QR presentation.
         profile: OutputProfile,
         /// Prefer light modules on a dark terminal background.
@@ -44,7 +44,7 @@ pub enum ParseError {
     Usage,
     /// An option is unsupported or contradictory.
     InvalidOption,
-    /// Action approval did not include a command after `--`.
+    /// Supervised execution did not include a command after `--`.
     MissingAction,
     /// The action exceeds the reviewed canonical display bound.
     ActionTooLarge,
@@ -53,10 +53,10 @@ pub enum ParseError {
 impl fmt::Display for ParseError {
     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
         formatter.write_str(match self {
-            Self::Usage => "usage: pistis auth <login|approve> [--ascii|--unicode] [--invert]",
+            Self::Usage => "usage: pistis auth <login|exec> [--ascii|--unicode] [--invert]",
             Self::InvalidOption => "invalid or contradictory authentication option",
-            Self::MissingAction => "approval requires an exact command after --",
-            Self::ActionTooLarge => "approval command exceeds its canonical size bound",
+            Self::MissingAction => "execution requires an exact command after --",
+            Self::ActionTooLarge => "execution command exceeds its canonical size bound",
         })
     }
 }
@@ -89,7 +89,7 @@ where
             }
             Ok(AuthCommand::Login { profile, inverted })
         }
-        Some("approve") => {
+        Some("exec") => {
             let (profile, inverted, consumed) = options(&arguments[2..], true)?;
             let action = &arguments[2 + consumed..];
             if action.first().map(String::as_str) != Some("--") || action.len() == 1 {
@@ -97,7 +97,7 @@ where
             }
             let command = action[1..].to_vec();
             let command_digest = digest_command(&command)?;
-            Ok(AuthCommand::Approve {
+            Ok(AuthCommand::Exec {
                 profile,
                 inverted,
                 command,
@@ -167,12 +167,12 @@ mod tests {
     }
 
     #[test]
-    fn approval_digest_binds_argument_boundaries_and_order() {
-        let first = parse(["auth", "approve", "--", "tool", "a", "b"]).unwrap();
-        let joined = parse(["auth", "approve", "--", "tool", "a b"]).unwrap();
-        let reordered = parse(["auth", "approve", "--", "tool", "b", "a"]).unwrap();
+    fn execution_digest_binds_argument_boundaries_and_order() {
+        let first = parse(["auth", "exec", "--", "tool", "a", "b"]).unwrap();
+        let joined = parse(["auth", "exec", "--", "tool", "a b"]).unwrap();
+        let reordered = parse(["auth", "exec", "--", "tool", "b", "a"]).unwrap();
         let digest = |command: &AuthCommand| match command {
-            AuthCommand::Approve { command_digest, .. } => *command_digest,
+            AuthCommand::Exec { command_digest, .. } => *command_digest,
             AuthCommand::Login { .. } => unreachable!(),
         };
         assert_ne!(digest(&first), digest(&joined));
@@ -180,23 +180,18 @@ mod tests {
     }
 
     #[test]
-    fn approval_requires_separator_and_bounded_action() {
+    fn execution_requires_separator_and_bounded_action() {
         assert_eq!(
-            parse(["auth", "approve", "tool"]),
+            parse(["auth", "exec", "tool"]),
             Err(ParseError::InvalidOption)
         );
         assert_eq!(
-            parse(["auth", "approve", "--"]),
+            parse(["auth", "exec", "--"]),
             Err(ParseError::MissingAction)
         );
         let oversized = "x".repeat(4_097);
         assert_eq!(
-            parse(vec![
-                "auth".into(),
-                "approve".into(),
-                "--".into(),
-                oversized
-            ]),
+            parse(vec!["auth".into(), "exec".into(), "--".into(), oversized]),
             Err(ParseError::ActionTooLarge)
         );
     }

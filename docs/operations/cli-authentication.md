@@ -24,14 +24,15 @@ pistis auth login --unicode --invert
 The reserved exact-action form is:
 
 ```console
-pistis auth approve -- samtools view sample.bam
+pistis auth exec -- samtools view sample.bam
 ```
 
 Arguments after `--` are bound in order and with their original boundaries.
-They are not executed by the current CLI. ADR 0016 defines the versioned
-descriptor and agent execution boundary, but production action approval
-remains disabled until the durable verifier and mobile display/signing
-adapters implement it.
+They are not executed by the current CLI. The command fails closed with exit
+status 69. ADR 0016 defines the versioned descriptor and agent execution
+boundary, but production supervised execution remains disabled until the
+durable verifier, protected child-capability channel, and mobile
+display/signing adapter implement it.
 
 Never put a signed response, session handle, credential, or private key on the
 command line or in an environment variable. Those locations can leak through
@@ -81,12 +82,14 @@ architecture guard, and strict Sphinx build for every exact revision. Closing
 EPIC-16 additionally requires retained evidence from:
 
 - a configured authoritative local backend;
-- supported physical or simulator iOS and Android scan-and-sign clients;
+- the supported physical iOS scan-and-sign client;
 - ASCII and Unicode scanning across the documented terminal matrix;
 - direct-local and framed responses entering the same verifier;
 - exact-action display and downgrade-negative cases;
 - secure child-session hand-off; and
 - both supported CLI architectures.
+
+Android scan-and-sign qualification remains a v1.0 gate.
 
 Until those artefacts exist, the portable implementation is useful,
 testable groundwork but not a production authentication deployment.

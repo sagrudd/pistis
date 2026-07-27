@@ -332,9 +332,10 @@ despite its later planning identifier.
 # EPIC 16 — CLI-native authentication
 
 Pistis treats terminal users as a primary product audience. Authentication and
-action approval shall complete from a console with a supported iOS or Android
+action approval shall complete from a console with the supported iOS
 application, without a browser, web application, desktop GUI, or clipboard
-ceremony. EPIC-16 is release-blocking and extends the EPIC-6 transport and
+ceremony. Android interoperability remains required for v1.0 but does not block
+`v0.1.0-rc.1`. EPIC-16 is release-blocking and extends the EPIC-6 transport and
 EPIC-10 CLI contracts; it does not introduce a second verifier or weaker
 authentication path.
 
@@ -344,14 +345,14 @@ authentication path.
 - [x] Implement deterministic ASCII and Unicode QR rendering
 - [x] Display installation identity, purpose, expiry, and fingerprint
 - [x] Support narrow, monochrome, SSH, tmux, and screen terminals
-- [ ] Add scanability fixtures for supported iOS and Android devices
+- [ ] Add scanability fixtures for the supported iOS device
 
 ## CLI authentication and approval
 
 - [ ] Implement `pistis auth login`
-- [ ] Implement `pistis auth approve`
+- [ ] Implement `pistis auth exec`
 - [x] Bind approvals to the exact action and command digest
-- [ ] Support direct-local signed response submission
+- [ ] Support direct-local signed response submission after MVP
 - [x] Support bounded terminal-safe framed response input
 - [x] Implement cancellation, denial, expiry, and interruption handling
 
@@ -367,7 +368,7 @@ authentication path.
 ## Interoperability and operations
 
 - [ ] Add iOS terminal-QR interoperability tests
-- [ ] Add Android terminal-QR interoperability tests
+- [ ] Add Android terminal-QR interoperability tests for v1.0
 - [ ] Add headless and offline end-to-end acceptance tests
 - [x] Add CLI user and operator documentation
 - [ ] Add dual-architecture Jenkins evidence gates
@@ -387,14 +388,14 @@ without changing v1 login. ADR 0017 and `pistis-agent` add owner-only durable
 storage, socket framing, non-export signing interfaces, closed semantic
 dispatch, and a tested CLI socket client. The native Security-framework signing
 operation, native same-user peer authorization, bounded daemon lifecycle, and
-single-authority semantic handler, and atomic durable ceremony/session/audit
-commit are implemented. The shared device-response verifier still needs its
-protocol-specific login/action adapter, but its mutation-free coordinator into
-the transaction is implemented. Key provisioning also
-remains subject to code-signing and access-control review. The unchecked items
-above are release
-blockers; a successful library test is not evidence that a mobile login or
-action approval completed.
+single-authority semantic handler are implemented. The agent no longer creates
+or stores sessions: its mutation-free coordinator delegates the final
+challenge-consumption, Prosopikon-session, and audit transaction to the
+host-owned completion port required by the MVP contract. The production
+Prosopikon port, protocol-specific login/action adapter, supervised child
+command hand-off, and key provisioning remain open. The unchecked MVP items
+above are release blockers; a successful library test is not evidence that a
+mobile login or action approval completed.
 
 ---
 

@@ -6,7 +6,7 @@ workstations. It is not a thin launcher for a browser. A supported ceremony
 must require only:
 
 1. the Pistis CLI in a terminal;
-2. an enrolled Pistis iOS or Android application; and
+2. an enrolled Pistis iOS application; and
 3. either QR-only exchange or the already authenticated direct-local response
    transport.
 
@@ -19,7 +19,7 @@ human-verifiable fingerprint. The mobile application scans the same EPIC-6
 frame used by other presentation surfaces, shows the bound request, obtains
 biometric approval where policy requires it, and signs the response.
 
-`pistis auth approve` uses the same protocol boundary but binds the challenge
+`pistis auth exec` uses the same protocol boundary but binds the challenge
 to the exact action, relevant resource identifiers, and canonical command or
 workflow digest. The phone must show those signed semantics before approval.
 Generic login approval must never be silently promoted into action approval.
@@ -87,24 +87,28 @@ fragment ordering, or verifier behavior.
 Secrets, signed responses, bearer material, and session handles must not be
 placed in command-line arguments, shell history, process titles, diagnostic
 logs, terminal escape sequences, or inherited environment variables by
-default. Session hand-off to a child bioinformatics command requires a
-separately reviewed mechanism such as a bounded inherited descriptor or local
-credential agent. The CLI must erase transient buffers where practical and
-must fail closed on denial, expiry, cancellation, replay, wrong installation,
-wrong action, malformed framing, terminal interruption, and lost transport.
+default. Session hand-off to a child bioinformatics command uses the approved
+supervised `pistis auth exec -- <command>` boundary and a protected local
+channel carrying a short-lived, audience- and exact-action-bound capability.
+The CLI must erase transient buffers where practical and must fail closed on
+denial, expiry, cancellation, replay, wrong installation, wrong action,
+malformed framing, terminal interruption, and lost transport.
 
 ## Acceptance evidence
 
-Jenkins must retain:
+Jenkins must retain for the MVP:
 
 - deterministic renderer and QR decode fixtures for ASCII and Unicode modes;
-- supported iOS and Android scan interoperability results;
+- supported iOS scan interoperability results;
 - login and exact-action approval end-to-end tests without a web service;
 - narrow-terminal, SSH, multiplexer, monochrome, redirected-output, and
   offline cases;
 - replay, substitution, terminal-injection, malformed-frame, and secret-leak
   negative tests; and
 - dual-architecture CLI builds plus warnings-as-errors Sphinx output.
+
+Android scan interoperability remains a v1.0 gate and is not an MVP acceptance
+substitute.
 
 Protocol, session-transfer, or evidence-schema changes require an accepted ADR
 and specialist review before implementation. GitHub issue

@@ -14,3 +14,7 @@ Current accepted production-interoperability decisions include:
   COSE Sign1 wire profile; and
 - [ADR 0019](0019-mvp-signed-message-schemas.md), the closed integer-key MVP
   enrolment, authentication, and evidence-receipt payloads.
+
+[ADR 0020](0020-prosopikon-pistis-authority-transaction.md) is the accepted
+cross-host completion decision. Individual implementation pull requests remain
+subject to the review and evidence requirements recorded in that ADR.

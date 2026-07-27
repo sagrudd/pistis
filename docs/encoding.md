@@ -22,9 +22,11 @@ reject a field identifier absent from the schema for that object type. This
 prevents an older verifier from accepting a payload while ignoring semantics
 that a signer considered significant.
 
-Canonical payloads are embedded as the payload of a COSE signature structure.
-COSE algorithms, protected headers, and signature suites are specified
-separately; a COSE library must not re-encode the payload before verification.
+Canonical payloads are embedded without re-encoding in the untagged COSE
+Sign1 profile specified by
+[ADR 0018](adr/0018-production-cose-sign1-profile.md). CBOR tag 18, detached
+payloads, non-empty unprotected headers, and alternate envelope encodings are
+rejected.
 
 ## Text and diagnostic form
 

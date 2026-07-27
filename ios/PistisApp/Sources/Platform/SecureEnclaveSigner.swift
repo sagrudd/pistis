@@ -17,6 +17,18 @@ enum KeyAssurance: String, Equatable, Sendable {
     case secureEnclaveBiometryCurrentSet
 }
 
+/// Non-secret output from one physical-device interoperability probe.
+///
+/// This value is input to offline Rust verification and the reviewed evidence
+/// record. Its presence alone is not an acceptance result: the record must
+/// still bind the source revision, Xcode/iOS versions, device class, key
+/// fingerprint, verifier result, and reviewer.
+struct DeviceInteroperabilityObservation: Equatable, Sendable {
+    let publicKey: DevicePublicKey
+    let signatureStructure: Data
+    let rawES256Signature: Data
+}
+
 /// Secure Enclave P-256 signing with fresh local authentication per operation.
 ///
 /// The adapter never exports private-key bytes and never falls back to a
@@ -107,8 +119,8 @@ final class SecureEnclaveSigner: @unchecked Sendable {
     /// Signs one exact message and returns fixed-width `r || s`.
     ///
     /// A new `LAContext` is deliberately created for every call. The returned
-    /// format is suitable for conformance comparison, but a production Pistis
-    /// envelope remains unavailable until the separately reviewed COSE work.
+    /// raw proof material is assembled by the accepted COSE profile; this
+    /// platform adapter does not itself issue authentication authority.
     func sign(message: Data) throws -> Data {
         let context = LAContext()
         context.localizedCancelTitle = "Cancel"
@@ -129,6 +141,30 @@ final class SecureEnclaveSigner: @unchecked Sendable {
             throw mapSecurityError(signingError?.takeRetainedValue())
         }
         return try P256Format.rawSignature(fromStrictDER: der)
+    }
+
+    /// Exercise the real Secure Enclave and local-biometry path for an exact
+    /// precomputed COSE `Sig_structure`.
+    ///
+    /// The simulator fails closed during `create()`. This probe deliberately
+    /// does not declare interoperability successful; its non-secret output
+    /// must be verified by the independent Rust implementation and retained
+    /// through the authoritative evidence workflow.
+    func interoperabilityProbe(signatureStructure: Data) throws
+        -> DeviceInteroperabilityObservation
+    {
+        guard !signatureStructure.isEmpty,
+              signatureStructure.count <= 65_536 + 128
+        else {
+            throw PlatformFailure.invalidConfiguration
+        }
+        let publicKey = try create()
+        let signature = try sign(message: signatureStructure)
+        return DeviceInteroperabilityObservation(
+            publicKey: publicKey,
+            signatureStructure: signatureStructure,
+            rawES256Signature: signature
+        )
     }
 
     private func requireAvailableBiometry(using context: LAContext) throws {

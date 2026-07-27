@@ -62,6 +62,8 @@ a Changelog and releases follow Semantic Versioning.
   append, with exact-request idempotency and non-secret durable receipts.
 - A mutation-free staged-response verifier coordinator with operating-system
   session randomness and fail-closed verification/randomness regression tests.
+- A strict untagged COSE Sign1 production profile, frozen MVP signed-message
+  schemas, and shared Rust/Swift positive and hostile interoperability fixtures.
 
 ### Changed
 

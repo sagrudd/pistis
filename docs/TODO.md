@@ -434,13 +434,19 @@ waive those acceptance criteria.
 
 ## EPIC 18 — Rust/iOS interoperability
 
-- [ ] Accept the production COSE profile
-- [ ] Freeze canonical enrolment, challenge, response, and evidence schemas
-- [ ] Publish shared positive and negative Rust/iOS fixtures
+- [x] Accept the production COSE profile
+- [x] Freeze canonical enrolment, challenge, response, and evidence schemas
+- [x] Publish shared positive and negative Rust/iOS fixtures
 - [ ] Prove Secure Enclave public-key encoding interoperability
 - [ ] Prove Face ID-gated signing interoperability
-- [ ] Add downgrade, substitution, replay, and malformed-input cases
-- [ ] Retain Jenkins interoperability evidence
+- [x] Add downgrade, substitution, replay, and malformed-input cases
+- [x] Retain Jenkins interoperability evidence
+
+ADRs 0018 and 0019 freeze the untagged COSE Sign1 profile and closed MVP
+integer-key payloads. Shared Rust/Swift fixtures and hostile cases are retained
+by passing Expedition `3322662e-76be-490b-9268-e60078eb6d32` for revision
+`41ff49938e13e1483551f7f5d005d06215e37f40`. Native Secure Enclave provenance
+and Face ID-gated signing proof still require a physical device.
 
 ## EPIC 19 — Prosopikon authority bridge
 

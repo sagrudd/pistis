@@ -1,0 +1,19 @@
+[package]
+name = "pistis-cose"
+version = "0.1.0"
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "Strict COSE_Sign1 production profile for Pistis"
+
+[dependencies]
+pistis-canonical.workspace = true
+pistis-crypto.workspace = true
+pistis-domain.workspace = true
+
+[dev-dependencies]
+p256.workspace = true
+
+[lints]
+workspace = true

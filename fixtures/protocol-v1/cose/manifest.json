@@ -1,0 +1,47 @@
+{
+  "profile": "pistis.cose-sign1.es256.v1",
+  "schemas": {
+    "authentication_challenge": "authentication-challenge-payload.hex",
+    "authentication_evidence_receipt": "authentication-evidence-receipt-payload.hex",
+    "authentication_response": "authentication-response-payload.hex",
+    "device_registration": "device-registration-payload.hex"
+  },
+  "positive": {
+    "envelope": "positive-envelope.hex",
+    "key_id": "key-id.hex",
+    "payload": "payload.hex",
+    "public_key_compressed_sec1": "public-key-compressed.hex",
+    "signature_raw_low_s": "signature.hex",
+    "signing_input": "signing-input.hex"
+  },
+  "negative": [
+    {
+      "file": "negative-tagged-envelope.hex",
+      "outcome": "invalid-envelope"
+    },
+    {
+      "file": "negative-detached-payload.hex",
+      "outcome": "invalid-envelope"
+    },
+    {
+      "file": "negative-unprotected-header.hex",
+      "outcome": "invalid-envelope"
+    },
+    {
+      "file": "negative-unknown-protected-header.hex",
+      "outcome": "invalid-envelope"
+    },
+    {
+      "file": "negative-wrong-algorithm.hex",
+      "outcome": "invalid-envelope"
+    },
+    {
+      "file": "negative-high-s-signature.hex",
+      "outcome": "noncanonical-signature"
+    },
+    {
+      "file": "negative-substituted-payload.hex",
+      "outcome": "invalid-signature"
+    }
+  ]
+}

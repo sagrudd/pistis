@@ -34,10 +34,11 @@ a Changelog and releases follow Semantic Versioning.
   completion, atomic in-memory session/audit transitions, and offline
   acceptance coverage for response-QR and direct-local transfer.
 - EPIC-11 foreground nearby-request MVP semantics and a reviewed discovery
-  implementation selection covering native iOS/Android and the Rust host.
+  implementation selection covering native iOS/Android and the Rust host,
+  including bounded host advertisement and strict local candidate discovery.
 - EPIC-16 roadmap and acceptance contract for primary CLI-native login and
   exact-action approval through terminal-rendered ASCII/Unicode QR exchange
-  with the supported iOS and Android applications.
+  with the supported iOS application.
 - A fail-closed `pistis` CLI contract, canonical command digests,
   deterministic terminal-safe ASCII/Unicode QR rendering, bounded response
   ingestion, ceremony orchestration interfaces, and EPIC-16 operator guidance.
@@ -56,9 +57,9 @@ a Changelog and releases follow Semantic Versioning.
 - Native same-user socket credential checks, bounded per-client daemon I/O,
   controlled service shutdown, and a single-authority ceremony handler
   contract requiring atomic verification, session, and audit completion.
-- A versioned SQLite completion transaction that rechecks the exact verified
-  response and atomically consumes the ceremony, creates one session, and
-  retains one redacted audit event with rollback and concurrency coverage.
+- A host-owned completion port that binds one verified response to atomic
+  challenge consumption, Prosopikon authority/session creation, and audit
+  append, with exact-request idempotency and non-secret durable receipts.
 - A mutation-free staged-response verifier coordinator with operating-system
   session randomness and fail-closed verification/randomness regression tests.
 

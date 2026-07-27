@@ -235,6 +235,15 @@ lifetime capped at 30 seconds; an expired or subsecond record is not published.
 No additional TXT key is accepted without an additive ADR revision and privacy
 review.
 
+The host browse adapter is scoped to the exact service type and a foreground
+deadline of at most 30 seconds. It accepts only the closed TXT schema, random
+instance/hostname relationship, nonzero port, eligible local addresses, and
+nonzero interface indices. It retains address and interface scope as untrusted
+candidate data; only the installation-signed endpoint binding can authorize a
+connection. Since the selected library does not expose the received record
+TTL, candidate eligibility is capped by the browse deadline and never extends
+the ceremony or signed binding expiry.
+
 Deterministic tests cover forged and conflicting advertisements, wrong service
 type and endpoint identifier, TXT additions and oversize, stale TTL and
 binding, address substitution, redirects, local-CA and certificate

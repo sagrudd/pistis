@@ -78,7 +78,8 @@ Primary references:
 
 ## Acceptance and remaining work
 
-Evaluation and the bounded Rust installation advertiser are complete. This
-does not claim mobile browse, authenticated channel, or physical-device
-interoperability. PIS-E11-F01-T03 through T05 remain open until their code,
-negative cases, operations documentation, and native/network evidence pass.
+Evaluation plus the bounded Rust advertiser and strict Rust browser are
+complete. This does not claim native mobile browse, authenticated channel, or
+physical-device interoperability. PIS-E11-F01-T04 and T05 remain open until
+their code, negative cases, operations documentation, and native/network
+evidence pass.

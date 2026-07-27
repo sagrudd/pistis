@@ -8,6 +8,7 @@
 #![deny(missing_docs)]
 
 mod advertisement;
+mod browser;
 mod candidate;
 mod fallback;
 mod publisher;
@@ -16,6 +17,10 @@ mod wire;
 pub use advertisement::{
     Advertisement, AdvertisementError, Capability, EndpointId, InstanceName, ProtocolVersion,
     ServiceType,
+};
+pub use browser::{
+    BrowseConfiguration, BrowseEvent, BrowseFailure, BrowseState, DiscoveryBrowser,
+    ResolvedCandidate,
 };
 pub use candidate::{
     AddressScope, BindingContext, Candidate, CandidateFailure, DirectRequest, EndpointBinding,

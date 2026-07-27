@@ -119,8 +119,8 @@ final class SecureEnclaveSigner: @unchecked Sendable {
     /// Signs one exact message and returns fixed-width `r || s`.
     ///
     /// A new `LAContext` is deliberately created for every call. The returned
-    /// format is suitable for conformance comparison, but a production Pistis
-    /// envelope remains unavailable until the separately reviewed COSE work.
+    /// raw proof material is assembled by the accepted COSE profile; this
+    /// platform adapter does not itself issue authentication authority.
     func sign(message: Data) throws -> Data {
         let context = LAContext()
         context.localizedCancelTitle = "Cancel"

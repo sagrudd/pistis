@@ -436,10 +436,10 @@ waive those acceptance criteria.
 
 - [x] Accept the production COSE profile
 - [x] Freeze canonical enrolment, challenge, response, and evidence schemas
-- [ ] Publish shared positive and negative Rust/iOS fixtures
+- [x] Publish shared positive and negative Rust/iOS fixtures
 - [ ] Prove Secure Enclave public-key encoding interoperability
 - [ ] Prove Face ID-gated signing interoperability
-- [ ] Add downgrade, substitution, replay, and malformed-input cases
+- [x] Add downgrade, substitution, replay, and malformed-input cases
 - [ ] Retain Jenkins interoperability evidence
 
 ADRs 0018 and 0019 freeze the untagged COSE Sign1 profile and closed MVP

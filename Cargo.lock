@@ -836,6 +836,8 @@ dependencies = [
  "pistis-canonical",
  "pistis-crypto",
  "pistis-domain",
+ "serde",
+ "serde_json",
 ]
 
 [[package]]

@@ -444,9 +444,9 @@ waive those acceptance criteria.
 
 ADRs 0018 and 0019 freeze the untagged COSE Sign1 profile and closed MVP
 integer-key payloads. Shared Rust/Swift fixtures and hostile cases are retained
-by passing Expedition `3322662e-76be-490b-9268-e60078eb6d32` for revision
-`41ff49938e13e1483551f7f5d005d06215e37f40`. Native Secure Enclave provenance
-and Face ID-gated signing proof still require a physical device.
+by passing Expedition `e5b33b51-6f91-473d-9b92-97c0b31cfdd5` for merged `main`
+revision `228c90e40e04d582477b08d29e35c4582fe95a5a`. Native Secure Enclave
+provenance and Face ID-gated signing proof still require a physical device.
 
 ## EPIC 19 — Prosopikon authority bridge
 

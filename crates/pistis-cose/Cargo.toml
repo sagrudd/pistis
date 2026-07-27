@@ -11,6 +11,8 @@ description = "Strict COSE_Sign1 production profile for Pistis"
 pistis-canonical.workspace = true
 pistis-crypto.workspace = true
 pistis-domain.workspace = true
+serde.workspace = true
+serde_json.workspace = true
 
 [dev-dependencies]
 p256.workspace = true

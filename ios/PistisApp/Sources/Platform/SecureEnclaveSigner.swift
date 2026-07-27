@@ -158,6 +158,14 @@ final class SecureEnclaveSigner: @unchecked Sendable {
         else {
             throw PlatformFailure.invalidConfiguration
         }
+        // EPIC-18 acceptance specifically requires Face ID evidence. A
+        // successful generic biometric policy can otherwise be satisfied by
+        // Touch ID and must not be relabelled as a Face ID ceremony.
+        let faceIDContext = LAContext()
+        try requireAvailableBiometry(using: faceIDContext)
+        guard Self.isFaceID(faceIDContext.biometryType) else {
+            throw PlatformFailure.userVerificationUnavailable
+        }
         let publicKey = try create()
         let signature = try sign(message: signatureStructure)
         return DeviceInteroperabilityObservation(
@@ -189,6 +197,14 @@ final class SecureEnclaveSigner: @unchecked Sendable {
                 throw PlatformFailure.userVerificationUnavailable
             }
         }
+    }
+
+    /// Whether an evaluated LocalAuthentication context reports Face ID.
+    ///
+    /// Kept separate from policy availability so the physical ceremony can
+    /// reject Touch ID rather than treating it as interchangeable evidence.
+    static func isFaceID(_ biometryType: LABiometryType) -> Bool {
+        biometryType == .faceID
     }
 
     private func findPrivateKey(authenticationContext: LAContext) throws -> SecKey? {
@@ -295,6 +311,20 @@ enum P256Format {
         return try fixedWidth(r) + normalizeLowS(try fixedWidth(s))
     }
 
+    /// Whether `signature` is one canonical fixed-width low-S ES256 proof.
+    ///
+    /// This supports test-only evidence validation; it never verifies a
+    /// message or grants product authority.
+    static func isCanonicalRawSignature(_ signature: Data) -> Bool {
+        guard signature.count == 64 else { return false }
+        guard (try? fixedWidth(Array(signature.prefix(32)))) != nil,
+              let s = try? fixedWidth(Array(signature.suffix(32)))
+        else {
+            return false
+        }
+        return !halfOrder.lexicographicallyPrecedes(s)
+    }
+
     private static func readLength(_ bytes: [UInt8], offset: inout Int) throws -> Int {
         guard offset < bytes.count else { throw PlatformFailure.malformedSignature }
         let first = bytes[offset]
@@ -349,12 +379,6 @@ enum P256Format {
     }
 
     private static func normalizeLowS(_ scalar: Data) -> Data {
-        let halfOrder = Data([
-            0x7f, 0xff, 0xff, 0xff, 0x80, 0x00, 0x00, 0x00,
-            0x7f, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
-            0xde, 0x73, 0x7d, 0x56, 0xd3, 0x8b, 0xcf, 0x42,
-            0x79, 0xdc, 0xe5, 0x61, 0x7e, 0x31, 0x92, 0xa8,
-        ])
         guard halfOrder.lexicographicallyPrecedes(scalar) else { return scalar }
         let order = [
             0xff, 0xff, 0xff, 0xff, 0x00, 0x00, 0x00, 0x00,
@@ -377,4 +401,11 @@ enum P256Format {
         }
         return Data(result)
     }
+
+    private static let halfOrder = Data([
+            0x7f, 0xff, 0xff, 0xff, 0x80, 0x00, 0x00, 0x00,
+            0x7f, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
+            0xde, 0x73, 0x7d, 0x56, 0xd3, 0x8b, 0xcf, 0x42,
+            0x79, 0xdc, 0xe5, 0x61, 0x7e, 0x31, 0x92, 0xa8,
+        ])
 }

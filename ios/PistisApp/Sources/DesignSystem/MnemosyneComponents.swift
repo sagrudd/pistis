@@ -168,9 +168,14 @@ struct MnEmptyState: View {
 struct MnProvenance: View {
     var body: some View {
         VStack(alignment: .leading, spacing: MnSpacing.x2) {
-            Text("MNEMOSYNE BIOSCIENCES")
-                .font(.caption.weight(.semibold))
-                .tracking(1.1)
+            Image("mnemosyne-biosciences-logo-master-mono")
+                .resizable()
+                .scaledToFit()
+                .frame(maxWidth: 216, maxHeight: 96, alignment: .leading)
+                .padding(MnSpacing.x2)
+                .background(MnColor.raised)
+                .clipShape(RoundedRectangle(cornerRadius: MnRadius.medium))
+                .accessibilityHidden(true)
             Text("Pistis")
                 .font(.title2.weight(.semibold))
         }

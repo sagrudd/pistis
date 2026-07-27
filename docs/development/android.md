@@ -4,6 +4,11 @@ The Android source is a hierarchical Gradle project under `android/`.
 ADR 0008 is normative for architecture, platform security, evidence claims,
 dependencies, design adaptation, and release boundaries.
 
+The Compose shell displays the unmodified approved Mnemosyne Biosciences
+light-surface lock-up from the `mnemosyne_design_language` branding contract.
+Keep it on a light surface; do not recolour, redraw, crop, or use it as a
+control.
+
 ## Module direction
 
 - `core:model` contains validated domain values.

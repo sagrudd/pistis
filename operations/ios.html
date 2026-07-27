@@ -291,6 +291,41 @@ for the physical Secure Enclave and Face ID ceremony. The completed record
 must be bound to the exact source revision and independently verified by Rust
 before Jenkins retains it. A simulator run, an unverified signature, or a
 filled-in template is not physical-device acceptance evidence.</p>
+<p>The Xcode test target includes a deliberately test-only ceremony harness. It
+loads the pinned copy of <code class="docutils literal notranslate"><span class="pre">fixtures/protocol-v1/cose/signing-input.hex</span></code>, checks
+its SHA-256 digest, and invokes <code class="docutils literal notranslate"><span class="pre">SecureEnclaveSigner.interoperabilityProbe</span></code>.
+It attaches only the compressed public key, derived <code class="docutils literal notranslate"><span class="pre">KeyId</span></code>, exact signed
+bytes and SHA-256 digest, and raw low-S ES256 signature. It never serializes a
+private key, biometric information, device identifier, Apple credential, or
+production envelope. The simulator test proves this path fails closed.</p>
+<p>On a reviewed, signed <strong>Face ID-capable</strong> physical-device test setup, select
+the trusted device identifier and run the ceremony explicitly (normal tests
+skip it). The harness rejects Touch ID and unavailable biometry; neither is
+Face ID acceptance evidence:</p>
+<div class="highlight-sh notranslate"><div class="highlight"><pre><span></span><span class="nv">PISTIS_RUN_PHYSICAL_INTEROPERABILITY</span><span class="o">=</span><span class="m">1</span><span class="w"> </span>xcodebuild<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-project<span class="w"> </span>ios/PistisApp/Pistis.xcodeproj<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-scheme<span class="w"> </span>Pistis<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-destination<span class="w"> </span><span class="s1">&#39;id=&lt;trusted-device-udid&gt;&#39;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span><span class="nb">test</span><span class="w"> </span>-only-testing:PistisTests/PlatformDeviceInteroperabilityTests/testPhysicalDeviceInteroperabilityCeremony
+</pre></div>
+</div>
+<p>Retrieve the XCTest attachment, independently verify it against the Rust
+verifier, and complete the evidence template. The test-only Secure Enclave
+key namespace must not be registered or used for an authentication session.</p>
+<p>Run this command from the repository checkout, replacing the placeholder with
+the saved XCTest JSON attachment. It accepts exactly one file, fails closed on
+any read, schema, encoding, binding, or signature failure, and prints only the
+result and the derived <code class="docutils literal notranslate"><span class="pre">KeyId</span></code>; it does not print the attachment, public key,
+signature, or file path:</p>
+<div class="highlight-sh notranslate"><div class="highlight"><pre><span></span>cargo<span class="w"> </span>run<span class="w"> </span>--locked<span class="w"> </span>-p<span class="w"> </span>pistis-cose<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--example<span class="w"> </span>verify_device_interoperability_record<span class="w"> </span>--<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>/absolute/path/to/device-interoperability-record.json
+</pre></div>
+</div>
+<p>Successful output has this exact form:</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>verified key_id=key_&lt;lowercase-hex&gt;
+</pre></div>
+</div>
 </section>
 </section>
 

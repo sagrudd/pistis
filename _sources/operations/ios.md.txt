@@ -69,3 +69,46 @@ for the physical Secure Enclave and Face ID ceremony. The completed record
 must be bound to the exact source revision and independently verified by Rust
 before Jenkins retains it. A simulator run, an unverified signature, or a
 filled-in template is not physical-device acceptance evidence.
+
+The Xcode test target includes a deliberately test-only ceremony harness. It
+loads the pinned copy of `fixtures/protocol-v1/cose/signing-input.hex`, checks
+its SHA-256 digest, and invokes `SecureEnclaveSigner.interoperabilityProbe`.
+It attaches only the compressed public key, derived `KeyId`, exact signed
+bytes and SHA-256 digest, and raw low-S ES256 signature. It never serializes a
+private key, biometric information, device identifier, Apple credential, or
+production envelope. The simulator test proves this path fails closed.
+
+On a reviewed, signed **Face ID-capable** physical-device test setup, select
+the trusted device identifier and run the ceremony explicitly (normal tests
+skip it). The harness rejects Touch ID and unavailable biometry; neither is
+Face ID acceptance evidence:
+
+```sh
+PISTIS_RUN_PHYSICAL_INTEROPERABILITY=1 xcodebuild \
+  -project ios/PistisApp/Pistis.xcodeproj \
+  -scheme Pistis \
+  -destination 'id=<trusted-device-udid>' \
+  test -only-testing:PistisTests/PlatformDeviceInteroperabilityTests/testPhysicalDeviceInteroperabilityCeremony
+```
+
+Retrieve the XCTest attachment, independently verify it against the Rust
+verifier, and complete the evidence template. The test-only Secure Enclave
+key namespace must not be registered or used for an authentication session.
+
+Run this command from the repository checkout, replacing the placeholder with
+the saved XCTest JSON attachment. It accepts exactly one file, fails closed on
+any read, schema, encoding, binding, or signature failure, and prints only the
+result and the derived `KeyId`; it does not print the attachment, public key,
+signature, or file path:
+
+```sh
+cargo run --locked -p pistis-cose \
+  --example verify_device_interoperability_record -- \
+  /absolute/path/to/device-interoperability-record.json
+```
+
+Successful output has this exact form:
+
+```text
+verified key_id=key_<lowercase-hex>
+```

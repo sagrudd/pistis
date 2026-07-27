@@ -69,3 +69,26 @@ for the physical Secure Enclave and Face ID ceremony. The completed record
 must be bound to the exact source revision and independently verified by Rust
 before Jenkins retains it. A simulator run, an unverified signature, or a
 filled-in template is not physical-device acceptance evidence.
+
+The Xcode test target includes a deliberately test-only ceremony harness. It
+loads the pinned copy of `fixtures/protocol-v1/cose/signing-input.hex`, checks
+its SHA-256 digest, and invokes `SecureEnclaveSigner.interoperabilityProbe`.
+It attaches only the compressed public key, derived `KeyId`, exact signed
+bytes and SHA-256 digest, and raw low-S ES256 signature. It never serializes a
+private key, biometric information, device identifier, Apple credential, or
+production envelope. The simulator test proves this path fails closed.
+
+On a reviewed, signed physical-device test setup, select the trusted device
+identifier and run the ceremony explicitly (normal tests skip it):
+
+```sh
+PISTIS_RUN_PHYSICAL_INTEROPERABILITY=1 xcodebuild \
+  -project ios/PistisApp/Pistis.xcodeproj \
+  -scheme Pistis \
+  -destination 'id=<trusted-device-udid>' \
+  test -only-testing:PistisTests/PlatformDeviceInteroperabilityTests/testPhysicalDeviceInteroperabilityCeremony
+```
+
+Retrieve the XCTest attachment, independently verify it against the Rust
+verifier, and complete the evidence template. The test-only Secure Enclave
+key namespace must not be registered or used for an authentication session.

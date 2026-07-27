@@ -338,3 +338,105 @@ immutable signed `v1.0.0` tag is created.
 - [ ] Maintain interoperability tests
 - [ ] Review dependencies monthly
 - [ ] Keep security advisories current
+
+---
+
+# MVP release-candidate programme
+
+`MVP_RELEASE_CANDIDATE.md` is normative for the `v0.1.0-rc.1` programme.
+Completion here does not close deferred `v1.0` work above.
+
+## EPIC 17 — MVP baseline and stabilization
+
+- [ ] Review and merge EPIC-16 PR 204
+- [ ] Review and merge EPIC-11 PR 206
+- [ ] Resolve dependency PR 202 independently
+- [ ] Reconcile TODO and GitHub delivery states
+- [ ] Pass authoritative Jenkins CI on the integrated `main`
+- [ ] Record the clean pre-MVP integration point
+
+## EPIC 18 — Rust/iOS interoperability
+
+- [ ] Accept the production COSE profile
+- [ ] Freeze canonical enrolment, challenge, response, and evidence schemas
+- [ ] Publish shared positive and negative Rust/iOS fixtures
+- [ ] Prove Secure Enclave public-key encoding interoperability
+- [ ] Prove Face ID-gated signing interoperability
+- [ ] Add downgrade, substitution, replay, and malformed-input cases
+- [ ] Retain Jenkins interoperability evidence
+
+## EPIC 19 — Prosopikon authority bridge
+
+- [ ] Accept the versioned Prosopikon--Pistis port
+- [ ] Persist explicit Pistis-to-Prosopikon principal bindings
+- [ ] Implement administrator-issued single-use invitations
+- [ ] Implement host-owned atomic completion
+- [ ] Bind sessions to product audience and authority revision
+- [ ] Implement idempotent retry without duplicate sessions
+- [ ] Invalidate sessions on device, binding, and policy revocation
+- [ ] Append minimized authority and Pistis audit records atomically
+- [ ] Add SQLite and SQL/Hebe adapter conformance suites
+
+## EPIC 20 — Monas MVP route
+
+- [ ] Pin reviewed Pistis and Prosopikon revisions
+- [ ] Mount the shared Prosopikon Pistis UI
+- [ ] Implement the Monas SQLite authority adapter
+- [ ] Deliver enrolment, login, logout, and device-revocation routes
+- [ ] Preserve Monas authorization and CSRF boundaries
+- [ ] Exercise restart, concurrency, backup, restore, and corruption paths
+- [ ] Retain exact-revision cross-repository Jenkins evidence
+
+## EPIC 21 — Synoptikon/Mneion MVP route
+
+- [ ] Pin reviewed Pistis and Prosopikon revisions in Mnemosyne
+- [ ] Mount the shared Prosopikon Pistis UI in Mneion
+- [ ] Implement the SQL/Hebe authority adapter
+- [ ] Deliver enrolment, login, logout, and device-revocation routes
+- [ ] Preserve tenant, entitlement, request-context, and audit boundaries
+- [ ] Exercise restart, concurrency, migration, and rollback paths
+- [ ] Retain exact-revision cross-repository Jenkins evidence
+
+## EPIC 22 — iOS production qualification
+
+- [ ] Register the Mnemosyne Biosciences GitHub App and enable device flow
+- [ ] Implement minimum-permission GitHub device-flow enrolment
+- [ ] Discard GitHub tokens after stable-identity proof
+- [ ] Generate and use the device-protected signing key
+- [ ] Require Face ID for every signature
+- [ ] Implement enrolment, QR approval, history, and revocation UX
+- [ ] Configure Apple signing and TestFlight
+- [ ] Pass functional and accessibility simulator suites
+- [ ] Pass the signed physical-iPhone acceptance matrix
+
+## EPIC 23 — Authentication evidence
+
+- [ ] Freeze the detached authentication-evidence schema
+- [ ] Record enrolment, authentication, CLI approval, and revocation events
+- [ ] Minimize and redact retained evidence
+- [ ] Implement offline verifier library and CLI
+- [ ] Verify trust roots, signatures, policy time, and revocation semantics
+- [ ] Add malformed, unsupported, expired, and substituted evidence cases
+- [ ] Retain portable evidence in Jenkins dossiers
+
+## EPIC 24 — Packaging and operations
+
+- [ ] Package the service, local agent, CLI, migrations, and systemd units
+- [ ] Generate installation keys during privileged bootstrap
+- [ ] Load keys through systemd credentials
+- [ ] Implement encrypted installation-key backup and explicit restore
+- [ ] Document rotation, recovery, upgrade, rollback, and diagnostics
+- [ ] Enforce service-account ownership and non-symlink private state
+- [ ] Build RPM/SRPM, SBOM, checksums, and provenance
+- [ ] Test clean install, upgrade, rollback, backup, and restore
+
+## EPIC 25 — MVP security and release candidate
+
+- [ ] Complete the MVP threat-model review
+- [ ] Complete dependency and privacy reviews
+- [ ] Pass fuzzing and negative-path acceptance
+- [ ] Run the four-repository Jenkins acceptance expedition
+- [ ] Verify the signed physical-iPhone record
+- [ ] Assemble immutable `v0.1.0-rc.1` artefacts and manifest
+- [ ] Record internal release approval against the manifest digest
+- [ ] Keep public production release blocked pending independent reviews

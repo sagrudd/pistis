@@ -8,6 +8,7 @@ and Jenkins sends only successful, pre-rendered `main` HTML to GitHub Pages.
 - `BOOTSTRAP.md`: repository bootstrap contract.
 - `BOOTSTRAP_STATUS.md`: delivered bootstrap controls and validation evidence.
 - `PROJECT_CHARTER.md`: product vision and scope.
+- `MVP_RELEASE_CANDIDATE.md`: approved `v0.1.0-rc.1` scope and critical path.
 - `MILESTONE.md`: v1.0 delivery plan and acceptance baseline.
 - `TODO.md`: atomic source backlog.
 - `adr/`: architectural decision records.

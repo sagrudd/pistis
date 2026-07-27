@@ -165,6 +165,8 @@
 <li class="toctree-l1"><a class="reference internal" href="adr/0015-cli-native-authentication.html">ADR 0015: CLI-native authentication boundary</a></li>
 <li class="toctree-l1"><a class="reference internal" href="adr/0016-exact-action-approval-protocol.html">ADR 0016: Exact-action approval protocol</a></li>
 <li class="toctree-l1"><a class="reference internal" href="adr/0017-local-authentication-agent.html">ADR 0017: Local authentication agent and installation signer</a></li>
+<li class="toctree-l1"><a class="reference internal" href="adr/0018-production-cose-sign1-profile.html">ADR 0018: Production COSE Sign1 profile</a></li>
+<li class="toctree-l1"><a class="reference internal" href="adr/0019-mvp-signed-message-schemas.html">ADR 0019: MVP signed-message schemas</a></li>
 <li class="toctree-l1"><a class="reference internal" href="protocol/README.html">Protocol documentation</a></li>
 <li class="toctree-l1"><a class="reference internal" href="protocol/domain-model.html">Domain identifiers</a></li>
 <li class="toctree-l1"><a class="reference internal" href="protocol/action-approval.html">Exact-action approval protocol</a></li>
@@ -338,9 +340,12 @@ the installation, device, action, or user. The decoder rejects oversized,
 fragmented, padded, non-ASCII, non-canonical, unsupported, trailing, or
 wrong-kind input without downgrade.</p>
 <p>The detached signature is an internal reference-harness boundary. It does not
-replace the COSE structures selected by ADR 0001, and no external mobile
-interoperability claim may be made until a separate COSE decision and
-conformance fixtures are accepted.</p>
+replace the strict untagged COSE Sign1 structure accepted by
+<a class="reference internal" href="adr/0018-production-cose-sign1-profile.html"><span class="std std-doc">ADR 0018</span></a>. Production payload
+field assignments are frozen by
+<a class="reference internal" href="adr/0019-mvp-signed-message-schemas.html"><span class="std std-doc">ADR 0019</span></a>. External mobile
+interoperability still requires shared conformance fixtures and retained
+physical-device evidence.</p>
 <p>Direct-local and response-QR submission enter the same verification path.
 Polling exposes only a coarse lifecycle state and cannot verify, consume, or
 authenticate. Completion verifies the signature and every stored binding

@@ -6,7 +6,7 @@
   <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>ADR 0013: Security assurance and independent review &mdash; Pistis 0.0.0</title>
+  <title>ADR 0019: MVP signed-message schemas &mdash; Pistis 0.0.0</title>
       <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=b86133f3" />
       <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=e59714d7" />
       <link rel="stylesheet" type="text/css" href="../_static/pistis.css?v=168623c6" />
@@ -20,8 +20,8 @@
     <script src="../_static/js/theme.js"></script>
     <link rel="index" title="Index" href="../genindex.html" />
     <link rel="search" title="Search" href="../search.html" />
-    <link rel="next" title="ADR 0014: Release packaging, publication, and provenance" href="0014-release-packaging-and-provenance.html" />
-    <link rel="prev" title="ADR 0012: Recovery, revocation, and multi-device lifecycle" href="0012-recovery-revocation-and-multi-device-lifecycle.html" /> 
+    <link rel="next" title="Protocol documentation" href="../protocol/README.html" />
+    <link rel="prev" title="ADR 0018: Production COSE Sign1 profile" href="0018-production-cose-sign1-profile.html" /> 
 </head>
 
 <body class="wy-body-for-nav"> 
@@ -160,32 +160,26 @@
 <li class="toctree-l1"><a class="reference internal" href="0010-monas-standalone-integration-boundary.html">ADR 0010: Monas standalone integration boundary</a></li>
 <li class="toctree-l1"><a class="reference internal" href="0011-local-discovery-and-direct-exchange.html">ADR 0011: Local discovery and direct exchange</a></li>
 <li class="toctree-l1"><a class="reference internal" href="0012-recovery-revocation-and-multi-device-lifecycle.html">ADR 0012: Recovery, revocation, and multi-device lifecycle</a></li>
-<li class="toctree-l1 current"><a class="current reference internal" href="#">ADR 0013: Security assurance and independent review</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="#context">Context</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#decision">Decision</a><ul>
-<li class="toctree-l3"><a class="reference internal" href="#security-assurance-is-a-release-gate">Security assurance is a release gate</a></li>
-<li class="toctree-l3"><a class="reference internal" href="#independence-and-claims">Independence and claims</a></li>
-<li class="toctree-l3"><a class="reference internal" href="#scope-and-review-readiness">Scope and review readiness</a></li>
-<li class="toctree-l3"><a class="reference internal" href="#threat-model-and-attack-tests">Threat model and attack tests</a></li>
-<li class="toctree-l3"><a class="reference internal" href="#dependency-and-code-hardening">Dependency and code hardening</a></li>
-<li class="toctree-l3"><a class="reference internal" href="#privacy-assessment">Privacy assessment</a></li>
-<li class="toctree-l3"><a class="reference internal" href="#cryptographic-review">Cryptographic review</a></li>
-<li class="toctree-l3"><a class="reference internal" href="#findings-and-release-decisions">Findings and release decisions</a></li>
-<li class="toctree-l3"><a class="reference internal" href="#incident-readiness">Incident readiness</a></li>
-<li class="toctree-l3"><a class="reference internal" href="#smallest-honest-delivery-slice">Smallest honest delivery slice</a></li>
-</ul>
-</li>
-<li class="toctree-l2"><a class="reference internal" href="#consequences">Consequences</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#alternatives-considered">Alternatives considered</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#review-evidence">Review evidence</a></li>
-</ul>
-</li>
+<li class="toctree-l1"><a class="reference internal" href="0013-security-assurance-and-independent-review.html">ADR 0013: Security assurance and independent review</a></li>
 <li class="toctree-l1"><a class="reference internal" href="0014-release-packaging-and-provenance.html">ADR 0014: Release packaging, publication, and provenance</a></li>
 <li class="toctree-l1"><a class="reference internal" href="0015-cli-native-authentication.html">ADR 0015: CLI-native authentication boundary</a></li>
 <li class="toctree-l1"><a class="reference internal" href="0016-exact-action-approval-protocol.html">ADR 0016: Exact-action approval protocol</a></li>
 <li class="toctree-l1"><a class="reference internal" href="0017-local-authentication-agent.html">ADR 0017: Local authentication agent and installation signer</a></li>
 <li class="toctree-l1"><a class="reference internal" href="0018-production-cose-sign1-profile.html">ADR 0018: Production COSE Sign1 profile</a></li>
-<li class="toctree-l1"><a class="reference internal" href="0019-mvp-signed-message-schemas.html">ADR 0019: MVP signed-message schemas</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">ADR 0019: MVP signed-message schemas</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#context">Context</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#decision">Decision</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#common-rules">Common rules</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#device-enrolment">Device enrolment</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#authentication-challenge">Authentication challenge</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#authentication-response">Authentication response</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#authentication-evidence-receipt">Authentication evidence receipt</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#compatibility-and-verification">Compatibility and verification</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#consequences">Consequences</a></li>
+</ul>
+</li>
 <li class="toctree-l1"><a class="reference internal" href="../protocol/README.html">Protocol documentation</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../protocol/domain-model.html">Domain identifiers</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../protocol/action-approval.html">Exact-action approval protocol</a></li>
@@ -225,9 +219,9 @@
           <div role="navigation" aria-label="Page navigation">
   <ul class="wy-breadcrumbs">
       <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
-      <li class="breadcrumb-item active">ADR 0013: Security assurance and independent review</li>
+      <li class="breadcrumb-item active">ADR 0019: MVP signed-message schemas</li>
       <li class="wy-breadcrumbs-aside">
-            <a href="../_sources/adr/0013-security-assurance-and-independent-review.md.txt" rel="nofollow"> View page source</a>
+            <a href="../_sources/adr/0019-mvp-signed-message-schemas.md.txt" rel="nofollow"> View page source</a>
       </li>
   </ul>
   <hr/>
@@ -235,240 +229,345 @@
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
            <div itemprop="articleBody">
              
-  <section id="adr-0013-security-assurance-and-independent-review">
-<h1>ADR 0013: Security assurance and independent review<a class="headerlink" href="#adr-0013-security-assurance-and-independent-review" title="Link to this heading"></a></h1>
+  <section id="adr-0019-mvp-signed-message-schemas">
+<h1>ADR 0019: MVP signed-message schemas<a class="headerlink" href="#adr-0019-mvp-signed-message-schemas" title="Link to this heading"></a></h1>
 <ul class="simple">
 <li><p>Status: Accepted</p></li>
-<li><p>Date: 2026-07-24</p></li>
-<li><p>Owners: Pistis security, protocol, cryptography, privacy, mobile, operations,
-release, and independent reviewers</p></li>
+<li><p>Date: 2026-07-27</p></li>
+<li><p>Decision owners: Pistis protocol, evidence, and host-integration maintainers</p></li>
+<li><p>Security review: required for incompatible schema changes</p></li>
 </ul>
 <section id="context">
 <h2>Context<a class="headerlink" href="#context" title="Link to this heading"></a></h2>
-<p>EPIC 14 is the security hardening and independent-review gate before a release
-candidate. Pistis already has safe-Rust policy, denied lints, dependency and
-licence configuration, deterministic protocol attack tests, four fuzz targets,
-a threat model, explicit assurance states, and security boundaries recorded in
-accepted ADRs.</p>
-<p>Those controls are useful evidence, but they are not an independent
-penetration test, cryptographic review, privacy assessment, or security-owner
-approval. Several production surfaces are also incomplete: COSE
-interoperability, durable host completion, mobile distribution, local
-discovery, detached evidence, recovery, and release packaging. Testing a
-reference component cannot close findings against a production surface that
-does not yet exist.</p>
-<p>Security findings may contain exploit details or personal information and must
-not be placed in public issues, logs, CI artefacts, or ordinary documentation.
-At the same time, release approval requires traceable evidence that the
-reviewed revision and artefacts match the delivered system.</p>
+<p>The MVP needs byte-identical messages across Rust and iOS. Existing documents
+define authentication semantics, but only the EPIC-6 reference challenge and
+response have complete integer-key assignments. Enrolment and authentication
+evidence also need closed payloads before shared fixtures can be frozen.</p>
+<p>This ADR freezes the signed payload layer. ADR 0018 wraps each payload in the
+production COSE Sign1 profile. QR, HTTP, and local discovery are transports and
+must not alter these bytes.</p>
 </section>
 <section id="decision">
 <h2>Decision<a class="headerlink" href="#decision" title="Link to this heading"></a></h2>
-<section id="security-assurance-is-a-release-gate">
-<h3>Security assurance is a release gate<a class="headerlink" href="#security-assurance-is-a-release-gate" title="Link to this heading"></a></h3>
-<p>EPIC 14 establishes a versioned security-assurance case for one immutable
-source revision and its traceable Rust, iOS, Android, host-integration, and
-packaging artefacts. Evidence from another revision is reusable only when a
-documented impact analysis proves that relevant code, configuration,
-dependencies, generated artefacts, and trust boundaries are unchanged.</p>
-<p>The assurance case maps every applicable M13 control and threat to:</p>
-<ul class="simple">
-<li><p>assets, actors, entry points, and trust boundaries;</p></li>
-<li><p>the responsible component and owner;</p></li>
-<li><p>prevention, detection, response, and recovery controls;</p></li>
-<li><p>deterministic tests or retained review evidence;</p></li>
-<li><p>evidence revision, environment, tool/version, and date;</p></li>
-<li><p>finding and remediation status; and</p></li>
-<li><p>explicitly accepted residual risk and expiry.</p></li>
-</ul>
-<p>Missing, stale, unverifiable, or out-of-scope evidence is a blocker, not a
-passing result.</p>
+<section id="common-rules">
+<h3>Common rules<a class="headerlink" href="#common-rules" title="Link to this heading"></a></h3>
+<p>Every payload is a closed deterministic-CBOR map with unsigned integer keys in
+ascending order. Every listed field is mandatory. Unknown, missing, duplicate,
+mis-typed, non-canonical, or out-of-range fields are rejected. Identifiers are
+their raw <code class="docutils literal notranslate"><span class="pre">pistis-domain</span></code> bytes: entity identifiers are 16 bytes and <code class="docutils literal notranslate"><span class="pre">KeyId</span></code>
+is 32 bytes. Digests and nonces are 32 bytes. Times are unsigned Unix epoch
+milliseconds. Text is non-empty, trimmed UTF-8 without control characters and
+is compared byte-for-byte.</p>
+<p>The common leading fields are:</p>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>Key</p></th>
+<th class="head"><p>Field</p></th>
+<th class="head"><p>Type</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>0</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">version</span></code></p></td>
+<td><p>unsigned integer, exactly <code class="docutils literal notranslate"><span class="pre">1</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p>1</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">purpose</span></code></p></td>
+<td><p>exact purpose text</p></td>
+</tr>
+<tr class="row-even"><td><p>2</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">issued_at_ms</span></code></p></td>
+<td><p>unsigned integer</p></td>
+</tr>
+</tbody>
+</table>
+<p>Purpose is domain separation. A valid payload must never be reinterpreted
+under another purpose.</p>
 </section>
-<section id="independence-and-claims">
-<h3>Independence and claims<a class="headerlink" href="#independence-and-claims" title="Link to this heading"></a></h3>
-<p>Repository maintainers and autonomous agents may prepare scope, inventories,
-attack tests, review checklists, remediation patches, and evidence manifests.
-They must not label their own work an independent penetration test or
-independent cryptographic review.</p>
-<p>An independent reviewer must be organizationally and operationally separate
-from the implementation being reviewed, receive the complete scoped material,
-declare material conflicts, use a documented method, and sign or otherwise
-authenticate the final report. The project security owner—not the implementer
-or CI system—accepts residual risk and approves release-candidate progression.</p>
-<p>Automated scanners, fuzzers, linters, dependency tools, and AI review are
-supporting evidence only. A clean tool result never implies absence of
-vulnerabilities.</p>
+<section id="device-enrolment">
+<h3>Device enrolment<a class="headerlink" href="#device-enrolment" title="Link to this heading"></a></h3>
+<p>Purpose: <code class="docutils literal notranslate"><span class="pre">pistis.device-registration.v1</span></code>.</p>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>Key</p></th>
+<th class="head"><p>Field</p></th>
+<th class="head"><p>Type and constraint</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>3</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">installation_id</span></code></p></td>
+<td><p>16-byte byte string</p></td>
+</tr>
+<tr class="row-odd"><td><p>4</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">invitation_digest</span></code></p></td>
+<td><p>32-byte digest of the complete invitation</p></td>
+</tr>
+<tr class="row-even"><td><p>5</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">user_id</span></code></p></td>
+<td><p>16-byte Prosopikon-bound user identifier</p></td>
+</tr>
+<tr class="row-odd"><td><p>6</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">external_identity_id</span></code></p></td>
+<td><p>16-byte stable GitHub binding identifier</p></td>
+</tr>
+<tr class="row-even"><td><p>7</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">device_id</span></code></p></td>
+<td><p>16-byte device identifier</p></td>
+</tr>
+<tr class="row-odd"><td><p>8</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">device_key_id</span></code></p></td>
+<td><p>32-byte key identifier</p></td>
+</tr>
+<tr class="row-even"><td><p>9</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">device_public_key</span></code></p></td>
+<td><p>canonical 33-byte compressed SEC1 P-256 point</p></td>
+</tr>
+<tr class="row-odd"><td><p>10</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">device_key_algorithm</span></code></p></td>
+<td><p>integer, exactly <code class="docutils literal notranslate"><span class="pre">-7</span></code></p></td>
+</tr>
+<tr class="row-even"><td><p>11</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">key_assurance</span></code></p></td>
+<td><p>text, exactly <code class="docutils literal notranslate"><span class="pre">secure-enclave-biometry-current-set</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p>12</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">provider_evidence_digest</span></code></p></td>
+<td><p>32-byte digest</p></td>
+</tr>
+<tr class="row-even"><td><p>13</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">registered_at_ms</span></code></p></td>
+<td><p>unsigned integer, not before <code class="docutils literal notranslate"><span class="pre">issued_at_ms</span></code></p></td>
+</tr>
+</tbody>
+</table>
+<p>The device signs this payload to prove possession. The host verifies the
+single-use invitation, GitHub evidence, principal binding, public-key
+derivation, assurance, and policy before atomically recording enrolment. A
+host-signed evidence receipt records acceptance; the device signature alone
+does not establish enrolment.</p>
 </section>
-<section id="scope-and-review-readiness">
-<h3>Scope and review readiness<a class="headerlink" href="#scope-and-review-readiness" title="Link to this heading"></a></h3>
-<p>The independent review begins only after its target surfaces are
-feature-complete, configuration-frozen for review, deployed in an isolated
-representative environment, and traceable to the candidate revision.
-Out-of-scope or unavailable surfaces remain explicit release blockers.</p>
-<p>The review scope includes:</p>
-<ul class="simple">
-<li><p>Rust parsers, canonicalization, signature verification, challenge lifecycle,
-policy, persistence, CLI, and resource limits;</p></li>
-<li><p>Synoptikon and Monas authentication, session, authorization, audit, bootstrap,
-recovery, and migration adapters;</p></li>
-<li><p>iOS and Android key generation, biometric binding, callback handling, local
-storage, logging, backup, screenshots, deep links, intents, permissions, and
-release configuration;</p></li>
-<li><p>QR and direct-local transport, hostile discovery, endpoint binding, fallback,
-and denial-of-service behavior;</p></li>
-<li><p>GitHub and Google enrolment, broker boundaries, callback correlation, token
-lifetime, and provider failure;</p></li>
-<li><p>detached evidence, trusted-time, revocation, historic policy, and offline
-verification; and</p></li>
-<li><p>build, dependency, secret, signing, SBOM, provenance, update, and incident
-response paths.</p></li>
-</ul>
-<p>Testing uses generated identities and isolated data. It does not target public
-production systems or access unrelated data.</p>
+<section id="authentication-challenge">
+<h3>Authentication challenge<a class="headerlink" href="#authentication-challenge" title="Link to this heading"></a></h3>
+<p>Purpose: <code class="docutils literal notranslate"><span class="pre">pistis.authentication-challenge.v1</span></code>.</p>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>Key</p></th>
+<th class="head"><p>Field</p></th>
+<th class="head"><p>Type and constraint</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>3</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">expires_at_ms</span></code></p></td>
+<td><p>unsigned integer, greater than key 2</p></td>
+</tr>
+<tr class="row-odd"><td><p>4</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">installation_id</span></code></p></td>
+<td><p>16-byte byte string</p></td>
+</tr>
+<tr class="row-even"><td><p>5</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">installation_key_id</span></code></p></td>
+<td><p>32-byte byte string</p></td>
+</tr>
+<tr class="row-odd"><td><p>6</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">challenge_id</span></code></p></td>
+<td><p>16-byte byte string</p></td>
+</tr>
+<tr class="row-even"><td><p>7</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">nonce</span></code></p></td>
+<td><p>32-byte byte string</p></td>
+</tr>
+<tr class="row-odd"><td><p>8</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">user_id</span></code></p></td>
+<td><p>16-byte byte string</p></td>
+</tr>
+<tr class="row-even"><td><p>9</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">external_identity_id</span></code></p></td>
+<td><p>16-byte byte string</p></td>
+</tr>
+<tr class="row-odd"><td><p>10</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">requested_action</span></code></p></td>
+<td><p>text, exactly <code class="docutils literal notranslate"><span class="pre">authenticate-session</span></code></p></td>
+</tr>
+<tr class="row-even"><td><p>11</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">audience</span></code></p></td>
+<td><p>text, at most 128 UTF-8 bytes</p></td>
+</tr>
+<tr class="row-odd"><td><p>12</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">installation_name</span></code></p></td>
+<td><p>display text, at most 128 UTF-8 bytes</p></td>
+</tr>
+<tr class="row-even"><td><p>13</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">local_username</span></code></p></td>
+<td><p>display text, at most 128 UTF-8 bytes</p></td>
+</tr>
+<tr class="row-odd"><td><p>14</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">display_context_digest</span></code></p></td>
+<td><p>32-byte byte string</p></td>
+</tr>
+<tr class="row-even"><td><p>15</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">installation_fingerprint</span></code></p></td>
+<td><p>32-byte byte string</p></td>
+</tr>
+<tr class="row-odd"><td><p>16</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">endpoint_hints</span></code></p></td>
+<td><p>array of zero to two unique HTTPS texts</p></td>
+</tr>
+</tbody>
+</table>
+<p>Endpoint hints are bounded signed transport hints, not authority. The
+installation signs the challenge. The host owns time, expiry, audience, and
+single-use state.</p>
 </section>
-<section id="threat-model-and-attack-tests">
-<h3>Threat model and attack tests<a class="headerlink" href="#threat-model-and-attack-tests" title="Link to this heading"></a></h3>
-<p>The threat model is a living, version-controlled control register. Before
-review it is reconciled against all accepted ADRs, actual routes, schemas,
-platform manifests, configuration defaults, dependencies, data stores, logs,
-and deployment diagrams. Deferrals name an owning issue and cannot be carried
-into a release candidate when their surface is in scope.</p>
-<p>Attack tests automate deterministic cases where practical, including replay,
-downgrade, cross-purpose/user/installation substitution, concurrent
-consumption, parser limits, non-canonical input, signature encoding,
-identifier collision handling, expiry and clock boundaries, discovery and TLS
-substitution, OAuth/OIDC correlation, CSRF, redirects, token leakage,
-revocation, recovery, and session invalidation.</p>
-<p>Fuzz evidence records target, corpus digest, candidate revision, engine and
-toolchain version, configuration, duration or execution count, sanitizer
-settings, crashes, minimization, and remediation. Merely compiling a fuzz
-target is not a completed fuzz campaign. Security regressions become permanent
-deterministic tests before a finding closes.</p>
+<section id="authentication-response">
+<h3>Authentication response<a class="headerlink" href="#authentication-response" title="Link to this heading"></a></h3>
+<p>Purpose: <code class="docutils literal notranslate"><span class="pre">pistis.authentication-response.v1</span></code>.</p>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>Key</p></th>
+<th class="head"><p>Field</p></th>
+<th class="head"><p>Type and constraint</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>3</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">user_verified_at_ms</span></code></p></td>
+<td><p>unsigned integer, not before key 2</p></td>
+</tr>
+<tr class="row-odd"><td><p>4</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">installation_id</span></code></p></td>
+<td><p>16-byte byte string</p></td>
+</tr>
+<tr class="row-even"><td><p>5</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">device_key_id</span></code></p></td>
+<td><p>32-byte byte string</p></td>
+</tr>
+<tr class="row-odd"><td><p>6</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">challenge_id</span></code></p></td>
+<td><p>16-byte byte string</p></td>
+</tr>
+<tr class="row-even"><td><p>7</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">nonce</span></code></p></td>
+<td><p>32-byte byte string</p></td>
+</tr>
+<tr class="row-odd"><td><p>8</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">challenge_digest</span></code></p></td>
+<td><p>SHA-256 of exact challenge payload bytes</p></td>
+</tr>
+<tr class="row-even"><td><p>9</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">user_id</span></code></p></td>
+<td><p>16-byte byte string</p></td>
+</tr>
+<tr class="row-odd"><td><p>10</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">device_id</span></code></p></td>
+<td><p>16-byte byte string</p></td>
+</tr>
+<tr class="row-even"><td><p>11</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">external_identity_id</span></code></p></td>
+<td><p>16-byte byte string</p></td>
+</tr>
+<tr class="row-odd"><td><p>12</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">decision</span></code></p></td>
+<td><p>text, exactly <code class="docutils literal notranslate"><span class="pre">approved</span></code> or <code class="docutils literal notranslate"><span class="pre">denied</span></code></p></td>
+</tr>
+</tbody>
+</table>
+<p>The device signs the response only after explicit Face ID verification. It
+does not assert expiry or session authority. The host verifies the stored
+challenge and all bindings and performs the Prosopikon-owned single-use
+completion transaction. A denial never creates a session.</p>
 </section>
-<section id="dependency-and-code-hardening">
-<h3>Dependency and code hardening<a class="headerlink" href="#dependency-and-code-hardening" title="Link to this heading"></a></h3>
-<p>The candidate dependency review uses the locked Rust, Swift, Gradle, container,
-documentation, and CI dependency graphs. It evaluates advisories, yanks,
-licences, source provenance, maintainership, release age, native and unsafe
-code, build scripts, duplicate versions, features, and necessity.</p>
-<p>Exceptions are narrow, owned, time-bounded, justified by impact analysis, and
-recorded in the residual-risk register. Suppressing a scanner finding without
-this record fails the gate.</p>
-<p>Code hardening reviews unsafe code, panic and allocation behavior, secret
-zeroization, logging and diagnostics, error redaction, rate and size limits,
-timeouts, file permissions, secure configuration defaults, and fail-closed
-dependency failure. Tests include logs and crash/error paths, not only success.</p>
+<section id="authentication-evidence-receipt">
+<h3>Authentication evidence receipt<a class="headerlink" href="#authentication-evidence-receipt" title="Link to this heading"></a></h3>
+<p>Purpose: <code class="docutils literal notranslate"><span class="pre">pistis.authentication-evidence-receipt.v1</span></code>.</p>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>Key</p></th>
+<th class="head"><p>Field</p></th>
+<th class="head"><p>Type and constraint</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>3</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">evidence_id</span></code></p></td>
+<td><p>16-byte byte string</p></td>
+</tr>
+<tr class="row-odd"><td><p>4</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">installation_id</span></code></p></td>
+<td><p>16-byte byte string</p></td>
+</tr>
+<tr class="row-even"><td><p>5</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">authority_key_id</span></code></p></td>
+<td><p>32-byte byte string</p></td>
+</tr>
+<tr class="row-odd"><td><p>6</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">event_type</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">enrolment</span></code>, <code class="docutils literal notranslate"><span class="pre">authentication</span></code>, <code class="docutils literal notranslate"><span class="pre">cli-approval</span></code>, or <code class="docutils literal notranslate"><span class="pre">revocation</span></code></p></td>
+</tr>
+<tr class="row-even"><td><p>7</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">subject_digest</span></code></p></td>
+<td><p>32-byte digest of the signed subject envelope</p></td>
+</tr>
+<tr class="row-odd"><td><p>8</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">user_id</span></code></p></td>
+<td><p>16-byte byte string</p></td>
+</tr>
+<tr class="row-even"><td><p>9</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">device_id</span></code></p></td>
+<td><p>16-byte byte string</p></td>
+</tr>
+<tr class="row-odd"><td><p>10</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">outcome</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">accepted</span></code>, <code class="docutils literal notranslate"><span class="pre">denied</span></code>, <code class="docutils literal notranslate"><span class="pre">revoked</span></code>, or <code class="docutils literal notranslate"><span class="pre">rejected</span></code></p></td>
+</tr>
+<tr class="row-even"><td><p>11</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">policy_generation</span></code></p></td>
+<td><p>unsigned integer</p></td>
+</tr>
+<tr class="row-odd"><td><p>12</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">revocation_generation</span></code></p></td>
+<td><p>unsigned integer</p></td>
+</tr>
+<tr class="row-even"><td><p>13</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">previous_event_digest</span></code></p></td>
+<td><p>32-byte byte string; all-zero for genesis</p></td>
+</tr>
+</tbody>
+</table>
+<p>The host authority signs the receipt only as part of its durable transaction.
+It contains no bearer session, nonce, GitHub token, display snapshot, command
+argument, or private material. <code class="docutils literal notranslate"><span class="pre">subject_digest</span></code> binds the exact event input
+without copying sensitive contents.</p>
+<p>This receipt is the signed event core, not the complete detached evidence
+package. EPIC-23 remains responsible for trust bundles, temporal and revocation
+proofs, redaction policy, offline verification, and portable packaging.</p>
 </section>
-<section id="privacy-assessment">
-<h3>Privacy assessment<a class="headerlink" href="#privacy-assessment" title="Link to this heading"></a></h3>
-<p>The privacy assessment inventories each collected, inferred, transmitted,
-displayed, logged, backed-up, exported, and deleted data field. For each field
-it records purpose, authority, source, recipients, storage location, retention,
-deletion behavior, user visibility, and whether it is required.</p>
-<p>Stable provider subjects, device and assurance metadata, authentication and
-recovery events, network classifications, mobile history, diagnostic data, and
-portable evidence are reviewed explicitly. Data minimization is the default.
-Full IP addresses, user-agent strings, provider tokens, session material,
-capabilities, nonces, signatures, and raw evidence are not retained merely for
-convenience. Platform privacy declarations and store disclosures must match
-observed behavior.</p>
 </section>
-<section id="cryptographic-review">
-<h3>Cryptographic review<a class="headerlink" href="#cryptographic-review" title="Link to this heading"></a></h3>
-<p>The independent cryptographic review covers the exact production profile and
-fixtures: algorithms and parameters, key generation and storage, randomness,
-canonical encoding, COSE structure, domain separation, nonce and challenge
-binding, signature encoding and malleability, key identifiers and collision
-handling, protocol versioning, verifier outcome ordering, assurance,
-revocation, trusted time, recovery, and detached evidence.</p>
-<p>Any protocol, canonicalization, signature, schema, or security-critical fixture
-change after review invalidates the affected conclusion until the reviewer or
-security owner accepts a documented delta review.</p>
-</section>
-<section id="findings-and-release-decisions">
-<h3>Findings and release decisions<a class="headerlink" href="#findings-and-release-decisions" title="Link to this heading"></a></h3>
-<p>Findings use a stable private identifier, affected revision and component,
-severity, exploitability and impact, reproduction evidence, owner, target,
-remediation, regression evidence, reviewer verification, and disclosure state.
-Severity uses the reviewer’s documented method and is not lowered solely to
-meet a release date.</p>
-<p>Critical and high findings block release until remediated and independently
-verified. Medium findings require an accepted, owned, dated remediation plan
-and explicit security-owner residual-risk acceptance. Lower findings remain
-tracked. A disputed or untriaged finding is open.</p>
-<p>Public release evidence contains only sanitized scope, reviewer identity or
-attestation, candidate revision, dates, finding counts by severity, remediation
-status, and residual-risk references. Exploit details follow <code class="docutils literal notranslate"><span class="pre">SECURITY.md</span></code> and
-remain private until coordinated disclosure.</p>
-</section>
-<section id="incident-readiness">
-<h3>Incident readiness<a class="headerlink" href="#incident-readiness" title="Link to this heading"></a></h3>
-<p>Before approval, exercises cover vulnerability intake, key compromise,
-protocol-version disablement, malicious dependency, mobile emergency release,
-host rollback, evidence/revocation update, operator and user notification, and
-coordinated disclosure. Runbooks name decision authority, secure contact
-channels, containment steps, evidence preservation, recovery, validation, and
-post-incident review.</p>
-<p>No incident path depends solely on a compromised repository, CI controller,
-provider account, mobile signing account, or single undocumented individual.</p>
-</section>
-<section id="smallest-honest-delivery-slice">
-<h3>Smallest honest delivery slice<a class="headerlink" href="#smallest-honest-delivery-slice" title="Link to this heading"></a></h3>
-<p>Before the production surfaces are ready, EPIC 14 may deliver:</p>
-<ul class="simple">
-<li><p>a machine-checkable assurance/control catalogue;</p></li>
-<li><p>threat-to-control and control-to-test traceability;</p></li>
-<li><p>candidate and evidence-manifest schemas;</p></li>
-<li><p>redaction-safe finding and residual-risk templates;</p></li>
-<li><p>deterministic security regression tests and fuzz-campaign tooling;</p></li>
-<li><p>dependency and privacy inventories; and</p></li>
-<li><p>review-readiness checks that report <code class="docutils literal notranslate"><span class="pre">blocked</span></code>, never <code class="docutils literal notranslate"><span class="pre">passed</span></code>, when
-independent evidence is absent.</p></li>
-</ul>
-<p>This slice improves hardening but does not complete penetration testing,
-privacy review, cryptographic review, or EPIC 14.</p>
-</section>
+<section id="compatibility-and-verification">
+<h2>Compatibility and verification<a class="headerlink" href="#compatibility-and-verification" title="Link to this heading"></a></h2>
+<p>These v1 maps cannot gain fields in place because all fields are critical.
+Compatible transport or diagnostic changes do not alter payload bytes. A
+semantic or field change requires a new purpose/version and accepted ADR.</p>
+<p>Shared fixtures must cover every payload and COSE envelope, byte-for-byte
+Rust/Swift agreement, and negative cases for wrong purpose, field, type,
+width, algorithm, key identifier, signature form, digest, decision, time
+ordering, and unknown fields.</p>
+<p>Portable Swift tests and Rust tests are necessary but insufficient. Secure
+Enclave key production and Face ID gating require a signed physical-device
+record, and EPIC-18 remains incomplete until Jenkins retains that
+exact-revision interoperability evidence.</p>
 </section>
 <section id="consequences">
 <h2>Consequences<a class="headerlink" href="#consequences" title="Link to this heading"></a></h2>
 <ul class="simple">
-<li><p>Security approval is tied to an exact candidate rather than a general claim
-about the repository.</p></li>
-<li><p>Independent review cannot be replaced by self-review or automation.</p></li>
-<li><p>Sensitive findings remain private while release evidence stays auditable.</p></li>
-<li><p>Later security-critical changes trigger scoped re-review.</p></li>
-<li><p>EPIC 14 cannot close until prerequisite production surfaces exist, all
-required independent evidence is authenticated, finding gates are satisfied,
-incident exercises pass, and the security owner approves progression.</p></li>
+<li><p>Rust and iOS can implement against stable integer-key assignments.</p></li>
+<li><p>The existing authentication challenge and response assignments remain
+compatible with the EPIC-6 reference payloads.</p></li>
+<li><p>Enrolment acceptance and evidence authority remain host decisions.</p></li>
+<li><p>EPIC-23 can design a detached package around a stable signed receipt without
+reopening these event-core fields.</p></li>
 </ul>
-</section>
-<section id="alternatives-considered">
-<h2>Alternatives considered<a class="headerlink" href="#alternatives-considered" title="Link to this heading"></a></h2>
-<ul class="simple">
-<li><p>Close the epic after scanners and unit tests pass: rejected because automation
-is not independent adversarial review.</p></li>
-<li><p>Test only the current reference services: rejected because production host,
-mobile, transport, evidence, and recovery boundaries differ.</p></li>
-<li><p>Store complete penetration reports as public CI artefacts: rejected because
-exploit details and personal data require controlled disclosure.</p></li>
-<li><p>Accept findings without revision traceability: rejected because conclusions
-cannot be applied reliably to changed code or artefacts.</p></li>
-<li><p>Defer all hardening until the end: rejected because control catalogues,
-negative tests, inventories, and remediation can reduce risk earlier.</p></li>
-<li><p>Permit high-severity residual risk for schedule reasons: rejected because M13
-explicitly blocks critical and high findings.</p></li>
-</ul>
-</section>
-<section id="review-evidence">
-<h2>Review evidence<a class="headerlink" href="#review-evidence" title="Link to this heading"></a></h2>
-<p>The architecture audit inspected EPIC 14 issues 156–162, M13 criteria,
-<code class="docutils literal notranslate"><span class="pre">SECURITY.md</span></code>, all accepted ADRs, the threat model, dependency policy,
-architecture guardrails, assurance documentation, fuzz targets, mobile
-manifests, and current protocol, registry, transport, and host-contract tests.
-It found valuable deterministic controls but no completed independent
-penetration report, cryptographic review, privacy assessment, remediation
-report, incident exercise, residual-risk register, or release-candidate
-approval.</p>
 </section>
 </section>
 
@@ -476,8 +575,8 @@ approval.</p>
            </div>
           </div>
           <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
-        <a href="0012-recovery-revocation-and-multi-device-lifecycle.html" class="btn btn-neutral float-left" title="ADR 0012: Recovery, revocation, and multi-device lifecycle" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
-        <a href="0014-release-packaging-and-provenance.html" class="btn btn-neutral float-right" title="ADR 0014: Release packaging, publication, and provenance" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+        <a href="0018-production-cose-sign1-profile.html" class="btn btn-neutral float-left" title="ADR 0018: Production COSE Sign1 profile" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="../protocol/README.html" class="btn btn-neutral float-right" title="Protocol documentation" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
     </div>
 
   <hr/>

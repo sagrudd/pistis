@@ -165,6 +165,8 @@
 <li class="toctree-l1"><a class="reference internal" href="0015-cli-native-authentication.html">ADR 0015: CLI-native authentication boundary</a></li>
 <li class="toctree-l1"><a class="reference internal" href="0016-exact-action-approval-protocol.html">ADR 0016: Exact-action approval protocol</a></li>
 <li class="toctree-l1"><a class="reference internal" href="0017-local-authentication-agent.html">ADR 0017: Local authentication agent and installation signer</a></li>
+<li class="toctree-l1"><a class="reference internal" href="0018-production-cose-sign1-profile.html">ADR 0018: Production COSE Sign1 profile</a></li>
+<li class="toctree-l1"><a class="reference internal" href="0019-mvp-signed-message-schemas.html">ADR 0019: MVP signed-message schemas</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../protocol/README.html">Protocol documentation</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../protocol/domain-model.html">Domain identifiers</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../protocol/action-approval.html">Exact-action approval protocol</a></li>
@@ -222,6 +224,13 @@ before implementing protocol, cryptographic, schema, or canonical-encoding
 changes.</p>
 <p>Statuses are Proposed, Accepted, Superseded, or Rejected. Never rewrite an
 accepted decision; supersede it with a new ADR.</p>
+<p>Current accepted production-interoperability decisions include:</p>
+<ul class="simple">
+<li><p><a class="reference internal" href="0018-production-cose-sign1-profile.html"><span class="std std-doc">ADR 0018</span></a>, the strict untagged
+COSE Sign1 wire profile; and</p></li>
+<li><p><a class="reference internal" href="0019-mvp-signed-message-schemas.html"><span class="std std-doc">ADR 0019</span></a>, the closed integer-key MVP
+enrolment, authentication, and evidence-receipt payloads.</p></li>
+</ul>
 </section>
 
 

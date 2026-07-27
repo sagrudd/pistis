@@ -165,6 +165,8 @@
 <li class="toctree-l1"><a class="reference internal" href="adr/0015-cli-native-authentication.html">ADR 0015: CLI-native authentication boundary</a></li>
 <li class="toctree-l1"><a class="reference internal" href="adr/0016-exact-action-approval-protocol.html">ADR 0016: Exact-action approval protocol</a></li>
 <li class="toctree-l1"><a class="reference internal" href="adr/0017-local-authentication-agent.html">ADR 0017: Local authentication agent and installation signer</a></li>
+<li class="toctree-l1"><a class="reference internal" href="adr/0018-production-cose-sign1-profile.html">ADR 0018: Production COSE Sign1 profile</a></li>
+<li class="toctree-l1"><a class="reference internal" href="adr/0019-mvp-signed-message-schemas.html">ADR 0019: MVP signed-message schemas</a></li>
 <li class="toctree-l1"><a class="reference internal" href="protocol/README.html">Protocol documentation</a></li>
 <li class="toctree-l1"><a class="reference internal" href="protocol/domain-model.html">Domain identifiers</a></li>
 <li class="toctree-l1"><a class="reference internal" href="protocol/action-approval.html">Exact-action approval protocol</a></li>
@@ -242,9 +244,11 @@ rejected.</p></li>
 reject a field identifier absent from the schema for that object type. This
 prevents an older verifier from accepting a payload while ignoring semantics
 that a signer considered significant.</p>
-<p>Canonical payloads are embedded as the payload of a COSE signature structure.
-COSE algorithms, protected headers, and signature suites are specified
-separately; a COSE library must not re-encode the payload before verification.</p>
+<p>Canonical payloads are embedded without re-encoding in the untagged COSE
+Sign1 profile specified by
+<a class="reference internal" href="adr/0018-production-cose-sign1-profile.html"><span class="std std-doc">ADR 0018</span></a>. CBOR tag 18, detached
+payloads, non-empty unprotected headers, and alternate envelope encodings are
+rejected.</p>
 </section>
 <section id="text-and-diagnostic-form">
 <h2>Text and diagnostic form<a class="headerlink" href="#text-and-diagnostic-form" title="Link to this heading"></a></h2>

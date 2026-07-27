@@ -10,7 +10,10 @@ EPIC-2 adds ES256 cryptographic verification and the structured verification
 pipeline; EPIC-3 adds GitHub PKCE trust enrolment and durable provider-neutral
 identity bindings; EPIC-4 adds locally verified Google OpenID Connect
 enrolment keyed by canonical issuer and stable subject. Later epics add device
-registration and application integrations.
+registration and application integrations. EPIC-16 makes terminal-native
+authentication and approval a release-blocking primary product surface, using
+ASCII/Unicode QR exchange with the supported iOS and Android applications and
+requiring no browser or web application.
 
 ## Design principles
 
@@ -19,6 +22,8 @@ registration and application integrations.
 - External identity establishes identity; local policy grants authority.
 - Signed, portable evidence is preferred to opaque sessions.
 - Protocol and canonical encoding are specified before convenience transports.
+- CLI users are first-class: login and action approval must work entirely from
+  a terminal with a supported mobile signer.
 
 ## Project status
 
@@ -60,6 +65,12 @@ and the
 [`operator release runbook`](docs/operations/release-packaging.md). These
 documents are readiness contracts; no production Pistis package or signed
 v1.0 release exists yet.
+
+The primary terminal authentication contract, deterministic ASCII/Unicode QR
+profiles, and current fail-closed readiness boundary are documented in the
+[`CLI development guide`](docs/development/cli-authentication.md),
+[`ADR 0015`](docs/adr/0015-cli-native-authentication.md), and
+[`CLI operator guide`](docs/operations/cli-authentication.md).
 
 ## Security
 

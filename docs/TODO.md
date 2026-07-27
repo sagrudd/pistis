@@ -316,7 +316,8 @@ reconciliation, and blocked release-task definitions may proceed now. EPIC-15
 remains blocked until all prior product and security gates pass for the exact
 packaged candidate, external signing/store prerequisites exist, required
 approvals bind the final manifest digest, publication succeeds, and the
-immutable signed `v1.0.0` tag is created.
+immutable signed `v1.0.0` tag is created. EPIC-16 is an explicit release gate
+despite its later planning identifier.
 
 - [ ] Build SBOM
 - [ ] Package RPM
@@ -325,6 +326,75 @@ immutable signed `v1.0.0` tag is created.
 - [ ] Publish Android build
 - [ ] Execute acceptance matrix
 - [ ] Tag v1.0.0
+
+---
+
+# EPIC 16 — CLI-native authentication
+
+Pistis treats terminal users as a primary product audience. Authentication and
+action approval shall complete from a console with a supported iOS or Android
+application, without a browser, web application, desktop GUI, or clipboard
+ceremony. EPIC-16 is release-blocking and extends the EPIC-6 transport and
+EPIC-10 CLI contracts; it does not introduce a second verifier or weaker
+authentication path.
+
+## Terminal QR presentation
+
+- [x] Define terminal capability and rendering profile
+- [x] Implement deterministic ASCII and Unicode QR rendering
+- [x] Display installation identity, purpose, expiry, and fingerprint
+- [x] Support narrow, monochrome, SSH, tmux, and screen terminals
+- [ ] Add scanability fixtures for supported iOS and Android devices
+
+## CLI authentication and approval
+
+- [ ] Implement `pistis auth login`
+- [ ] Implement `pistis auth approve`
+- [x] Bind approvals to the exact action and command digest
+- [ ] Support direct-local signed response submission
+- [x] Support bounded terminal-safe framed response input
+- [x] Implement cancellation, denial, expiry, and interruption handling
+
+## Security and session handling
+
+- [x] Keep credentials and session material out of argv and shell history
+- [x] Prevent terminal escape and control-sequence injection
+- [ ] Enforce the shared single-use challenge verifier boundary
+- [x] Add replay, substitution, wrong-installation, and wrong-action tests
+- [ ] Define secure session hand-off for child CLI processes
+- [ ] Retain tamper-evident authentication and approval evidence
+
+## Interoperability and operations
+
+- [ ] Add iOS terminal-QR interoperability tests
+- [ ] Add Android terminal-QR interoperability tests
+- [ ] Add headless and offline end-to-end acceptance tests
+- [x] Add CLI user and operator documentation
+- [ ] Add dual-architecture Jenkins evidence gates
+
+EPIC-15 release acceptance remains blocked until EPIC-16 passes for the exact
+release candidate.
+
+The portable EPIC-16 foundation is implemented: the strict command parser,
+canonical argument-vector digest, deterministic terminal renderer, bounded
+response reader, orchestration interfaces, fail-closed executable, unit and
+regression tests, ADR 0015, and operator documentation. Production completion
+remains open because the executable has no running authoritative handler or
+secure child-session handoff, mobile exact-action interoperability is absent,
+and Jenkins has no retained device/dual-architecture acceptance dossier. ADR
+0016 and its tested additive v2 schema remove the v1 action-authority blocker
+without changing v1 login. ADR 0017 and `pistis-agent` add owner-only durable
+storage, socket framing, non-export signing interfaces, closed semantic
+dispatch, and a tested CLI socket client. The native Security-framework signing
+operation, native same-user peer authorization, bounded daemon lifecycle, and
+single-authority semantic handler, and atomic durable ceremony/session/audit
+commit are implemented. The shared device-response verifier still needs its
+protocol-specific login/action adapter, but its mutation-free coordinator into
+the transaction is implemented. Key provisioning also
+remains subject to code-signing and access-control review. The unchecked items
+above are release
+blockers; a successful library test is not evidence that a mobile login or
+action approval completed.
 
 ---
 

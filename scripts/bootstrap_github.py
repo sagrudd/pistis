@@ -67,6 +67,7 @@ MILESTONES = [
 EPIC_MILESTONE = {
     0: 0, 1: 1, 2: 2, 3: 3, 4: 3, 5: 4, 6: 5, 7: 6, 8: 11,
     9: 7, 10: 8, 11: 9, 12: 10, 13: 12, 14: 13, 15: 15,
+    16: 8,
 }
 
 EPIC_AREA = {
@@ -74,6 +75,7 @@ EPIC_AREA = {
     5: "device", 6: "transport", 7: "ios", 8: "android",
     9: "integration", 10: "integration", 11: "transport", 12: "evidence",
     13: "device", 14: "security", 15: "release",
+    16: "integration",
 }
 
 

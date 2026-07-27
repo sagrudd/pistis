@@ -35,6 +35,32 @@ a Changelog and releases follow Semantic Versioning.
   acceptance coverage for response-QR and direct-local transfer.
 - EPIC-11 foreground nearby-request MVP semantics and a reviewed discovery
   implementation selection covering native iOS/Android and the Rust host.
+- EPIC-16 roadmap and acceptance contract for primary CLI-native login and
+  exact-action approval through terminal-rendered ASCII/Unicode QR exchange
+  with the supported iOS and Android applications.
+- A fail-closed `pistis` CLI contract, canonical command digests,
+  deterministic terminal-safe ASCII/Unicode QR rendering, bounded response
+  ingestion, ceremony orchestration interfaces, and EPIC-16 operator guidance.
+- A closed additive v2 exact-action descriptor, challenge, and response schema
+  with downgrade/substitution rejection and an agent-controlled single-use
+  revalidation and direct-execution boundary.
+- Owner-only local-agent SQLite and Unix-socket foundations with bounded
+  canonical framing, restart-safe single-use ceremony transitions, and a
+  non-exportable installation-signing provider contract.
+- Native macOS Keychain lookup and Security-framework ES256 signing with
+  duplicate-key refusal, low-S conversion, public-key identifier derivation,
+  and independent signature verification.
+- A closed local-agent request/response protocol, peer-authorization-first
+  single-request dispatch, owner-only CLI socket backend, and fail-closed
+  terminal executable with protected framed-response input.
+- Native same-user socket credential checks, bounded per-client daemon I/O,
+  controlled service shutdown, and a single-authority ceremony handler
+  contract requiring atomic verification, session, and audit completion.
+- A versioned SQLite completion transaction that rechecks the exact verified
+  response and atomically consumes the ceremony, creates one session, and
+  retains one redacted audit event with rollback and concurrency coverage.
+- A mutation-free staged-response verifier coordinator with operating-system
+  session randomness and fail-closed verification/randomness regression tests.
 
 ### Changed
 

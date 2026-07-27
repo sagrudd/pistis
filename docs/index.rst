@@ -33,6 +33,8 @@ Development
    development/android
    development/synoptikon
    development/monas
+   development/cli-authentication
+   development/local-agent
    development/discovery
    development/discovery-implementation-evaluation
    development/device-lifecycle
@@ -64,8 +66,12 @@ Architecture and operations
    adr/0012-recovery-revocation-and-multi-device-lifecycle
    adr/0013-security-assurance-and-independent-review
    adr/0014-release-packaging-and-provenance
+   adr/0015-cli-native-authentication
+   adr/0016-exact-action-approval-protocol
+   adr/0017-local-authentication-agent
    protocol/README
    protocol/domain-model
+   protocol/action-approval
    protocol
    crypto
    encoding
@@ -84,3 +90,5 @@ Architecture and operations
    operations/device-lifecycle
    operations/security-hardening
    operations/release-packaging
+   operations/cli-authentication
+   operations/local-agent

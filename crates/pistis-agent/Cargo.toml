@@ -1,0 +1,23 @@
+[package]
+name = "pistis-agent"
+version = "0.1.0"
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "Durable owner-only local authentication agent boundary"
+
+[dependencies]
+getrandom.workspace = true
+nix.workspace = true
+pistis-canonical.workspace = true
+pistis-domain.workspace = true
+pistis-crypto.workspace = true
+rusqlite.workspace = true
+
+[target.'cfg(target_os = "macos")'.dependencies]
+p256.workspace = true
+security-framework.workspace = true
+
+[lints]
+workspace = true

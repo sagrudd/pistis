@@ -4,6 +4,7 @@ members = [
     "crates/pistis-assurance",
     "crates/pistis-authentication",
     "crates/pistis-canonical",
+    "crates/pistis-cli",
     "crates/pistis-crypto",
     "crates/pistis-device-registry",
     "crates/pistis-discovery",
@@ -12,6 +13,7 @@ members = [
     "crates/pistis-google",
     "crates/pistis-identity",
     "crates/pistis-monas",
+    "crates/pistis-agent",
     "crates/pistis-protocol",
     "crates/pistis-qr",
     "crates/pistis-recovery",
@@ -32,10 +34,12 @@ base64 = "0.22.1"
 getrandom = "0.3.3"
 jsonwebtoken = { version = "10.3.0", default-features = false, features = ["aws_lc_rs", "use_pem"] }
 mdns-sd = "=0.20.2"
+nix = { version = "=0.31.3", default-features = false, features = ["socket", "user"] }
 p256 = { version = "0.13.2", default-features = false, features = ["ecdsa", "sha256"] }
 pistis-assurance = { version = "0.1.0", path = "crates/pistis-assurance" }
 pistis-authentication = { version = "0.1.0", path = "crates/pistis-authentication" }
 pistis-canonical = { version = "0.1.0", path = "crates/pistis-canonical" }
+pistis-cli = { version = "0.1.0", path = "crates/pistis-cli" }
 pistis-crypto = { version = "0.1.0", path = "crates/pistis-crypto" }
 pistis-device-registry = { version = "0.1.0", path = "crates/pistis-device-registry" }
 pistis-discovery = { version = "0.1.0", path = "crates/pistis-discovery" }
@@ -44,6 +48,7 @@ pistis-github = { version = "0.1.0", path = "crates/pistis-github" }
 pistis-google = { version = "0.1.0", path = "crates/pistis-google" }
 pistis-identity = { version = "0.1.0", path = "crates/pistis-identity" }
 pistis-monas = { version = "0.1.0", path = "crates/pistis-monas" }
+pistis-agent = { version = "0.1.0", path = "crates/pistis-agent" }
 pistis-protocol = { version = "0.1.0", path = "crates/pistis-protocol" }
 pistis-qr = { version = "0.1.0", path = "crates/pistis-qr" }
 pistis-recovery = { version = "0.1.0", path = "crates/pistis-recovery" }
@@ -53,6 +58,7 @@ qrcode = { version = "0.14.1", default-features = false }
 rusqlite = { version = "=0.37.0", features = ["bundled"] }
 serde = "1.0.228"
 serde_json = "1.0.145"
+security-framework = "=3.7.0"
 sha2 = "0.10.9"
 subtle = "2.6.1"
 url = "2.5.7"

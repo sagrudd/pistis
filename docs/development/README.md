@@ -21,3 +21,7 @@ current bootstrap workflow.
   privacy, cryptographic-review, and evidence gates.
 - `release-packaging.md`: immutable candidates, package and mobile artefacts,
   provenance, Jenkins separation, and release gates.
+- `cli-authentication.md`: terminal QR, CLI-only ceremonies, response safety,
+  interoperability evidence, and fail-closed delivery boundaries.
+- `local-agent.md`: owner-only socket and SQLite authority, installation
+  signing-provider contract, and native-adapter readiness.

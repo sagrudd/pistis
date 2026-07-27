@@ -83,3 +83,43 @@ provide TLS, request and content-type bounds, no-store responses, CSRF and
 cookie protections, rate limiting, durable transactions, and operational
 monitoring. Production COSE parsing and mobile interoperability also remain
 deferred.
+
+## Exact-action execution boundary
+
+Session authentication and action approval are separate authorities. A version
+1 `authenticate-session` response cannot authorize a command. Exact action
+approval uses the distinct version 2 purposes and closed descriptor in ADR
+0016; version or purpose substitution fails before policy evaluation.
+
+The descriptor binds executable path and content digest, argument boundaries,
+working directory, an explicit non-secret environment allow-list, and typed
+resources. It does not bind a shell string. Secrets must never be placed in the
+descriptor because signed challenge content is displayed and retained as
+evidence.
+
+An approval is single-use and expires. The local agent consumes it before
+revalidating mutable host state, then invokes the resolved executable directly.
+Executable replacement, path substitution, argument joining or reordering,
+working-directory changes, extra inherited environment, resource substitution,
+expiry, denial, and replay fail closed. If a platform cannot establish stable
+identity for a requested executable or resource, that action cannot use the
+exact-action path.
+
+The portable execution traits are a testable trust boundary, not an operating
+system sandbox. Production adapters require platform review for file
+descriptors, symlinks, mounts, interpreter scripts, dynamic libraries, process
+credentials, signals, resource limits, and audit durability.
+
+## Local-agent boundary
+
+The per-user agent, not the CLI, owns durable challenge state and installation
+signing. Its database and Unix socket require owner-only, non-symlinked paths.
+Canonical socket messages are length bounded before dispatch. Restart never
+changes a consumed or otherwise terminal challenge back to pending.
+
+The installation signer exposes signing only. Private-key export is absent from
+the interface, and provider failures do not select a software fallback. The
+macOS provider calls Security-framework signing on exactly one labelled key,
+normalises and independently verifies its ES256 output, and requests only the
+public representation. Until Keychain provisioning and peer-credential checks
+pass platform review, the CLI must report the agent as unavailable.

@@ -32,7 +32,10 @@ Pistis shall:
 -   generate durable approval evidence;
 -   support offline and air-gapped operation;
 -   operate without requiring a central identity server;
--   expose clean Rust APIs and CLI tooling.
+-   expose clean Rust APIs and CLI tooling;
+-   treat CLI users as a primary audience, with authentication and exact-action
+    approval available entirely through a terminal and the supported mobile
+    applications.
 
 Pistis shall **not**:
 
@@ -196,6 +199,8 @@ Native applications:
 ## Monas Integration
 
 -   Standalone authentication
+-   Primary CLI authentication and approval
+-   ASCII/Unicode terminal QR exchange with iOS and Android
 -   CLI verification
 -   Detached evidence generation
 
@@ -210,6 +215,8 @@ Native applications:
 -   Report signing
 -   Workflow approval
 -   Multi-signature approval
+-   CLI-native login and action approval without a web application
+-   ASCII/Unicode terminal QR interoperability
 -   Verification CLI
 -   Rust verification library
 
@@ -252,6 +259,8 @@ Pistis shall demonstrate that:
 -   no central identity server is required;
 -   authentication succeeds using GitHub and Google trust anchors;
 -   login approval works through QR challenge/response;
+-   console users can authenticate sessions and approve exact actions with the
+    iOS or Android application without a browser or GUI;
 -   report signatures produce portable evidence;
 -   evidence can be verified independently of the originating
     installation;

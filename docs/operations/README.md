@@ -15,3 +15,5 @@ recovery, backup, audit, and incident-response guidance.
 - [Recovery, revocation, and multi-device operations](device-lifecycle.md)
 - [Security hardening and independent review](security-hardening.md)
 - [Release installation, upgrade, backup, and publication](release-packaging.md)
+- [CLI authentication operations](cli-authentication.md)
+- [Local authentication agent operations](local-agent.md)

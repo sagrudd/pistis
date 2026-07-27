@@ -71,6 +71,7 @@ Architecture and operations
    adr/0017-local-authentication-agent
    adr/0018-production-cose-sign1-profile
    adr/0019-mvp-signed-message-schemas
+   adr/0020-prosopikon-pistis-authority-transaction
    protocol/README
    protocol/domain-model
    protocol/action-approval

@@ -15,9 +15,10 @@ working standalone integration.
 ## Host and dependency boundary
 
 [ADR 0010](../adr/0010-monas-standalone-integration-boundary.md) is normative.
-The proposed [ADR 0020](../adr/0020-prosopikon-pistis-authority-transaction.md)
-specifies the shared durable completion port required before a production route
-can be implemented. It remains a blocker until the named reviewers accept it.
+[ADR 0020](../adr/0020-prosopikon-pistis-authority-transaction.md) specifies
+the accepted shared durable completion port required by the production route.
+Individual implementation pull requests remain subject to its review and
+exact-revision evidence requirements.
 Implementation must retain these repository boundaries:
 
 - Pistis owns challenge semantics, device-key and binding verification,

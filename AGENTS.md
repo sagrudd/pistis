@@ -73,6 +73,13 @@ features.
   require specialist review and an accepted ADR before implementation.
 - A reviewer verifies tests, docs, compatibility, threat impact, and issue
   acceptance notes.
+- For a cross-project decision, the project owner may accept the ADR after a
+  documented review that names the affected authority owners and confirms
+  authority ownership, transaction atomicity, secret boundaries, negative-path
+  behaviour, and exact-revision evidence. That acceptance decides the
+  architecture; it does not substitute for implementation review on the
+  affected code pull requests. Where repository policy prohibits author
+  self-approval, the documented owner decision is the ADR acceptance record.
 
 ## Branches and commits
 

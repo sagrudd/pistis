@@ -1,6 +1,6 @@
 # ADR 0020: Prosopikon--Pistis authority transaction
 
-- Status: Proposed
+- Status: Accepted
 - Date: 2026-07-27
 - Decision owners: Pistis protocol, Prosopikon, Monas, Synoptikon/Mneion,
   DASObjectStore, security, and evidence maintainers
@@ -148,9 +148,9 @@ and a non-sensitive host smoke test before GitHub authentication is enabled.
 - Monas can continue to forward only its verified live session to
   DASObjectStore.
 - A verifier success is insufficient by itself to create a browser session.
-- EPIC-19 can define and test the port; EPIC-20 host routes and the Jenkins
-  dossier remain blocked until this ADR receives the required review and is
-  accepted.
+- EPIC-19 may implement the port against this accepted decision. EPIC-20 host
+  routes and the Jenkins dossier remain separately gated by their implementation
+  tests and evidence.
 - The cPanel deployment proof can proceed only as a non-sensitive operational
   smoke test and cannot be described as production authentication.
 
@@ -169,9 +169,18 @@ and a non-sensitive host smoke test before GitHub authentication is enabled.
   rejected; it does not provide a reviewed persistent service lifecycle or
   adequate secret/state boundaries.
 
-## Review required
+## Acceptance and implementation review
 
-Acceptance requires protocol, Prosopikon/Monas, Synoptikon/Mneion,
-DASObjectStore, security, and Jenkins/evidence review. This proposed ADR
-authorises no production route, durable schema, or deployment mutation by
-itself.
+The project owner accepted this architecture and the cross-project review rule
+on 2026-07-27 after review of the documented authority, transaction, product,
+and evidence boundaries. That owner decision accepts the architecture; it does
+not assert that any implementation has been reviewed or is production-ready.
+
+Every implementation pull request must name the affected review roles:
+Pistis protocol, Prosopikon/Monas authority, Synoptikon/Mneion where the shared
+port changes, DASObjectStore product boundary, security, and Jenkins/evidence.
+The PR records which roles apply and confirms authority ownership, transaction
+atomicity, secret boundaries, negative-path behaviour, and exact-revision
+evidence. Repository policy may prohibit author self-approval; in that case the
+documented owner acceptance is the ADR decision record and implementation
+reviews remain attached to the relevant code pull requests.

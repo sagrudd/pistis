@@ -36,3 +36,14 @@ The mapping to delivery milestones is:
 The planning corpus can be reconciled idempotently with
 `scripts/bootstrap_github.py`. It creates missing labels, milestones, and
 issues, but never deletes or closes existing work.
+
+## Cross-project review records
+
+An ADR that changes an authority, session, protocol, schema, or product trust
+boundary names every affected owner. The project owner may accept that ADR once
+the review record confirms authority ownership, transaction atomicity, secret
+boundaries, negative-path behaviour, and exact-revision Jenkins evidence. This
+architectural acceptance does not approve implementation: each subsequent code
+pull request identifies its applicable specialist review roles and retains its
+own tests and evidence. If a repository prohibits author self-approval, the
+documented project-owner decision is the ADR acceptance record.

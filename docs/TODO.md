@@ -419,12 +419,18 @@ Completion here does not close deferred `v1.0` work above.
 
 ## EPIC 17 — MVP baseline and stabilization
 
-- [ ] Review and merge EPIC-16 PR 204
-- [ ] Review and merge EPIC-11 PR 206
-- [ ] Resolve dependency PR 202 independently
-- [ ] Reconcile TODO and GitHub delivery states
-- [ ] Pass authoritative Jenkins CI on the integrated `main`
-- [ ] Record the clean pre-MVP integration point
+- [x] Review and merge EPIC-16 PR 204
+- [x] Review and merge EPIC-11 PR 206
+- [x] Resolve dependency PR 202 independently
+- [x] Reconcile TODO and GitHub delivery states
+- [x] Pass authoritative Jenkins CI on the integrated `main`
+- [x] Record the clean pre-MVP integration point
+
+The immutable completion record is retained in GitHub issues #207 and #221.
+It identifies the exact integrated `main` revision, authoritative Expedition,
+stage outcomes, and retained artifact count. EPIC-16 remains open for its
+documented production gaps; EPIC-17 landing the reviewed foundation does not
+waive those acceptance criteria.
 
 ## EPIC 18 — Rust/iOS interoperability
 

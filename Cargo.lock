@@ -829,6 +829,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "pistis-cose"
+version = "0.1.0"
+dependencies = [
+ "p256",
+ "pistis-canonical",
+ "pistis-crypto",
+ "pistis-domain",
+]
+
+[[package]]
 name = "pistis-crypto"
 version = "0.1.0"
 dependencies = [

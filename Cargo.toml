@@ -5,6 +5,7 @@ members = [
     "crates/pistis-authentication",
     "crates/pistis-canonical",
     "crates/pistis-cli",
+    "crates/pistis-cose",
     "crates/pistis-crypto",
     "crates/pistis-device-registry",
     "crates/pistis-discovery",
@@ -40,6 +41,7 @@ pistis-assurance = { version = "0.1.0", path = "crates/pistis-assurance" }
 pistis-authentication = { version = "0.1.0", path = "crates/pistis-authentication" }
 pistis-canonical = { version = "0.1.0", path = "crates/pistis-canonical" }
 pistis-cli = { version = "0.1.0", path = "crates/pistis-cli" }
+pistis-cose = { version = "0.1.0", path = "crates/pistis-cose" }
 pistis-crypto = { version = "0.1.0", path = "crates/pistis-crypto" }
 pistis-device-registry = { version = "0.1.0", path = "crates/pistis-device-registry" }
 pistis-discovery = { version = "0.1.0", path = "crates/pistis-discovery" }

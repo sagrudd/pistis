@@ -94,6 +94,17 @@ The runner does not change a shared scheme or add a permanent enabled test
 configuration. Do not add this environment variable to the normal scheme or
 use the physical ceremony in CI.
 
+If an uncommitted local development-team setting is necessary for a personal
+Apple account, pass its non-secret team identifier only at invocation time:
+
+```sh
+PISTIS_DEVELOPMENT_TEAM=<local-development-team-id> \
+  scripts/run-ios-physical-interoperability <trusted-device-udid>
+```
+
+This override is intentionally not a substitute for checked, release-team
+signing configuration and does not write a team identifier into the project.
+
 Retrieve the XCTest attachment, independently verify it against the Rust
 verifier, and complete the evidence template. The test-only Secure Enclave
 key namespace must not be registered or used for an authentication session.

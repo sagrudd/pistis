@@ -17,11 +17,18 @@ device_udid=$1
 derived_data=$(mktemp -d)
 result_bundle=${PISTIS_INTEROPERABILITY_RESULT_BUNDLE:-"$derived_data/physical-interoperability.xcresult"}
 
+if [ -n "${PISTIS_DEVELOPMENT_TEAM:-}" ]; then
+    set -- "DEVELOPMENT_TEAM=$PISTIS_DEVELOPMENT_TEAM"
+else
+    set --
+fi
+
 xcodebuild \
     -project ios/PistisApp/Pistis.xcodeproj \
     -scheme Pistis \
     -destination "id=$device_udid" \
     -derivedDataPath "$derived_data" \
+    "$@" \
     build-for-testing
 
 xctestrun=$(find "$derived_data/Build/Products" -name 'Pistis_iphoneos*.xctestrun' -print -quit)

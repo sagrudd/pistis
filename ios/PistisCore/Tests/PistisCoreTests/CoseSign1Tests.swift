@@ -6,6 +6,72 @@ private let keyID = Data(0 ..< 32)
 private let lowSignature = Data([1] + Array(repeating: 0, count: 31)
     + Array(repeating: 0, count: 31) + [1])
 
+private func coseFixture(_ name: String) throws -> Data {
+    let fixtureURL = URL(fileURLWithPath: #filePath)
+        .deletingLastPathComponent()
+        .appendingPathComponent("../../../../fixtures/protocol-v1/cose/\(name)")
+        .standardizedFileURL
+    let text = try String(contentsOf: fixtureURL, encoding: .utf8)
+        .trimmingCharacters(in: .whitespacesAndNewlines)
+    guard !text.isEmpty, text.count.isMultiple(of: 2) else {
+        throw FixtureError.invalidHex
+    }
+    var result = Data()
+    result.reserveCapacity(text.count / 2)
+    var index = text.startIndex
+    while index < text.endIndex {
+        let next = text.index(index, offsetBy: 2)
+        guard let byte = UInt8(text[index ..< next], radix: 16) else {
+            throw FixtureError.invalidHex
+        }
+        result.append(byte)
+        index = next
+    }
+    return result
+}
+
+private enum FixtureError: Error {
+    case invalidHex
+}
+
+@Test func consumesSharedPositiveCoseFixtureExactly() throws {
+    let envelopeBytes = try coseFixture("positive-envelope.hex")
+    let envelope = try CoseSign1.decode(envelopeBytes)
+
+    #expect(envelope.keyID == (try coseFixture("key-id.hex")))
+    #expect(envelope.payload == (try coseFixture("payload.hex")))
+    #expect(envelope.signature == (try coseFixture("signature.hex")))
+    #expect(envelope.signatureStructure() == (try coseFixture("signing-input.hex")))
+    #expect(envelope.encoded() == envelopeBytes)
+}
+
+@Test func rejectsSharedStructuralNegativeCoseFixtures() throws {
+    let names = [
+        "negative-tagged-envelope.hex",
+        "negative-detached-payload.hex",
+        "negative-unprotected-header.hex",
+        "negative-unknown-protected-header.hex",
+        "negative-wrong-algorithm.hex",
+        "negative-high-s-signature.hex",
+    ]
+    for name in names {
+        #expect(throws: CoseSign1Error.self, "accepted \(name)") {
+            try CoseSign1.decode(coseFixture(name))
+        }
+    }
+}
+
+@Test func sharedPayloadSubstitutionChangesTheSignedBytes() throws {
+    // Substitution remains structurally valid COSE. The independent ES256
+    // verifier must reject it; this portable test proves it cannot retain the
+    // accepted fixture's signing input.
+    let substituted = try CoseSign1.decode(
+        coseFixture("negative-substituted-payload.hex")
+    )
+    #expect(substituted.signatureStructure() != (try coseFixture("signing-input.hex")))
+    #expect(substituted.signature == (try coseFixture("signature.hex")))
+}
+
 @Test func coseSign1RoundTripPreservesExactPayload() throws {
     let payload = Data([0xa2, 0x01, 0x01, 0x02, 0x43, 0, 1, 2])
     let envelope = try CoseSign1(
@@ -97,20 +163,20 @@ private let lowSignature = Data([1] + Array(repeating: 0, count: 31)
 
 @Test func rejectsMalformedOrMalleableSignatures() throws {
     #expect(throws: CoseSign1Error.invalidSignature) {
-        try CoseSign1(keyID: keyID, payload: Data(), signature: Data(repeating: 0, count: 64))
+        try CoseSign1(keyID: keyID, payload: Data([0xa0]), signature: Data(repeating: 0, count: 64))
     }
     var highS = lowSignature
     highS.replaceSubrange(32 ..< 64, with: Data(repeating: 0xff, count: 32))
     #expect(throws: CoseSign1Error.invalidSignature) {
-        try CoseSign1(keyID: keyID, payload: Data(), signature: highS)
+        try CoseSign1(keyID: keyID, payload: Data([0xa0]), signature: highS)
     }
     #expect(throws: CoseSign1Error.invalidSignature) {
-        try CoseSign1(keyID: keyID, payload: Data(), signature: Data(repeating: 1, count: 63))
+        try CoseSign1(keyID: keyID, payload: Data([0xa0]), signature: Data(repeating: 1, count: 63))
     }
     var outOfRangeR = lowSignature
     outOfRangeR.replaceSubrange(0 ..< 32, with: Data(repeating: 0xff, count: 32))
     #expect(throws: CoseSign1Error.invalidSignature) {
-        try CoseSign1(keyID: keyID, payload: Data(), signature: outOfRangeR)
+        try CoseSign1(keyID: keyID, payload: Data([0xa0]), signature: outOfRangeR)
     }
 }
 
@@ -130,6 +196,40 @@ private let lowSignature = Data([1] + Array(repeating: 0, count: 31)
         )
     }
     #expect(throws: CoseSign1Error.invalidKeyID) {
-        try CoseSign1.signatureStructure(keyID: Data(), payload: Data())
+        try CoseSign1.signatureStructure(keyID: Data(), payload: Data([0xa0]))
     }
+}
+
+@Test func rejectsPayloadOutsideCanonicalPistisCBORProfile() {
+    let invalidPayloads = [
+        Data(),
+        Data([0xa2, 0x02, 0xf4, 0x01, 0xf5]), // out-of-order map keys
+        Data([0xa2, 0x01, 0xf4, 0x01, 0xf5]), // duplicate map keys
+        Data([0x18, 0x01]), // overlong integer
+        Data([0xd8, 0x18, 0xa0]), // tag
+        Data([0x9f, 0xff]), // indefinite array
+        Data([0x61, 0xff]), // invalid UTF-8
+        Data([0xa0, 0xa0]), // trailing value
+    ]
+    for payload in invalidPayloads {
+        #expect(throws: CoseSign1Error.nonCanonical) {
+            try CoseSign1(
+                keyID: keyID,
+                payload: payload,
+                signature: lowSignature
+            )
+        }
+    }
+}
+
+@Test func acceptsAllPermittedCanonicalValueClasses() throws {
+    // {0: false, 1: null, 2: [-1, h'01', "x"]}
+    let payload = Data([
+        0xa3, 0x00, 0xf4, 0x01, 0xf6, 0x02, 0x83, 0x20, 0x41, 0x01, 0x61, 0x78,
+    ])
+    _ = try CoseSign1(
+        keyID: keyID,
+        payload: payload,
+        signature: lowSignature
+    )
 }

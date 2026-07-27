@@ -31,6 +31,7 @@ public struct CoseSign1: Equatable, Sendable {
         guard payload.count <= Self.maximumPayloadLength else {
             throw CoseSign1Error.payloadTooLarge
         }
+        try CanonicalPayload.validate(payload)
         guard Self.isCanonicalSignature(signature) else {
             throw CoseSign1Error.invalidSignature
         }
@@ -81,6 +82,7 @@ public struct CoseSign1: Equatable, Sendable {
         guard payload.count <= maximumPayloadLength else {
             throw CoseSign1Error.payloadTooLarge
         }
+        try CanonicalPayload.validate(payload)
         return uncheckedSignatureStructure(keyID: keyID, payload: payload)
     }
 
@@ -142,6 +144,139 @@ public struct CoseSign1: Equatable, Sendable {
 
     private static func validScalar(_ scalar: [UInt8], below order: [UInt8]) -> Bool {
         !scalar.allSatisfy { $0 == 0 } && scalar.lexicographicallyPrecedes(order)
+    }
+}
+
+private enum CanonicalPayload {
+    static func validate(_ data: Data) throws {
+        guard !data.isEmpty else { throw CoseSign1Error.nonCanonical }
+        var cursor = PayloadCursor(data)
+        try cursor.readValue(depth: 0)
+        guard cursor.isAtEnd else { throw CoseSign1Error.nonCanonical }
+    }
+}
+
+private struct PayloadCursor {
+    private let bytes: [UInt8]
+    private var offset = 0
+
+    init(_ data: Data) {
+        bytes = Array(data)
+    }
+
+    var isAtEnd: Bool { offset == bytes.count }
+
+    mutating func readValue(depth: Int) throws {
+        guard depth <= 16 else { throw CoseSign1Error.nonCanonical }
+        let initial = try readByte()
+        let major = initial >> 5
+        let additional = initial & 0x1f
+        switch major {
+        case 0, 1:
+            _ = try readArgument(additional)
+        case 2:
+            try skipBytes(count: try boundedCount(additional))
+        case 3:
+            let count = try boundedCount(additional)
+            let text = try readData(count: count)
+            guard String(data: text, encoding: .utf8) != nil else {
+                throw CoseSign1Error.nonCanonical
+            }
+        case 4:
+            let count = try boundedCount(additional)
+            guard count <= bytes.count - offset else {
+                throw CoseSign1Error.nonCanonical
+            }
+            for _ in 0 ..< count {
+                try readValue(depth: depth + 1)
+            }
+        case 5:
+            let count = try boundedCount(additional)
+            guard count <= (bytes.count - offset) / 2 else {
+                throw CoseSign1Error.nonCanonical
+            }
+            var previousKey: UInt64?
+            for _ in 0 ..< count {
+                let keyInitial = try readByte()
+                guard keyInitial >> 5 == 0 else {
+                    throw CoseSign1Error.nonCanonical
+                }
+                let key = try readArgument(keyInitial & 0x1f)
+                if let previousKey, key <= previousKey {
+                    throw CoseSign1Error.nonCanonical
+                }
+                previousKey = key
+                try readValue(depth: depth + 1)
+            }
+        case 7 where additional == 20 || additional == 21 || additional == 22:
+            break
+        default:
+            // Tags, floats, undefined, arbitrary simple values, and breaks are
+            // outside the Pistis deterministic-CBOR profile.
+            throw CoseSign1Error.nonCanonical
+        }
+    }
+
+    private mutating func boundedCount(_ additional: UInt8) throws -> Int {
+        let value = try readArgument(additional)
+        guard value <= UInt64(bytes.count) else {
+            throw CoseSign1Error.nonCanonical
+        }
+        return Int(value)
+    }
+
+    private mutating func readArgument(_ additional: UInt8) throws -> UInt64 {
+        switch additional {
+        case 0 ... 23:
+            return UInt64(additional)
+        case 24:
+            let value = UInt64(try readByte())
+            guard value >= 24 else { throw CoseSign1Error.nonCanonical }
+            return value
+        case 25:
+            let value = try readUnsigned(byteCount: 2)
+            guard value > UInt8.max else { throw CoseSign1Error.nonCanonical }
+            return value
+        case 26:
+            let value = try readUnsigned(byteCount: 4)
+            guard value > UInt16.max else { throw CoseSign1Error.nonCanonical }
+            return value
+        case 27:
+            let value = try readUnsigned(byteCount: 8)
+            guard value > UInt32.max else { throw CoseSign1Error.nonCanonical }
+            return value
+        default:
+            throw CoseSign1Error.nonCanonical
+        }
+    }
+
+    private mutating func readUnsigned(byteCount: Int) throws -> UInt64 {
+        var result: UInt64 = 0
+        for _ in 0 ..< byteCount {
+            result = (result << 8) | UInt64(try readByte())
+        }
+        return result
+    }
+
+    private mutating func skipBytes(count: Int) throws {
+        guard count <= bytes.count - offset else {
+            throw CoseSign1Error.nonCanonical
+        }
+        offset += count
+    }
+
+    private mutating func readData(count: Int) throws -> Data {
+        guard count <= bytes.count - offset else {
+            throw CoseSign1Error.nonCanonical
+        }
+        defer { offset += count }
+        return Data(bytes[offset ..< offset + count])
+    }
+
+    private mutating func readByte() throws -> UInt8 {
+        guard offset < bytes.count else { throw CoseSign1Error.nonCanonical }
+        defer { offset += 1 }
+        return bytes[offset]
     }
 }
 

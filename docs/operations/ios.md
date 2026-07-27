@@ -55,7 +55,17 @@ it must never silently substitute a new key under the old device identity.
 
 ## Current interoperability boundary
 
-Camera capture and the EPIC-6 reference flow can be exercised locally. Final
-mobile QR interoperability remains blocked until a COSE ADR and shared
-Rust/iOS conformance fixtures are accepted. No release may describe the
-detached reference envelope as the production mobile protocol.
+Camera capture and the EPIC-6 reference flow can be exercised locally. ADR
+0018 and the shared fixtures define the production COSE profile; portable
+fixture conformance is not evidence of physical Secure Enclave or Face ID
+behavior. No release may describe the detached reference envelope as the
+production mobile protocol.
+
+## Physical interoperability record
+
+Use the
+[iOS interoperability evidence template](templates/ios-interoperability-evidence.md)
+for the physical Secure Enclave and Face ID ceremony. The completed record
+must be bound to the exact source revision and independently verified by Rust
+before Jenkins retains it. A simulator run, an unverified signature, or a
+filled-in template is not physical-device acceptance evidence.

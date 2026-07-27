@@ -7,3 +7,10 @@ changes.
 
 Statuses are Proposed, Accepted, Superseded, or Rejected. Never rewrite an
 accepted decision; supersede it with a new ADR.
+
+Current accepted production-interoperability decisions include:
+
+- [ADR 0018](0018-production-cose-sign1-profile.md), the strict untagged
+  COSE Sign1 wire profile; and
+- [ADR 0019](0019-mvp-signed-message-schemas.md), the closed integer-key MVP
+  enrolment, authentication, and evidence-receipt payloads.

@@ -69,6 +69,8 @@ Architecture and operations
    adr/0015-cli-native-authentication
    adr/0016-exact-action-approval-protocol
    adr/0017-local-authentication-agent
+   adr/0018-production-cose-sign1-profile
+   adr/0019-mvp-signed-message-schemas
    protocol/README
    protocol/domain-model
    protocol/action-approval

@@ -111,9 +111,12 @@ fragmented, padded, non-ASCII, non-canonical, unsupported, trailing, or
 wrong-kind input without downgrade.
 
 The detached signature is an internal reference-harness boundary. It does not
-replace the COSE structures selected by ADR 0001, and no external mobile
-interoperability claim may be made until a separate COSE decision and
-conformance fixtures are accepted.
+replace the strict untagged COSE Sign1 structure accepted by
+[ADR 0018](adr/0018-production-cose-sign1-profile.md). Production payload
+field assignments are frozen by
+[ADR 0019](adr/0019-mvp-signed-message-schemas.md). External mobile
+interoperability still requires shared conformance fixtures and retained
+physical-device evidence.
 
 Direct-local and response-QR submission enter the same verification path.
 Polling exposes only a coarse lifecycle state and cannot verify, consume, or

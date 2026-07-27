@@ -126,3 +126,23 @@ Successful output has this exact form:
 ```text
 verified key_id=key_<lowercase-hex>
 ```
+
+### EPIC-18 retained physical observation
+
+The redacted physical observation for the EPIC-18 ceremony is retained as
+[`ios-physical-interoperability-record.json`](../../fixtures/protocol-v1/cose/ios-physical-interoperability-record.json).
+It was produced from source revision
+`e58d0a21edb36af85e01d9bfa137136b673456d5` using Xcode 26.6 (17F113) on
+an iPhone 14 Pro Max running iOS 26.6. The test-only key reported Secure
+Enclave availability, required a fresh Face ID prompt for signing, and emitted
+the fixed-width, low-S ES256 record verified by the Rust command above.
+
+The observation is limited to EPIC-18 public-key encoding and Face ID-gated
+signature interoperability. It does not assert TestFlight distribution, QR
+authentication, a browser route, CLI approval, cancellation behaviour, a
+second prompt, or biometry-set invalidation; those are separate MVP gates.
+Its SHA-256 digest is
+`2c2523a88bc49ce94f0f4aa62235d44684f374f78fd80344ec5a3f95d8509349`.
+The authoritative Jenkins Expedition retains the exact observation and
+verification result as a dossier artifact; see the PR acceptance record for
+the Expedition identifier.

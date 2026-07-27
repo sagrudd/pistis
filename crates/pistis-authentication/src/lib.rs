@@ -7,10 +7,18 @@
 #![forbid(unsafe_code)]
 #![deny(missing_docs)]
 
+mod action;
 mod model;
 mod schema;
 mod service;
 
+pub use action::{
+    ActionApprovalChallenge, ActionApprovalResponse, ActionDescriptor, ActionEnvironment,
+    ActionResource, ActionResourceKind, MAX_ACTION_ARGUMENTS, MAX_ACTION_ENVIRONMENT,
+    MAX_ACTION_RESOURCES, action_descriptor_digest, decode_action_challenge,
+    decode_action_descriptor, decode_action_response, encode_action_challenge,
+    encode_action_descriptor, encode_action_response,
+};
 pub use model::{
     AuditEvent, AuthenticatedSessionId, ChallengeContext, ChallengeDocument, Completion, Decision,
     DeviceCredential, DeviceDirectory, LoginHandle, LoginStatus, PreAuthSessionId, PublicFailure,

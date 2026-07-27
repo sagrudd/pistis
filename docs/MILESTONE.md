@@ -1438,6 +1438,8 @@ pistis trust add-github
 pistis trust add-google
 pistis device list
 pistis device revoke
+pistis auth login
+pistis auth exec
 pistis challenge create
 pistis response verify
 pistis evidence inspect
@@ -1445,6 +1447,13 @@ pistis evidence verify
 pistis trust export
 pistis doctor
 ```
+
+The CLI is a primary authentication surface, not a browser launcher. It must
+render the canonical challenge as a scan-ready ASCII or Unicode QR in the
+terminal, accept the signed mobile response through direct-local or bounded
+terminal-safe framing, and authenticate sessions or exact actions without a
+web application or GUI. Terminal use over SSH, tmux, screen, monochrome and
+narrow consoles is part of the supported contract.
 
 ### M8.4 Reference application
 
@@ -1478,6 +1487,13 @@ Build a small Monas-style reference web application demonstrating:
 
 - A non-Synoptikon application can integrate Pistis without importing Synoptikon types.
 - CLI verification works offline.
+- CLI login and exact-action approval complete with the supported iOS and
+  Android applications without a browser, web application or desktop GUI.
+- Terminal QR rendering passes the supported device, terminal, contrast and
+  dimension matrix and fails closed when a scannable presentation is
+  impossible.
+- Session material is absent from argv, shell history, process listings,
+  terminal control sequences and ordinary logs.
 - Standalone deployment runs with SQLite and no cloud services.
 - The reference application passes the same protocol fixtures as Synoptikon.
 - Upgrade and backup procedures are documented.
@@ -2262,6 +2278,10 @@ Run each scenario on iOS and Android:
 18. Replay rejection.
 19. Expired challenge rejection.
 20. Installation fingerprint-change warning.
+21. CLI login through terminal-rendered QR on iOS.
+22. CLI login through terminal-rendered QR on Android.
+23. CLI exact-action approval with command-digest substitution rejection.
+24. SSH, tmux/screen, narrow, monochrome and offline terminal fallbacks.
 
 ### M15.3 Performance and usability targets
 

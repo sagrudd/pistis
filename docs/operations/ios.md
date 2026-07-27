@@ -81,15 +81,18 @@ production envelope. The simulator test proves this path fails closed.
 On a reviewed, signed **Face ID-capable** physical-device test setup, select
 the trusted device identifier and run the ceremony explicitly (normal tests
 skip it). The harness rejects Touch ID and unavailable biometry; neither is
-Face ID acceptance evidence:
+Face ID acceptance evidence. The runner passes the opt-in flag through a
+generated local `.xctestrun` configuration because app-hosted physical XCTest
+processes do not inherit the invoking shell environment:
 
 ```sh
-PISTIS_RUN_PHYSICAL_INTEROPERABILITY=1 xcodebuild \
-  -project ios/PistisApp/Pistis.xcodeproj \
-  -scheme Pistis \
-  -destination 'id=<trusted-device-udid>' \
-  test -only-testing:PistisTests/PlatformDeviceInteroperabilityTests/testPhysicalDeviceInteroperabilityCeremony
+PISTIS_INTEROPERABILITY_RESULT_BUNDLE=/absolute/path/to/physical-ceremony.xcresult \
+  scripts/run-ios-physical-interoperability <trusted-device-udid>
 ```
+
+The runner does not change a shared scheme or add a permanent enabled test
+configuration. Do not add this environment variable to the normal scheme or
+use the physical ceremony in CI.
 
 Retrieve the XCTest attachment, independently verify it against the Rust
 verifier, and complete the evidence template. The test-only Secure Enclave

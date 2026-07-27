@@ -20,7 +20,7 @@
     <script src="_static/js/theme.js"></script>
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
-    <link rel="next" title="Pistis v1.0 — MILESTONE.md" href="MILESTONE.html" />
+    <link rel="next" title="Pistis v0.1 MVP release candidate" href="MVP_RELEASE_CANDIDATE.html" />
     <link rel="prev" title="Pistis documentation" href="README.html" /> 
 </head>
 
@@ -75,6 +75,7 @@
 <li class="toctree-l1"><a class="reference internal" href="#success-criteria">12. Success Criteria</a></li>
 <li class="toctree-l1"><a class="reference internal" href="#non-goals">13. Non-Goals</a></li>
 <li class="toctree-l1"><a class="reference internal" href="#long-term-vision">14. Long-Term Vision</a></li>
+<li class="toctree-l1"><a class="reference internal" href="MVP_RELEASE_CANDIDATE.html">Pistis v0.1 MVP release candidate</a></li>
 <li class="toctree-l1"><a class="reference internal" href="MILESTONE.html">Pistis v1.0 — MILESTONE.md</a></li>
 <li class="toctree-l1"><a class="reference internal" href="MILESTONE.html#milestone-m0-charter-reconciliation-and-delivery-baseline">Milestone M0 — Charter reconciliation and delivery baseline</a></li>
 <li class="toctree-l1"><a class="reference internal" href="MILESTONE.html#milestone-m1-threat-model-and-protocol-specification">Milestone M1 — Threat model and protocol specification</a></li>
@@ -118,7 +119,9 @@
 <li class="toctree-l1"><a class="reference internal" href="TODO.html#epic-13-recovery">EPIC 13 — Recovery</a></li>
 <li class="toctree-l1"><a class="reference internal" href="TODO.html#epic-14-security">EPIC 14 — Security</a></li>
 <li class="toctree-l1"><a class="reference internal" href="TODO.html#epic-15-release">EPIC 15 — Release</a></li>
+<li class="toctree-l1"><a class="reference internal" href="TODO.html#epic-16-cli-native-authentication">EPIC 16 — CLI-native authentication</a></li>
 <li class="toctree-l1"><a class="reference internal" href="TODO.html#continuous-tasks">Continuous tasks</a></li>
+<li class="toctree-l1"><a class="reference internal" href="TODO.html#mvp-release-candidate-programme">MVP release-candidate programme</a></li>
 <li class="toctree-l1"><a class="reference internal" href="BOOTSTRAP.html">BOOTSTRAP.md</a></li>
 <li class="toctree-l1"><a class="reference internal" href="BOOTSTRAP.html#purpose">Purpose</a></li>
 <li class="toctree-l1"><a class="reference internal" href="BOOTSTRAP.html#bootstrap-objectives">Bootstrap Objectives</a></li>
@@ -139,6 +142,20 @@
 </ul>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="development/README.html">Development documentation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="development/code-structure.html">Code structure and modularity</a></li>
+<li class="toctree-l1"><a class="reference internal" href="development/fuzzing.html">Fuzz testing</a></li>
+<li class="toctree-l1"><a class="reference internal" href="development/provider-conformance.html">Provider conformance testing</a></li>
+<li class="toctree-l1"><a class="reference internal" href="development/ios.html">iOS development</a></li>
+<li class="toctree-l1"><a class="reference internal" href="development/android.html">Android development</a></li>
+<li class="toctree-l1"><a class="reference internal" href="development/synoptikon.html">Synoptikon integration development</a></li>
+<li class="toctree-l1"><a class="reference internal" href="development/monas.html">Monas standalone integration development</a></li>
+<li class="toctree-l1"><a class="reference internal" href="development/cli-authentication.html">CLI-native authentication</a></li>
+<li class="toctree-l1"><a class="reference internal" href="development/local-agent.html">Local authentication agent</a></li>
+<li class="toctree-l1"><a class="reference internal" href="development/discovery.html">Local discovery and direct exchange development</a></li>
+<li class="toctree-l1"><a class="reference internal" href="development/discovery-implementation-evaluation.html">Discovery implementation evaluation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="development/device-lifecycle.html">Recovery, revocation, and multi-device lifecycle development</a></li>
+<li class="toctree-l1"><a class="reference internal" href="development/security-hardening.html">Security hardening and independent review development</a></li>
+<li class="toctree-l1"><a class="reference internal" href="development/release-packaging.html">Release packaging and provenance</a></li>
 <li class="toctree-l1"><a class="reference internal" href="development/issue-model.html">Planning issue model</a></li>
 <li class="toctree-l1"><a class="reference internal" href="development/jenkins-ci.html">Jenkins CI</a></li>
 <li class="toctree-l1"><a class="reference internal" href="development/documentation.html">Documentation workflow</a></li>
@@ -146,9 +163,46 @@
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="adr/README.html">Architecture Decision Records</a></li>
 <li class="toctree-l1"><a class="reference internal" href="adr/0000-template.html">ADR-NNNN: Decision title</a></li>
+<li class="toctree-l1"><a class="reference internal" href="adr/0001-canonical-encoding.html">ADR 0001: Deterministic CBOR for canonical protocol payloads</a></li>
+<li class="toctree-l1"><a class="reference internal" href="adr/0002-signature-suites.html">ADR 0002: Protocol signature suites</a></li>
+<li class="toctree-l1"><a class="reference internal" href="adr/0003-github-trust-enrolment.html">ADR 0003: GitHub trust-anchor enrolment</a></li>
+<li class="toctree-l1"><a class="reference internal" href="adr/0004-google-trust-enrolment.html">ADR 0004: Google OpenID Connect trust-anchor enrolment</a></li>
+<li class="toctree-l1"><a class="reference internal" href="adr/0005-device-registry-storage.html">ADR 0005: Device registry storage and lifecycle</a></li>
+<li class="toctree-l1"><a class="reference internal" href="adr/0006-qr-authentication-reference-flow.html">ADR 0006: QR authentication reference flow</a></li>
+<li class="toctree-l1"><a class="reference internal" href="adr/0007-ios-reference-application.html">ADR 0007: iOS reference application</a></li>
+<li class="toctree-l1"><a class="reference internal" href="adr/0008-android-reference-application.html">ADR 0008: Android reference application</a></li>
+<li class="toctree-l1"><a class="reference internal" href="adr/0009-synoptikon-integration-boundary.html">ADR 0009: Synoptikon integration boundary</a></li>
+<li class="toctree-l1"><a class="reference internal" href="adr/0010-monas-standalone-integration-boundary.html">ADR 0010: Monas standalone integration boundary</a></li>
+<li class="toctree-l1"><a class="reference internal" href="adr/0011-local-discovery-and-direct-exchange.html">ADR 0011: Local discovery and direct exchange</a></li>
+<li class="toctree-l1"><a class="reference internal" href="adr/0012-recovery-revocation-and-multi-device-lifecycle.html">ADR 0012: Recovery, revocation, and multi-device lifecycle</a></li>
+<li class="toctree-l1"><a class="reference internal" href="adr/0013-security-assurance-and-independent-review.html">ADR 0013: Security assurance and independent review</a></li>
+<li class="toctree-l1"><a class="reference internal" href="adr/0014-release-packaging-and-provenance.html">ADR 0014: Release packaging, publication, and provenance</a></li>
+<li class="toctree-l1"><a class="reference internal" href="adr/0015-cli-native-authentication.html">ADR 0015: CLI-native authentication boundary</a></li>
+<li class="toctree-l1"><a class="reference internal" href="adr/0016-exact-action-approval-protocol.html">ADR 0016: Exact-action approval protocol</a></li>
+<li class="toctree-l1"><a class="reference internal" href="adr/0017-local-authentication-agent.html">ADR 0017: Local authentication agent and installation signer</a></li>
 <li class="toctree-l1"><a class="reference internal" href="protocol/README.html">Protocol documentation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="protocol/domain-model.html">Domain identifiers</a></li>
+<li class="toctree-l1"><a class="reference internal" href="protocol/action-approval.html">Exact-action approval protocol</a></li>
+<li class="toctree-l1"><a class="reference internal" href="protocol.html">Protocol specification</a></li>
+<li class="toctree-l1"><a class="reference internal" href="crypto.html">Cryptographic primitives</a></li>
+<li class="toctree-l1"><a class="reference internal" href="encoding.html">Canonical encoding</a></li>
+<li class="toctree-l1"><a class="reference internal" href="assurance.html">Assurance model</a></li>
 <li class="toctree-l1"><a class="reference internal" href="security/README.html">Security documentation</a></li>
 <li class="toctree-l1"><a class="reference internal" href="operations/README.html">Operations documentation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="operations/device-registry.html">Device registry operations</a></li>
+<li class="toctree-l1"><a class="reference internal" href="operations/github-enrolment.html">Operate GitHub trust enrolment</a></li>
+<li class="toctree-l1"><a class="reference internal" href="operations/google-enrolment.html">Operate Google trust enrolment</a></li>
+<li class="toctree-l1"><a class="reference internal" href="operations/qr-authentication.html">QR authentication operations</a></li>
+<li class="toctree-l1"><a class="reference internal" href="operations/ios.html">iOS application operations</a></li>
+<li class="toctree-l1"><a class="reference internal" href="operations/android.html">Android application operations</a></li>
+<li class="toctree-l1"><a class="reference internal" href="operations/synoptikon.html">Synoptikon integration operations</a></li>
+<li class="toctree-l1"><a class="reference internal" href="operations/monas.html">Monas standalone integration operations</a></li>
+<li class="toctree-l1"><a class="reference internal" href="operations/discovery.html">Local discovery and direct exchange operations</a></li>
+<li class="toctree-l1"><a class="reference internal" href="operations/device-lifecycle.html">Recovery, revocation, and multi-device lifecycle operations</a></li>
+<li class="toctree-l1"><a class="reference internal" href="operations/security-hardening.html">Security hardening and independent review operations</a></li>
+<li class="toctree-l1"><a class="reference internal" href="operations/release-packaging.html">Release installation, upgrade, backup, and publication</a></li>
+<li class="toctree-l1"><a class="reference internal" href="operations/cli-authentication.html">CLI authentication operations</a></li>
+<li class="toctree-l1"><a class="reference internal" href="operations/local-agent.html">Local-agent operations</a></li>
 </ul>
 
         </div>
@@ -205,7 +259,10 @@ standalone open system.</p>
 <li><p>generate durable approval evidence;</p></li>
 <li><p>support offline and air-gapped operation;</p></li>
 <li><p>operate without requiring a central identity server;</p></li>
-<li><p>expose clean Rust APIs and CLI tooling.</p></li>
+<li><p>expose clean Rust APIs and CLI tooling;</p></li>
+<li><p>treat CLI users as a primary audience, with authentication and exact-action
+approval available entirely through a terminal and the supported mobile
+applications.</p></li>
 </ul>
 <p>Pistis shall <strong>not</strong>:</p>
 <ul class="simple">
@@ -249,8 +306,9 @@ standalone open system.</p>
 <p>Initial MVP:</p>
 <ul class="simple">
 <li><p>GitHub</p></li>
-<li><p>Google</p></li>
 </ul>
+<p>The first production candidate qualifies GitHub only. Google remains in the
+v1.0 trust-anchor scope.</p>
 <p>Future:</p>
 <ul class="simple">
 <li><p>ORCID</p></li>
@@ -280,11 +338,13 @@ possession of the enrolled device credential.</p>
 <h2>Communication<a class="headerlink" href="#communication" title="Link to this heading"></a></h2>
 <p>Priority order:</p>
 <ol class="arabic simple">
-<li><p>Local discovery (mDNS)</p></li>
 <li><p>QR code</p></li>
+<li><p>Local discovery (mDNS, post-MVP convenience)</p></li>
 <li><p>Optional remote notification (future)</p></li>
 </ol>
 <p>Authentication is always challenge/response using signed nonces.</p>
+<p>The normative first-candidate boundary is defined in
+<code class="docutils literal notranslate"><span class="pre">MVP_RELEASE_CANDIDATE.md</span></code>.</p>
 </section>
 </section>
 <hr class="docutils" />
@@ -374,6 +434,8 @@ without requiring Synoptikon.</p>
 <h2>Monas Integration<a class="headerlink" href="#monas-integration" title="Link to this heading"></a></h2>
 <ul class="simple">
 <li><p>Standalone authentication</p></li>
+<li><p>Primary CLI authentication and approval</p></li>
+<li><p>ASCII/Unicode terminal QR exchange with iOS</p></li>
 <li><p>CLI verification</p></li>
 <li><p>Detached evidence generation</p></li>
 </ul>
@@ -390,6 +452,8 @@ without requiring Synoptikon.</p>
 <li><p>Report signing</p></li>
 <li><p>Workflow approval</p></li>
 <li><p>Multi-signature approval</p></li>
+<li><p>CLI-native login and action approval without a web application</p></li>
+<li><p>ASCII/Unicode terminal QR interoperability</p></li>
 <li><p>Verification CLI</p></li>
 <li><p>Rust verification library</p></li>
 </ul>
@@ -434,6 +498,8 @@ without requiring Synoptikon.</p>
 <li><p>no central identity server is required;</p></li>
 <li><p>authentication succeeds using GitHub and Google trust anchors;</p></li>
 <li><p>login approval works through QR challenge/response;</p></li>
+<li><p>console users can authenticate sessions and approve exact actions with the
+supported iOS application without a browser or GUI;</p></li>
 <li><p>report signatures produce portable evidence;</p></li>
 <li><p>evidence can be verified independently of the originating
 installation;</p></li>
@@ -468,7 +534,7 @@ products and independent third-party applications.</p>
           </div>
           <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
         <a href="README.html" class="btn btn-neutral float-left" title="Pistis documentation" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
-        <a href="MILESTONE.html" class="btn btn-neutral float-right" title="Pistis v1.0 — MILESTONE.md" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+        <a href="MVP_RELEASE_CANDIDATE.html" class="btn btn-neutral float-right" title="Pistis v0.1 MVP release candidate" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
     </div>
 
   <hr/>

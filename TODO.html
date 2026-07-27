@@ -60,6 +60,7 @@
 <li class="toctree-l1"><a class="reference internal" href="PROJECT_CHARTER.html#success-criteria">12. Success Criteria</a></li>
 <li class="toctree-l1"><a class="reference internal" href="PROJECT_CHARTER.html#non-goals">13. Non-Goals</a></li>
 <li class="toctree-l1"><a class="reference internal" href="PROJECT_CHARTER.html#long-term-vision">14. Long-Term Vision</a></li>
+<li class="toctree-l1"><a class="reference internal" href="MVP_RELEASE_CANDIDATE.html">Pistis v0.1 MVP release candidate</a></li>
 <li class="toctree-l1"><a class="reference internal" href="MILESTONE.html">Pistis v1.0 — MILESTONE.md</a></li>
 <li class="toctree-l1"><a class="reference internal" href="MILESTONE.html#milestone-m0-charter-reconciliation-and-delivery-baseline">Milestone M0 — Charter reconciliation and delivery baseline</a></li>
 <li class="toctree-l1"><a class="reference internal" href="MILESTONE.html#milestone-m1-threat-model-and-protocol-specification">Milestone M1 — Threat model and protocol specification</a></li>
@@ -126,7 +127,26 @@
 <li class="toctree-l1"><a class="reference internal" href="#epic-13-recovery">EPIC 13 — Recovery</a></li>
 <li class="toctree-l1"><a class="reference internal" href="#epic-14-security">EPIC 14 — Security</a></li>
 <li class="toctree-l1"><a class="reference internal" href="#epic-15-release">EPIC 15 — Release</a></li>
+<li class="toctree-l1"><a class="reference internal" href="#epic-16-cli-native-authentication">EPIC 16 — CLI-native authentication</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#terminal-qr-presentation">Terminal QR presentation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#cli-authentication-and-approval">CLI authentication and approval</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#security-and-session-handling">Security and session handling</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#interoperability-and-operations">Interoperability and operations</a></li>
+</ul>
+</li>
 <li class="toctree-l1"><a class="reference internal" href="#continuous-tasks">Continuous tasks</a></li>
+<li class="toctree-l1"><a class="reference internal" href="#mvp-release-candidate-programme">MVP release-candidate programme</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#epic-17-mvp-baseline-and-stabilization">EPIC 17 — MVP baseline and stabilization</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#epic-18-rust-ios-interoperability">EPIC 18 — Rust/iOS interoperability</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#epic-19-prosopikon-authority-bridge">EPIC 19 — Prosopikon authority bridge</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#epic-20-monas-mvp-route">EPIC 20 — Monas MVP route</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#epic-21-synoptikon-mneion-mvp-route">EPIC 21 — Synoptikon/Mneion MVP route</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#epic-22-ios-production-qualification">EPIC 22 — iOS production qualification</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#epic-23-authentication-evidence">EPIC 23 — Authentication evidence</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#epic-24-packaging-and-operations">EPIC 24 — Packaging and operations</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#epic-25-mvp-security-and-release-candidate">EPIC 25 — MVP security and release candidate</a></li>
+</ul>
+</li>
 <li class="toctree-l1"><a class="reference internal" href="BOOTSTRAP.html">BOOTSTRAP.md</a></li>
 <li class="toctree-l1"><a class="reference internal" href="BOOTSTRAP.html#purpose">Purpose</a></li>
 <li class="toctree-l1"><a class="reference internal" href="BOOTSTRAP.html#bootstrap-objectives">Bootstrap Objectives</a></li>
@@ -147,6 +167,20 @@
 </ul>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="development/README.html">Development documentation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="development/code-structure.html">Code structure and modularity</a></li>
+<li class="toctree-l1"><a class="reference internal" href="development/fuzzing.html">Fuzz testing</a></li>
+<li class="toctree-l1"><a class="reference internal" href="development/provider-conformance.html">Provider conformance testing</a></li>
+<li class="toctree-l1"><a class="reference internal" href="development/ios.html">iOS development</a></li>
+<li class="toctree-l1"><a class="reference internal" href="development/android.html">Android development</a></li>
+<li class="toctree-l1"><a class="reference internal" href="development/synoptikon.html">Synoptikon integration development</a></li>
+<li class="toctree-l1"><a class="reference internal" href="development/monas.html">Monas standalone integration development</a></li>
+<li class="toctree-l1"><a class="reference internal" href="development/cli-authentication.html">CLI-native authentication</a></li>
+<li class="toctree-l1"><a class="reference internal" href="development/local-agent.html">Local authentication agent</a></li>
+<li class="toctree-l1"><a class="reference internal" href="development/discovery.html">Local discovery and direct exchange development</a></li>
+<li class="toctree-l1"><a class="reference internal" href="development/discovery-implementation-evaluation.html">Discovery implementation evaluation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="development/device-lifecycle.html">Recovery, revocation, and multi-device lifecycle development</a></li>
+<li class="toctree-l1"><a class="reference internal" href="development/security-hardening.html">Security hardening and independent review development</a></li>
+<li class="toctree-l1"><a class="reference internal" href="development/release-packaging.html">Release packaging and provenance</a></li>
 <li class="toctree-l1"><a class="reference internal" href="development/issue-model.html">Planning issue model</a></li>
 <li class="toctree-l1"><a class="reference internal" href="development/jenkins-ci.html">Jenkins CI</a></li>
 <li class="toctree-l1"><a class="reference internal" href="development/documentation.html">Documentation workflow</a></li>
@@ -154,9 +188,46 @@
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="adr/README.html">Architecture Decision Records</a></li>
 <li class="toctree-l1"><a class="reference internal" href="adr/0000-template.html">ADR-NNNN: Decision title</a></li>
+<li class="toctree-l1"><a class="reference internal" href="adr/0001-canonical-encoding.html">ADR 0001: Deterministic CBOR for canonical protocol payloads</a></li>
+<li class="toctree-l1"><a class="reference internal" href="adr/0002-signature-suites.html">ADR 0002: Protocol signature suites</a></li>
+<li class="toctree-l1"><a class="reference internal" href="adr/0003-github-trust-enrolment.html">ADR 0003: GitHub trust-anchor enrolment</a></li>
+<li class="toctree-l1"><a class="reference internal" href="adr/0004-google-trust-enrolment.html">ADR 0004: Google OpenID Connect trust-anchor enrolment</a></li>
+<li class="toctree-l1"><a class="reference internal" href="adr/0005-device-registry-storage.html">ADR 0005: Device registry storage and lifecycle</a></li>
+<li class="toctree-l1"><a class="reference internal" href="adr/0006-qr-authentication-reference-flow.html">ADR 0006: QR authentication reference flow</a></li>
+<li class="toctree-l1"><a class="reference internal" href="adr/0007-ios-reference-application.html">ADR 0007: iOS reference application</a></li>
+<li class="toctree-l1"><a class="reference internal" href="adr/0008-android-reference-application.html">ADR 0008: Android reference application</a></li>
+<li class="toctree-l1"><a class="reference internal" href="adr/0009-synoptikon-integration-boundary.html">ADR 0009: Synoptikon integration boundary</a></li>
+<li class="toctree-l1"><a class="reference internal" href="adr/0010-monas-standalone-integration-boundary.html">ADR 0010: Monas standalone integration boundary</a></li>
+<li class="toctree-l1"><a class="reference internal" href="adr/0011-local-discovery-and-direct-exchange.html">ADR 0011: Local discovery and direct exchange</a></li>
+<li class="toctree-l1"><a class="reference internal" href="adr/0012-recovery-revocation-and-multi-device-lifecycle.html">ADR 0012: Recovery, revocation, and multi-device lifecycle</a></li>
+<li class="toctree-l1"><a class="reference internal" href="adr/0013-security-assurance-and-independent-review.html">ADR 0013: Security assurance and independent review</a></li>
+<li class="toctree-l1"><a class="reference internal" href="adr/0014-release-packaging-and-provenance.html">ADR 0014: Release packaging, publication, and provenance</a></li>
+<li class="toctree-l1"><a class="reference internal" href="adr/0015-cli-native-authentication.html">ADR 0015: CLI-native authentication boundary</a></li>
+<li class="toctree-l1"><a class="reference internal" href="adr/0016-exact-action-approval-protocol.html">ADR 0016: Exact-action approval protocol</a></li>
+<li class="toctree-l1"><a class="reference internal" href="adr/0017-local-authentication-agent.html">ADR 0017: Local authentication agent and installation signer</a></li>
 <li class="toctree-l1"><a class="reference internal" href="protocol/README.html">Protocol documentation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="protocol/domain-model.html">Domain identifiers</a></li>
+<li class="toctree-l1"><a class="reference internal" href="protocol/action-approval.html">Exact-action approval protocol</a></li>
+<li class="toctree-l1"><a class="reference internal" href="protocol.html">Protocol specification</a></li>
+<li class="toctree-l1"><a class="reference internal" href="crypto.html">Cryptographic primitives</a></li>
+<li class="toctree-l1"><a class="reference internal" href="encoding.html">Canonical encoding</a></li>
+<li class="toctree-l1"><a class="reference internal" href="assurance.html">Assurance model</a></li>
 <li class="toctree-l1"><a class="reference internal" href="security/README.html">Security documentation</a></li>
 <li class="toctree-l1"><a class="reference internal" href="operations/README.html">Operations documentation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="operations/device-registry.html">Device registry operations</a></li>
+<li class="toctree-l1"><a class="reference internal" href="operations/github-enrolment.html">Operate GitHub trust enrolment</a></li>
+<li class="toctree-l1"><a class="reference internal" href="operations/google-enrolment.html">Operate Google trust enrolment</a></li>
+<li class="toctree-l1"><a class="reference internal" href="operations/qr-authentication.html">QR authentication operations</a></li>
+<li class="toctree-l1"><a class="reference internal" href="operations/ios.html">iOS application operations</a></li>
+<li class="toctree-l1"><a class="reference internal" href="operations/android.html">Android application operations</a></li>
+<li class="toctree-l1"><a class="reference internal" href="operations/synoptikon.html">Synoptikon integration operations</a></li>
+<li class="toctree-l1"><a class="reference internal" href="operations/monas.html">Monas standalone integration operations</a></li>
+<li class="toctree-l1"><a class="reference internal" href="operations/discovery.html">Local discovery and direct exchange operations</a></li>
+<li class="toctree-l1"><a class="reference internal" href="operations/device-lifecycle.html">Recovery, revocation, and multi-device lifecycle operations</a></li>
+<li class="toctree-l1"><a class="reference internal" href="operations/security-hardening.html">Security hardening and independent review operations</a></li>
+<li class="toctree-l1"><a class="reference internal" href="operations/release-packaging.html">Release installation, upgrade, backup, and publication</a></li>
+<li class="toctree-l1"><a class="reference internal" href="operations/cli-authentication.html">CLI authentication operations</a></li>
+<li class="toctree-l1"><a class="reference internal" href="operations/local-agent.html">Local-agent operations</a></li>
 </ul>
 
         </div>
@@ -228,34 +299,34 @@ Each item should generally be completable within 0.5–2 developer days.</p>
 <section id="domain-model">
 <h2>Domain model<a class="headerlink" href="#domain-model" title="Link to this heading"></a></h2>
 <ul class="simple">
-<li><p>[ ] Define InstallationId</p></li>
-<li><p>[ ] Define UserId</p></li>
-<li><p>[ ] Define DeviceId</p></li>
-<li><p>[ ] Define ChallengeId</p></li>
-<li><p>[ ] Define EvidenceId</p></li>
-<li><p>[ ] Define KeyId</p></li>
-<li><p>[ ] Define ExternalIdentityId</p></li>
+<li><p>[x] Define InstallationId</p></li>
+<li><p>[x] Define UserId</p></li>
+<li><p>[x] Define DeviceId</p></li>
+<li><p>[x] Define ChallengeId</p></li>
+<li><p>[x] Define EvidenceId</p></li>
+<li><p>[x] Define KeyId</p></li>
+<li><p>[x] Define ExternalIdentityId</p></li>
 </ul>
 </section>
 <section id="canonical-encoding">
 <h2>Canonical encoding<a class="headerlink" href="#canonical-encoding" title="Link to this heading"></a></h2>
 <ul class="simple">
-<li><p>[ ] Choose encoding (CBOR/COSE)</p></li>
-<li><p>[ ] Implement canonical serializer</p></li>
-<li><p>[ ] Implement canonical parser</p></li>
-<li><p>[ ] Produce golden fixtures</p></li>
-<li><p>[ ] Write round-trip tests</p></li>
+<li><p>[x] Choose encoding (CBOR/COSE)</p></li>
+<li><p>[x] Implement canonical serializer</p></li>
+<li><p>[x] Implement canonical parser</p></li>
+<li><p>[x] Produce golden fixtures</p></li>
+<li><p>[x] Write round-trip tests</p></li>
 </ul>
 </section>
 <section id="challenge-lifecycle">
 <h2>Challenge lifecycle<a class="headerlink" href="#challenge-lifecycle" title="Link to this heading"></a></h2>
 <ul class="simple">
-<li><p>[ ] Generate nonce</p></li>
-<li><p>[ ] Generate expiry</p></li>
-<li><p>[ ] Generate challenge identifiers</p></li>
-<li><p>[ ] Validate expiry</p></li>
-<li><p>[ ] Prevent replay</p></li>
-<li><p>[ ] Prevent double consumption</p></li>
+<li><p>[x] Generate nonce</p></li>
+<li><p>[x] Generate expiry</p></li>
+<li><p>[x] Generate challenge identifiers</p></li>
+<li><p>[x] Validate expiry</p></li>
+<li><p>[x] Prevent replay</p></li>
+<li><p>[x] Prevent double consumption</p></li>
 </ul>
 </section>
 </section>
@@ -263,70 +334,81 @@ Each item should generally be completable within 0.5–2 developer days.</p>
 <section id="epic-2-crypto">
 <h1>EPIC 2 — Crypto<a class="headerlink" href="#epic-2-crypto" title="Link to this heading"></a></h1>
 <ul class="simple">
-<li><p>[ ] Select signature suite</p></li>
-<li><p>[ ] Implement hashing</p></li>
-<li><p>[ ] Implement signature verification</p></li>
-<li><p>[ ] Implement key identifier generation</p></li>
-<li><p>[ ] Implement verifier API</p></li>
-<li><p>[ ] Fuzz canonical parser</p></li>
-<li><p>[ ] Fuzz verifier</p></li>
+<li><p>[x] Select signature suite</p></li>
+<li><p>[x] Implement hashing</p></li>
+<li><p>[x] Implement signature verification</p></li>
+<li><p>[x] Implement key identifier generation</p></li>
+<li><p>[x] Implement verifier API</p></li>
+<li><p>[x] Fuzz canonical parser</p></li>
+<li><p>[x] Fuzz verifier</p></li>
 </ul>
 </section>
 <hr class="docutils" />
 <section id="epic-3-github-trust">
 <h1>EPIC 3 — GitHub trust<a class="headerlink" href="#epic-3-github-trust" title="Link to this heading"></a></h1>
 <ul class="simple">
-<li><p>[ ] Register OAuth application</p></li>
-<li><p>[ ] Implement PKCE flow</p></li>
-<li><p>[ ] Validate callback</p></li>
-<li><p>[ ] Retrieve stable GitHub user id</p></li>
-<li><p>[ ] Persist identity binding</p></li>
-<li><p>[ ] Add integration tests</p></li>
+<li><p>[x] Define and validate the OAuth application registration contract</p></li>
+<li><p>[x] Implement PKCE flow</p></li>
+<li><p>[x] Validate callback</p></li>
+<li><p>[x] Retrieve stable GitHub user id</p></li>
+<li><p>[x] Persist identity binding</p></li>
+<li><p>[x] Add integration tests</p></li>
 </ul>
 </section>
 <hr class="docutils" />
 <section id="epic-4-google-trust">
 <h1>EPIC 4 — Google trust<a class="headerlink" href="#epic-4-google-trust" title="Link to this heading"></a></h1>
 <ul class="simple">
-<li><p>[ ] Implement OIDC discovery</p></li>
-<li><p>[ ] Validate ID token</p></li>
-<li><p>[ ] Extract issuer</p></li>
-<li><p>[ ] Extract subject</p></li>
-<li><p>[ ] Persist identity binding</p></li>
-<li><p>[ ] Add integration tests</p></li>
+<li><p>[x] Implement OIDC discovery</p></li>
+<li><p>[x] Validate ID token</p></li>
+<li><p>[x] Extract issuer</p></li>
+<li><p>[x] Extract subject</p></li>
+<li><p>[x] Persist identity binding</p></li>
+<li><p>[x] Add integration tests</p></li>
 </ul>
 </section>
 <hr class="docutils" />
 <section id="epic-5-device-registry">
 <h1>EPIC 5 — Device registry<a class="headerlink" href="#epic-5-device-registry" title="Link to this heading"></a></h1>
 <ul class="simple">
-<li><p>[ ] Create database schema</p></li>
-<li><p>[ ] Create migration</p></li>
-<li><p>[ ] Implement repositories</p></li>
-<li><p>[ ] Store public keys</p></li>
-<li><p>[ ] Store assurance metadata</p></li>
-<li><p>[ ] Implement revocation</p></li>
-<li><p>[ ] Implement suspension</p></li>
+<li><p>[x] Create database schema</p></li>
+<li><p>[x] Create migration</p></li>
+<li><p>[x] Implement repositories</p></li>
+<li><p>[x] Store public keys</p></li>
+<li><p>[x] Store assurance metadata</p></li>
+<li><p>[x] Implement revocation</p></li>
+<li><p>[x] Implement suspension</p></li>
 </ul>
 </section>
 <hr class="docutils" />
 <section id="epic-6-qr-authentication">
 <h1>EPIC 6 — QR authentication<a class="headerlink" href="#epic-6-qr-authentication" title="Link to this heading"></a></h1>
 <ul class="simple">
-<li><p>[ ] Encode challenge QR</p></li>
-<li><p>[ ] Decode response QR</p></li>
-<li><p>[ ] Browser polling endpoint</p></li>
-<li><p>[ ] Browser completion endpoint</p></li>
-<li><p>[ ] Authentication acceptance tests</p></li>
+<li><p>[x] Encode challenge QR</p></li>
+<li><p>[x] Decode response QR</p></li>
+<li><p>[x] Browser polling endpoint</p></li>
+<li><p>[x] Browser completion endpoint</p></li>
+<li><p>[x] Authentication acceptance tests</p></li>
 </ul>
+<p>EPIC-6 completes the reviewed in-memory QR authentication reference flow.
+Production HTTP, durable session/audit persistence, installation policy,
+mobile COSE interoperability, and the remaining M5 user experience work stay
+open under milestone M5.</p>
 </section>
 <hr class="docutils" />
 <section id="epic-7-ios">
 <h1>EPIC 7 — iOS<a class="headerlink" href="#epic-7-ios" title="Link to this heading"></a></h1>
+<p>Implementation source and portable tests are present on the EPIC-7 delivery
+branch. These boxes remain open until the applicable evidence exists: full
+Xcode native compilation, simulator and real-device security/accessibility
+tests, Apple signing and TestFlight, broker/verifier integration, and the COSE
+ADR plus shared mobile conformance fixtures required by ADR 0006. The issue
+tracker records signing, TestFlight, and production QR interoperability as
+blocked rather than complete.</p>
 <section id="foundation">
 <h2>Foundation<a class="headerlink" href="#foundation" title="Link to this heading"></a></h2>
 <ul class="simple">
-<li><p>[ ] Create SwiftUI project</p></li>
+<li><p>[x] Create SwiftUI project</p></li>
 <li><p>[ ] Configure signing</p></li>
 <li><p>[ ] Configure TestFlight</p></li>
 </ul>
@@ -363,6 +445,11 @@ Each item should generally be completable within 0.5–2 developer days.</p>
 <hr class="docutils" />
 <section id="epic-8-android">
 <h1>EPIC 8 — Android<a class="headerlink" href="#epic-8-android" title="Link to this heading"></a></h1>
+<p>The EPIC-8 source foundation is governed by ADR 0008. A Compose project,
+portable ceremony core, platform-policy adapters, and Jenkins build evidence
+may close independently when their tests pass. Play Console, physical-device
+assurance, production QR/COSE interoperability, and the complete M11 device
+matrix remain open until their external evidence exists.</p>
 <section id="id1">
 <h2>Foundation<a class="headerlink" href="#id1" title="Link to this heading"></a></h2>
 <ul class="simple">
@@ -401,6 +488,12 @@ Each item should generally be completable within 0.5–2 developer days.</p>
 <hr class="docutils" />
 <section id="epic-9-synoptikon">
 <h1>EPIC 9 — Synoptikon<a class="headerlink" href="#epic-9-synoptikon" title="Link to this heading"></a></h1>
+<p>ADR 0009 defines the cross-repository integration boundary. Framework-neutral
+host contracts and fail-closed readiness tests may proceed now. Production
+bootstrap, QR login, session issuance, device administration, and central
+audit remain blocked until EPIC-8, the accepted COSE profile and shared mobile
+fixtures, durable binding/ceremony adapters, and Synoptikon’s server-only
+session-cookie boundary are delivered and accepted.</p>
 <ul class="simple">
 <li><p>[ ] Bootstrap administrator workflow</p></li>
 <li><p>[ ] Login page integration</p></li>
@@ -413,6 +506,12 @@ Each item should generally be completable within 0.5–2 developer days.</p>
 <hr class="docutils" />
 <section id="epic-10-monas">
 <h1>EPIC 10 — Monas<a class="headerlink" href="#epic-10-monas" title="Link to this heading"></a></h1>
+<p>ADR 0010 defines the standalone integration, host-authority, CLI, storage, and
+packaging boundaries. A framework-neutral contract and explicitly non-production
+reference components may proceed now. Production Monas login, durable SQLite
+operation, detached evidence/report signing, local discovery, and release
+packaging remain blocked until the EPIC-9 production gates and the applicable
+EPIC-11, EPIC-12, EPIC-13, and EPIC-15 decisions and acceptance evidence exist.</p>
 <ul class="simple">
 <li><p>[ ] Standalone server</p></li>
 <li><p>[ ] CLI login demo</p></li>
@@ -423,10 +522,18 @@ Each item should generally be completable within 0.5–2 developer days.</p>
 <hr class="docutils" />
 <section id="epic-11-local-discovery">
 <h1>EPIC 11 — Local discovery<a class="headerlink" href="#epic-11-local-discovery" title="Link to this heading"></a></h1>
+<p>ADR 0011 defines privacy-minimizing installation advertisement, signed
+endpoint binding, TLS pinning, native adapter, bounded fallback, and
+host/browser boundaries. Deterministic discovery contracts and hostile-network
+tests may proceed now. Production advertisement and direct exchange remain
+blocked until EPIC-10, the accepted production signed-message profile, host and
+native permission adapters, dependency review, and the IPv4/IPv6,
+multiple-interface, multicast-blocked, and physical-device acceptance matrix
+are complete.</p>
 <ul class="simple">
-<li><p>[ ] Evaluate mDNS implementation</p></li>
-<li><p>[ ] Advertise installation</p></li>
-<li><p>[ ] Discover installation</p></li>
+<li><p>[x] Evaluate mDNS implementation</p></li>
+<li><p>[x] Advertise installation</p></li>
+<li><p>[x] Discover installation</p></li>
 <li><p>[ ] Secure local transport</p></li>
 <li><p>[ ] Fallback to QR</p></li>
 </ul>
@@ -445,6 +552,14 @@ Each item should generally be completable within 0.5–2 developer days.</p>
 <hr class="docutils" />
 <section id="epic-13-recovery">
 <h1>EPIC 13 — Recovery<a class="headerlink" href="#epic-13-recovery" title="Link to this heading"></a></h1>
+<p>ADR 0012 defines independent multi-device credentials, replacement without key
+migration, monotonic revocation and session invalidation, governed
+sole-administrator recovery, external-identity loss policy, and temporal
+historic-verification semantics. Framework-neutral lifecycle contracts and
+negative state-machine tests may proceed now. Production recovery remains
+blocked until EPIC-12 detached evidence and trusted-time semantics, durable
+host transactions and session invalidation, native recovery ceremonies, and
+complete iOS and Android lost-device exercises are delivered.</p>
 <ul class="simple">
 <li><p>[ ] Multiple devices</p></li>
 <li><p>[ ] Replace device</p></li>
@@ -456,6 +571,16 @@ Each item should generally be completable within 0.5–2 developer days.</p>
 <hr class="docutils" />
 <section id="epic-14-security">
 <h1>EPIC 14 — Security<a class="headerlink" href="#epic-14-security" title="Link to this heading"></a></h1>
+<p>ADR 0013 defines revision-bound security assurance, independent-review
+criteria, finding and residual-risk governance, threat/control traceability,
+privacy and dependency inventories, fuzz evidence, and incident readiness.
+Automated hardening and review-readiness evidence may proceed now, but they
+cannot be represented as an independent assessment. EPIC-14 remains blocked
+until the production surfaces are complete, independent penetration and
+cryptographic reviews and the privacy assessment are authenticated, critical
+and high findings are closed, medium risks are explicitly accepted with owned
+plans, incident exercises pass, and the security owner approves the exact
+release candidate.</p>
 <ul class="simple">
 <li><p>[ ] Threat model review</p></li>
 <li><p>[ ] Penetration testing</p></li>
@@ -467,6 +592,17 @@ Each item should generally be completable within 0.5–2 developer days.</p>
 <hr class="docutils" />
 <section id="epic-15-release">
 <h1>EPIC 15 — Release<a class="headerlink" href="#epic-15-release" title="Link to this heading"></a></h1>
+<p>ADR 0014 defines immutable candidate identity, separated
+assemble/verify/approve/publish phases, credential-isolated Jenkins release
+tasks, an artefact/provenance manifest, per-artefact SBOMs, qualified
+reproducibility, packaged acceptance, signed approvals, and immutable
+publication. Credential-free manifest validation, packaging prototypes, SBOM
+reconciliation, and blocked release-task definitions may proceed now. EPIC-15
+remains blocked until all prior product and security gates pass for the exact
+packaged candidate, external signing/store prerequisites exist, required
+approvals bind the final manifest digest, publication succeeds, and the
+immutable signed <code class="docutils literal notranslate"><span class="pre">v1.0.0</span></code> tag is created. EPIC-16 is an explicit release gate
+despite its later planning identifier.</p>
 <ul class="simple">
 <li><p>[ ] Build SBOM</p></li>
 <li><p>[ ] Package RPM</p></li>
@@ -476,6 +612,81 @@ Each item should generally be completable within 0.5–2 developer days.</p>
 <li><p>[ ] Execute acceptance matrix</p></li>
 <li><p>[ ] Tag v1.0.0</p></li>
 </ul>
+</section>
+<hr class="docutils" />
+<section id="epic-16-cli-native-authentication">
+<h1>EPIC 16 — CLI-native authentication<a class="headerlink" href="#epic-16-cli-native-authentication" title="Link to this heading"></a></h1>
+<p>Pistis treats terminal users as a primary product audience. Authentication and
+action approval shall complete from a console with the supported iOS
+application, without a browser, web application, desktop GUI, or clipboard
+ceremony. Android interoperability remains required for v1.0 but does not block
+<code class="docutils literal notranslate"><span class="pre">v0.1.0-rc.1</span></code>. EPIC-16 is release-blocking and extends the EPIC-6 transport and
+EPIC-10 CLI contracts; it does not introduce a second verifier or weaker
+authentication path.</p>
+<section id="terminal-qr-presentation">
+<h2>Terminal QR presentation<a class="headerlink" href="#terminal-qr-presentation" title="Link to this heading"></a></h2>
+<ul class="simple">
+<li><p>[x] Define terminal capability and rendering profile</p></li>
+<li><p>[x] Implement deterministic ASCII and Unicode QR rendering</p></li>
+<li><p>[x] Display installation identity, purpose, expiry, and fingerprint</p></li>
+<li><p>[x] Support narrow, monochrome, SSH, tmux, and screen terminals</p></li>
+<li><p>[ ] Add scanability fixtures for the supported iOS device</p></li>
+</ul>
+</section>
+<section id="cli-authentication-and-approval">
+<h2>CLI authentication and approval<a class="headerlink" href="#cli-authentication-and-approval" title="Link to this heading"></a></h2>
+<ul class="simple">
+<li><p>[ ] Implement <code class="docutils literal notranslate"><span class="pre">pistis</span> <span class="pre">auth</span> <span class="pre">login</span></code></p></li>
+<li><p>[ ] Implement <code class="docutils literal notranslate"><span class="pre">pistis</span> <span class="pre">auth</span> <span class="pre">exec</span></code></p></li>
+<li><p>[x] Bind approvals to the exact action and command digest</p></li>
+<li><p>[ ] Support direct-local signed response submission after MVP</p></li>
+<li><p>[x] Support bounded terminal-safe framed response input</p></li>
+<li><p>[x] Implement cancellation, denial, expiry, and interruption handling</p></li>
+</ul>
+</section>
+<section id="security-and-session-handling">
+<h2>Security and session handling<a class="headerlink" href="#security-and-session-handling" title="Link to this heading"></a></h2>
+<ul class="simple">
+<li><p>[x] Keep credentials and session material out of argv and shell history</p></li>
+<li><p>[x] Prevent terminal escape and control-sequence injection</p></li>
+<li><p>[ ] Enforce the shared single-use challenge verifier boundary</p></li>
+<li><p>[x] Add replay, substitution, wrong-installation, and wrong-action tests</p></li>
+<li><p>[ ] Define secure session hand-off for child CLI processes</p></li>
+<li><p>[ ] Retain tamper-evident authentication and approval evidence</p></li>
+</ul>
+</section>
+<section id="interoperability-and-operations">
+<h2>Interoperability and operations<a class="headerlink" href="#interoperability-and-operations" title="Link to this heading"></a></h2>
+<ul class="simple">
+<li><p>[ ] Add iOS terminal-QR interoperability tests</p></li>
+<li><p>[ ] Add Android terminal-QR interoperability tests for v1.0</p></li>
+<li><p>[ ] Add headless and offline end-to-end acceptance tests</p></li>
+<li><p>[x] Add CLI user and operator documentation</p></li>
+<li><p>[ ] Add dual-architecture Jenkins evidence gates</p></li>
+</ul>
+<p>EPIC-15 release acceptance remains blocked until EPIC-16 passes for the exact
+release candidate.</p>
+<p>The portable EPIC-16 foundation is implemented: the strict command parser,
+canonical argument-vector digest, deterministic terminal renderer, bounded
+response reader, orchestration interfaces, fail-closed executable, unit and
+regression tests, ADR 0015, and operator documentation. Production completion
+remains open because the executable has no running authoritative handler or
+secure child-session handoff, mobile exact-action interoperability is absent,
+and Jenkins has no retained device/dual-architecture acceptance dossier. ADR
+0016 and its tested additive v2 schema remove the v1 action-authority blocker
+without changing v1 login. ADR 0017 and <code class="docutils literal notranslate"><span class="pre">pistis-agent</span></code> add owner-only durable
+storage, socket framing, non-export signing interfaces, closed semantic
+dispatch, and a tested CLI socket client. The native Security-framework signing
+operation, native same-user peer authorization, bounded daemon lifecycle, and
+single-authority semantic handler are implemented. The agent no longer creates
+or stores sessions: its mutation-free coordinator delegates the final
+challenge-consumption, Prosopikon-session, and audit transaction to the
+host-owned completion port required by the MVP contract. The production
+Prosopikon port, protocol-specific login/action adapter, supervised child
+command hand-off, and key provisioning remain open. The unchecked MVP items
+above are release blockers; a successful library test is not evidence that a
+mobile login or action approval completed.</p>
+</section>
 </section>
 <hr class="docutils" />
 <section id="continuous-tasks">
@@ -490,6 +701,130 @@ Each item should generally be completable within 0.5–2 developer days.</p>
 <li><p>[ ] Review dependencies monthly</p></li>
 <li><p>[ ] Keep security advisories current</p></li>
 </ul>
+</section>
+<hr class="docutils" />
+<section id="mvp-release-candidate-programme">
+<h1>MVP release-candidate programme<a class="headerlink" href="#mvp-release-candidate-programme" title="Link to this heading"></a></h1>
+<p><code class="docutils literal notranslate"><span class="pre">MVP_RELEASE_CANDIDATE.md</span></code> is normative for the <code class="docutils literal notranslate"><span class="pre">v0.1.0-rc.1</span></code> programme.
+Completion here does not close deferred <code class="docutils literal notranslate"><span class="pre">v1.0</span></code> work above.</p>
+<section id="epic-17-mvp-baseline-and-stabilization">
+<h2>EPIC 17 — MVP baseline and stabilization<a class="headerlink" href="#epic-17-mvp-baseline-and-stabilization" title="Link to this heading"></a></h2>
+<ul class="simple">
+<li><p>[x] Review and merge EPIC-16 PR 204</p></li>
+<li><p>[x] Review and merge EPIC-11 PR 206</p></li>
+<li><p>[x] Resolve dependency PR 202 independently</p></li>
+<li><p>[x] Reconcile TODO and GitHub delivery states</p></li>
+<li><p>[x] Pass authoritative Jenkins CI on the integrated <code class="docutils literal notranslate"><span class="pre">main</span></code></p></li>
+<li><p>[x] Record the clean pre-MVP integration point</p></li>
+</ul>
+<p>The immutable completion record is retained in GitHub issues #207 and #221.
+It identifies the exact integrated <code class="docutils literal notranslate"><span class="pre">main</span></code> revision, authoritative Expedition,
+stage outcomes, and retained artifact count. EPIC-16 remains open for its
+documented production gaps; EPIC-17 landing the reviewed foundation does not
+waive those acceptance criteria.</p>
+</section>
+<section id="epic-18-rust-ios-interoperability">
+<h2>EPIC 18 — Rust/iOS interoperability<a class="headerlink" href="#epic-18-rust-ios-interoperability" title="Link to this heading"></a></h2>
+<ul class="simple">
+<li><p>[ ] Accept the production COSE profile</p></li>
+<li><p>[ ] Freeze canonical enrolment, challenge, response, and evidence schemas</p></li>
+<li><p>[ ] Publish shared positive and negative Rust/iOS fixtures</p></li>
+<li><p>[ ] Prove Secure Enclave public-key encoding interoperability</p></li>
+<li><p>[ ] Prove Face ID-gated signing interoperability</p></li>
+<li><p>[ ] Add downgrade, substitution, replay, and malformed-input cases</p></li>
+<li><p>[ ] Retain Jenkins interoperability evidence</p></li>
+</ul>
+</section>
+<section id="epic-19-prosopikon-authority-bridge">
+<h2>EPIC 19 — Prosopikon authority bridge<a class="headerlink" href="#epic-19-prosopikon-authority-bridge" title="Link to this heading"></a></h2>
+<ul class="simple">
+<li><p>[ ] Accept the versioned Prosopikon–Pistis port</p></li>
+<li><p>[ ] Persist explicit Pistis-to-Prosopikon principal bindings</p></li>
+<li><p>[ ] Implement administrator-issued single-use invitations</p></li>
+<li><p>[ ] Implement host-owned atomic completion</p></li>
+<li><p>[ ] Bind sessions to product audience and authority revision</p></li>
+<li><p>[ ] Implement idempotent retry without duplicate sessions</p></li>
+<li><p>[ ] Invalidate sessions on device, binding, and policy revocation</p></li>
+<li><p>[ ] Append minimized authority and Pistis audit records atomically</p></li>
+<li><p>[ ] Add SQLite and SQL/Hebe adapter conformance suites</p></li>
+</ul>
+</section>
+<section id="epic-20-monas-mvp-route">
+<h2>EPIC 20 — Monas MVP route<a class="headerlink" href="#epic-20-monas-mvp-route" title="Link to this heading"></a></h2>
+<ul class="simple">
+<li><p>[ ] Pin reviewed Pistis and Prosopikon revisions</p></li>
+<li><p>[ ] Mount the shared Prosopikon Pistis UI</p></li>
+<li><p>[ ] Implement the Monas SQLite authority adapter</p></li>
+<li><p>[ ] Deliver enrolment, login, logout, and device-revocation routes</p></li>
+<li><p>[ ] Preserve Monas authorization and CSRF boundaries</p></li>
+<li><p>[ ] Exercise restart, concurrency, backup, restore, and corruption paths</p></li>
+<li><p>[ ] Retain exact-revision cross-repository Jenkins evidence</p></li>
+</ul>
+</section>
+<section id="epic-21-synoptikon-mneion-mvp-route">
+<h2>EPIC 21 — Synoptikon/Mneion MVP route<a class="headerlink" href="#epic-21-synoptikon-mneion-mvp-route" title="Link to this heading"></a></h2>
+<ul class="simple">
+<li><p>[ ] Pin reviewed Pistis and Prosopikon revisions in Mnemosyne</p></li>
+<li><p>[ ] Mount the shared Prosopikon Pistis UI in Mneion</p></li>
+<li><p>[ ] Implement the SQL/Hebe authority adapter</p></li>
+<li><p>[ ] Deliver enrolment, login, logout, and device-revocation routes</p></li>
+<li><p>[ ] Preserve tenant, entitlement, request-context, and audit boundaries</p></li>
+<li><p>[ ] Exercise restart, concurrency, migration, and rollback paths</p></li>
+<li><p>[ ] Retain exact-revision cross-repository Jenkins evidence</p></li>
+</ul>
+</section>
+<section id="epic-22-ios-production-qualification">
+<h2>EPIC 22 — iOS production qualification<a class="headerlink" href="#epic-22-ios-production-qualification" title="Link to this heading"></a></h2>
+<ul class="simple">
+<li><p>[ ] Register the Mnemosyne Biosciences GitHub App and enable device flow</p></li>
+<li><p>[ ] Implement minimum-permission GitHub device-flow enrolment</p></li>
+<li><p>[ ] Discard GitHub tokens after stable-identity proof</p></li>
+<li><p>[ ] Generate and use the device-protected signing key</p></li>
+<li><p>[ ] Require Face ID for every signature</p></li>
+<li><p>[ ] Implement enrolment, QR approval, history, and revocation UX</p></li>
+<li><p>[ ] Configure Apple signing and TestFlight</p></li>
+<li><p>[ ] Pass functional and accessibility simulator suites</p></li>
+<li><p>[ ] Pass the signed physical-iPhone acceptance matrix</p></li>
+</ul>
+</section>
+<section id="epic-23-authentication-evidence">
+<h2>EPIC 23 — Authentication evidence<a class="headerlink" href="#epic-23-authentication-evidence" title="Link to this heading"></a></h2>
+<ul class="simple">
+<li><p>[ ] Freeze the detached authentication-evidence schema</p></li>
+<li><p>[ ] Record enrolment, authentication, CLI approval, and revocation events</p></li>
+<li><p>[ ] Minimize and redact retained evidence</p></li>
+<li><p>[ ] Implement offline verifier library and CLI</p></li>
+<li><p>[ ] Verify trust roots, signatures, policy time, and revocation semantics</p></li>
+<li><p>[ ] Add malformed, unsupported, expired, and substituted evidence cases</p></li>
+<li><p>[ ] Retain portable evidence in Jenkins dossiers</p></li>
+</ul>
+</section>
+<section id="epic-24-packaging-and-operations">
+<h2>EPIC 24 — Packaging and operations<a class="headerlink" href="#epic-24-packaging-and-operations" title="Link to this heading"></a></h2>
+<ul class="simple">
+<li><p>[ ] Package the service, local agent, CLI, migrations, and systemd units</p></li>
+<li><p>[ ] Generate installation keys during privileged bootstrap</p></li>
+<li><p>[ ] Load keys through systemd credentials</p></li>
+<li><p>[ ] Implement encrypted installation-key backup and explicit restore</p></li>
+<li><p>[ ] Document rotation, recovery, upgrade, rollback, and diagnostics</p></li>
+<li><p>[ ] Enforce service-account ownership and non-symlink private state</p></li>
+<li><p>[ ] Build RPM/SRPM, SBOM, checksums, and provenance</p></li>
+<li><p>[ ] Test clean install, upgrade, rollback, backup, and restore</p></li>
+</ul>
+</section>
+<section id="epic-25-mvp-security-and-release-candidate">
+<h2>EPIC 25 — MVP security and release candidate<a class="headerlink" href="#epic-25-mvp-security-and-release-candidate" title="Link to this heading"></a></h2>
+<ul class="simple">
+<li><p>[ ] Complete the MVP threat-model review</p></li>
+<li><p>[ ] Complete dependency and privacy reviews</p></li>
+<li><p>[ ] Pass fuzzing and negative-path acceptance</p></li>
+<li><p>[ ] Run the four-repository Jenkins acceptance expedition</p></li>
+<li><p>[ ] Verify the signed physical-iPhone record</p></li>
+<li><p>[ ] Assemble immutable <code class="docutils literal notranslate"><span class="pre">v0.1.0-rc.1</span></code> artefacts and manifest</p></li>
+<li><p>[ ] Record internal release approval against the manifest digest</p></li>
+<li><p>[ ] Keep public production release blocked pending independent reviews</p></li>
+</ul>
+</section>
 </section>
 
 

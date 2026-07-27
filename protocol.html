@@ -1,0 +1,493 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="./">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Protocol specification &mdash; Pistis 0.0.0</title>
+      <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=e59714d7" />
+      <link rel="stylesheet" type="text/css" href="_static/pistis.css?v=168623c6" />
+
+  
+      <script src="_static/jquery.js?v=5d32c60e"></script>
+      <script src="_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="_static/documentation_options.js?v=7026087e"></script>
+      <script src="_static/doctools.js?v=9bcbadda"></script>
+      <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Cryptographic primitives" href="crypto.html" />
+    <link rel="prev" title="Exact-action approval protocol" href="protocol/action-approval.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="index.html" class="icon icon-home">
+            Pistis
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul>
+<li class="toctree-l1"><a class="reference internal" href="README.html">Pistis documentation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="PROJECT_CHARTER.html">Project Charter — Pistis</a></li>
+<li class="toctree-l1"><a class="reference internal" href="PROJECT_CHARTER.html#vision">1. Vision</a></li>
+<li class="toctree-l1"><a class="reference internal" href="PROJECT_CHARTER.html#scope">2. Scope</a></li>
+<li class="toctree-l1"><a class="reference internal" href="PROJECT_CHARTER.html#guiding-principles">3. Guiding Principles</a></li>
+<li class="toctree-l1"><a class="reference internal" href="PROJECT_CHARTER.html#primary-use-cases">4. Primary Use Cases</a></li>
+<li class="toctree-l1"><a class="reference internal" href="PROJECT_CHARTER.html#architecture">5. Architecture</a></li>
+<li class="toctree-l1"><a class="reference internal" href="PROJECT_CHARTER.html#deployment-modes">6. Deployment Modes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="PROJECT_CHARTER.html#technology">7. Technology</a></li>
+<li class="toctree-l1"><a class="reference internal" href="PROJECT_CHARTER.html#mvp-deliverables">8. MVP Deliverables</a></li>
+<li class="toctree-l1"><a class="reference internal" href="PROJECT_CHARTER.html#version-1-0">9. Version 1.0</a></li>
+<li class="toctree-l1"><a class="reference internal" href="PROJECT_CHARTER.html#future-roadmap">10. Future Roadmap</a></li>
+<li class="toctree-l1"><a class="reference internal" href="PROJECT_CHARTER.html#deliverables">11. Deliverables</a></li>
+<li class="toctree-l1"><a class="reference internal" href="PROJECT_CHARTER.html#success-criteria">12. Success Criteria</a></li>
+<li class="toctree-l1"><a class="reference internal" href="PROJECT_CHARTER.html#non-goals">13. Non-Goals</a></li>
+<li class="toctree-l1"><a class="reference internal" href="PROJECT_CHARTER.html#long-term-vision">14. Long-Term Vision</a></li>
+<li class="toctree-l1"><a class="reference internal" href="MVP_RELEASE_CANDIDATE.html">Pistis v0.1 MVP release candidate</a></li>
+<li class="toctree-l1"><a class="reference internal" href="MILESTONE.html">Pistis v1.0 — MILESTONE.md</a></li>
+<li class="toctree-l1"><a class="reference internal" href="MILESTONE.html#milestone-m0-charter-reconciliation-and-delivery-baseline">Milestone M0 — Charter reconciliation and delivery baseline</a></li>
+<li class="toctree-l1"><a class="reference internal" href="MILESTONE.html#milestone-m1-threat-model-and-protocol-specification">Milestone M1 — Threat model and protocol specification</a></li>
+<li class="toctree-l1"><a class="reference internal" href="MILESTONE.html#milestone-m2-rust-workspace-and-cryptographic-foundation">Milestone M2 — Rust workspace and cryptographic foundation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="MILESTONE.html#milestone-m3-github-and-google-trust-anchor-enrolment">Milestone M3 — GitHub and Google trust-anchor enrolment</a></li>
+<li class="toctree-l1"><a class="reference internal" href="MILESTONE.html#milestone-m4-local-installation-identity-and-device-registry">Milestone M4 — Local installation identity and device registry</a></li>
+<li class="toctree-l1"><a class="reference internal" href="MILESTONE.html#milestone-m5-qr-authentication-end-to-end">Milestone M5 — QR authentication end-to-end</a></li>
+<li class="toctree-l1"><a class="reference internal" href="MILESTONE.html#milestone-m6-ios-mvp-application">Milestone M6 — iOS MVP application</a></li>
+<li class="toctree-l1"><a class="reference internal" href="MILESTONE.html#milestone-m7-synoptikon-integration">Milestone M7 — Synoptikon integration</a></li>
+<li class="toctree-l1"><a class="reference internal" href="MILESTONE.html#milestone-m8-monas-standalone-integration-and-cli">Milestone M8 — Monas standalone integration and CLI</a></li>
+<li class="toctree-l1"><a class="reference internal" href="MILESTONE.html#milestone-m9-local-network-discovery-and-direct-exchange">Milestone M9 — Local-network discovery and direct exchange</a></li>
+<li class="toctree-l1"><a class="reference internal" href="MILESTONE.html#milestone-m10-artefact-report-signing-and-portable-evidence">Milestone M10 — Artefact/report signing and portable evidence</a></li>
+<li class="toctree-l1"><a class="reference internal" href="MILESTONE.html#milestone-m11-android-application">Milestone M11 — Android application</a></li>
+<li class="toctree-l1"><a class="reference internal" href="MILESTONE.html#milestone-m12-recovery-revocation-and-multi-device-lifecycle">Milestone M12 — Recovery, revocation and multi-device lifecycle</a></li>
+<li class="toctree-l1"><a class="reference internal" href="MILESTONE.html#milestone-m13-security-hardening-and-independent-review">Milestone M13 — Security hardening and independent review</a></li>
+<li class="toctree-l1"><a class="reference internal" href="MILESTONE.html#milestone-m14-packaging-operations-and-documentation">Milestone M14 — Packaging, operations and documentation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="MILESTONE.html#milestone-m15-release-candidate-and-v1-0-acceptance">Milestone M15 — Release candidate and v1.0 acceptance</a></li>
+<li class="toctree-l1"><a class="reference internal" href="MILESTONE.html#cross-cutting-engineering-requirements">7. Cross-cutting engineering requirements</a></li>
+<li class="toctree-l1"><a class="reference internal" href="MILESTONE.html#dependency-graph">8. Dependency graph</a></li>
+<li class="toctree-l1"><a class="reference internal" href="MILESTONE.html#recommended-implementation-sequence-by-release">9. Recommended implementation sequence by release</a></li>
+<li class="toctree-l1"><a class="reference internal" href="MILESTONE.html#principal-risks-and-mitigations">10. Principal risks and mitigations</a></li>
+<li class="toctree-l1"><a class="reference internal" href="MILESTONE.html#definition-of-done-for-every-milestone">11. Definition of done for every milestone</a></li>
+<li class="toctree-l1"><a class="reference internal" href="MILESTONE.html#deferred-post-v1-0-backlog">12. Deferred post-v1.0 backlog</a></li>
+<li class="toctree-l1"><a class="reference internal" href="MILESTONE.html#reference-implementation-technologies">13. Reference implementation technologies</a></li>
+<li class="toctree-l1"><a class="reference internal" href="MILESTONE.html#source-notes">14. Source notes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="MILESTONE.html#final-v1-0-boundary">15. Final v1.0 boundary</a></li>
+<li class="toctree-l1"><a class="reference internal" href="TODO.html">TODO.md</a></li>
+<li class="toctree-l1"><a class="reference internal" href="TODO.html#epic-0-repository">EPIC 0 — Repository</a></li>
+<li class="toctree-l1"><a class="reference internal" href="TODO.html#epic-1-protocol">EPIC 1 — Protocol</a></li>
+<li class="toctree-l1"><a class="reference internal" href="TODO.html#epic-2-crypto">EPIC 2 — Crypto</a></li>
+<li class="toctree-l1"><a class="reference internal" href="TODO.html#epic-3-github-trust">EPIC 3 — GitHub trust</a></li>
+<li class="toctree-l1"><a class="reference internal" href="TODO.html#epic-4-google-trust">EPIC 4 — Google trust</a></li>
+<li class="toctree-l1"><a class="reference internal" href="TODO.html#epic-5-device-registry">EPIC 5 — Device registry</a></li>
+<li class="toctree-l1"><a class="reference internal" href="TODO.html#epic-6-qr-authentication">EPIC 6 — QR authentication</a></li>
+<li class="toctree-l1"><a class="reference internal" href="TODO.html#epic-7-ios">EPIC 7 — iOS</a></li>
+<li class="toctree-l1"><a class="reference internal" href="TODO.html#epic-8-android">EPIC 8 — Android</a></li>
+<li class="toctree-l1"><a class="reference internal" href="TODO.html#epic-9-synoptikon">EPIC 9 — Synoptikon</a></li>
+<li class="toctree-l1"><a class="reference internal" href="TODO.html#epic-10-monas">EPIC 10 — Monas</a></li>
+<li class="toctree-l1"><a class="reference internal" href="TODO.html#epic-11-local-discovery">EPIC 11 — Local discovery</a></li>
+<li class="toctree-l1"><a class="reference internal" href="TODO.html#epic-12-evidence">EPIC 12 — Evidence</a></li>
+<li class="toctree-l1"><a class="reference internal" href="TODO.html#epic-13-recovery">EPIC 13 — Recovery</a></li>
+<li class="toctree-l1"><a class="reference internal" href="TODO.html#epic-14-security">EPIC 14 — Security</a></li>
+<li class="toctree-l1"><a class="reference internal" href="TODO.html#epic-15-release">EPIC 15 — Release</a></li>
+<li class="toctree-l1"><a class="reference internal" href="TODO.html#epic-16-cli-native-authentication">EPIC 16 — CLI-native authentication</a></li>
+<li class="toctree-l1"><a class="reference internal" href="TODO.html#continuous-tasks">Continuous tasks</a></li>
+<li class="toctree-l1"><a class="reference internal" href="TODO.html#mvp-release-candidate-programme">MVP release-candidate programme</a></li>
+<li class="toctree-l1"><a class="reference internal" href="BOOTSTRAP.html">BOOTSTRAP.md</a></li>
+<li class="toctree-l1"><a class="reference internal" href="BOOTSTRAP.html#purpose">Purpose</a></li>
+<li class="toctree-l1"><a class="reference internal" href="BOOTSTRAP.html#bootstrap-objectives">Bootstrap Objectives</a></li>
+<li class="toctree-l1"><a class="reference internal" href="BOOTSTRAP.html#deliverables">Deliverables</a></li>
+<li class="toctree-l1"><a class="reference internal" href="BOOTSTRAP.html#agents-md">AGENTS.md</a></li>
+<li class="toctree-l1"><a class="reference internal" href="BOOTSTRAP.html#github-corpus">GitHub Corpus</a></li>
+<li class="toctree-l1"><a class="reference internal" href="BOOTSTRAP.html#branch-strategy">Branch Strategy</a></li>
+<li class="toctree-l1"><a class="reference internal" href="BOOTSTRAP.html#commit-policy">Commit Policy</a></li>
+<li class="toctree-l1"><a class="reference internal" href="BOOTSTRAP.html#semantic-versioning">Semantic Versioning</a></li>
+<li class="toctree-l1"><a class="reference internal" href="BOOTSTRAP.html#pull-requests">Pull Requests</a></li>
+<li class="toctree-l1"><a class="reference internal" href="BOOTSTRAP.html#documentation">Documentation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="BOOTSTRAP.html#testing">Testing</a></li>
+<li class="toctree-l1"><a class="reference internal" href="BOOTSTRAP.html#adrs">ADRs</a></li>
+<li class="toctree-l1"><a class="reference internal" href="BOOTSTRAP.html#quality-gates">Quality Gates</a></li>
+<li class="toctree-l1"><a class="reference internal" href="BOOTSTRAP.html#security">Security</a></li>
+<li class="toctree-l1"><a class="reference internal" href="BOOTSTRAP.html#bootstrap-completion-criteria">Bootstrap Completion Criteria</a></li>
+<li class="toctree-l1"><a class="reference internal" href="BOOTSTRAP_STATUS.html">Bootstrap status</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="development/README.html">Development documentation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="development/code-structure.html">Code structure and modularity</a></li>
+<li class="toctree-l1"><a class="reference internal" href="development/fuzzing.html">Fuzz testing</a></li>
+<li class="toctree-l1"><a class="reference internal" href="development/provider-conformance.html">Provider conformance testing</a></li>
+<li class="toctree-l1"><a class="reference internal" href="development/ios.html">iOS development</a></li>
+<li class="toctree-l1"><a class="reference internal" href="development/android.html">Android development</a></li>
+<li class="toctree-l1"><a class="reference internal" href="development/synoptikon.html">Synoptikon integration development</a></li>
+<li class="toctree-l1"><a class="reference internal" href="development/monas.html">Monas standalone integration development</a></li>
+<li class="toctree-l1"><a class="reference internal" href="development/cli-authentication.html">CLI-native authentication</a></li>
+<li class="toctree-l1"><a class="reference internal" href="development/local-agent.html">Local authentication agent</a></li>
+<li class="toctree-l1"><a class="reference internal" href="development/discovery.html">Local discovery and direct exchange development</a></li>
+<li class="toctree-l1"><a class="reference internal" href="development/discovery-implementation-evaluation.html">Discovery implementation evaluation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="development/device-lifecycle.html">Recovery, revocation, and multi-device lifecycle development</a></li>
+<li class="toctree-l1"><a class="reference internal" href="development/security-hardening.html">Security hardening and independent review development</a></li>
+<li class="toctree-l1"><a class="reference internal" href="development/release-packaging.html">Release packaging and provenance</a></li>
+<li class="toctree-l1"><a class="reference internal" href="development/issue-model.html">Planning issue model</a></li>
+<li class="toctree-l1"><a class="reference internal" href="development/jenkins-ci.html">Jenkins CI</a></li>
+<li class="toctree-l1"><a class="reference internal" href="development/documentation.html">Documentation workflow</a></li>
+</ul>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="adr/README.html">Architecture Decision Records</a></li>
+<li class="toctree-l1"><a class="reference internal" href="adr/0000-template.html">ADR-NNNN: Decision title</a></li>
+<li class="toctree-l1"><a class="reference internal" href="adr/0001-canonical-encoding.html">ADR 0001: Deterministic CBOR for canonical protocol payloads</a></li>
+<li class="toctree-l1"><a class="reference internal" href="adr/0002-signature-suites.html">ADR 0002: Protocol signature suites</a></li>
+<li class="toctree-l1"><a class="reference internal" href="adr/0003-github-trust-enrolment.html">ADR 0003: GitHub trust-anchor enrolment</a></li>
+<li class="toctree-l1"><a class="reference internal" href="adr/0004-google-trust-enrolment.html">ADR 0004: Google OpenID Connect trust-anchor enrolment</a></li>
+<li class="toctree-l1"><a class="reference internal" href="adr/0005-device-registry-storage.html">ADR 0005: Device registry storage and lifecycle</a></li>
+<li class="toctree-l1"><a class="reference internal" href="adr/0006-qr-authentication-reference-flow.html">ADR 0006: QR authentication reference flow</a></li>
+<li class="toctree-l1"><a class="reference internal" href="adr/0007-ios-reference-application.html">ADR 0007: iOS reference application</a></li>
+<li class="toctree-l1"><a class="reference internal" href="adr/0008-android-reference-application.html">ADR 0008: Android reference application</a></li>
+<li class="toctree-l1"><a class="reference internal" href="adr/0009-synoptikon-integration-boundary.html">ADR 0009: Synoptikon integration boundary</a></li>
+<li class="toctree-l1"><a class="reference internal" href="adr/0010-monas-standalone-integration-boundary.html">ADR 0010: Monas standalone integration boundary</a></li>
+<li class="toctree-l1"><a class="reference internal" href="adr/0011-local-discovery-and-direct-exchange.html">ADR 0011: Local discovery and direct exchange</a></li>
+<li class="toctree-l1"><a class="reference internal" href="adr/0012-recovery-revocation-and-multi-device-lifecycle.html">ADR 0012: Recovery, revocation, and multi-device lifecycle</a></li>
+<li class="toctree-l1"><a class="reference internal" href="adr/0013-security-assurance-and-independent-review.html">ADR 0013: Security assurance and independent review</a></li>
+<li class="toctree-l1"><a class="reference internal" href="adr/0014-release-packaging-and-provenance.html">ADR 0014: Release packaging, publication, and provenance</a></li>
+<li class="toctree-l1"><a class="reference internal" href="adr/0015-cli-native-authentication.html">ADR 0015: CLI-native authentication boundary</a></li>
+<li class="toctree-l1"><a class="reference internal" href="adr/0016-exact-action-approval-protocol.html">ADR 0016: Exact-action approval protocol</a></li>
+<li class="toctree-l1"><a class="reference internal" href="adr/0017-local-authentication-agent.html">ADR 0017: Local authentication agent and installation signer</a></li>
+<li class="toctree-l1"><a class="reference internal" href="protocol/README.html">Protocol documentation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="protocol/domain-model.html">Domain identifiers</a></li>
+<li class="toctree-l1"><a class="reference internal" href="protocol/action-approval.html">Exact-action approval protocol</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Protocol specification</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#signed-message-envelope">Signed-message envelope</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#normative-structures">Normative structures</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#enrolment-intent">Enrolment intent</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#external-identity-binding">External identity binding</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#device-registration">Device registration</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#authentication-challenge">Authentication challenge</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#authentication-response">Authentication response</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#qr-authentication-reference-flow">QR authentication reference flow</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#artefact-challenge">Artefact challenge</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#artefact-response">Artefact response</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#revocation-statement">Revocation statement</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#exported-trust-bundle">Exported trust bundle</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#challenge-lifecycle">Challenge lifecycle</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#versioning">Versioning</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#failure-behavior">Failure behavior</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="crypto.html">Cryptographic primitives</a></li>
+<li class="toctree-l1"><a class="reference internal" href="encoding.html">Canonical encoding</a></li>
+<li class="toctree-l1"><a class="reference internal" href="assurance.html">Assurance model</a></li>
+<li class="toctree-l1"><a class="reference internal" href="security/README.html">Security documentation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="operations/README.html">Operations documentation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="operations/device-registry.html">Device registry operations</a></li>
+<li class="toctree-l1"><a class="reference internal" href="operations/github-enrolment.html">Operate GitHub trust enrolment</a></li>
+<li class="toctree-l1"><a class="reference internal" href="operations/google-enrolment.html">Operate Google trust enrolment</a></li>
+<li class="toctree-l1"><a class="reference internal" href="operations/qr-authentication.html">QR authentication operations</a></li>
+<li class="toctree-l1"><a class="reference internal" href="operations/ios.html">iOS application operations</a></li>
+<li class="toctree-l1"><a class="reference internal" href="operations/android.html">Android application operations</a></li>
+<li class="toctree-l1"><a class="reference internal" href="operations/synoptikon.html">Synoptikon integration operations</a></li>
+<li class="toctree-l1"><a class="reference internal" href="operations/monas.html">Monas standalone integration operations</a></li>
+<li class="toctree-l1"><a class="reference internal" href="operations/discovery.html">Local discovery and direct exchange operations</a></li>
+<li class="toctree-l1"><a class="reference internal" href="operations/device-lifecycle.html">Recovery, revocation, and multi-device lifecycle operations</a></li>
+<li class="toctree-l1"><a class="reference internal" href="operations/security-hardening.html">Security hardening and independent review operations</a></li>
+<li class="toctree-l1"><a class="reference internal" href="operations/release-packaging.html">Release installation, upgrade, backup, and publication</a></li>
+<li class="toctree-l1"><a class="reference internal" href="operations/cli-authentication.html">CLI authentication operations</a></li>
+<li class="toctree-l1"><a class="reference internal" href="operations/local-agent.html">Local-agent operations</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">Pistis</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">Protocol specification</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="_sources/protocol.md.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="protocol-specification">
+<h1>Protocol specification<a class="headerlink" href="#protocol-specification" title="Link to this heading"></a></h1>
+<p>This document is normative for Pistis protocol state. Concrete canonical
+encoding and signature-suite selection require their own accepted ADR before
+interoperable signing is implemented.</p>
+<section id="signed-message-envelope">
+<h2>Signed-message envelope<a class="headerlink" href="#signed-message-envelope" title="Link to this heading"></a></h2>
+<p>Every signed protocol message shall bind, in its canonical bytes:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">version</span></code>, the protocol message version;</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">purpose</span></code>, the exact domain-separation label for the structure;</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">issued_at_ms</span></code>, the producer-controlled Unix timestamp;</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">installation_id</span></code>, the authority namespace;</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">key_id</span></code>, the signing or expected verification key;</p></li>
+<li><p>the complete purpose-specific payload.</p></li>
+</ul>
+<p>Unknown versions, purposes, fields that affect meaning, algorithms, or critical
+extensions must fail closed. A verifier must never reinterpret a byte string
+under a different message purpose. Authentication, approval, artefact signing,
+enrolment and revocation use distinct domain-separation labels and schemas.</p>
+<p>The JSON schemas in <code class="docutils literal notranslate"><span class="pre">schemas/challenge-v1.schema.json</span></code> and
+<code class="docutils literal notranslate"><span class="pre">schemas/authentication-response-v1.schema.json</span></code> are diagnostic and validation
+representations, not canonical signature encodings. JSON is never accepted at
+a signed protocol boundary.</p>
+</section>
+<section id="normative-structures">
+<h2>Normative structures<a class="headerlink" href="#normative-structures" title="Link to this heading"></a></h2>
+<p>All fields listed here are required unless explicitly marked optional. An
+identifier uses the corresponding canonical <code class="docutils literal notranslate"><span class="pre">pistis-domain</span></code> representation.
+Byte strings use the canonical encoding selected by the encoding ADR. A
+signature covers the common fields and every purpose-specific field.</p>
+<section id="enrolment-intent">
+<h3>Enrolment intent<a class="headerlink" href="#enrolment-intent" title="Link to this heading"></a></h3>
+<p>Purpose: <code class="docutils literal notranslate"><span class="pre">pistis.enrolment-intent.v1</span></code>.</p>
+<p>The intent begins proof of control of an external identity and shall contain
+<code class="docutils literal notranslate"><span class="pre">enrolment_id</span></code>, <code class="docutils literal notranslate"><span class="pre">provider</span></code>, <code class="docutils literal notranslate"><span class="pre">redirect_binding</span></code>, <code class="docutils literal notranslate"><span class="pre">nonce</span></code>, <code class="docutils literal notranslate"><span class="pre">expires_at_ms</span></code>, and
+the requested local <code class="docutils literal notranslate"><span class="pre">user_id</span></code>. <code class="docutils literal notranslate"><span class="pre">redirect_binding</span></code> binds the exact callback
+origin and provider transaction. An intent is installation-signed. A provider
+name, callback, user, or nonce from any other intent must not be substituted.</p>
+</section>
+<section id="external-identity-binding">
+<h3>External identity binding<a class="headerlink" href="#external-identity-binding" title="Link to this heading"></a></h3>
+<p>Purpose: <code class="docutils literal notranslate"><span class="pre">pistis.external-identity-binding.v1</span></code>.</p>
+<p>The binding shall contain <code class="docutils literal notranslate"><span class="pre">enrolment_id</span></code>, <code class="docutils literal notranslate"><span class="pre">external_identity_id</span></code>, <code class="docutils literal notranslate"><span class="pre">provider</span></code>,
+the provider’s stable <code class="docutils literal notranslate"><span class="pre">issuer</span></code> and <code class="docutils literal notranslate"><span class="pre">subject</span></code>, <code class="docutils literal notranslate"><span class="pre">verified_at_ms</span></code>, and
+<code class="docutils literal notranslate"><span class="pre">provider_evidence_digest</span></code>. A mutable login, display name, or email may be
+included only as a non-authoritative <code class="docutils literal notranslate"><span class="pre">display_snapshot</span></code>. The binding is
+installation-signed after provider evidence verification and shall reference
+the exact enrolment intent.</p>
+</section>
+<section id="device-registration">
+<h3>Device registration<a class="headerlink" href="#device-registration" title="Link to this heading"></a></h3>
+<p>Purpose: <code class="docutils literal notranslate"><span class="pre">pistis.device-registration.v1</span></code>.</p>
+<p>The registration shall contain <code class="docutils literal notranslate"><span class="pre">enrolment_id</span></code>, <code class="docutils literal notranslate"><span class="pre">external_identity_id</span></code>,
+<code class="docutils literal notranslate"><span class="pre">user_id</span></code>, <code class="docutils literal notranslate"><span class="pre">device_id</span></code>, <code class="docutils literal notranslate"><span class="pre">device_public_key</span></code>, <code class="docutils literal notranslate"><span class="pre">device_key_algorithm</span></code>,
+<code class="docutils literal notranslate"><span class="pre">device_attestation_digest</span></code>, and <code class="docutils literal notranslate"><span class="pre">registered_at_ms</span></code>. It shall be signed by the
+new device key and countersigned by the installation. The installation must
+verify the external identity binding, proof of possession, supported algorithm,
+and local policy before countersigning. An unavailable attestation is encoded
+explicitly; it must never be silently treated as successful attestation.</p>
+</section>
+<section id="authentication-challenge">
+<h3>Authentication challenge<a class="headerlink" href="#authentication-challenge" title="Link to this heading"></a></h3>
+<p>Purpose: <code class="docutils literal notranslate"><span class="pre">pistis.authentication-challenge.v1</span></code>.</p>
+<p>The challenge shall contain <code class="docutils literal notranslate"><span class="pre">challenge_id</span></code>, <code class="docutils literal notranslate"><span class="pre">nonce</span></code>, <code class="docutils literal notranslate"><span class="pre">expires_at_ms</span></code>, <code class="docutils literal notranslate"><span class="pre">user_id</span></code>,
+<code class="docutils literal notranslate"><span class="pre">requested_action</span></code>, <code class="docutils literal notranslate"><span class="pre">audience</span></code>, and a human-readable <code class="docutils literal notranslate"><span class="pre">display_context_digest</span></code>.
+It is installation-signed. <code class="docutils literal notranslate"><span class="pre">audience</span></code> names the installation endpoint that may
+accept the response. The requested action must unambiguously mean session
+authentication and must not authorize an approval or artefact signature.</p>
+<p>The EPIC-6 v1 reference schema additionally binds <code class="docutils literal notranslate"><span class="pre">issued_at_ms</span></code>,
+<code class="docutils literal notranslate"><span class="pre">installation_id</span></code>, <code class="docutils literal notranslate"><span class="pre">key_id</span></code>, <code class="docutils literal notranslate"><span class="pre">external_identity_id</span></code>, installation name,
+installation fingerprint, local username, and a bounded list of HTTPS endpoint
+hints. <code class="docutils literal notranslate"><span class="pre">requested_action</span></code> is exactly <code class="docutils literal notranslate"><span class="pre">authenticate-session</span></code>. Names and endpoint
+hints aid display and transport only; identifiers, signatures, and local policy
+remain authoritative.</p>
+</section>
+<section id="authentication-response">
+<h3>Authentication response<a class="headerlink" href="#authentication-response" title="Link to this heading"></a></h3>
+<p>Purpose: <code class="docutils literal notranslate"><span class="pre">pistis.authentication-response.v1</span></code>.</p>
+<p>The response shall contain the exact <code class="docutils literal notranslate"><span class="pre">challenge_id</span></code>, <code class="docutils literal notranslate"><span class="pre">nonce</span></code>,
+<code class="docutils literal notranslate"><span class="pre">challenge_digest</span></code>, <code class="docutils literal notranslate"><span class="pre">user_id</span></code>, <code class="docutils literal notranslate"><span class="pre">device_id</span></code>, <code class="docutils literal notranslate"><span class="pre">external_identity_id</span></code>, <code class="docutils literal notranslate"><span class="pre">decision</span></code>,
+and <code class="docutils literal notranslate"><span class="pre">user_verified_at_ms</span></code>. <code class="docutils literal notranslate"><span class="pre">decision</span></code> is exactly <code class="docutils literal notranslate"><span class="pre">approved</span></code> or <code class="docutils literal notranslate"><span class="pre">denied</span></code>. It is
+device-signed after explicit local user verification. An approved response may
+be consumed only when its challenge signature, digest, nonce, identifiers,
+audience, expiry, device status, and signature all validate. A denial is
+evidence of the decision but never authenticates a session.</p>
+<p>The EPIC-6 v1 reference schema additionally binds <code class="docutils literal notranslate"><span class="pre">issued_at_ms</span></code>,
+<code class="docutils literal notranslate"><span class="pre">installation_id</span></code>, and the device <code class="docutils literal notranslate"><span class="pre">key_id</span></code>. Response expiry is not
+claimant-controlled: completion applies the stored challenge’s exclusive
+expiry. The exact closed canonical-CBOR field assignments and QR framing are
+defined by <a class="reference internal" href="adr/0006-qr-authentication-reference-flow.html"><span class="std std-doc">ADR 0006</span></a>.</p>
+</section>
+</section>
+<section id="qr-authentication-reference-flow">
+<h2>QR authentication reference flow<a class="headerlink" href="#qr-authentication-reference-flow" title="Link to this heading"></a></h2>
+<p>QR frames are untrusted transport input. A <code class="docutils literal notranslate"><span class="pre">PISTIS1:</span></code> frame carries one closed
+canonical-CBOR transport map, an exact canonical signed payload, a fixed-width
+detached ES256 signature, and a truncated SHA-256 scanning checksum. The
+checksum detects transcription or scanning errors; it does not authenticate
+the installation, device, action, or user. The decoder rejects oversized,
+fragmented, padded, non-ASCII, non-canonical, unsupported, trailing, or
+wrong-kind input without downgrade.</p>
+<p>The detached signature is an internal reference-harness boundary. It does not
+replace the COSE structures selected by ADR 0001, and no external mobile
+interoperability claim may be made until a separate COSE decision and
+conformance fixtures are accepted.</p>
+<p>Direct-local and response-QR submission enter the same verification path.
+Polling exposes only a coarse lifecycle state and cannot verify, consume, or
+authenticate. Completion verifies the signature and every stored binding
+before holding one atomic mutation boundary across challenge consumption,
+pre-authentication session invalidation, authenticated-session creation,
+immutable audit creation, and terminal state. A denial never creates a
+session. A failed atomic mutation leaves the earlier state intact, and exactly
+one concurrent completion may succeed.</p>
+<p>The EPIC-6 service is framework-neutral and in-memory. Production HTTP, TLS,
+durable transaction, installation-identity, local-policy, and operator UI
+adapters remain necessary to complete milestone M5.</p>
+<section id="artefact-challenge">
+<h3>Artefact challenge<a class="headerlink" href="#artefact-challenge" title="Link to this heading"></a></h3>
+<p>Purpose: <code class="docutils literal notranslate"><span class="pre">pistis.artefact-challenge.v1</span></code>.</p>
+<p>The challenge shall contain <code class="docutils literal notranslate"><span class="pre">challenge_id</span></code>, <code class="docutils literal notranslate"><span class="pre">nonce</span></code>, <code class="docutils literal notranslate"><span class="pre">expires_at_ms</span></code>,
+<code class="docutils literal notranslate"><span class="pre">artefact_digest</span></code>, <code class="docutils literal notranslate"><span class="pre">digest_algorithm</span></code>, <code class="docutils literal notranslate"><span class="pre">media_type</span></code>, <code class="docutils literal notranslate"><span class="pre">requested_statement</span></code>,
+<code class="docutils literal notranslate"><span class="pre">audience</span></code>, and <code class="docutils literal notranslate"><span class="pre">display_context_digest</span></code>. It is installation-signed.
+<code class="docutils literal notranslate"><span class="pre">requested_statement</span></code> describes the precise assertion requested from the user.
+The bytes identified by <code class="docutils literal notranslate"><span class="pre">artefact_digest</span></code> must remain available for review and
+must not be replaced without creating a new challenge.</p>
+</section>
+<section id="artefact-response">
+<h3>Artefact response<a class="headerlink" href="#artefact-response" title="Link to this heading"></a></h3>
+<p>Purpose: <code class="docutils literal notranslate"><span class="pre">pistis.artefact-response.v1</span></code>.</p>
+<p>The response shall contain the exact <code class="docutils literal notranslate"><span class="pre">challenge_id</span></code>, <code class="docutils literal notranslate"><span class="pre">nonce</span></code>,
+<code class="docutils literal notranslate"><span class="pre">challenge_digest</span></code>, <code class="docutils literal notranslate"><span class="pre">artefact_digest</span></code>, <code class="docutils literal notranslate"><span class="pre">digest_algorithm</span></code>,
+<code class="docutils literal notranslate"><span class="pre">requested_statement</span></code>, <code class="docutils literal notranslate"><span class="pre">device_id</span></code>, <code class="docutils literal notranslate"><span class="pre">external_identity_id</span></code>, <code class="docutils literal notranslate"><span class="pre">decision</span></code>, and
+<code class="docutils literal notranslate"><span class="pre">user_verified_at_ms</span></code>. It is device-signed after explicit local review and user
+verification. Authentication responses and artefact responses are not
+interchangeable even when identifiers or keys coincide.</p>
+</section>
+<section id="revocation-statement">
+<h3>Revocation statement<a class="headerlink" href="#revocation-statement" title="Link to this heading"></a></h3>
+<p>Purpose: <code class="docutils literal notranslate"><span class="pre">pistis.revocation-statement.v1</span></code>.</p>
+<p>The statement shall contain <code class="docutils literal notranslate"><span class="pre">revocation_id</span></code>, exactly one <code class="docutils literal notranslate"><span class="pre">revoked_subject</span></code>
+(<code class="docutils literal notranslate"><span class="pre">device_id</span></code>, <code class="docutils literal notranslate"><span class="pre">key_id</span></code>, or <code class="docutils literal notranslate"><span class="pre">external_identity_id</span></code>), <code class="docutils literal notranslate"><span class="pre">effective_at_ms</span></code>,
+<code class="docutils literal notranslate"><span class="pre">reason_code</span></code>, <code class="docutils literal notranslate"><span class="pre">authority_key_id</span></code>, and an optional non-authoritative
+<code class="docutils literal notranslate"><span class="pre">operator_note</span></code>. It is installation-authority-signed. Verifiers shall reject
+responses whose relevant device, key, or binding was revoked at or before the
+response’s verification time. Revocation statements are monotonic records and
+must not be deleted or reinterpreted as reinstatement.</p>
+</section>
+<section id="exported-trust-bundle">
+<h3>Exported trust bundle<a class="headerlink" href="#exported-trust-bundle" title="Link to this heading"></a></h3>
+<p>Purpose: <code class="docutils literal notranslate"><span class="pre">pistis.exported-trust-bundle.v1</span></code>.</p>
+<p>The bundle shall contain <code class="docutils literal notranslate"><span class="pre">bundle_id</span></code>, <code class="docutils literal notranslate"><span class="pre">exported_at_ms</span></code>, <code class="docutils literal notranslate"><span class="pre">sequence</span></code>,
+<code class="docutils literal notranslate"><span class="pre">installation_identity</span></code>, active installation verification keys with validity
+intervals, external identity bindings, device registrations, revocation
+statements, supported protocol versions and algorithms, and a digest over the
+ordered bundle contents. It is signed by a currently valid installation export
+key. Importers shall verify the signature, internal references, canonical
+ordering, sequence monotonicity, and key validity before using any contained
+trust. Bundles are detached verification material, not an authority to mutate
+local policy.</p>
+</section>
+</section>
+<section id="challenge-lifecycle">
+<h2>Challenge lifecycle<a class="headerlink" href="#challenge-lifecycle" title="Link to this heading"></a></h2>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>created --present--&gt; presented --claim--&gt; claimed --approve--&gt; approved
+   |           |             |                  |                 |
+   |           |             |                  +--deny--&gt; denied |
+   |           |             |                                    |
+   +-----------+-------------+------------------+------------------+
+                    cancel ---------------------------&gt; cancelled
+
+created/presented/claimed --expiry reached----------------&gt; expired
+approved/denied --atomic record and invalidate------------&gt; consumed
+</pre></div>
+</div>
+<p>Issuance draws an independent 256-bit nonce and 128-bit challenge identifier
+from the operating-system cryptographic random generator. Challenge identifiers
+use the shared <code class="docutils literal notranslate"><span class="pre">pistis-domain</span></code> <code class="docutils literal notranslate"><span class="pre">challenge_</span></code> representation. Failure to obtain
+randomness aborts issuance. Expiry is calculated using checked arithmetic from
+the issuer’s current Unix time. A zero or unrepresentable lifetime is invalid.</p>
+<p>The expiry is an exclusive upper bound: a challenge is valid only while
+<code class="docutils literal notranslate"><span class="pre">now</span> <span class="pre">&lt;</span> <span class="pre">expires_at</span></code>. Verifiers must use issuer-controlled time and must not
+accept a claimant-provided clock value.</p>
+<p><code class="docutils literal notranslate"><span class="pre">created</span></code> means issued but not disclosed. <code class="docutils literal notranslate"><span class="pre">presented</span></code> means disclosed through a
+transport. <code class="docutils literal notranslate"><span class="pre">claimed</span></code> means one device has begun the ceremony; claiming is not
+approval and grants no authority. Explicit user verification moves the
+ceremony to <code class="docutils literal notranslate"><span class="pre">approved</span></code> or <code class="docutils literal notranslate"><span class="pre">denied</span></code>. Recording either terminal decision and
+invalidating the nonce moves it atomically to <code class="docutils literal notranslate"><span class="pre">consumed</span></code>.</p>
+<p><code class="docutils literal notranslate"><span class="pre">expired</span></code> and <code class="docutils literal notranslate"><span class="pre">cancelled</span></code> are terminal alternatives. Expiry may occur from
+<code class="docutils literal notranslate"><span class="pre">created</span></code>, <code class="docutils literal notranslate"><span class="pre">presented</span></code>, or <code class="docutils literal notranslate"><span class="pre">claimed</span></code>. Cancellation may occur from any
+unconsumed state under installation policy. No transition leaves <code class="docutils literal notranslate"><span class="pre">consumed</span></code>,
+<code class="docutils literal notranslate"><span class="pre">expired</span></code>, or <code class="docutils literal notranslate"><span class="pre">cancelled</span></code>; a retry requires a new identifier and nonce.
+Transport retries may repeat presentation but shall not roll state backwards.</p>
+<p>Consumption is one atomic transition. The store compares identifier, expiry
+and nonce and deletes the active record only after all checks succeed. An
+expired record is invalidated and cannot be revived. A mismatched nonce does
+not destroy the legitimate active challenge. Once consumed, all replay
+attempts fail as unknown/already consumed. Implementations that persist audit
+states shall retain a tombstone while still making the active nonce
+unavailable.</p>
+<p>An in-memory implementation serialises this compare-and-delete transition with
+a mutex. Durable implementations must provide equivalent transactional or
+compare-and-swap semantics across all verifier processes. Checking and deleting
+in separate transactions is non-conformant.</p>
+</section>
+<section id="versioning">
+<h2>Versioning<a class="headerlink" href="#versioning" title="Link to this heading"></a></h2>
+<p>Version numbers describe message semantics and canonical bytes, not application
+release numbers. Additive changes are compatible only when old verifiers are
+defined to ignore the field and the field cannot affect a security decision.
+Otherwise a new protocol version and conformance fixtures are required.</p>
+<p>A producer may emit only a version it fully implements. A verifier selects one
+explicit supported version before parsing and signature verification. There is
+no downgrade fallback after verification failure.</p>
+</section>
+<section id="failure-behavior">
+<h2>Failure behavior<a class="headerlink" href="#failure-behavior" title="Link to this heading"></a></h2>
+<p>Randomness, clock, synchronisation, parsing and state-store failures fail
+closed. Logs and user-facing errors must not expose nonce values. Challenge
+identifiers are also treated as security-sensitive correlation data even
+though they are not authentication secrets.</p>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="protocol/action-approval.html" class="btn btn-neutral float-left" title="Exact-action approval protocol" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="crypto.html" class="btn btn-neutral float-right" title="Cryptographic primitives" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026, Pistis contributors.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

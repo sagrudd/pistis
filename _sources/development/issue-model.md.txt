@@ -3,7 +3,7 @@
 The canonical sources remain `PROJECT_CHARTER.md`, `MILESTONE.md`, and
 `TODO.md`. GitHub mirrors them as a navigable execution graph:
 
-- Epics represent the sixteen TODO domains.
+- Epics represent the seventeen TODO domains.
 - Features group related outcomes within an epic.
 - Tasks correspond one-to-one with atomic TODO items.
 - Subtasks are checklists inside task issues and are scoped below four hours.
@@ -31,6 +31,7 @@ The mapping to delivery milestones is:
 | 13 Recovery | M12 |
 | 14 Security | M13 |
 | 15 Release | M15 |
+| 16 CLI-native authentication | M8 |
 
 The planning corpus can be reconciled idempotently with
 `scripts/bootstrap_github.py`. It creates missing labels, milestones, and

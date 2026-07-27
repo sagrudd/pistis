@@ -1,12 +1,14 @@
 # Pistis documentation
 
 This directory is a Sphinx project rendered with the Read the Docs theme.
-Follow `development/documentation.md`; local rendering uses the pinned Docker
-image and GitHub Pages receives only manually published, pre-rendered HTML.
+Follow `development/documentation.md`; Jenkins produces the authoritative
+pre-rendered artifact, the pinned Docker image supports optional local preview,
+and Jenkins sends only successful, pre-rendered `main` HTML to GitHub Pages.
 
 - `BOOTSTRAP.md`: repository bootstrap contract.
 - `BOOTSTRAP_STATUS.md`: delivered bootstrap controls and validation evidence.
 - `PROJECT_CHARTER.md`: product vision and scope.
+- `MVP_RELEASE_CANDIDATE.md`: approved `v0.1.0-rc.1` scope and critical path.
 - `MILESTONE.md`: v1.0 delivery plan and acceptance baseline.
 - `TODO.md`: atomic source backlog.
 - `adr/`: architectural decision records.

@@ -1,0 +1,476 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ADR 0010: Monas standalone integration boundary &mdash; Pistis 0.0.0</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=e59714d7" />
+      <link rel="stylesheet" type="text/css" href="../_static/pistis.css?v=168623c6" />
+
+  
+      <script src="../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../_static/documentation_options.js?v=7026087e"></script>
+      <script src="../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="ADR 0011: Local discovery and direct exchange" href="0011-local-discovery-and-direct-exchange.html" />
+    <link rel="prev" title="ADR 0009: Synoptikon integration boundary" href="0009-synoptikon-integration-boundary.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../index.html" class="icon icon-home">
+            Pistis
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul>
+<li class="toctree-l1"><a class="reference internal" href="../README.html">Pistis documentation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../PROJECT_CHARTER.html">Project Charter — Pistis</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../PROJECT_CHARTER.html#vision">1. Vision</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../PROJECT_CHARTER.html#scope">2. Scope</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../PROJECT_CHARTER.html#guiding-principles">3. Guiding Principles</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../PROJECT_CHARTER.html#primary-use-cases">4. Primary Use Cases</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../PROJECT_CHARTER.html#architecture">5. Architecture</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../PROJECT_CHARTER.html#deployment-modes">6. Deployment Modes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../PROJECT_CHARTER.html#technology">7. Technology</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../PROJECT_CHARTER.html#mvp-deliverables">8. MVP Deliverables</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../PROJECT_CHARTER.html#version-1-0">9. Version 1.0</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../PROJECT_CHARTER.html#future-roadmap">10. Future Roadmap</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../PROJECT_CHARTER.html#deliverables">11. Deliverables</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../PROJECT_CHARTER.html#success-criteria">12. Success Criteria</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../PROJECT_CHARTER.html#non-goals">13. Non-Goals</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../PROJECT_CHARTER.html#long-term-vision">14. Long-Term Vision</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../MVP_RELEASE_CANDIDATE.html">Pistis v0.1 MVP release candidate</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../MILESTONE.html">Pistis v1.0 — MILESTONE.md</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../MILESTONE.html#milestone-m0-charter-reconciliation-and-delivery-baseline">Milestone M0 — Charter reconciliation and delivery baseline</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../MILESTONE.html#milestone-m1-threat-model-and-protocol-specification">Milestone M1 — Threat model and protocol specification</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../MILESTONE.html#milestone-m2-rust-workspace-and-cryptographic-foundation">Milestone M2 — Rust workspace and cryptographic foundation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../MILESTONE.html#milestone-m3-github-and-google-trust-anchor-enrolment">Milestone M3 — GitHub and Google trust-anchor enrolment</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../MILESTONE.html#milestone-m4-local-installation-identity-and-device-registry">Milestone M4 — Local installation identity and device registry</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../MILESTONE.html#milestone-m5-qr-authentication-end-to-end">Milestone M5 — QR authentication end-to-end</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../MILESTONE.html#milestone-m6-ios-mvp-application">Milestone M6 — iOS MVP application</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../MILESTONE.html#milestone-m7-synoptikon-integration">Milestone M7 — Synoptikon integration</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../MILESTONE.html#milestone-m8-monas-standalone-integration-and-cli">Milestone M8 — Monas standalone integration and CLI</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../MILESTONE.html#milestone-m9-local-network-discovery-and-direct-exchange">Milestone M9 — Local-network discovery and direct exchange</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../MILESTONE.html#milestone-m10-artefact-report-signing-and-portable-evidence">Milestone M10 — Artefact/report signing and portable evidence</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../MILESTONE.html#milestone-m11-android-application">Milestone M11 — Android application</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../MILESTONE.html#milestone-m12-recovery-revocation-and-multi-device-lifecycle">Milestone M12 — Recovery, revocation and multi-device lifecycle</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../MILESTONE.html#milestone-m13-security-hardening-and-independent-review">Milestone M13 — Security hardening and independent review</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../MILESTONE.html#milestone-m14-packaging-operations-and-documentation">Milestone M14 — Packaging, operations and documentation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../MILESTONE.html#milestone-m15-release-candidate-and-v1-0-acceptance">Milestone M15 — Release candidate and v1.0 acceptance</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../MILESTONE.html#cross-cutting-engineering-requirements">7. Cross-cutting engineering requirements</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../MILESTONE.html#dependency-graph">8. Dependency graph</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../MILESTONE.html#recommended-implementation-sequence-by-release">9. Recommended implementation sequence by release</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../MILESTONE.html#principal-risks-and-mitigations">10. Principal risks and mitigations</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../MILESTONE.html#definition-of-done-for-every-milestone">11. Definition of done for every milestone</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../MILESTONE.html#deferred-post-v1-0-backlog">12. Deferred post-v1.0 backlog</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../MILESTONE.html#reference-implementation-technologies">13. Reference implementation technologies</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../MILESTONE.html#source-notes">14. Source notes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../MILESTONE.html#final-v1-0-boundary">15. Final v1.0 boundary</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../TODO.html">TODO.md</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../TODO.html#epic-0-repository">EPIC 0 — Repository</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../TODO.html#epic-1-protocol">EPIC 1 — Protocol</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../TODO.html#epic-2-crypto">EPIC 2 — Crypto</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../TODO.html#epic-3-github-trust">EPIC 3 — GitHub trust</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../TODO.html#epic-4-google-trust">EPIC 4 — Google trust</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../TODO.html#epic-5-device-registry">EPIC 5 — Device registry</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../TODO.html#epic-6-qr-authentication">EPIC 6 — QR authentication</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../TODO.html#epic-7-ios">EPIC 7 — iOS</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../TODO.html#epic-8-android">EPIC 8 — Android</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../TODO.html#epic-9-synoptikon">EPIC 9 — Synoptikon</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../TODO.html#epic-10-monas">EPIC 10 — Monas</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../TODO.html#epic-11-local-discovery">EPIC 11 — Local discovery</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../TODO.html#epic-12-evidence">EPIC 12 — Evidence</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../TODO.html#epic-13-recovery">EPIC 13 — Recovery</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../TODO.html#epic-14-security">EPIC 14 — Security</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../TODO.html#epic-15-release">EPIC 15 — Release</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../TODO.html#epic-16-cli-native-authentication">EPIC 16 — CLI-native authentication</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../TODO.html#continuous-tasks">Continuous tasks</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../TODO.html#mvp-release-candidate-programme">MVP release-candidate programme</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../BOOTSTRAP.html">BOOTSTRAP.md</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../BOOTSTRAP.html#purpose">Purpose</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../BOOTSTRAP.html#bootstrap-objectives">Bootstrap Objectives</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../BOOTSTRAP.html#deliverables">Deliverables</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../BOOTSTRAP.html#agents-md">AGENTS.md</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../BOOTSTRAP.html#github-corpus">GitHub Corpus</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../BOOTSTRAP.html#branch-strategy">Branch Strategy</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../BOOTSTRAP.html#commit-policy">Commit Policy</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../BOOTSTRAP.html#semantic-versioning">Semantic Versioning</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../BOOTSTRAP.html#pull-requests">Pull Requests</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../BOOTSTRAP.html#documentation">Documentation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../BOOTSTRAP.html#testing">Testing</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../BOOTSTRAP.html#adrs">ADRs</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../BOOTSTRAP.html#quality-gates">Quality Gates</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../BOOTSTRAP.html#security">Security</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../BOOTSTRAP.html#bootstrap-completion-criteria">Bootstrap Completion Criteria</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../BOOTSTRAP_STATUS.html">Bootstrap status</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../development/README.html">Development documentation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../development/code-structure.html">Code structure and modularity</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../development/fuzzing.html">Fuzz testing</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../development/provider-conformance.html">Provider conformance testing</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../development/ios.html">iOS development</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../development/android.html">Android development</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../development/synoptikon.html">Synoptikon integration development</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../development/monas.html">Monas standalone integration development</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../development/cli-authentication.html">CLI-native authentication</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../development/local-agent.html">Local authentication agent</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../development/discovery.html">Local discovery and direct exchange development</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../development/discovery-implementation-evaluation.html">Discovery implementation evaluation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../development/device-lifecycle.html">Recovery, revocation, and multi-device lifecycle development</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../development/security-hardening.html">Security hardening and independent review development</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../development/release-packaging.html">Release packaging and provenance</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../development/issue-model.html">Planning issue model</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../development/jenkins-ci.html">Jenkins CI</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../development/documentation.html">Documentation workflow</a></li>
+</ul>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="README.html">Architecture Decision Records</a></li>
+<li class="toctree-l1"><a class="reference internal" href="0000-template.html">ADR-NNNN: Decision title</a></li>
+<li class="toctree-l1"><a class="reference internal" href="0001-canonical-encoding.html">ADR 0001: Deterministic CBOR for canonical protocol payloads</a></li>
+<li class="toctree-l1"><a class="reference internal" href="0002-signature-suites.html">ADR 0002: Protocol signature suites</a></li>
+<li class="toctree-l1"><a class="reference internal" href="0003-github-trust-enrolment.html">ADR 0003: GitHub trust-anchor enrolment</a></li>
+<li class="toctree-l1"><a class="reference internal" href="0004-google-trust-enrolment.html">ADR 0004: Google OpenID Connect trust-anchor enrolment</a></li>
+<li class="toctree-l1"><a class="reference internal" href="0005-device-registry-storage.html">ADR 0005: Device registry storage and lifecycle</a></li>
+<li class="toctree-l1"><a class="reference internal" href="0006-qr-authentication-reference-flow.html">ADR 0006: QR authentication reference flow</a></li>
+<li class="toctree-l1"><a class="reference internal" href="0007-ios-reference-application.html">ADR 0007: iOS reference application</a></li>
+<li class="toctree-l1"><a class="reference internal" href="0008-android-reference-application.html">ADR 0008: Android reference application</a></li>
+<li class="toctree-l1"><a class="reference internal" href="0009-synoptikon-integration-boundary.html">ADR 0009: Synoptikon integration boundary</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">ADR 0010: Monas standalone integration boundary</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#context">Context</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#decision">Decision</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#dependency-direction-and-authorities">Dependency direction and authorities</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#delivery-profiles">Delivery profiles</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#production-readiness">Production readiness</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#standalone-service-and-embedding-api">Standalone service and embedding API</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#cli-boundary">CLI boundary</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#reference-application">Reference application</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#storage-packaging-and-operation">Storage, packaging, and operation</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#audit-and-privacy">Audit and privacy</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#consequences">Consequences</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#alternatives-considered">Alternatives considered</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#review-evidence">Review evidence</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="0011-local-discovery-and-direct-exchange.html">ADR 0011: Local discovery and direct exchange</a></li>
+<li class="toctree-l1"><a class="reference internal" href="0012-recovery-revocation-and-multi-device-lifecycle.html">ADR 0012: Recovery, revocation, and multi-device lifecycle</a></li>
+<li class="toctree-l1"><a class="reference internal" href="0013-security-assurance-and-independent-review.html">ADR 0013: Security assurance and independent review</a></li>
+<li class="toctree-l1"><a class="reference internal" href="0014-release-packaging-and-provenance.html">ADR 0014: Release packaging, publication, and provenance</a></li>
+<li class="toctree-l1"><a class="reference internal" href="0015-cli-native-authentication.html">ADR 0015: CLI-native authentication boundary</a></li>
+<li class="toctree-l1"><a class="reference internal" href="0016-exact-action-approval-protocol.html">ADR 0016: Exact-action approval protocol</a></li>
+<li class="toctree-l1"><a class="reference internal" href="0017-local-authentication-agent.html">ADR 0017: Local authentication agent and installation signer</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../protocol/README.html">Protocol documentation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../protocol/domain-model.html">Domain identifiers</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../protocol/action-approval.html">Exact-action approval protocol</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../protocol.html">Protocol specification</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../crypto.html">Cryptographic primitives</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../encoding.html">Canonical encoding</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../assurance.html">Assurance model</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../security/README.html">Security documentation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../operations/README.html">Operations documentation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../operations/device-registry.html">Device registry operations</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../operations/github-enrolment.html">Operate GitHub trust enrolment</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../operations/google-enrolment.html">Operate Google trust enrolment</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../operations/qr-authentication.html">QR authentication operations</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../operations/ios.html">iOS application operations</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../operations/android.html">Android application operations</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../operations/synoptikon.html">Synoptikon integration operations</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../operations/monas.html">Monas standalone integration operations</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../operations/discovery.html">Local discovery and direct exchange operations</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../operations/device-lifecycle.html">Recovery, revocation, and multi-device lifecycle operations</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../operations/security-hardening.html">Security hardening and independent review operations</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../operations/release-packaging.html">Release installation, upgrade, backup, and publication</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../operations/cli-authentication.html">CLI authentication operations</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../operations/local-agent.html">Local-agent operations</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">Pistis</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">ADR 0010: Monas standalone integration boundary</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../_sources/adr/0010-monas-standalone-integration-boundary.md.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="adr-0010-monas-standalone-integration-boundary">
+<h1>ADR 0010: Monas standalone integration boundary<a class="headerlink" href="#adr-0010-monas-standalone-integration-boundary" title="Link to this heading"></a></h1>
+<ul class="simple">
+<li><p>Status: Accepted</p></li>
+<li><p>Date: 2026-07-24</p></li>
+<li><p>Owners: Pistis protocol, Monas, Prosopikon, security, evidence, CLI, and
+operations</p></li>
+</ul>
+<section id="context">
+<h2>Context<a class="headerlink" href="#context" title="Link to this heading"></a></h2>
+<p>Monas is the standalone Mnemosyne host. It already owns Axum HTTP routing,
+product mounts, TLS termination, browser presentation, and authenticated
+product forwarding. Prosopikon is its single authority for local users,
+password verification, immutable principals, browser sessions, and device
+tokens.</p>
+<p>Pistis M8 must add passwordless authentication and portable verification
+without making Monas depend on Synoptikon or creating a second session
+authority. The current Pistis authentication service is an in-memory reference,
+ADR 0006 defers production COSE interoperability and durable ceremony storage,
+and ADR 0009’s production-readiness gates are not yet satisfied. Detached
+evidence, report signing, local discovery, release packaging, and recovery are
+owned by later milestones.</p>
+<p>The issue wording for EPIC 10 is intentionally concise, while M8 in
+<code class="docutils literal notranslate"><span class="pre">MILESTONE.md</span></code> describes a broader standalone service, embedding API, CLI,
+reference application, and packaging surface. An explicit boundary is required
+before adding security-sensitive host or command-line behavior.</p>
+</section>
+<section id="decision">
+<h2>Decision<a class="headerlink" href="#decision" title="Link to this heading"></a></h2>
+<section id="dependency-direction-and-authorities">
+<h3>Dependency direction and authorities<a class="headerlink" href="#dependency-direction-and-authorities" title="Link to this heading"></a></h3>
+<p>Pistis provides a framework-neutral <code class="docutils literal notranslate"><span class="pre">pistis-monas</span></code> integration contract and
+standalone application capabilities. These depend only on inward Pistis domain
+crates and contain no Axum, Yew, Prosopikon, Monas, product, cookie, or host
+auditor types.</p>
+<p>Monas implements the host ports and owns HTTP, browser presentation, TLS,
+configuration, service lifecycle, and product forwarding. Prosopikon remains
+the sole authority for local principals and Monas browser sessions. Pistis
+authenticates a previously bound principal; it grants no role, product
+permission, operating-system authority, or storage authority.</p>
+<p>Monas must consume Pistis from a reviewed, immutable remote revision recorded
+in its dependency policy. Pistis must not depend on Monas or Prosopikon.</p>
+</section>
+<section id="delivery-profiles">
+<h3>Delivery profiles<a class="headerlink" href="#delivery-profiles" title="Link to this heading"></a></h3>
+<p>The integration exposes distinct profiles so partial delivery cannot be
+mistaken for production readiness:</p>
+<ul class="simple">
+<li><p><strong>contract</strong> describes typed host ports and blockers and may be delivered
+before a host adapter;</p></li>
+<li><p><strong>reference</strong> demonstrates deterministic flows with generated identities and
+in-memory components and must identify itself as non-production;</p></li>
+<li><p><strong>standalone</strong> requires durable SQLite state, production protocol fixtures,
+protected sessions, transactional audit, backup and upgrade evidence; and</p></li>
+<li><p><strong>offline verifier</strong> accepts only detached public evidence, performs no
+network access, and creates no authentication session.</p></li>
+</ul>
+<p>Enabling one profile never implies that another profile is ready.</p>
+</section>
+<section id="production-readiness">
+<h3>Production readiness<a class="headerlink" href="#production-readiness" title="Link to this heading"></a></h3>
+<p>The standalone profile fails closed unless reviewed evidence proves all of:</p>
+<ul class="simple">
+<li><p>an accepted COSE profile and shared Rust/iOS/Android positive and negative
+fixtures;</p></li>
+<li><p>durable SQLite repositories and migrations for trust policy, device registry,
+challenge lifecycle, evidence metadata, and audit;</p></li>
+<li><p>installation signatures over the exact persisted canonical challenge;</p></li>
+<li><p>complete installation, principal, external-identity, device, key, binding,
+policy-generation, and revocation-generation resolution;</p></li>
+<li><p>one rollback-capable completion transaction that re-evaluates bindings,
+consumes the challenge, invalidates pre-authentication state, requests a
+Prosopikon session, and appends audit;</p></li>
+<li><p>an opaque session delivered only through a <code class="docutils literal notranslate"><span class="pre">Secure</span></code>, <code class="docutils literal notranslate"><span class="pre">HttpOnly</span></code>,
+appropriately <code class="docutils literal notranslate"><span class="pre">SameSite</span></code> cookie and never returned through a Pistis API;</p></li>
+<li><p>tested invalidation for logout, expiry, device/key/binding revocation,
+recovery, and authorization-generation changes;</p></li>
+<li><p>backup, restore, migration, file-permission, and corruption-recovery
+acceptance evidence; and</p></li>
+<li><p>a pinned Jenkins build proving the applicable tests, documentation, package
+contents, and provenance.</p></li>
+</ul>
+<p>Missing or unknown evidence returns a deterministic typed blocker before any
+host mutation or session request. Reference components, UI presence, or a
+locally successful login cannot satisfy these requirements.</p>
+</section>
+<section id="standalone-service-and-embedding-api">
+<h3>Standalone service and embedding API<a class="headerlink" href="#standalone-service-and-embedding-api" title="Link to this heading"></a></h3>
+<p>Pistis owns protocol challenge construction, canonical payload rendering,
+response parsing and verification, challenge state transitions, trust policy,
+device state, and portable public evidence. The Monas adapter maps an immutable
+Prosopikon principal to the exact Pistis binding and supplies host-owned
+transaction, session, and audit ports.</p>
+<p>The embedding API uses explicit request, response, purpose, and outcome types.
+It does not expose raw session tokens, cookies, private keys, database handles,
+HTTP responses, or product authorization claims. Authentication, consequential
+approval, and artefact signing are separate purposes with separate policies.
+Only authentication may request a browser session.</p>
+<p>Bootstrap and enrolment cannot reuse Monas password registration, an
+environment variable, a URL query value, or an API bearer as durable authority.
+Until the accepted recovery and bootstrap designs are implemented, the Monas
+adapter remains unavailable rather than silently falling back to a default
+credential.</p>
+</section>
+<section id="cli-boundary">
+<h3>CLI boundary<a class="headerlink" href="#cli-boundary" title="Link to this heading"></a></h3>
+<p>Commands are split by authority:</p>
+<ul class="simple">
+<li><p>mutation commands require an explicit local installation directory, acquire
+an exclusive lock, validate ownership and permissions, and commit through the
+same repositories and audit rules as the service;</p></li>
+<li><p>online ceremony commands use the embedding API and cannot bypass challenge
+purpose, expiry, binding, replay, or readiness checks;</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">evidence</span> <span class="pre">inspect</span></code> parses bounded untrusted input without asserting validity;</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">evidence</span> <span class="pre">verify</span></code> is offline, accepts explicit trust material, verifies the
+canonical signed content and policy time, and reports structured reasons; and</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">doctor</span></code> is read-only by default, redacts secrets and personal data, and
+distinguishes warnings from security blockers.</p></li>
+</ul>
+<p>Human-readable and machine-readable output are separate stable interfaces.
+Secret, capability, cookie, nonce, raw signature, provider credential, private
+key, and full personal-data fields are excluded from normal output and logs.
+Exit codes distinguish success, invalid evidence, blocked configuration, input
+error, and internal failure.</p>
+<p>The EPIC-10 CLI verifier is a command surface over the verifier available at
+that milestone. It cannot claim the M10 detached-evidence acceptance criteria
+before EPIC 12 supplies the schema, trust bundle, signing claims, and fixtures.</p>
+</section>
+<section id="reference-application">
+<h3>Reference application<a class="headerlink" href="#reference-application" title="Link to this heading"></a></h3>
+<p>The Monas reference application extends the existing Monas login surface; it
+does not introduce another server or session store. Generated test identities
+and isolated state roots are mandatory for acceptance fixtures. QR and direct
+transfer enter one bounded verification path. Polling reports only coarse state
+and never verifies, consumes, or issues a session.</p>
+<p>Local discovery remains an optional untrusted transport under EPIC 11.
+Report-signing and detached-verification demonstrations remain blocked on EPIC
+12. Absence of either capability is shown explicitly and never replaced by a
+mock that appears production-ready.</p>
+</section>
+<section id="storage-packaging-and-operation">
+<h3>Storage, packaging, and operation<a class="headerlink" href="#storage-packaging-and-operation" title="Link to this heading"></a></h3>
+<p>The standalone service uses SQLite with foreign keys, transactions, bounded
+busy handling, schema versioning, and operator-controlled storage paths. State
+files and secret-bearing configuration must be non-symlink regular files with
+private permissions. Installation identity must survive documented backup and
+restore, while restoration onto a second active installation is rejected or
+requires an explicit recovery procedure.</p>
+<p>The binary, configuration, systemd unit, container, and RPM/SRPM path are
+release surfaces. They require versioned configuration, least-privilege
+filesystem ownership, graceful shutdown, migration commands, health checks
+that disclose no sensitive state, SBOM/provenance evidence, and rollback
+instructions. Packaging is not complete merely because <code class="docutils literal notranslate"><span class="pre">cargo</span> <span class="pre">run</span></code> succeeds.</p>
+</section>
+<section id="audit-and-privacy">
+<h3>Audit and privacy<a class="headerlink" href="#audit-and-privacy" title="Link to this heading"></a></h3>
+<p>Security mutations and audit append share one transaction. Audit follows the
+minimization boundary in ADR 0009 and uses independent non-secret correlation
+identifiers. Monas may project a bounded event into its operator log, but
+Pistis standalone state remains the authoritative cryptographic event record.
+Product applications receive only the verified host context needed for their
+own authorization and never receive a Pistis response, session token, cookie,
+provider credential, or raw evidence package.</p>
+</section>
+</section>
+<section id="consequences">
+<h2>Consequences<a class="headerlink" href="#consequences" title="Link to this heading"></a></h2>
+<ul class="simple">
+<li><p>A non-Synoptikon application can integrate through Pistis types without
+importing Synoptikon, Monas, or Prosopikon types.</p></li>
+<li><p>Monas and Synoptikon remain independent relying applications sharing inward
+Pistis contracts.</p></li>
+<li><p>Prosopikon remains Monas’s sole local-principal and browser-session authority.</p></li>
+<li><p>Contract and offline-verifier work can proceed while production gates remain
+explicit and fail closed.</p></li>
+<li><p>EPIC 10 cannot close until EPIC 9’s prerequisite protocol/session gates and
+all M8 acceptance evidence exist.</p></li>
+<li><p>Local discovery, detached evidence/report signing, recovery, and release
+packaging cannot be closed early under EPIC 10; their owning milestones must
+provide the required accepted decisions and fixtures.</p></li>
+</ul>
+</section>
+<section id="alternatives-considered">
+<h2>Alternatives considered<a class="headerlink" href="#alternatives-considered" title="Link to this heading"></a></h2>
+<ul class="simple">
+<li><p>Embed the in-memory Pistis authentication service in Monas: rejected because
+it lacks durable atomic completion and would create a second session map.</p></li>
+<li><p>Replace Prosopikon sessions with Pistis sessions: rejected because Pistis
+authentication must not become host authorization or session authority.</p></li>
+<li><p>Treat the existing password CLI or HTTP routes as the Pistis demo: rejected
+because they prove a different trust and ceremony model.</p></li>
+<li><p>Mark report signing and offline detached verification complete with an
+ad-hoc JSON envelope: rejected because EPIC 12 owns their schema and fixtures.</p></li>
+<li><p>Bundle local discovery into the server without a transport review: rejected
+because discovery is untrusted and EPIC 11 owns that decision.</p></li>
+<li><p>Declare packaging complete from a development binary: rejected because the
+M8 release artefact includes configuration, service, migration, backup, and
+provenance obligations.</p></li>
+</ul>
+</section>
+<section id="review-evidence">
+<h2>Review evidence<a class="headerlink" href="#review-evidence" title="Link to this heading"></a></h2>
+<p>The architecture review inspected EPIC 10 issues 129–134, M8 acceptance
+criteria, existing Pistis ADRs and crates, and the Monas <code class="docutils literal notranslate"><span class="pre">main</span></code> branch. It
+identified Monas’s Axum/Yew/TLS/product authority, Prosopikon’s principal and
+session authority, process-scoped session invalidation, the current password
+login routes, and the absence of a Pistis dependency or standalone deployment
+contract.</p>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="0009-synoptikon-integration-boundary.html" class="btn btn-neutral float-left" title="ADR 0009: Synoptikon integration boundary" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="0011-local-discovery-and-direct-exchange.html" class="btn btn-neutral float-right" title="ADR 0011: Local discovery and direct exchange" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026, Pistis contributors.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

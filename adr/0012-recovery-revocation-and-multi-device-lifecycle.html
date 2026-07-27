@@ -1,0 +1,545 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ADR 0012: Recovery, revocation, and multi-device lifecycle &mdash; Pistis 0.0.0</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=e59714d7" />
+      <link rel="stylesheet" type="text/css" href="../_static/pistis.css?v=168623c6" />
+
+  
+      <script src="../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../_static/documentation_options.js?v=7026087e"></script>
+      <script src="../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="ADR 0013: Security assurance and independent review" href="0013-security-assurance-and-independent-review.html" />
+    <link rel="prev" title="ADR 0011: Local discovery and direct exchange" href="0011-local-discovery-and-direct-exchange.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../index.html" class="icon icon-home">
+            Pistis
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul>
+<li class="toctree-l1"><a class="reference internal" href="../README.html">Pistis documentation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../PROJECT_CHARTER.html">Project Charter — Pistis</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../PROJECT_CHARTER.html#vision">1. Vision</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../PROJECT_CHARTER.html#scope">2. Scope</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../PROJECT_CHARTER.html#guiding-principles">3. Guiding Principles</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../PROJECT_CHARTER.html#primary-use-cases">4. Primary Use Cases</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../PROJECT_CHARTER.html#architecture">5. Architecture</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../PROJECT_CHARTER.html#deployment-modes">6. Deployment Modes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../PROJECT_CHARTER.html#technology">7. Technology</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../PROJECT_CHARTER.html#mvp-deliverables">8. MVP Deliverables</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../PROJECT_CHARTER.html#version-1-0">9. Version 1.0</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../PROJECT_CHARTER.html#future-roadmap">10. Future Roadmap</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../PROJECT_CHARTER.html#deliverables">11. Deliverables</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../PROJECT_CHARTER.html#success-criteria">12. Success Criteria</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../PROJECT_CHARTER.html#non-goals">13. Non-Goals</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../PROJECT_CHARTER.html#long-term-vision">14. Long-Term Vision</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../MVP_RELEASE_CANDIDATE.html">Pistis v0.1 MVP release candidate</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../MILESTONE.html">Pistis v1.0 — MILESTONE.md</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../MILESTONE.html#milestone-m0-charter-reconciliation-and-delivery-baseline">Milestone M0 — Charter reconciliation and delivery baseline</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../MILESTONE.html#milestone-m1-threat-model-and-protocol-specification">Milestone M1 — Threat model and protocol specification</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../MILESTONE.html#milestone-m2-rust-workspace-and-cryptographic-foundation">Milestone M2 — Rust workspace and cryptographic foundation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../MILESTONE.html#milestone-m3-github-and-google-trust-anchor-enrolment">Milestone M3 — GitHub and Google trust-anchor enrolment</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../MILESTONE.html#milestone-m4-local-installation-identity-and-device-registry">Milestone M4 — Local installation identity and device registry</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../MILESTONE.html#milestone-m5-qr-authentication-end-to-end">Milestone M5 — QR authentication end-to-end</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../MILESTONE.html#milestone-m6-ios-mvp-application">Milestone M6 — iOS MVP application</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../MILESTONE.html#milestone-m7-synoptikon-integration">Milestone M7 — Synoptikon integration</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../MILESTONE.html#milestone-m8-monas-standalone-integration-and-cli">Milestone M8 — Monas standalone integration and CLI</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../MILESTONE.html#milestone-m9-local-network-discovery-and-direct-exchange">Milestone M9 — Local-network discovery and direct exchange</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../MILESTONE.html#milestone-m10-artefact-report-signing-and-portable-evidence">Milestone M10 — Artefact/report signing and portable evidence</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../MILESTONE.html#milestone-m11-android-application">Milestone M11 — Android application</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../MILESTONE.html#milestone-m12-recovery-revocation-and-multi-device-lifecycle">Milestone M12 — Recovery, revocation and multi-device lifecycle</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../MILESTONE.html#milestone-m13-security-hardening-and-independent-review">Milestone M13 — Security hardening and independent review</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../MILESTONE.html#milestone-m14-packaging-operations-and-documentation">Milestone M14 — Packaging, operations and documentation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../MILESTONE.html#milestone-m15-release-candidate-and-v1-0-acceptance">Milestone M15 — Release candidate and v1.0 acceptance</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../MILESTONE.html#cross-cutting-engineering-requirements">7. Cross-cutting engineering requirements</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../MILESTONE.html#dependency-graph">8. Dependency graph</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../MILESTONE.html#recommended-implementation-sequence-by-release">9. Recommended implementation sequence by release</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../MILESTONE.html#principal-risks-and-mitigations">10. Principal risks and mitigations</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../MILESTONE.html#definition-of-done-for-every-milestone">11. Definition of done for every milestone</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../MILESTONE.html#deferred-post-v1-0-backlog">12. Deferred post-v1.0 backlog</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../MILESTONE.html#reference-implementation-technologies">13. Reference implementation technologies</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../MILESTONE.html#source-notes">14. Source notes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../MILESTONE.html#final-v1-0-boundary">15. Final v1.0 boundary</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../TODO.html">TODO.md</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../TODO.html#epic-0-repository">EPIC 0 — Repository</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../TODO.html#epic-1-protocol">EPIC 1 — Protocol</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../TODO.html#epic-2-crypto">EPIC 2 — Crypto</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../TODO.html#epic-3-github-trust">EPIC 3 — GitHub trust</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../TODO.html#epic-4-google-trust">EPIC 4 — Google trust</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../TODO.html#epic-5-device-registry">EPIC 5 — Device registry</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../TODO.html#epic-6-qr-authentication">EPIC 6 — QR authentication</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../TODO.html#epic-7-ios">EPIC 7 — iOS</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../TODO.html#epic-8-android">EPIC 8 — Android</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../TODO.html#epic-9-synoptikon">EPIC 9 — Synoptikon</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../TODO.html#epic-10-monas">EPIC 10 — Monas</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../TODO.html#epic-11-local-discovery">EPIC 11 — Local discovery</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../TODO.html#epic-12-evidence">EPIC 12 — Evidence</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../TODO.html#epic-13-recovery">EPIC 13 — Recovery</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../TODO.html#epic-14-security">EPIC 14 — Security</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../TODO.html#epic-15-release">EPIC 15 — Release</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../TODO.html#epic-16-cli-native-authentication">EPIC 16 — CLI-native authentication</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../TODO.html#continuous-tasks">Continuous tasks</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../TODO.html#mvp-release-candidate-programme">MVP release-candidate programme</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../BOOTSTRAP.html">BOOTSTRAP.md</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../BOOTSTRAP.html#purpose">Purpose</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../BOOTSTRAP.html#bootstrap-objectives">Bootstrap Objectives</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../BOOTSTRAP.html#deliverables">Deliverables</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../BOOTSTRAP.html#agents-md">AGENTS.md</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../BOOTSTRAP.html#github-corpus">GitHub Corpus</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../BOOTSTRAP.html#branch-strategy">Branch Strategy</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../BOOTSTRAP.html#commit-policy">Commit Policy</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../BOOTSTRAP.html#semantic-versioning">Semantic Versioning</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../BOOTSTRAP.html#pull-requests">Pull Requests</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../BOOTSTRAP.html#documentation">Documentation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../BOOTSTRAP.html#testing">Testing</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../BOOTSTRAP.html#adrs">ADRs</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../BOOTSTRAP.html#quality-gates">Quality Gates</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../BOOTSTRAP.html#security">Security</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../BOOTSTRAP.html#bootstrap-completion-criteria">Bootstrap Completion Criteria</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../BOOTSTRAP_STATUS.html">Bootstrap status</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../development/README.html">Development documentation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../development/code-structure.html">Code structure and modularity</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../development/fuzzing.html">Fuzz testing</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../development/provider-conformance.html">Provider conformance testing</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../development/ios.html">iOS development</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../development/android.html">Android development</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../development/synoptikon.html">Synoptikon integration development</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../development/monas.html">Monas standalone integration development</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../development/cli-authentication.html">CLI-native authentication</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../development/local-agent.html">Local authentication agent</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../development/discovery.html">Local discovery and direct exchange development</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../development/discovery-implementation-evaluation.html">Discovery implementation evaluation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../development/device-lifecycle.html">Recovery, revocation, and multi-device lifecycle development</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../development/security-hardening.html">Security hardening and independent review development</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../development/release-packaging.html">Release packaging and provenance</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../development/issue-model.html">Planning issue model</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../development/jenkins-ci.html">Jenkins CI</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../development/documentation.html">Documentation workflow</a></li>
+</ul>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="README.html">Architecture Decision Records</a></li>
+<li class="toctree-l1"><a class="reference internal" href="0000-template.html">ADR-NNNN: Decision title</a></li>
+<li class="toctree-l1"><a class="reference internal" href="0001-canonical-encoding.html">ADR 0001: Deterministic CBOR for canonical protocol payloads</a></li>
+<li class="toctree-l1"><a class="reference internal" href="0002-signature-suites.html">ADR 0002: Protocol signature suites</a></li>
+<li class="toctree-l1"><a class="reference internal" href="0003-github-trust-enrolment.html">ADR 0003: GitHub trust-anchor enrolment</a></li>
+<li class="toctree-l1"><a class="reference internal" href="0004-google-trust-enrolment.html">ADR 0004: Google OpenID Connect trust-anchor enrolment</a></li>
+<li class="toctree-l1"><a class="reference internal" href="0005-device-registry-storage.html">ADR 0005: Device registry storage and lifecycle</a></li>
+<li class="toctree-l1"><a class="reference internal" href="0006-qr-authentication-reference-flow.html">ADR 0006: QR authentication reference flow</a></li>
+<li class="toctree-l1"><a class="reference internal" href="0007-ios-reference-application.html">ADR 0007: iOS reference application</a></li>
+<li class="toctree-l1"><a class="reference internal" href="0008-android-reference-application.html">ADR 0008: Android reference application</a></li>
+<li class="toctree-l1"><a class="reference internal" href="0009-synoptikon-integration-boundary.html">ADR 0009: Synoptikon integration boundary</a></li>
+<li class="toctree-l1"><a class="reference internal" href="0010-monas-standalone-integration-boundary.html">ADR 0010: Monas standalone integration boundary</a></li>
+<li class="toctree-l1"><a class="reference internal" href="0011-local-discovery-and-direct-exchange.html">ADR 0011: Local discovery and direct exchange</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">ADR 0012: Recovery, revocation, and multi-device lifecycle</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#context">Context</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#decision">Decision</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#authority-and-dependency-boundaries">Authority and dependency boundaries</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#multi-device-model">Multi-device model</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#replacement">Replacement</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#suspension-loss-and-revocation">Suspension, loss, and revocation</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#sole-administrator-recovery">Sole-administrator recovery</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#external-identity-loss">External-identity loss</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#historic-verification">Historic verification</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#audit-privacy-and-operation">Audit, privacy, and operation</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#consequences">Consequences</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#alternatives-considered">Alternatives considered</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#review-evidence">Review evidence</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="0013-security-assurance-and-independent-review.html">ADR 0013: Security assurance and independent review</a></li>
+<li class="toctree-l1"><a class="reference internal" href="0014-release-packaging-and-provenance.html">ADR 0014: Release packaging, publication, and provenance</a></li>
+<li class="toctree-l1"><a class="reference internal" href="0015-cli-native-authentication.html">ADR 0015: CLI-native authentication boundary</a></li>
+<li class="toctree-l1"><a class="reference internal" href="0016-exact-action-approval-protocol.html">ADR 0016: Exact-action approval protocol</a></li>
+<li class="toctree-l1"><a class="reference internal" href="0017-local-authentication-agent.html">ADR 0017: Local authentication agent and installation signer</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../protocol/README.html">Protocol documentation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../protocol/domain-model.html">Domain identifiers</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../protocol/action-approval.html">Exact-action approval protocol</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../protocol.html">Protocol specification</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../crypto.html">Cryptographic primitives</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../encoding.html">Canonical encoding</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../assurance.html">Assurance model</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../security/README.html">Security documentation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../operations/README.html">Operations documentation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../operations/device-registry.html">Device registry operations</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../operations/github-enrolment.html">Operate GitHub trust enrolment</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../operations/google-enrolment.html">Operate Google trust enrolment</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../operations/qr-authentication.html">QR authentication operations</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../operations/ios.html">iOS application operations</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../operations/android.html">Android application operations</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../operations/synoptikon.html">Synoptikon integration operations</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../operations/monas.html">Monas standalone integration operations</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../operations/discovery.html">Local discovery and direct exchange operations</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../operations/device-lifecycle.html">Recovery, revocation, and multi-device lifecycle operations</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../operations/security-hardening.html">Security hardening and independent review operations</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../operations/release-packaging.html">Release installation, upgrade, backup, and publication</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../operations/cli-authentication.html">CLI authentication operations</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../operations/local-agent.html">Local-agent operations</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">Pistis</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">ADR 0012: Recovery, revocation, and multi-device lifecycle</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../_sources/adr/0012-recovery-revocation-and-multi-device-lifecycle.md.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="adr-0012-recovery-revocation-and-multi-device-lifecycle">
+<h1>ADR 0012: Recovery, revocation, and multi-device lifecycle<a class="headerlink" href="#adr-0012-recovery-revocation-and-multi-device-lifecycle" title="Link to this heading"></a></h1>
+<ul class="simple">
+<li><p>Status: Accepted</p></li>
+<li><p>Date: 2026-07-24</p></li>
+<li><p>Owners: Pistis device, identity, protocol, evidence, host integration,
+security, privacy, and operations</p></li>
+</ul>
+<section id="context">
+<h2>Context<a class="headerlink" href="#context" title="Link to this heading"></a></h2>
+<p>Passwordless operation must remain supportable when a device is added, lost,
+replaced, retired, or compromised. Recovery is a high-authority operation: a
+weak recovery route would become a password substitute capable of silently
+replacing the external identity or local administrator.</p>
+<p>ADR 0005 already makes device suspension reversible, revocation terminal, and
+historic public keys and lifecycle events durable. ADRs 0009 and 0010 prohibit
+reopening bootstrap when administrators lose their devices and require
+revocation-aware session invalidation. GitHub and Google enrolment decisions
+require fresh provider authentication for replacement or recovery bindings.</p>
+<p>The current registry supports one distinct public key per device and durable
+lifecycle transitions, but it has no recovery transaction, relationship
+between predecessor and replacement devices, binding-wide revocation
+generation, host-session invalidation port, or temporal historic-verification
+policy. The current online verifier uses current key status and correctly
+rejects a revoked key for a new operation; it is not a historic evidence
+verifier.</p>
+<p>EPIC 13 formally depends on EPIC 12. Detached evidence, signed claims, trusted
+time semantics, and offline verification must therefore be defined before
+historic verification can be completed.</p>
+</section>
+<section id="decision">
+<h2>Decision<a class="headerlink" href="#decision" title="Link to this heading"></a></h2>
+<section id="authority-and-dependency-boundaries">
+<h3>Authority and dependency boundaries<a class="headerlink" href="#authority-and-dependency-boundaries" title="Link to this heading"></a></h3>
+<p>Pistis owns device and binding lifecycle rules, recovery purpose separation,
+revocation generations, historic cryptographic classification, and portable
+recovery audit evidence. A host owns local users, roles, administrator policy,
+normal sessions, console privilege, presentation, and its transactional
+adapter.</p>
+<p>External providers establish the same stable external subject used at
+enrolment. They do not grant local authority, choose an administrator, recover
+a session, or authorize a replacement by themselves. Local machine root or
+console privilege is a governed emergency authority, not an identity proof.</p>
+<p>Recovery, authentication, enrolment, device management, consequential
+approval, and artefact signing are distinct protocol purposes. A capability,
+response, or signature for one purpose is invalid for every other purpose.</p>
+<p>The smallest independently deliverable slice is a framework-neutral lifecycle
+contract with closed state transitions, authorization inputs, recovery plans,
+revocation impact sets, temporal verification classifications, and
+deterministic negative tests. It cannot issue a session, mutate a host role, or
+claim production recovery without durable host adapters.</p>
+</section>
+<section id="multi-device-model">
+<h3>Multi-device model<a class="headerlink" href="#multi-device-model" title="Link to this heading"></a></h3>
+<p>Each enrolled device has a new random <code class="docutils literal notranslate"><span class="pre">DeviceId</span></code>, a newly generated
+non-exportable private key, a derived <code class="docutils literal notranslate"><span class="pre">KeyId</span></code>, its own assurance evidence, and
+an immutable reference to the exact local-user and external-identity binding.
+Private keys, device identifiers, and assurance claims are never copied,
+restored, or migrated between devices.</p>
+<p>A local policy sets explicit lower and upper device-count bounds and may impose
+platform or assurance requirements. Counting is performed against the
+authoritative binding inside the enrolment transaction. Suspended devices
+remain enrolled for limits and administration; revoked devices remain historic
+but cannot authorize or satisfy a required active-device count.</p>
+<p>Enrolling an additional device requires fresh provider authentication plus one
+of:</p>
+<ul class="simple">
+<li><p>approval by an active device already bound to the exact installation, local
+user, and external identity; or</p></li>
+<li><p>a currently authorized administrator using a separate device-management
+ceremony.</p></li>
+</ul>
+<p>Provider authentication alone is insufficient. Concurrent enrolments are
+serialized or use an optimistic binding generation so that policy limits
+cannot be exceeded by a race.</p>
+</section>
+<section id="replacement">
+<h3>Replacement<a class="headerlink" href="#replacement" title="Link to this heading"></a></h3>
+<p>Replacement creates a new device and key; it never changes the public key,
+identity, assurance, or history of an existing device record. A replacement
+record may retain non-authoritative predecessor and reason references for audit
+and user presentation.</p>
+<p>When the old device remains available, its purpose-specific approval and fresh
+provider authentication authorize the new enrolment. The transaction activates
+the new device, terminally revokes the predecessor with reason <code class="docutils literal notranslate"><span class="pre">replacement</span></code>,
+increments the binding revocation generation, invalidates affected sessions
+and pending ceremonies, and appends audit evidence.</p>
+<p>When the predecessor is unavailable, the operation is a lost-device or
+administrator-recovery flow, not a weakened replacement path. Failure after
+the new key has been presented but before durable commit leaves neither an
+active replacement nor a partially revoked predecessor. Retry uses a
+single-use operation identifier and cannot create duplicate devices.</p>
+</section>
+<section id="suspension-loss-and-revocation">
+<h3>Suspension, loss, and revocation<a class="headerlink" href="#suspension-loss-and-revocation" title="Link to this heading"></a></h3>
+<p>Suspension is a reversible containment action. It blocks new authentication,
+approval, enrolment authorization, and signing immediately at its effective
+time and invalidates affected active sessions and pending ceremonies. Resume is
+an explicit authorized transition; it does not erase the suspension history
+and re-evaluates current binding, assurance, external-identity, and policy
+state.</p>
+<p>Revocation is monotonic and terminal. Closed revocation reasons include at
+least loss, compromise, retirement, replacement, administrator action, and
+policy action. Free-text operator context is separately bounded and cannot
+alter reason semantics.</p>
+<p>Every suspension, resume, and revocation:</p>
+<ul class="simple">
+<li><p>re-reads the exact device, key, binding, and policy generation;</p></li>
+<li><p>increments a monotonic revocation generation where effective trust changes;</p></li>
+<li><p>computes affected sessions and pending ceremonies from authoritative
+references rather than caller-supplied identifiers;</p></li>
+<li><p>performs state transition, session and ceremony invalidation, and audit
+append in one rollback-capable transaction; and</p></li>
+<li><p>publishes only a post-commit invalidation notification for caches or
+secondary processes.</p></li>
+</ul>
+<p>If a remote session store cannot participate in the transaction, the host must
+fail closed for every request whose cached generation is stale or unknown.
+Eventual cache notification is not a substitute for authoritative generation
+checking.</p>
+<p>Lost-device reporting is available only through an already authenticated
+session, another active bound device, an authorized administrator, or the
+governed console recovery flow. Knowledge of a username, device label,
+provider account, QR image, or device identifier is insufficient. A user may
+request immediate suspension before a reviewed terminal revocation decision.
+Public results do not reveal whether an arbitrary device or account exists.</p>
+</section>
+<section id="sole-administrator-recovery">
+<h3>Sole-administrator recovery<a class="headerlink" href="#sole-administrator-recovery" title="Link to this heading"></a></h3>
+<p>Bootstrap never reopens. Administrator count, provider outage, loss of all
+devices, or deletion of the last role does not restore a bootstrap route.</p>
+<p>Sole-administrator recovery is an explicit local-console command requiring
+privileged machine access and an initialized installation. The command:</p>
+<ul class="simple">
+<li><p>requires an explicit target local principal and displays the immutable
+installation identity and existing stable external identity;</p></li>
+<li><p>records a declared reason and selected recovery policy;</p></li>
+<li><p>refuses any request to replace the external identity or grant an additional
+role as part of recovery;</p></li>
+<li><p>creates a short-lived, single-use, high-entropy recovery capability;</p></li>
+<li><p>persists only a domain-separated hash, purpose, target, issue/expiry,
+attempt limit, policy, and independent audit correlation identifier;</p></li>
+<li><p>displays the plaintext exactly once through the local console and never puts
+it in a URL, argument list, environment variable, log, browser storage, or
+configuration file; and</p></li>
+<li><p>supports an operator-configured delay and independent second approval for
+institutional deployments.</p></li>
+</ul>
+<p>The capability starts a recovery enrolment ceremony only. It is not a
+password, API bearer, session, provider credential, role grant, reusable setup
+token, or substitute for device signing.</p>
+<p>Completion requires a new device-generated key and installation-bound
+ceremony. Fresh authentication to the exact existing external identity is
+required when that provider remains available. Provider loss follows a
+separately configured governed policy and cannot silently bind a different
+provider subject. The host transaction consumes the capability, enrols the new
+device, terminally revokes every prior device authorized for the recovered
+principal, invalidates sessions and pending ceremonies, increments the
+revocation and authorization generations as required, and appends conspicuous
+audit evidence.</p>
+<p>Any expiry, attempt exhaustion, mismatch, denial, storage failure, audit
+failure, or concurrent completion creates no device or session and performs no
+partial revocation. Cancellation and failed capabilities remain auditable and
+cannot be resumed.</p>
+</section>
+<section id="external-identity-loss">
+<h3>External-identity loss<a class="headerlink" href="#external-identity-loss" title="Link to this heading"></a></h3>
+<p>Mutable login names, email addresses, and profile metadata never drive
+recovery. A deleted, inaccessible, or policy-forbidden provider identity
+prevents fresh provider-based enrolment or rebinding but does not rewrite the
+stable subject recorded on existing evidence.</p>
+<p>Local policy explicitly selects among:</p>
+<ul class="simple">
+<li><p>continue accepting existing active device signatures without new enrolment;</p></li>
+<li><p>require an authorized administrator or governed console recovery;</p></li>
+<li><p>suspend the binding pending review; or</p></li>
+<li><p>terminally retire the binding.</p></li>
+</ul>
+<p>Changing to another provider subject is a separately authorized rebind with
+its own evidence and audit trail. It is never represented as recovery of the
+old identity.</p>
+</section>
+<section id="historic-verification">
+<h3>Historic verification<a class="headerlink" href="#historic-verification" title="Link to this heading"></a></h3>
+<p>Current-operation verification and historic-evidence verification are separate
+APIs. Revoked or suspended devices cannot create a new valid operation,
+regardless of claimed signing time.</p>
+<p>Historic verification retains and cryptographically validates the immutable
+public key, signed bytes, algorithm, identity bindings, lifecycle events,
+policy version, and revocation facts. It returns structured facts rather than
+a single boolean:</p>
+<ul class="simple">
+<li><p>cryptographic signature validity;</p></li>
+<li><p>key and binding state at the evaluated signing time;</p></li>
+<li><p>current key and binding state;</p></li>
+<li><p>revocation effective time and closed reason;</p></li>
+<li><p>whether signing time is independently trusted, bounded by authoritative
+system evidence, or merely signer-claimed; and</p></li>
+<li><p>the applicable historic policy result, including compromise treatment.</p></li>
+</ul>
+<p>A signature with independently trusted time before ordinary retirement or
+replacement may remain historically valid while reporting current revocation.
+A signature at or after effective revocation is invalid. A signer-claimed time
+alone cannot prove that signing preceded revocation and produces an
+indeterminate temporal result. Compromise policy may reject or qualify evidence
+from an earlier interval, but the verifier reports the cryptographic result and
+policy classification separately.</p>
+<p>Revocation never deletes or rewrites historic keys, evidence, lifecycle events,
+or trust material. Verification uses the policy and trust snapshot identified
+by the evidence, subject to an explicit relying-party policy; it does not apply
+today’s status as though it existed at signing time. EPIC 12 defines the
+detached evidence schema and trusted-time sources required by this API.</p>
+</section>
+<section id="audit-privacy-and-operation">
+<h3>Audit, privacy, and operation<a class="headerlink" href="#audit-privacy-and-operation" title="Link to this heading"></a></h3>
+<p>Recovery and lifecycle audit uses independent non-secret correlation
+identifiers and records the actor authority class, target principal, binding,
+device/key references, closed reason, effective times, generations, policy,
+coarse outcome, invalidation counts, and predecessor/replacement relationship.</p>
+<p>Audit never retains recovery capability plaintext or hash, provider credential,
+session token, cookie, private key, raw signature, nonce, full evidence
+package, or unnecessary personal profile data. Recovery audit read and export
+are separately authorized.</p>
+<p>Operator documentation includes rehearsal, backup and restore, clock and
+trusted-time assumptions, provider-loss policy, two-person mode, aborted
+recovery, cache invalidation, replacement rollback, and post-recovery review.
+Production acceptance includes full lost-device exercises on iOS and Android
+and proof that old devices, sessions, challenges, and capabilities cannot be
+reused.</p>
+</section>
+</section>
+<section id="consequences">
+<h2>Consequences<a class="headerlink" href="#consequences" title="Link to this heading"></a></h2>
+<ul class="simple">
+<li><p>Loss of one device need not introduce password recovery.</p></li>
+<li><p>Multiple devices remain independent credentials rather than key replicas.</p></li>
+<li><p>Replacement preserves predecessor history and performs no private-key
+migration.</p></li>
+<li><p>Revocation affects new operations immediately and invalidates associated
+host state without destroying historic verification material.</p></li>
+<li><p>Sole-administrator recovery is conspicuous, local, bounded, and auditable;
+it cannot silently alter external identity or reopen bootstrap.</p></li>
+<li><p>Contract and state-machine work can proceed, but full EPIC 13 remains blocked
+on EPIC 12 evidence semantics, durable host transactions, session
+invalidation, mobile ceremonies, and end-to-end recovery exercises.</p></li>
+</ul>
+</section>
+<section id="alternatives-considered">
+<h2>Alternatives considered<a class="headerlink" href="#alternatives-considered" title="Link to this heading"></a></h2>
+<ul class="simple">
+<li><p>Reopen bootstrap when no active administrator device exists: rejected because
+it creates an unaudited authority reset.</p></li>
+<li><p>Restore or migrate a device private key: rejected because device-bound keys
+never leave the device.</p></li>
+<li><p>Accept provider authentication alone for replacement: rejected because the
+provider does not grant local authority.</p></li>
+<li><p>Mutate the old device record with a new key: rejected because it destroys
+assurance, revocation, and historic identity semantics.</p></li>
+<li><p>Leave sessions active until expiry after revocation: rejected because a lost
+or compromised device’s authenticated authority would remain usable.</p></li>
+<li><p>Delete revoked keys or evidence: rejected because historic verification and
+scientific provenance require immutable public material.</p></li>
+<li><p>Treat every pre-revocation signature as valid using its claimed timestamp:
+rejected because the signer controls an untrusted time claim.</p></li>
+<li><p>Permit a recovery token to create a browser session: rejected because it
+bypasses new-device proof and purpose separation.</p></li>
+</ul>
+</section>
+<section id="review-evidence">
+<h2>Review evidence<a class="headerlink" href="#review-evidence" title="Link to this heading"></a></h2>
+<p>The architecture review inspected EPIC 13 issues 149–155, M12 acceptance
+criteria, ADRs 0003–0011, the device registry’s SQLite and in-memory lifecycle
+implementations, Synoptikon readiness and session contracts, the authentication
+reference session map, and the current verifier. It found durable terminal
+device revocation and preserved keys, but no recovery protocol, replacement
+relationship, host invalidation transaction, recovery capability, or temporal
+historic-verification model.</p>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="0011-local-discovery-and-direct-exchange.html" class="btn btn-neutral float-left" title="ADR 0011: Local discovery and direct exchange" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="0013-security-assurance-and-independent-review.html" class="btn btn-neutral float-right" title="ADR 0013: Security assurance and independent review" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026, Pistis contributors.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

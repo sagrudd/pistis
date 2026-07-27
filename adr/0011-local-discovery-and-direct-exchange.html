@@ -1,0 +1,549 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ADR 0011: Local discovery and direct exchange &mdash; Pistis 0.0.0</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=e59714d7" />
+      <link rel="stylesheet" type="text/css" href="../_static/pistis.css?v=168623c6" />
+
+  
+      <script src="../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../_static/documentation_options.js?v=7026087e"></script>
+      <script src="../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="ADR 0012: Recovery, revocation, and multi-device lifecycle" href="0012-recovery-revocation-and-multi-device-lifecycle.html" />
+    <link rel="prev" title="ADR 0010: Monas standalone integration boundary" href="0010-monas-standalone-integration-boundary.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../index.html" class="icon icon-home">
+            Pistis
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul>
+<li class="toctree-l1"><a class="reference internal" href="../README.html">Pistis documentation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../PROJECT_CHARTER.html">Project Charter — Pistis</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../PROJECT_CHARTER.html#vision">1. Vision</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../PROJECT_CHARTER.html#scope">2. Scope</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../PROJECT_CHARTER.html#guiding-principles">3. Guiding Principles</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../PROJECT_CHARTER.html#primary-use-cases">4. Primary Use Cases</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../PROJECT_CHARTER.html#architecture">5. Architecture</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../PROJECT_CHARTER.html#deployment-modes">6. Deployment Modes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../PROJECT_CHARTER.html#technology">7. Technology</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../PROJECT_CHARTER.html#mvp-deliverables">8. MVP Deliverables</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../PROJECT_CHARTER.html#version-1-0">9. Version 1.0</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../PROJECT_CHARTER.html#future-roadmap">10. Future Roadmap</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../PROJECT_CHARTER.html#deliverables">11. Deliverables</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../PROJECT_CHARTER.html#success-criteria">12. Success Criteria</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../PROJECT_CHARTER.html#non-goals">13. Non-Goals</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../PROJECT_CHARTER.html#long-term-vision">14. Long-Term Vision</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../MVP_RELEASE_CANDIDATE.html">Pistis v0.1 MVP release candidate</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../MILESTONE.html">Pistis v1.0 — MILESTONE.md</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../MILESTONE.html#milestone-m0-charter-reconciliation-and-delivery-baseline">Milestone M0 — Charter reconciliation and delivery baseline</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../MILESTONE.html#milestone-m1-threat-model-and-protocol-specification">Milestone M1 — Threat model and protocol specification</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../MILESTONE.html#milestone-m2-rust-workspace-and-cryptographic-foundation">Milestone M2 — Rust workspace and cryptographic foundation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../MILESTONE.html#milestone-m3-github-and-google-trust-anchor-enrolment">Milestone M3 — GitHub and Google trust-anchor enrolment</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../MILESTONE.html#milestone-m4-local-installation-identity-and-device-registry">Milestone M4 — Local installation identity and device registry</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../MILESTONE.html#milestone-m5-qr-authentication-end-to-end">Milestone M5 — QR authentication end-to-end</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../MILESTONE.html#milestone-m6-ios-mvp-application">Milestone M6 — iOS MVP application</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../MILESTONE.html#milestone-m7-synoptikon-integration">Milestone M7 — Synoptikon integration</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../MILESTONE.html#milestone-m8-monas-standalone-integration-and-cli">Milestone M8 — Monas standalone integration and CLI</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../MILESTONE.html#milestone-m9-local-network-discovery-and-direct-exchange">Milestone M9 — Local-network discovery and direct exchange</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../MILESTONE.html#milestone-m10-artefact-report-signing-and-portable-evidence">Milestone M10 — Artefact/report signing and portable evidence</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../MILESTONE.html#milestone-m11-android-application">Milestone M11 — Android application</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../MILESTONE.html#milestone-m12-recovery-revocation-and-multi-device-lifecycle">Milestone M12 — Recovery, revocation and multi-device lifecycle</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../MILESTONE.html#milestone-m13-security-hardening-and-independent-review">Milestone M13 — Security hardening and independent review</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../MILESTONE.html#milestone-m14-packaging-operations-and-documentation">Milestone M14 — Packaging, operations and documentation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../MILESTONE.html#milestone-m15-release-candidate-and-v1-0-acceptance">Milestone M15 — Release candidate and v1.0 acceptance</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../MILESTONE.html#cross-cutting-engineering-requirements">7. Cross-cutting engineering requirements</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../MILESTONE.html#dependency-graph">8. Dependency graph</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../MILESTONE.html#recommended-implementation-sequence-by-release">9. Recommended implementation sequence by release</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../MILESTONE.html#principal-risks-and-mitigations">10. Principal risks and mitigations</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../MILESTONE.html#definition-of-done-for-every-milestone">11. Definition of done for every milestone</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../MILESTONE.html#deferred-post-v1-0-backlog">12. Deferred post-v1.0 backlog</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../MILESTONE.html#reference-implementation-technologies">13. Reference implementation technologies</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../MILESTONE.html#source-notes">14. Source notes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../MILESTONE.html#final-v1-0-boundary">15. Final v1.0 boundary</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../TODO.html">TODO.md</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../TODO.html#epic-0-repository">EPIC 0 — Repository</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../TODO.html#epic-1-protocol">EPIC 1 — Protocol</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../TODO.html#epic-2-crypto">EPIC 2 — Crypto</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../TODO.html#epic-3-github-trust">EPIC 3 — GitHub trust</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../TODO.html#epic-4-google-trust">EPIC 4 — Google trust</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../TODO.html#epic-5-device-registry">EPIC 5 — Device registry</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../TODO.html#epic-6-qr-authentication">EPIC 6 — QR authentication</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../TODO.html#epic-7-ios">EPIC 7 — iOS</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../TODO.html#epic-8-android">EPIC 8 — Android</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../TODO.html#epic-9-synoptikon">EPIC 9 — Synoptikon</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../TODO.html#epic-10-monas">EPIC 10 — Monas</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../TODO.html#epic-11-local-discovery">EPIC 11 — Local discovery</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../TODO.html#epic-12-evidence">EPIC 12 — Evidence</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../TODO.html#epic-13-recovery">EPIC 13 — Recovery</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../TODO.html#epic-14-security">EPIC 14 — Security</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../TODO.html#epic-15-release">EPIC 15 — Release</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../TODO.html#epic-16-cli-native-authentication">EPIC 16 — CLI-native authentication</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../TODO.html#continuous-tasks">Continuous tasks</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../TODO.html#mvp-release-candidate-programme">MVP release-candidate programme</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../BOOTSTRAP.html">BOOTSTRAP.md</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../BOOTSTRAP.html#purpose">Purpose</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../BOOTSTRAP.html#bootstrap-objectives">Bootstrap Objectives</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../BOOTSTRAP.html#deliverables">Deliverables</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../BOOTSTRAP.html#agents-md">AGENTS.md</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../BOOTSTRAP.html#github-corpus">GitHub Corpus</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../BOOTSTRAP.html#branch-strategy">Branch Strategy</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../BOOTSTRAP.html#commit-policy">Commit Policy</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../BOOTSTRAP.html#semantic-versioning">Semantic Versioning</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../BOOTSTRAP.html#pull-requests">Pull Requests</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../BOOTSTRAP.html#documentation">Documentation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../BOOTSTRAP.html#testing">Testing</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../BOOTSTRAP.html#adrs">ADRs</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../BOOTSTRAP.html#quality-gates">Quality Gates</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../BOOTSTRAP.html#security">Security</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../BOOTSTRAP.html#bootstrap-completion-criteria">Bootstrap Completion Criteria</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../BOOTSTRAP_STATUS.html">Bootstrap status</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../development/README.html">Development documentation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../development/code-structure.html">Code structure and modularity</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../development/fuzzing.html">Fuzz testing</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../development/provider-conformance.html">Provider conformance testing</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../development/ios.html">iOS development</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../development/android.html">Android development</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../development/synoptikon.html">Synoptikon integration development</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../development/monas.html">Monas standalone integration development</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../development/cli-authentication.html">CLI-native authentication</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../development/local-agent.html">Local authentication agent</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../development/discovery.html">Local discovery and direct exchange development</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../development/discovery-implementation-evaluation.html">Discovery implementation evaluation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../development/device-lifecycle.html">Recovery, revocation, and multi-device lifecycle development</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../development/security-hardening.html">Security hardening and independent review development</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../development/release-packaging.html">Release packaging and provenance</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../development/issue-model.html">Planning issue model</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../development/jenkins-ci.html">Jenkins CI</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../development/documentation.html">Documentation workflow</a></li>
+</ul>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="README.html">Architecture Decision Records</a></li>
+<li class="toctree-l1"><a class="reference internal" href="0000-template.html">ADR-NNNN: Decision title</a></li>
+<li class="toctree-l1"><a class="reference internal" href="0001-canonical-encoding.html">ADR 0001: Deterministic CBOR for canonical protocol payloads</a></li>
+<li class="toctree-l1"><a class="reference internal" href="0002-signature-suites.html">ADR 0002: Protocol signature suites</a></li>
+<li class="toctree-l1"><a class="reference internal" href="0003-github-trust-enrolment.html">ADR 0003: GitHub trust-anchor enrolment</a></li>
+<li class="toctree-l1"><a class="reference internal" href="0004-google-trust-enrolment.html">ADR 0004: Google OpenID Connect trust-anchor enrolment</a></li>
+<li class="toctree-l1"><a class="reference internal" href="0005-device-registry-storage.html">ADR 0005: Device registry storage and lifecycle</a></li>
+<li class="toctree-l1"><a class="reference internal" href="0006-qr-authentication-reference-flow.html">ADR 0006: QR authentication reference flow</a></li>
+<li class="toctree-l1"><a class="reference internal" href="0007-ios-reference-application.html">ADR 0007: iOS reference application</a></li>
+<li class="toctree-l1"><a class="reference internal" href="0008-android-reference-application.html">ADR 0008: Android reference application</a></li>
+<li class="toctree-l1"><a class="reference internal" href="0009-synoptikon-integration-boundary.html">ADR 0009: Synoptikon integration boundary</a></li>
+<li class="toctree-l1"><a class="reference internal" href="0010-monas-standalone-integration-boundary.html">ADR 0010: Monas standalone integration boundary</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">ADR 0011: Local discovery and direct exchange</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#context">Context</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#decision">Decision</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#security-and-dependency-boundary">Security and dependency boundary</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#advertisement-model">Advertisement model</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#authenticated-endpoint-binding">Authenticated endpoint binding</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#direct-exchange">Direct exchange</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#transfer-selection-and-fallback">Transfer selection and fallback</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#browser-and-host-responsibilities">Browser and host responsibilities</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#native-platform-adapters">Native platform adapters</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#evaluation-and-test-gate">Evaluation and test gate</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#consequences">Consequences</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#alternatives-considered">Alternatives considered</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#review-evidence">Review evidence</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="0012-recovery-revocation-and-multi-device-lifecycle.html">ADR 0012: Recovery, revocation, and multi-device lifecycle</a></li>
+<li class="toctree-l1"><a class="reference internal" href="0013-security-assurance-and-independent-review.html">ADR 0013: Security assurance and independent review</a></li>
+<li class="toctree-l1"><a class="reference internal" href="0014-release-packaging-and-provenance.html">ADR 0014: Release packaging, publication, and provenance</a></li>
+<li class="toctree-l1"><a class="reference internal" href="0015-cli-native-authentication.html">ADR 0015: CLI-native authentication boundary</a></li>
+<li class="toctree-l1"><a class="reference internal" href="0016-exact-action-approval-protocol.html">ADR 0016: Exact-action approval protocol</a></li>
+<li class="toctree-l1"><a class="reference internal" href="0017-local-authentication-agent.html">ADR 0017: Local authentication agent and installation signer</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../protocol/README.html">Protocol documentation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../protocol/domain-model.html">Domain identifiers</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../protocol/action-approval.html">Exact-action approval protocol</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../protocol.html">Protocol specification</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../crypto.html">Cryptographic primitives</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../encoding.html">Canonical encoding</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../assurance.html">Assurance model</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../security/README.html">Security documentation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../operations/README.html">Operations documentation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../operations/device-registry.html">Device registry operations</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../operations/github-enrolment.html">Operate GitHub trust enrolment</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../operations/google-enrolment.html">Operate Google trust enrolment</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../operations/qr-authentication.html">QR authentication operations</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../operations/ios.html">iOS application operations</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../operations/android.html">Android application operations</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../operations/synoptikon.html">Synoptikon integration operations</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../operations/monas.html">Monas standalone integration operations</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../operations/discovery.html">Local discovery and direct exchange operations</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../operations/device-lifecycle.html">Recovery, revocation, and multi-device lifecycle operations</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../operations/security-hardening.html">Security hardening and independent review operations</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../operations/release-packaging.html">Release installation, upgrade, backup, and publication</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../operations/cli-authentication.html">CLI authentication operations</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../operations/local-agent.html">Local-agent operations</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">Pistis</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">ADR 0011: Local discovery and direct exchange</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../_sources/adr/0011-local-discovery-and-direct-exchange.md.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="adr-0011-local-discovery-and-direct-exchange">
+<h1>ADR 0011: Local discovery and direct exchange<a class="headerlink" href="#adr-0011-local-discovery-and-direct-exchange" title="Link to this heading"></a></h1>
+<ul class="simple">
+<li><p>Status: Accepted</p></li>
+<li><p>Date: 2026-07-24</p></li>
+<li><p>Owners: Pistis protocol, transport, iOS, Android, Synoptikon, Monas, security,
+privacy, and operations</p></li>
+</ul>
+<section id="context">
+<h2>Context<a class="headerlink" href="#context" title="Link to this heading"></a></h2>
+<p>EPIC 11 adds local-network discovery and direct response submission as a
+convenience layer. The network is hostile: an attacker can advertise the same
+service, race or replay answers, return arbitrary addresses and ports, block
+multicast, operate a local certificate authority, redirect HTTP requests, and
+observe broadcast metadata.</p>
+<p>The existing EPIC-6 reference flow already accepts direct-local and response-QR
+inputs through one verification path. Its challenge contains up to two HTTPS
+endpoint hints, an installation fingerprint, and an installation signature,
+but ADR 0006 explicitly says that its detached signature envelope is not the
+production mobile format. Endpoint hints are metadata rather than authority.
+The accepted production COSE profile, mobile conformance fixtures, durable
+challenge storage, and host completion transactions are still outstanding.</p>
+<p>iOS and Android source foundations exist, but neither currently declares the
+local-network discovery permissions or service declarations. Browsers cannot
+browse arbitrary mDNS services, so a browser-only design is not viable.</p>
+</section>
+<section id="decision">
+<h2>Decision<a class="headerlink" href="#decision" title="Link to this heading"></a></h2>
+<section id="security-and-dependency-boundary">
+<h3>Security and dependency boundary<a class="headerlink" href="#security-and-dependency-boundary" title="Link to this heading"></a></h3>
+<p>Discovery is never authentication, authorization, installation trust, or proof
+of proximity. It returns untrusted endpoint candidates only. The exact signed
+challenge, enrolled device response, authoritative stored bindings, revocation
+policy, and atomic host completion remain unchanged whether transport is direct
+or QR.</p>
+<p><code class="docutils literal notranslate"><span class="pre">pistis-discovery</span></code> is a framework-neutral transport contract. It depends on
+inward Pistis domain and protocol types but not on Axum, Yew, Network.framework,
+Android NSD, a specific mDNS crate, Synoptikon, Monas, or database types.
+Platform and host adapters own permissions, sockets, interfaces, lifecycle,
+HTTP, and presentation. Protocol and verifier crates do not depend on
+discovery.</p>
+<p>The smallest independently deliverable slice is a deterministic discovery
+model, candidate-validation policy, transfer-selection state machine, adapter
+ports, and hostile-network tests. It must identify itself as a contract and
+cannot claim local-network interoperability until native and host adapters pass
+the acceptance matrix.</p>
+</section>
+<section id="advertisement-model">
+<h3>Advertisement model<a class="headerlink" href="#advertisement-model" title="Link to this heading"></a></h3>
+<p>Only the installation advertises. A phone does not broadcast user, device, or
+availability information. The installation publishes an ephemeral
+<code class="docutils literal notranslate"><span class="pre">_pistis._tcp.local.</span></code> DNS-SD service only while at least one bounded ceremony
+window is active.</p>
+<p>The service instance name is fresh, random, non-semantic, and not reused as an
+installation identifier. TXT data is closed, size-bounded, and limited to:</p>
+<ul class="simple">
+<li><p>discovery protocol version;</p></li>
+<li><p>an opaque, short-lived endpoint identifier; and</p></li>
+<li><p>explicitly negotiated transport capabilities that disclose no product,
+purpose, assurance, or user state.</p></li>
+</ul>
+<p>The advertisement never contains a username, local-user identifier, external
+identity, device or key identifier, installation identifier or persistent
+fingerprint, challenge identifier or nonce, project or report name, session or
+browser capability, URL, credential, or personal metadata. Hostnames,
+addresses, ports, service timing, and traffic remain observable network
+metadata and are documented as such.</p>
+<p>Advertisements have a short TTL bounded by the ceremony window, are withdrawn
+when no ceremony is eligible, and are re-registered after relevant interface
+or sleep/wake changes. One process owns an advertisement instance. Cleanup,
+duplicate-name handling, partial interface failure, and stale cache entries
+have explicit outcomes.</p>
+</section>
+<section id="authenticated-endpoint-binding">
+<h3>Authenticated endpoint binding<a class="headerlink" href="#authenticated-endpoint-binding" title="Link to this heading"></a></h3>
+<p>Discovery records and DNS answers never select the trusted endpoint by
+themselves. Before a direct connection, the phone already has an exact,
+installation-signed transport binding obtained from the scanned challenge or a
+previously authenticated pairing. The binding covers:</p>
+<ul class="simple">
+<li><p>protocol version and installation identity;</p></li>
+<li><p>opaque endpoint identifier;</p></li>
+<li><p>expected service type;</p></li>
+<li><p>HTTPS port or permitted port constraint;</p></li>
+<li><p>installation-controlled TLS public-key digest;</p></li>
+<li><p>issue and expiry times; and</p></li>
+<li><p>the exact challenge or pairing context for which it is valid.</p></li>
+</ul>
+<p>The production encoding of this binding is part of the accepted signed
+protocol profile. It must not be introduced as an unsigned TXT extension or
+ad-hoc JSON field.</p>
+<p>A candidate is eligible only when its service type and endpoint identifier
+match the signed binding, its binding is current, and its resolved address
+belongs to the interface and IP scope that produced the answer. Candidate
+selection is deterministic. Multiple matching answers do not weaken pinning
+and an ambiguous or unsupported scope fails to QR.</p>
+<p>The direct client establishes HTTPS while pinning the exact
+installation-controlled public-key digest from the signed binding. It does not
+trust the local CA environment, DNS name, TXT-supplied key, redirects, ambient
+proxy configuration, cleartext upgrade, or alternate certificate. Certificate
+or binding rotation requires a newly authenticated binding; silent trust-on-
+first-use is prohibited.</p>
+</section>
+<section id="direct-exchange">
+<h3>Direct exchange<a class="headerlink" href="#direct-exchange" title="Link to this heading"></a></h3>
+<p>Challenge retrieval and response submission use narrowly scoped, bounded
+endpoints. The client disables redirects, compression surprises, cookies,
+ambient credentials, and cross-origin authentication. It applies explicit
+connect, read, total-operation, response-size, content-type, and concurrency
+limits.</p>
+<p>The phone compares the retrieved exact canonical challenge and installation
+identity with the signed context it approved before key use. A retrieved
+challenge cannot change the displayed user, installation, purpose, expiry, or
+policy. The signed response remains fully bound to the authoritative challenge.</p>
+<p>Direct and response-QR submissions enter the same host ingestion, verification,
+replay, revocation, and completion path. A transport adapter cannot verify,
+consume, poll a session into existence, or mint a host session. Safe idempotent
+retry may resend the identical response; a different response conflicts.</p>
+<p>No QR, discovery record, endpoint identifier, or retrieval capability is
+sufficient to authenticate without the enrolled device signature. Challenge
+confidentiality is not assumed merely because a short-lived locator is opaque.</p>
+</section>
+<section id="transfer-selection-and-fallback">
+<h3>Transfer selection and fallback<a class="headerlink" href="#transfer-selection-and-fallback" title="Link to this heading"></a></h3>
+<p>The deterministic preference order is:</p>
+<ol class="arabic simple">
+<li><p>a previously authenticated, currently valid pairwise local endpoint;</p></li>
+<li><p>a candidate matching the signed endpoint binding;</p></li>
+<li><p>an HTTPS endpoint hint matching that same signed binding; and</p></li>
+<li><p>response QR.</p></li>
+</ol>
+<p>Each network attempt has a bounded deadline and cancellation path. Permission
+denial, unavailable APIs, no result, multicast filtering, client isolation,
+address-family mismatch, interface change, invalid pin, ambiguity, timeout, or
+server unavailability produces a typed reason and advances to QR. Security
+rejection of the signed challenge or response is terminal and must not be
+relabelled as a transport fallback.</p>
+<p>There is no indefinite searching, background scanning unrelated to an active
+user ceremony, automatic cleartext downgrade, or weaker verifier mode.
+Fallback changes transport only.</p>
+<p>For the MVP, the user opens Pistis on the phone and explicitly enters the
+nearby-requests surface. That foreground action starts one bounded browse for
+previously authenticated installations and shows their pending requests only
+after the pairwise installation binding and channel authenticate. The MVP does
+not promise a notification while the application is closed or backgrounded.
+Closed-app notification requires a later ADR and must not introduce a cloud
+relay, public advertisement, or unbounded background discovery implicitly.</p>
+</section>
+<section id="browser-and-host-responsibilities">
+<h3>Browser and host responsibilities<a class="headerlink" href="#browser-and-host-responsibilities" title="Link to this heading"></a></h3>
+<p>The Synoptikon or Monas backend advertises and receives the phone’s direct
+submission. The browser remains same-origin with its host and learns only
+coarse ceremony state through the established polling, SSE, or WebSocket
+boundary. It does not browse mDNS, connect to TXT-selected origins, receive a
+mobile response, or hold the installation TLS pin.</p>
+<p>Host adapters apply rate limits, request bounds, CSRF and origin policy where
+applicable, pre-authentication binding, audit correlation, durable challenge
+state, and the atomic completion rules of ADRs 0009 and 0010.</p>
+</section>
+<section id="native-platform-adapters">
+<h3>Native platform adapters<a class="headerlink" href="#native-platform-adapters" title="Link to this heading"></a></h3>
+<p>The iOS adapter uses the supported native local-network browsing and connection
+APIs, declares the local-network purpose and approved Bonjour service type,
+and scopes browsing to an explicit foreground ceremony. Permission is
+requested with explanatory UI before system presentation. Denial and
+restriction are ordinary QR-fallback states. Native acceptance covers initial
+grant, denial, settings changes, background/foreground, sleep/wake, IPv4,
+IPv6, multiple interfaces, and certificate-pin failure.</p>
+<p>The Android adapter uses the supported platform network-service discovery and
+network-binding APIs. Its manifest declares only permissions required by the
+supported SDK range; runtime permission and nearby-network changes are handled
+explicitly rather than inferred from connectivity. Discovery is scoped to a
+foreground ceremony and connections stay bound to the network that produced
+the candidate. Native acceptance covers grant/denial where applicable,
+Wi-Fi/cellular transitions, lifecycle recreation, IPv4, IPv6, multiple
+networks, multicast filtering, and certificate-pin failure.</p>
+<p>Platform adapters expose typed lifecycle events to the application core. They
+do not pass raw DNS records, URLs, certificates, sockets, or permission objects
+into protocol or presentation state.</p>
+</section>
+<section id="evaluation-and-test-gate">
+<h3>Evaluation and test gate<a class="headerlink" href="#evaluation-and-test-gate" title="Link to this heading"></a></h3>
+<p>The mDNS implementation choice is accepted only after a time-boxed comparison
+of maintained pure-Rust and operating-system-native options against:</p>
+<ul class="simple">
+<li><p>supported operating systems and address families;</p></li>
+<li><p>interface-change, sleep/wake, TTL, withdrawal, and duplicate-name behavior;</p></li>
+<li><p>bounded parsing and memory use;</p></li>
+<li><p>dependency, unsafe-code, advisory, license, maintenance, and provenance
+review;</p></li>
+<li><p>deterministic test injection without public network services; and</p></li>
+<li><p>packaging and service-manager behavior.</p></li>
+</ul>
+<p>Selecting a crate is not itself completion of issue 137. The evaluation report,
+dependency review, and negative prototype evidence are retained before the
+implementation dependency is added.</p>
+<p>The evaluation selects native Network.framework/Bonjour on iOS and
+<code class="docutils literal notranslate"><span class="pre">NsdManager</span></code> on Android. The host Rust adapter may use pinned <code class="docutils literal notranslate"><span class="pre">mdns-sd</span></code> behind
+the narrow discovery port: it is safe Rust, does not impose an async runtime,
+supports publication, browsing, conflict handling, and daemon monitoring, and
+is actively released. <code class="docutils literal notranslate"><span class="pre">simple-mdns</span></code> and <code class="docutils literal notranslate"><span class="pre">agnostic-mdns</span></code> remain rejected for the
+MVP because they add no mobile permission/lifecycle advantage and would expand
+the host runtime or integration surface.</p>
+<p>The <code class="docutils literal notranslate"><span class="pre">mdns-sd</span></code> 0.20.2 API does not expose its per-service DNS cache TTL. The
+host adapter therefore enforces the capped wire lifetime as a publication
+deadline and unregisters with goodbye records. A crash may leave an opaque
+cache entry for the library’s RFC-default TTL, but neither that entry nor its
+endpoint identifier conveys authority; the durable ceremony expiry and
+authenticated endpoint binding fail closed. A future dependency change may
+set the DNS TTL to the same bound only after compatibility and network
+acceptance evidence.</p>
+<p>The MVP wire projection is closed and minimal. It uses service type
+<code class="docutils literal notranslate"><span class="pre">_pistis._tcp.local.</span></code>, a fresh 128-bit lowercase-hexadecimal instance name, and
+exactly three ordered TXT entries: <code class="docutils literal notranslate"><span class="pre">v=1</span></code>, <code class="docutils literal notranslate"><span class="pre">id=&lt;32</span> <span class="pre">lowercase</span> <span class="pre">hexadecimal</span> <span class="pre">characters&gt;</span></code>, and <code class="docutils literal notranslate"><span class="pre">cap=https</span></code>. TTL is the remaining whole-second advertisement
+lifetime capped at 30 seconds; an expired or subsecond record is not published.
+No additional TXT key is accepted without an additive ADR revision and privacy
+review.</p>
+<p>The host browse adapter is scoped to the exact service type and a foreground
+deadline of at most 30 seconds. It accepts only the closed TXT schema, random
+instance/hostname relationship, nonzero port, eligible local addresses, and
+nonzero interface indices. It retains address and interface scope as untrusted
+candidate data; only the installation-signed endpoint binding can authorize a
+connection. Since the selected library does not expose the received record
+TTL, candidate eligibility is capped by the browse deadline and never extends
+the ceremony or signed binding expiry.</p>
+<p>Deterministic tests cover forged and conflicting advertisements, wrong service
+type and endpoint identifier, TXT additions and oversize, stale TTL and
+binding, address substitution, redirects, local-CA and certificate
+substitution, response bounds, retry, cancellation, and QR fallback.
+Integration tests use isolated local fixtures for IPv4, IPv6, multiple
+interfaces where the runner permits them, multicast blocked, and client
+isolation. iOS and Android native tests and at least one physical-device LAN
+matrix are required for production interoperability claims.</p>
+</section>
+</section>
+<section id="consequences">
+<h2>Consequences<a class="headerlink" href="#consequences" title="Link to this heading"></a></h2>
+<ul class="simple">
+<li><p>Local transfer remains a convenience layer with identical verifier and
+completion semantics to response QR.</p></li>
+<li><p>Advertisements reveal minimal ephemeral service metadata and no application
+identity.</p></li>
+<li><p>A malicious or conflicting mDNS service cannot become trusted without the
+installation-signed endpoint binding and TLS pin.</p></li>
+<li><p>Pure contract, policy, and state-machine work can proceed before selecting an
+mDNS implementation.</p></li>
+<li><p>EPIC 11 cannot close until EPIC 10, the accepted production signed-message
+profile, host adapters, native permission adapters, and the network
+acceptance matrix are delivered.</p></li>
+</ul>
+</section>
+<section id="alternatives-considered">
+<h2>Alternatives considered<a class="headerlink" href="#alternatives-considered" title="Link to this heading"></a></h2>
+<ul class="simple">
+<li><p>Have phones advertise availability: rejected because it broadcasts device
+presence and creates unnecessary privacy and targeting risk.</p></li>
+<li><p>Trust the first <code class="docutils literal notranslate"><span class="pre">_pistis._tcp.local.</span></code> answer: rejected because mDNS is
+unauthenticated and trivially spoofed.</p></li>
+<li><p>Put a URL or certificate pin only in TXT data: rejected because an attacker
+controls the advertisement.</p></li>
+<li><p>Trust the local CA or silently use HTTP: rejected because local network trust
+does not establish installation identity.</p></li>
+<li><p>Pin a certificate on first discovery: rejected because discovery cannot
+authenticate the first observation.</p></li>
+<li><p>Let the browser browse or connect directly: rejected because browser mDNS
+support and cross-origin policy cannot provide the required architecture.</p></li>
+<li><p>Treat permission denial or multicast blocking as authentication failure:
+rejected because QR is the universal equivalent transport.</p></li>
+<li><p>Start with a concrete mDNS crate in protocol code: rejected because platform
+lifecycle, supply-chain, and packaging evaluation must precede dependency
+selection.</p></li>
+</ul>
+</section>
+<section id="review-evidence">
+<h2>Review evidence<a class="headerlink" href="#review-evidence" title="Link to this heading"></a></h2>
+<p>The architecture review inspected EPIC 11 issues 135–141, M9 acceptance
+criteria, accepted ADRs, QR framing and authentication reference code, and the
+current iOS and Android manifests. It found the shared direct/QR verification
+path and signed HTTPS hints, but no accepted production endpoint-binding
+encoding, mDNS adapter, native service permission declarations, or hostile-LAN
+acceptance matrix.</p>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="0010-monas-standalone-integration-boundary.html" class="btn btn-neutral float-left" title="ADR 0010: Monas standalone integration boundary" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="0012-recovery-revocation-and-multi-device-lifecycle.html" class="btn btn-neutral float-right" title="ADR 0012: Recovery, revocation, and multi-device lifecycle" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026, Pistis contributors.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

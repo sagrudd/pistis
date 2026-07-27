@@ -32,7 +32,10 @@ Pistis shall:
 -   generate durable approval evidence;
 -   support offline and air-gapped operation;
 -   operate without requiring a central identity server;
--   expose clean Rust APIs and CLI tooling.
+-   expose clean Rust APIs and CLI tooling;
+-   treat CLI users as a primary audience, with authentication and exact-action
+    approval available entirely through a terminal and the supported mobile
+    applications.
 
 Pistis shall **not**:
 
@@ -74,7 +77,9 @@ Pistis shall **not**:
 Initial MVP:
 
 -   GitHub
--   Google
+
+The first production candidate qualifies GitHub only. Google remains in the
+v1.0 trust-anchor scope.
 
 Future:
 
@@ -104,11 +109,14 @@ Version 1.0:
 
 Priority order:
 
-1.  Local discovery (mDNS)
-2.  QR code
+1.  QR code
+2.  Local discovery (mDNS, post-MVP convenience)
 3.  Optional remote notification (future)
 
 Authentication is always challenge/response using signed nonces.
+
+The normative first-candidate boundary is defined in
+`MVP_RELEASE_CANDIDATE.md`.
 
 ------------------------------------------------------------------------
 
@@ -191,6 +199,8 @@ Native applications:
 ## Monas Integration
 
 -   Standalone authentication
+-   Primary CLI authentication and approval
+-   ASCII/Unicode terminal QR exchange with iOS
 -   CLI verification
 -   Detached evidence generation
 
@@ -205,6 +215,8 @@ Native applications:
 -   Report signing
 -   Workflow approval
 -   Multi-signature approval
+-   CLI-native login and action approval without a web application
+-   ASCII/Unicode terminal QR interoperability
 -   Verification CLI
 -   Rust verification library
 
@@ -247,6 +259,8 @@ Pistis shall demonstrate that:
 -   no central identity server is required;
 -   authentication succeeds using GitHub and Google trust anchors;
 -   login approval works through QR challenge/response;
+-   console users can authenticate sessions and approve exact actions with the
+    supported iOS application without a browser or GUI;
 -   report signatures produce portable evidence;
 -   evidence can be verified independently of the originating
     installation;

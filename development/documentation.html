@@ -60,6 +60,7 @@
 <li class="toctree-l1"><a class="reference internal" href="../PROJECT_CHARTER.html#success-criteria">12. Success Criteria</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../PROJECT_CHARTER.html#non-goals">13. Non-Goals</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../PROJECT_CHARTER.html#long-term-vision">14. Long-Term Vision</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../MVP_RELEASE_CANDIDATE.html">Pistis v0.1 MVP release candidate</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../MILESTONE.html">Pistis v1.0 — MILESTONE.md</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../MILESTONE.html#milestone-m0-charter-reconciliation-and-delivery-baseline">Milestone M0 — Charter reconciliation and delivery baseline</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../MILESTONE.html#milestone-m1-threat-model-and-protocol-specification">Milestone M1 — Threat model and protocol specification</a></li>
@@ -103,7 +104,9 @@
 <li class="toctree-l1"><a class="reference internal" href="../TODO.html#epic-13-recovery">EPIC 13 — Recovery</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../TODO.html#epic-14-security">EPIC 14 — Security</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../TODO.html#epic-15-release">EPIC 15 — Release</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../TODO.html#epic-16-cli-native-authentication">EPIC 16 — CLI-native authentication</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../TODO.html#continuous-tasks">Continuous tasks</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../TODO.html#mvp-release-candidate-programme">MVP release-candidate programme</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../BOOTSTRAP.html">BOOTSTRAP.md</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../BOOTSTRAP.html#purpose">Purpose</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../BOOTSTRAP.html#bootstrap-objectives">Bootstrap Objectives</a></li>
@@ -124,20 +127,72 @@
 </ul>
 <ul class="current">
 <li class="toctree-l1"><a class="reference internal" href="README.html">Development documentation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="code-structure.html">Code structure and modularity</a></li>
+<li class="toctree-l1"><a class="reference internal" href="fuzzing.html">Fuzz testing</a></li>
+<li class="toctree-l1"><a class="reference internal" href="provider-conformance.html">Provider conformance testing</a></li>
+<li class="toctree-l1"><a class="reference internal" href="ios.html">iOS development</a></li>
+<li class="toctree-l1"><a class="reference internal" href="android.html">Android development</a></li>
+<li class="toctree-l1"><a class="reference internal" href="synoptikon.html">Synoptikon integration development</a></li>
+<li class="toctree-l1"><a class="reference internal" href="monas.html">Monas standalone integration development</a></li>
+<li class="toctree-l1"><a class="reference internal" href="cli-authentication.html">CLI-native authentication</a></li>
+<li class="toctree-l1"><a class="reference internal" href="local-agent.html">Local authentication agent</a></li>
+<li class="toctree-l1"><a class="reference internal" href="discovery.html">Local discovery and direct exchange development</a></li>
+<li class="toctree-l1"><a class="reference internal" href="discovery-implementation-evaluation.html">Discovery implementation evaluation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="device-lifecycle.html">Recovery, revocation, and multi-device lifecycle development</a></li>
+<li class="toctree-l1"><a class="reference internal" href="security-hardening.html">Security hardening and independent review development</a></li>
+<li class="toctree-l1"><a class="reference internal" href="release-packaging.html">Release packaging and provenance</a></li>
 <li class="toctree-l1"><a class="reference internal" href="issue-model.html">Planning issue model</a></li>
 <li class="toctree-l1"><a class="reference internal" href="jenkins-ci.html">Jenkins CI</a></li>
 <li class="toctree-l1 current"><a class="current reference internal" href="#">Documentation workflow</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="#local-container-build">Local container build</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#manual-github-pages-publication">Manual GitHub Pages publication</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#authoritative-jenkins-build">Authoritative Jenkins build</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#optional-local-container-preview">Optional local container preview</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#jenkins-github-pages-publication">Jenkins GitHub Pages publication</a></li>
 </ul>
 </li>
 </ul>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="../adr/README.html">Architecture Decision Records</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../adr/0000-template.html">ADR-NNNN: Decision title</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../adr/0001-canonical-encoding.html">ADR 0001: Deterministic CBOR for canonical protocol payloads</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../adr/0002-signature-suites.html">ADR 0002: Protocol signature suites</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../adr/0003-github-trust-enrolment.html">ADR 0003: GitHub trust-anchor enrolment</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../adr/0004-google-trust-enrolment.html">ADR 0004: Google OpenID Connect trust-anchor enrolment</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../adr/0005-device-registry-storage.html">ADR 0005: Device registry storage and lifecycle</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../adr/0006-qr-authentication-reference-flow.html">ADR 0006: QR authentication reference flow</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../adr/0007-ios-reference-application.html">ADR 0007: iOS reference application</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../adr/0008-android-reference-application.html">ADR 0008: Android reference application</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../adr/0009-synoptikon-integration-boundary.html">ADR 0009: Synoptikon integration boundary</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../adr/0010-monas-standalone-integration-boundary.html">ADR 0010: Monas standalone integration boundary</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../adr/0011-local-discovery-and-direct-exchange.html">ADR 0011: Local discovery and direct exchange</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../adr/0012-recovery-revocation-and-multi-device-lifecycle.html">ADR 0012: Recovery, revocation, and multi-device lifecycle</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../adr/0013-security-assurance-and-independent-review.html">ADR 0013: Security assurance and independent review</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../adr/0014-release-packaging-and-provenance.html">ADR 0014: Release packaging, publication, and provenance</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../adr/0015-cli-native-authentication.html">ADR 0015: CLI-native authentication boundary</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../adr/0016-exact-action-approval-protocol.html">ADR 0016: Exact-action approval protocol</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../adr/0017-local-authentication-agent.html">ADR 0017: Local authentication agent and installation signer</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../protocol/README.html">Protocol documentation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../protocol/domain-model.html">Domain identifiers</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../protocol/action-approval.html">Exact-action approval protocol</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../protocol.html">Protocol specification</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../crypto.html">Cryptographic primitives</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../encoding.html">Canonical encoding</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../assurance.html">Assurance model</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../security/README.html">Security documentation</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../operations/README.html">Operations documentation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../operations/device-registry.html">Device registry operations</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../operations/github-enrolment.html">Operate GitHub trust enrolment</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../operations/google-enrolment.html">Operate Google trust enrolment</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../operations/qr-authentication.html">QR authentication operations</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../operations/ios.html">iOS application operations</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../operations/android.html">Android application operations</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../operations/synoptikon.html">Synoptikon integration operations</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../operations/monas.html">Monas standalone integration operations</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../operations/discovery.html">Local discovery and direct exchange operations</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../operations/device-lifecycle.html">Recovery, revocation, and multi-device lifecycle operations</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../operations/security-hardening.html">Security hardening and independent review operations</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../operations/release-packaging.html">Release installation, upgrade, backup, and publication</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../operations/cli-authentication.html">CLI authentication operations</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../operations/local-agent.html">Local-agent operations</a></li>
 </ul>
 
         </div>
@@ -170,9 +225,32 @@
 Markdown is parsed through MyST, so the canonical planning, governance,
 protocol, security, and operator documents remain readable as source while
 participating in one versioned documentation tree.</p>
-<section id="local-container-build">
-<h2>Local container build<a class="headerlink" href="#local-container-build" title="Link to this heading"></a></h2>
-<p>Docker is required. Build the pinned renderer from the repository root:</p>
+<section id="authoritative-jenkins-build">
+<h2>Authoritative Jenkins build<a class="headerlink" href="#authoritative-jenkins-build" title="Link to this heading"></a></h2>
+<p>The project-owned Mnemosyne Expedition/Jenkins lane is the authoritative
+documentation builder. Its reviewed task:</p>
+<ul class="simple">
+<li><p>installs the exact versions in <code class="docutils literal notranslate"><span class="pre">docs/requirements.txt</span></code>;</p></li>
+<li><p>runs Sphinx with warnings treated as errors;</p></li>
+<li><p>keeps doctrees outside the publication directory; and</p></li>
+<li><p>retains <code class="docutils literal notranslate"><span class="pre">docs-html.tar.gz</span></code> in the Expedition dossier.</p></li>
+</ul>
+<p>Jenkins packages the reviewed artifact in the Base Camp dossier:</p>
+<div class="highlight-sh notranslate"><div class="highlight"><pre><span></span>expedition<span class="w"> </span>expedition-artifact<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--expedition-id<span class="w"> </span>&lt;uuid&gt;<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--name<span class="w"> </span>docs-html.tar.gz<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--output<span class="w"> </span>docs-html.tar.gz
+mkdir<span class="w"> </span>-p<span class="w"> </span>public
+tar<span class="w"> </span>--extract<span class="w"> </span>--gzip<span class="w"> </span>--file<span class="w"> </span>docs-html.tar.gz<span class="w"> </span>--directory<span class="w"> </span>public
+</pre></div>
+</div>
+<p>Use this retrieval flow for inspection, audit, or recovery.</p>
+</section>
+<section id="optional-local-container-preview">
+<h2>Optional local container preview<a class="headerlink" href="#optional-local-container-preview" title="Link to this heading"></a></h2>
+<p>The repository Docker image reproduces the Jenkins Sphinx environment for
+developer preview. It is not release evidence. Build it from the repository
+root:</p>
 <div class="highlight-sh notranslate"><div class="highlight"><pre><span></span>docker<span class="w"> </span>build<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--file<span class="w"> </span>docs/Dockerfile<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--tag<span class="w"> </span>pistis-docs:1.0.0<span class="w"> </span><span class="se">\</span>
@@ -190,6 +268,7 @@ docker<span class="w"> </span>run<span class="w"> </span>--rm<span class="w"> </
 <span class="w">  </span>--fail-on-warning<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--keep-going<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--builder<span class="w"> </span>html<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--doctree-dir<span class="w"> </span>/tmp/pistis-doctrees<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>docs<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>/output
 </pre></div>
@@ -198,25 +277,20 @@ docker<span class="w"> </span>run<span class="w"> </span>--rm<span class="w"> </
 links, and narrow-screen behavior. Never commit credentials, private material,
 or generated environment details into documentation or rendered pages.</p>
 </section>
-<section id="manual-github-pages-publication">
-<h2>Manual GitHub Pages publication<a class="headerlink" href="#manual-github-pages-publication" title="Link to this heading"></a></h2>
-<p>Publication uses the <code class="docutils literal notranslate"><span class="pre">gh-pages</span></code> branch as a static artifact branch. No GitHub
-Actions, Pages builder, webhook, scheduled task, or other deployment automation
-is permitted.</p>
-<p>After a reviewed render:</p>
-<div class="highlight-sh notranslate"><div class="highlight"><pre><span></span>git<span class="w"> </span>fetch<span class="w"> </span>origin<span class="w"> </span>gh-pages
-git<span class="w"> </span>worktree<span class="w"> </span>add<span class="w"> </span>/tmp/pistis-pages<span class="w"> </span>origin/gh-pages
-rsync<span class="w"> </span>--archive<span class="w"> </span>--delete<span class="w"> </span>public/<span class="w"> </span>/tmp/pistis-pages/
-touch<span class="w"> </span>/tmp/pistis-pages/.nojekyll
-git<span class="w"> </span>-C<span class="w"> </span>/tmp/pistis-pages<span class="w"> </span>add<span class="w"> </span>--all
-git<span class="w"> </span>-C<span class="w"> </span>/tmp/pistis-pages<span class="w"> </span>commit<span class="w"> </span>-m<span class="w"> </span><span class="s2">&quot;Publish documentation&quot;</span>
-git<span class="w"> </span>-C<span class="w"> </span>/tmp/pistis-pages<span class="w"> </span>push<span class="w"> </span>origin<span class="w"> </span>HEAD:gh-pages
-git<span class="w"> </span>worktree<span class="w"> </span>remove<span class="w"> </span>/tmp/pistis-pages
-</pre></div>
-</div>
-<p>Inspect the staged artifact before committing. The publication commit must
-contain pre-rendered HTML and assets only. Source changes remain on the normal
-development branch.</p>
+<section id="jenkins-github-pages-publication">
+<h2>Jenkins GitHub Pages publication<a class="headerlink" href="#jenkins-github-pages-publication" title="Link to this heading"></a></h2>
+<p>After every successful CI run, the centrally reviewed Jenkins adapter compares
+the tested revision with the current <code class="docutils literal notranslate"><span class="pre">refs/heads/main</span></code>. Pull-request, stale, and
+failed builds stop without publishing. A matching build validates
+<code class="docutils literal notranslate"><span class="pre">docs-html.tar.gz</span></code>, removes links from the extracted tree, adds <code class="docutils literal notranslate"><span class="pre">.nojekyll</span></code>, and
+updates the <code class="docutils literal notranslate"><span class="pre">gh-pages</span></code> artifact branch with the pre-rendered site.</p>
+<p>The publisher uses the Jenkins secret-text credential
+<code class="docutils literal notranslate"><span class="pre">pistis-pages-publisher</span></code>. It must contain a least-privileged GitHub token with
+Contents write access to this repository. The credential is available only to
+the fixed publisher container after the project-controlled CI command has
+finished; Sphinx and repository code cannot read it.</p>
+<p>GitHub Pages serves <code class="docutils literal notranslate"><span class="pre">gh-pages</span></code> as static content. Do not add GitHub Actions or
+another Pages build or deployment workflow.</p>
 </section>
 </section>
 

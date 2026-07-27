@@ -59,6 +59,7 @@
 <li class="toctree-l1"><a class="reference internal" href="PROJECT_CHARTER.html#success-criteria">12. Success Criteria</a></li>
 <li class="toctree-l1"><a class="reference internal" href="PROJECT_CHARTER.html#non-goals">13. Non-Goals</a></li>
 <li class="toctree-l1"><a class="reference internal" href="PROJECT_CHARTER.html#long-term-vision">14. Long-Term Vision</a></li>
+<li class="toctree-l1"><a class="reference internal" href="MVP_RELEASE_CANDIDATE.html">Pistis v0.1 MVP release candidate</a></li>
 <li class="toctree-l1"><a class="reference internal" href="MILESTONE.html">Pistis v1.0 — MILESTONE.md</a></li>
 <li class="toctree-l1"><a class="reference internal" href="MILESTONE.html#milestone-m0-charter-reconciliation-and-delivery-baseline">Milestone M0 — Charter reconciliation and delivery baseline</a></li>
 <li class="toctree-l1"><a class="reference internal" href="MILESTONE.html#milestone-m1-threat-model-and-protocol-specification">Milestone M1 — Threat model and protocol specification</a></li>
@@ -102,7 +103,9 @@
 <li class="toctree-l1"><a class="reference internal" href="TODO.html#epic-13-recovery">EPIC 13 — Recovery</a></li>
 <li class="toctree-l1"><a class="reference internal" href="TODO.html#epic-14-security">EPIC 14 — Security</a></li>
 <li class="toctree-l1"><a class="reference internal" href="TODO.html#epic-15-release">EPIC 15 — Release</a></li>
+<li class="toctree-l1"><a class="reference internal" href="TODO.html#epic-16-cli-native-authentication">EPIC 16 — CLI-native authentication</a></li>
 <li class="toctree-l1"><a class="reference internal" href="TODO.html#continuous-tasks">Continuous tasks</a></li>
+<li class="toctree-l1"><a class="reference internal" href="TODO.html#mvp-release-candidate-programme">MVP release-candidate programme</a></li>
 <li class="toctree-l1"><a class="reference internal" href="BOOTSTRAP.html">BOOTSTRAP.md</a></li>
 <li class="toctree-l1"><a class="reference internal" href="BOOTSTRAP.html#purpose">Purpose</a></li>
 <li class="toctree-l1"><a class="reference internal" href="BOOTSTRAP.html#bootstrap-objectives">Bootstrap Objectives</a></li>
@@ -123,6 +126,20 @@
 </ul>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="development/README.html">Development documentation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="development/code-structure.html">Code structure and modularity</a></li>
+<li class="toctree-l1"><a class="reference internal" href="development/fuzzing.html">Fuzz testing</a></li>
+<li class="toctree-l1"><a class="reference internal" href="development/provider-conformance.html">Provider conformance testing</a></li>
+<li class="toctree-l1"><a class="reference internal" href="development/ios.html">iOS development</a></li>
+<li class="toctree-l1"><a class="reference internal" href="development/android.html">Android development</a></li>
+<li class="toctree-l1"><a class="reference internal" href="development/synoptikon.html">Synoptikon integration development</a></li>
+<li class="toctree-l1"><a class="reference internal" href="development/monas.html">Monas standalone integration development</a></li>
+<li class="toctree-l1"><a class="reference internal" href="development/cli-authentication.html">CLI-native authentication</a></li>
+<li class="toctree-l1"><a class="reference internal" href="development/local-agent.html">Local authentication agent</a></li>
+<li class="toctree-l1"><a class="reference internal" href="development/discovery.html">Local discovery and direct exchange development</a></li>
+<li class="toctree-l1"><a class="reference internal" href="development/discovery-implementation-evaluation.html">Discovery implementation evaluation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="development/device-lifecycle.html">Recovery, revocation, and multi-device lifecycle development</a></li>
+<li class="toctree-l1"><a class="reference internal" href="development/security-hardening.html">Security hardening and independent review development</a></li>
+<li class="toctree-l1"><a class="reference internal" href="development/release-packaging.html">Release packaging and provenance</a></li>
 <li class="toctree-l1"><a class="reference internal" href="development/issue-model.html">Planning issue model</a></li>
 <li class="toctree-l1"><a class="reference internal" href="development/jenkins-ci.html">Jenkins CI</a></li>
 <li class="toctree-l1"><a class="reference internal" href="development/documentation.html">Documentation workflow</a></li>
@@ -130,9 +147,46 @@
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="adr/README.html">Architecture Decision Records</a></li>
 <li class="toctree-l1"><a class="reference internal" href="adr/0000-template.html">ADR-NNNN: Decision title</a></li>
+<li class="toctree-l1"><a class="reference internal" href="adr/0001-canonical-encoding.html">ADR 0001: Deterministic CBOR for canonical protocol payloads</a></li>
+<li class="toctree-l1"><a class="reference internal" href="adr/0002-signature-suites.html">ADR 0002: Protocol signature suites</a></li>
+<li class="toctree-l1"><a class="reference internal" href="adr/0003-github-trust-enrolment.html">ADR 0003: GitHub trust-anchor enrolment</a></li>
+<li class="toctree-l1"><a class="reference internal" href="adr/0004-google-trust-enrolment.html">ADR 0004: Google OpenID Connect trust-anchor enrolment</a></li>
+<li class="toctree-l1"><a class="reference internal" href="adr/0005-device-registry-storage.html">ADR 0005: Device registry storage and lifecycle</a></li>
+<li class="toctree-l1"><a class="reference internal" href="adr/0006-qr-authentication-reference-flow.html">ADR 0006: QR authentication reference flow</a></li>
+<li class="toctree-l1"><a class="reference internal" href="adr/0007-ios-reference-application.html">ADR 0007: iOS reference application</a></li>
+<li class="toctree-l1"><a class="reference internal" href="adr/0008-android-reference-application.html">ADR 0008: Android reference application</a></li>
+<li class="toctree-l1"><a class="reference internal" href="adr/0009-synoptikon-integration-boundary.html">ADR 0009: Synoptikon integration boundary</a></li>
+<li class="toctree-l1"><a class="reference internal" href="adr/0010-monas-standalone-integration-boundary.html">ADR 0010: Monas standalone integration boundary</a></li>
+<li class="toctree-l1"><a class="reference internal" href="adr/0011-local-discovery-and-direct-exchange.html">ADR 0011: Local discovery and direct exchange</a></li>
+<li class="toctree-l1"><a class="reference internal" href="adr/0012-recovery-revocation-and-multi-device-lifecycle.html">ADR 0012: Recovery, revocation, and multi-device lifecycle</a></li>
+<li class="toctree-l1"><a class="reference internal" href="adr/0013-security-assurance-and-independent-review.html">ADR 0013: Security assurance and independent review</a></li>
+<li class="toctree-l1"><a class="reference internal" href="adr/0014-release-packaging-and-provenance.html">ADR 0014: Release packaging, publication, and provenance</a></li>
+<li class="toctree-l1"><a class="reference internal" href="adr/0015-cli-native-authentication.html">ADR 0015: CLI-native authentication boundary</a></li>
+<li class="toctree-l1"><a class="reference internal" href="adr/0016-exact-action-approval-protocol.html">ADR 0016: Exact-action approval protocol</a></li>
+<li class="toctree-l1"><a class="reference internal" href="adr/0017-local-authentication-agent.html">ADR 0017: Local authentication agent and installation signer</a></li>
 <li class="toctree-l1"><a class="reference internal" href="protocol/README.html">Protocol documentation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="protocol/domain-model.html">Domain identifiers</a></li>
+<li class="toctree-l1"><a class="reference internal" href="protocol/action-approval.html">Exact-action approval protocol</a></li>
+<li class="toctree-l1"><a class="reference internal" href="protocol.html">Protocol specification</a></li>
+<li class="toctree-l1"><a class="reference internal" href="crypto.html">Cryptographic primitives</a></li>
+<li class="toctree-l1"><a class="reference internal" href="encoding.html">Canonical encoding</a></li>
+<li class="toctree-l1"><a class="reference internal" href="assurance.html">Assurance model</a></li>
 <li class="toctree-l1"><a class="reference internal" href="security/README.html">Security documentation</a></li>
 <li class="toctree-l1"><a class="reference internal" href="operations/README.html">Operations documentation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="operations/device-registry.html">Device registry operations</a></li>
+<li class="toctree-l1"><a class="reference internal" href="operations/github-enrolment.html">Operate GitHub trust enrolment</a></li>
+<li class="toctree-l1"><a class="reference internal" href="operations/google-enrolment.html">Operate Google trust enrolment</a></li>
+<li class="toctree-l1"><a class="reference internal" href="operations/qr-authentication.html">QR authentication operations</a></li>
+<li class="toctree-l1"><a class="reference internal" href="operations/ios.html">iOS application operations</a></li>
+<li class="toctree-l1"><a class="reference internal" href="operations/android.html">Android application operations</a></li>
+<li class="toctree-l1"><a class="reference internal" href="operations/synoptikon.html">Synoptikon integration operations</a></li>
+<li class="toctree-l1"><a class="reference internal" href="operations/monas.html">Monas standalone integration operations</a></li>
+<li class="toctree-l1"><a class="reference internal" href="operations/discovery.html">Local discovery and direct exchange operations</a></li>
+<li class="toctree-l1"><a class="reference internal" href="operations/device-lifecycle.html">Recovery, revocation, and multi-device lifecycle operations</a></li>
+<li class="toctree-l1"><a class="reference internal" href="operations/security-hardening.html">Security hardening and independent review operations</a></li>
+<li class="toctree-l1"><a class="reference internal" href="operations/release-packaging.html">Release installation, upgrade, backup, and publication</a></li>
+<li class="toctree-l1"><a class="reference internal" href="operations/cli-authentication.html">CLI authentication operations</a></li>
+<li class="toctree-l1"><a class="reference internal" href="operations/local-agent.html">Local-agent operations</a></li>
 </ul>
 
         </div>
@@ -199,6 +253,18 @@ for the project.</p>
 <li class="toctree-l1"><a class="reference internal" href="PROJECT_CHARTER.html#success-criteria">12. Success Criteria</a></li>
 <li class="toctree-l1"><a class="reference internal" href="PROJECT_CHARTER.html#non-goals">13. Non-Goals</a></li>
 <li class="toctree-l1"><a class="reference internal" href="PROJECT_CHARTER.html#long-term-vision">14. Long-Term Vision</a></li>
+<li class="toctree-l1"><a class="reference internal" href="MVP_RELEASE_CANDIDATE.html">Pistis v0.1 MVP release candidate</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="MVP_RELEASE_CANDIDATE.html#purpose">Purpose</a></li>
+<li class="toctree-l2"><a class="reference internal" href="MVP_RELEASE_CANDIDATE.html#supported-outcome">Supported outcome</a></li>
+<li class="toctree-l2"><a class="reference internal" href="MVP_RELEASE_CANDIDATE.html#required-scope">Required scope</a></li>
+<li class="toctree-l2"><a class="reference internal" href="MVP_RELEASE_CANDIDATE.html#explicit-deferrals">Explicit deferrals</a></li>
+<li class="toctree-l2"><a class="reference internal" href="MVP_RELEASE_CANDIDATE.html#authority-and-transaction-boundary">Authority and transaction boundary</a></li>
+<li class="toctree-l2"><a class="reference internal" href="MVP_RELEASE_CANDIDATE.html#credential-boundaries">Credential boundaries</a></li>
+<li class="toctree-l2"><a class="reference internal" href="MVP_RELEASE_CANDIDATE.html#acceptance-and-release-gates">Acceptance and release gates</a></li>
+<li class="toctree-l2"><a class="reference internal" href="MVP_RELEASE_CANDIDATE.html#delivery-epics">Delivery epics</a></li>
+<li class="toctree-l2"><a class="reference internal" href="MVP_RELEASE_CANDIDATE.html#critical-path">Critical path</a></li>
+</ul>
+</li>
 <li class="toctree-l1"><a class="reference internal" href="MILESTONE.html">Pistis v1.0 — MILESTONE.md</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="MILESTONE.html#purpose-of-this-document">1. Purpose of this document</a></li>
 <li class="toctree-l2"><a class="reference internal" href="MILESTONE.html#v1-0-product-definition">2. v1.0 product definition</a></li>
@@ -393,7 +459,26 @@ for the project.</p>
 <li class="toctree-l1"><a class="reference internal" href="TODO.html#epic-13-recovery">EPIC 13 — Recovery</a></li>
 <li class="toctree-l1"><a class="reference internal" href="TODO.html#epic-14-security">EPIC 14 — Security</a></li>
 <li class="toctree-l1"><a class="reference internal" href="TODO.html#epic-15-release">EPIC 15 — Release</a></li>
+<li class="toctree-l1"><a class="reference internal" href="TODO.html#epic-16-cli-native-authentication">EPIC 16 — CLI-native authentication</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="TODO.html#terminal-qr-presentation">Terminal QR presentation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="TODO.html#cli-authentication-and-approval">CLI authentication and approval</a></li>
+<li class="toctree-l2"><a class="reference internal" href="TODO.html#security-and-session-handling">Security and session handling</a></li>
+<li class="toctree-l2"><a class="reference internal" href="TODO.html#interoperability-and-operations">Interoperability and operations</a></li>
+</ul>
+</li>
 <li class="toctree-l1"><a class="reference internal" href="TODO.html#continuous-tasks">Continuous tasks</a></li>
+<li class="toctree-l1"><a class="reference internal" href="TODO.html#mvp-release-candidate-programme">MVP release-candidate programme</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="TODO.html#epic-17-mvp-baseline-and-stabilization">EPIC 17 — MVP baseline and stabilization</a></li>
+<li class="toctree-l2"><a class="reference internal" href="TODO.html#epic-18-rust-ios-interoperability">EPIC 18 — Rust/iOS interoperability</a></li>
+<li class="toctree-l2"><a class="reference internal" href="TODO.html#epic-19-prosopikon-authority-bridge">EPIC 19 — Prosopikon authority bridge</a></li>
+<li class="toctree-l2"><a class="reference internal" href="TODO.html#epic-20-monas-mvp-route">EPIC 20 — Monas MVP route</a></li>
+<li class="toctree-l2"><a class="reference internal" href="TODO.html#epic-21-synoptikon-mneion-mvp-route">EPIC 21 — Synoptikon/Mneion MVP route</a></li>
+<li class="toctree-l2"><a class="reference internal" href="TODO.html#epic-22-ios-production-qualification">EPIC 22 — iOS production qualification</a></li>
+<li class="toctree-l2"><a class="reference internal" href="TODO.html#epic-23-authentication-evidence">EPIC 23 — Authentication evidence</a></li>
+<li class="toctree-l2"><a class="reference internal" href="TODO.html#epic-24-packaging-and-operations">EPIC 24 — Packaging and operations</a></li>
+<li class="toctree-l2"><a class="reference internal" href="TODO.html#epic-25-mvp-security-and-release-candidate">EPIC 25 — MVP security and release candidate</a></li>
+</ul>
+</li>
 <li class="toctree-l1"><a class="reference internal" href="BOOTSTRAP.html">BOOTSTRAP.md</a></li>
 <li class="toctree-l1"><a class="reference internal" href="BOOTSTRAP.html#purpose">Purpose</a></li>
 <li class="toctree-l1"><a class="reference internal" href="BOOTSTRAP.html#bootstrap-objectives">Bootstrap Objectives</a></li>
@@ -424,14 +509,126 @@ for the project.</p>
 <div class="toctree-wrapper compound">
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="development/README.html">Development documentation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="development/code-structure.html">Code structure and modularity</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="development/code-structure.html#required-structure">Required structure</a></li>
+<li class="toctree-l2"><a class="reference internal" href="development/code-structure.html#source-file-size">Source-file size</a></li>
+<li class="toctree-l2"><a class="reference internal" href="development/code-structure.html#local-verification">Local verification</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="development/fuzzing.html">Fuzz testing</a></li>
+<li class="toctree-l1"><a class="reference internal" href="development/provider-conformance.html">Provider conformance testing</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="development/provider-conformance.html#github-fixture-contract">GitHub fixture contract</a></li>
+<li class="toctree-l2"><a class="reference internal" href="development/provider-conformance.html#fixture-maintenance">Fixture maintenance</a></li>
+<li class="toctree-l2"><a class="reference internal" href="development/provider-conformance.html#google-fixture-contract">Google fixture contract</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="development/ios.html">iOS development</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="development/ios.html#portable-tests">Portable tests</a></li>
+<li class="toctree-l2"><a class="reference internal" href="development/ios.html#native-validation">Native validation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="development/ios.html#review-gates">Review gates</a></li>
+<li class="toctree-l2"><a class="reference internal" href="development/ios.html#current-native-evidence">Current native evidence</a></li>
+<li class="toctree-l2"><a class="reference internal" href="development/ios.html#design-maintenance">Design maintenance</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="development/android.html">Android development</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="development/android.html#module-direction">Module direction</a></li>
+<li class="toctree-l2"><a class="reference internal" href="development/android.html#toolchain">Toolchain</a></li>
+<li class="toctree-l2"><a class="reference internal" href="development/android.html#test-boundaries">Test boundaries</a></li>
+<li class="toctree-l2"><a class="reference internal" href="development/android.html#jenkins">Jenkins</a></li>
+<li class="toctree-l2"><a class="reference internal" href="development/android.html#claims">Claims</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="development/synoptikon.html">Synoptikon integration development</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="development/synoptikon.html#dependency-direction">Dependency direction</a></li>
+<li class="toctree-l2"><a class="reference internal" href="development/synoptikon.html#login-presentation-contract">Login presentation contract</a></li>
+<li class="toctree-l2"><a class="reference internal" href="development/synoptikon.html#device-administration-contract">Device administration contract</a></li>
+<li class="toctree-l2"><a class="reference internal" href="development/synoptikon.html#required-contract-tests">Required contract tests</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="development/monas.html">Monas standalone integration development</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="development/monas.html#host-and-dependency-boundary">Host and dependency boundary</a></li>
+<li class="toctree-l2"><a class="reference internal" href="development/monas.html#required-standalone-profile">Required standalone profile</a></li>
+<li class="toctree-l2"><a class="reference internal" href="development/monas.html#cli-contract">CLI contract</a></li>
+<li class="toctree-l2"><a class="reference internal" href="development/monas.html#required-tests">Required tests</a></li>
+<li class="toctree-l2"><a class="reference internal" href="development/monas.html#jenkins-contract">Jenkins contract</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="development/cli-authentication.html">CLI-native authentication</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="development/cli-authentication.html#required-user-ceremonies">Required user ceremonies</a></li>
+<li class="toctree-l2"><a class="reference internal" href="development/cli-authentication.html#terminal-rendering-contract">Terminal rendering contract</a></li>
+<li class="toctree-l2"><a class="reference internal" href="development/cli-authentication.html#credential-and-session-boundary">Credential and session boundary</a></li>
+<li class="toctree-l2"><a class="reference internal" href="development/cli-authentication.html#acceptance-evidence">Acceptance evidence</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="development/local-agent.html">Local authentication agent</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="development/local-agent.html#storage-contract">Storage contract</a></li>
+<li class="toctree-l2"><a class="reference internal" href="development/local-agent.html#socket-contract">Socket contract</a></li>
+<li class="toctree-l2"><a class="reference internal" href="development/local-agent.html#verified-completion-transaction">Verified completion transaction</a></li>
+<li class="toctree-l2"><a class="reference internal" href="development/local-agent.html#signing-provider">Signing provider</a></li>
+<li class="toctree-l2"><a class="reference internal" href="development/local-agent.html#current-integration-status">Current integration status</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="development/discovery.html">Local discovery and direct exchange development</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="development/discovery.html#normative-boundary">Normative boundary</a></li>
+<li class="toctree-l2"><a class="reference internal" href="development/discovery.html#module-and-adapter-structure">Module and adapter structure</a></li>
+<li class="toctree-l2"><a class="reference internal" href="development/discovery.html#secure-channel-and-downgrade-rules">Secure channel and downgrade rules</a></li>
+<li class="toctree-l2"><a class="reference internal" href="development/discovery.html#bounded-fallback-state-machine">Bounded fallback state machine</a></li>
+<li class="toctree-l2"><a class="reference internal" href="development/discovery.html#mobile-requirements">Mobile requirements</a></li>
+<li class="toctree-l2"><a class="reference internal" href="development/discovery.html#test-contract">Test contract</a></li>
+<li class="toctree-l2"><a class="reference internal" href="development/discovery.html#jenkins-contract">Jenkins contract</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="development/discovery-implementation-evaluation.html">Discovery implementation evaluation</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="development/discovery-implementation-evaluation.html#mvp-product-decision">MVP product decision</a></li>
+<li class="toctree-l2"><a class="reference internal" href="development/discovery-implementation-evaluation.html#selected-adapters">Selected adapters</a></li>
+<li class="toctree-l2"><a class="reference internal" href="development/discovery-implementation-evaluation.html#alternatives">Alternatives</a></li>
+<li class="toctree-l2"><a class="reference internal" href="development/discovery-implementation-evaluation.html#platform-findings">Platform findings</a></li>
+<li class="toctree-l2"><a class="reference internal" href="development/discovery-implementation-evaluation.html#acceptance-and-remaining-work">Acceptance and remaining work</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="development/device-lifecycle.html">Recovery, revocation, and multi-device lifecycle development</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="development/device-lifecycle.html#normative-boundary">Normative boundary</a></li>
+<li class="toctree-l2"><a class="reference internal" href="development/device-lifecycle.html#aggregate-and-orchestration-boundary">Aggregate and orchestration boundary</a></li>
+<li class="toctree-l2"><a class="reference internal" href="development/device-lifecycle.html#multi-device-enrolment-and-replacement">Multi-device enrolment and replacement</a></li>
+<li class="toctree-l2"><a class="reference internal" href="development/device-lifecycle.html#host-and-mobile-ux">Host and mobile UX</a></li>
+<li class="toctree-l2"><a class="reference internal" href="development/device-lifecycle.html#sole-administrator-recovery">Sole-administrator recovery</a></li>
+<li class="toctree-l2"><a class="reference internal" href="development/device-lifecycle.html#historic-verification">Historic verification</a></li>
+<li class="toctree-l2"><a class="reference internal" href="development/device-lifecycle.html#required-tests">Required tests</a></li>
+<li class="toctree-l2"><a class="reference internal" href="development/device-lifecycle.html#jenkins-contract">Jenkins contract</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="development/security-hardening.html">Security hardening and independent review development</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="development/security-hardening.html#normative-boundary">Normative boundary</a></li>
+<li class="toctree-l2"><a class="reference internal" href="development/security-hardening.html#threat-model-review">Threat-model review</a></li>
+<li class="toctree-l2"><a class="reference internal" href="development/security-hardening.html#dependency-and-supply-chain-review">Dependency and supply-chain review</a></li>
+<li class="toctree-l2"><a class="reference internal" href="development/security-hardening.html#unsafe-code-secrets-errors-and-limits">Unsafe code, secrets, errors, and limits</a></li>
+<li class="toctree-l2"><a class="reference internal" href="development/security-hardening.html#mobile-security-review">Mobile security review</a></li>
+<li class="toctree-l2"><a class="reference internal" href="development/security-hardening.html#penetration-test-boundary">Penetration-test boundary</a></li>
+<li class="toctree-l2"><a class="reference internal" href="development/security-hardening.html#cryptographic-review">Cryptographic review</a></li>
+<li class="toctree-l2"><a class="reference internal" href="development/security-hardening.html#privacy-review">Privacy review</a></li>
+<li class="toctree-l2"><a class="reference internal" href="development/security-hardening.html#findings-and-release-gate">Findings and release gate</a></li>
+<li class="toctree-l2"><a class="reference internal" href="development/security-hardening.html#jenkins-evidence">Jenkins evidence</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="development/release-packaging.html">Release packaging and provenance</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="development/release-packaging.html#current-repository-boundary">Current repository boundary</a></li>
+<li class="toctree-l2"><a class="reference internal" href="development/release-packaging.html#candidate-identity">Candidate identity</a></li>
+<li class="toctree-l2"><a class="reference internal" href="development/release-packaging.html#required-artefact-set">Required artefact set</a></li>
+<li class="toctree-l2"><a class="reference internal" href="development/release-packaging.html#host-lifecycle-acceptance">Host lifecycle acceptance</a></li>
+<li class="toctree-l2"><a class="reference internal" href="development/release-packaging.html#mobile-distribution">Mobile distribution</a></li>
+<li class="toctree-l2"><a class="reference internal" href="development/release-packaging.html#jenkins-separation">Jenkins separation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="development/release-packaging.html#release-gate">Release gate</a></li>
+</ul>
+</li>
 <li class="toctree-l1"><a class="reference internal" href="development/issue-model.html">Planning issue model</a></li>
 <li class="toctree-l1"><a class="reference internal" href="development/jenkins-ci.html">Jenkins CI</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="development/jenkins-ci.html#validate-and-submit">Validate and submit</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="development/documentation.html">Documentation workflow</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="development/documentation.html#local-container-build">Local container build</a></li>
-<li class="toctree-l2"><a class="reference internal" href="development/documentation.html#manual-github-pages-publication">Manual GitHub Pages publication</a></li>
+<li class="toctree-l2"><a class="reference internal" href="development/documentation.html#authoritative-jenkins-build">Authoritative Jenkins build</a></li>
+<li class="toctree-l2"><a class="reference internal" href="development/documentation.html#optional-local-container-preview">Optional local container preview</a></li>
+<li class="toctree-l2"><a class="reference internal" href="development/documentation.html#jenkins-github-pages-publication">Jenkins GitHub Pages publication</a></li>
 </ul>
 </li>
 </ul>
@@ -450,9 +647,294 @@ for the project.</p>
 <li class="toctree-l2"><a class="reference internal" href="adr/0000-template.html#alternatives-considered">Alternatives considered</a></li>
 </ul>
 </li>
+<li class="toctree-l1"><a class="reference internal" href="adr/0001-canonical-encoding.html">ADR 0001: Deterministic CBOR for canonical protocol payloads</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="adr/0001-canonical-encoding.html#context">Context</a></li>
+<li class="toctree-l2"><a class="reference internal" href="adr/0001-canonical-encoding.html#decision">Decision</a></li>
+<li class="toctree-l2"><a class="reference internal" href="adr/0001-canonical-encoding.html#consequences">Consequences</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="adr/0002-signature-suites.html">ADR 0002: Protocol signature suites</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="adr/0002-signature-suites.html#context">Context</a></li>
+<li class="toctree-l2"><a class="reference internal" href="adr/0002-signature-suites.html#decision">Decision</a></li>
+<li class="toctree-l2"><a class="reference internal" href="adr/0002-signature-suites.html#consequences">Consequences</a></li>
+<li class="toctree-l2"><a class="reference internal" href="adr/0002-signature-suites.html#alternatives-considered">Alternatives considered</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="adr/0003-github-trust-enrolment.html">ADR 0003: GitHub trust-anchor enrolment</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="adr/0003-github-trust-enrolment.html#context">Context</a></li>
+<li class="toctree-l2"><a class="reference internal" href="adr/0003-github-trust-enrolment.html#decision">Decision</a></li>
+<li class="toctree-l2"><a class="reference internal" href="adr/0003-github-trust-enrolment.html#consequences">Consequences</a></li>
+<li class="toctree-l2"><a class="reference internal" href="adr/0003-github-trust-enrolment.html#alternatives-considered">Alternatives considered</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="adr/0004-google-trust-enrolment.html">ADR 0004: Google OpenID Connect trust-anchor enrolment</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="adr/0004-google-trust-enrolment.html#context">Context</a></li>
+<li class="toctree-l2"><a class="reference internal" href="adr/0004-google-trust-enrolment.html#decision">Decision</a></li>
+<li class="toctree-l2"><a class="reference internal" href="adr/0004-google-trust-enrolment.html#consequences">Consequences</a></li>
+<li class="toctree-l2"><a class="reference internal" href="adr/0004-google-trust-enrolment.html#alternatives-considered">Alternatives considered</a></li>
+<li class="toctree-l2"><a class="reference internal" href="adr/0004-google-trust-enrolment.html#references">References</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="adr/0005-device-registry-storage.html">ADR 0005: Device registry storage and lifecycle</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="adr/0005-device-registry-storage.html#context">Context</a></li>
+<li class="toctree-l2"><a class="reference internal" href="adr/0005-device-registry-storage.html#decision">Decision</a></li>
+<li class="toctree-l2"><a class="reference internal" href="adr/0005-device-registry-storage.html#consequences">Consequences</a></li>
+<li class="toctree-l2"><a class="reference internal" href="adr/0005-device-registry-storage.html#alternatives-considered">Alternatives considered</a></li>
+<li class="toctree-l2"><a class="reference internal" href="adr/0005-device-registry-storage.html#review-evidence">Review evidence</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="adr/0006-qr-authentication-reference-flow.html">ADR 0006: QR authentication reference flow</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="adr/0006-qr-authentication-reference-flow.html#context">Context</a></li>
+<li class="toctree-l2"><a class="reference internal" href="adr/0006-qr-authentication-reference-flow.html#decision">Decision</a></li>
+<li class="toctree-l2"><a class="reference internal" href="adr/0006-qr-authentication-reference-flow.html#consequences">Consequences</a></li>
+<li class="toctree-l2"><a class="reference internal" href="adr/0006-qr-authentication-reference-flow.html#alternatives-considered">Alternatives considered</a></li>
+<li class="toctree-l2"><a class="reference internal" href="adr/0006-qr-authentication-reference-flow.html#review-evidence">Review evidence</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="adr/0007-ios-reference-application.html">ADR 0007: iOS reference application</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="adr/0007-ios-reference-application.html#context">Context</a></li>
+<li class="toctree-l2"><a class="reference internal" href="adr/0007-ios-reference-application.html#decision">Decision</a></li>
+<li class="toctree-l2"><a class="reference internal" href="adr/0007-ios-reference-application.html#consequences">Consequences</a></li>
+<li class="toctree-l2"><a class="reference internal" href="adr/0007-ios-reference-application.html#alternatives-considered">Alternatives considered</a></li>
+<li class="toctree-l2"><a class="reference internal" href="adr/0007-ios-reference-application.html#review-evidence">Review evidence</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="adr/0008-android-reference-application.html">ADR 0008: Android reference application</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="adr/0008-android-reference-application.html#context">Context</a></li>
+<li class="toctree-l2"><a class="reference internal" href="adr/0008-android-reference-application.html#decision">Decision</a></li>
+<li class="toctree-l2"><a class="reference internal" href="adr/0008-android-reference-application.html#consequences">Consequences</a></li>
+<li class="toctree-l2"><a class="reference internal" href="adr/0008-android-reference-application.html#alternatives-considered">Alternatives considered</a></li>
+<li class="toctree-l2"><a class="reference internal" href="adr/0008-android-reference-application.html#review-evidence">Review evidence</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="adr/0009-synoptikon-integration-boundary.html">ADR 0009: Synoptikon integration boundary</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="adr/0009-synoptikon-integration-boundary.html#context">Context</a></li>
+<li class="toctree-l2"><a class="reference internal" href="adr/0009-synoptikon-integration-boundary.html#decision">Decision</a></li>
+<li class="toctree-l2"><a class="reference internal" href="adr/0009-synoptikon-integration-boundary.html#consequences">Consequences</a></li>
+<li class="toctree-l2"><a class="reference internal" href="adr/0009-synoptikon-integration-boundary.html#alternatives-considered">Alternatives considered</a></li>
+<li class="toctree-l2"><a class="reference internal" href="adr/0009-synoptikon-integration-boundary.html#review-evidence">Review evidence</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="adr/0010-monas-standalone-integration-boundary.html">ADR 0010: Monas standalone integration boundary</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="adr/0010-monas-standalone-integration-boundary.html#context">Context</a></li>
+<li class="toctree-l2"><a class="reference internal" href="adr/0010-monas-standalone-integration-boundary.html#decision">Decision</a></li>
+<li class="toctree-l2"><a class="reference internal" href="adr/0010-monas-standalone-integration-boundary.html#consequences">Consequences</a></li>
+<li class="toctree-l2"><a class="reference internal" href="adr/0010-monas-standalone-integration-boundary.html#alternatives-considered">Alternatives considered</a></li>
+<li class="toctree-l2"><a class="reference internal" href="adr/0010-monas-standalone-integration-boundary.html#review-evidence">Review evidence</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="adr/0011-local-discovery-and-direct-exchange.html">ADR 0011: Local discovery and direct exchange</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="adr/0011-local-discovery-and-direct-exchange.html#context">Context</a></li>
+<li class="toctree-l2"><a class="reference internal" href="adr/0011-local-discovery-and-direct-exchange.html#decision">Decision</a></li>
+<li class="toctree-l2"><a class="reference internal" href="adr/0011-local-discovery-and-direct-exchange.html#consequences">Consequences</a></li>
+<li class="toctree-l2"><a class="reference internal" href="adr/0011-local-discovery-and-direct-exchange.html#alternatives-considered">Alternatives considered</a></li>
+<li class="toctree-l2"><a class="reference internal" href="adr/0011-local-discovery-and-direct-exchange.html#review-evidence">Review evidence</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="adr/0012-recovery-revocation-and-multi-device-lifecycle.html">ADR 0012: Recovery, revocation, and multi-device lifecycle</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="adr/0012-recovery-revocation-and-multi-device-lifecycle.html#context">Context</a></li>
+<li class="toctree-l2"><a class="reference internal" href="adr/0012-recovery-revocation-and-multi-device-lifecycle.html#decision">Decision</a></li>
+<li class="toctree-l2"><a class="reference internal" href="adr/0012-recovery-revocation-and-multi-device-lifecycle.html#consequences">Consequences</a></li>
+<li class="toctree-l2"><a class="reference internal" href="adr/0012-recovery-revocation-and-multi-device-lifecycle.html#alternatives-considered">Alternatives considered</a></li>
+<li class="toctree-l2"><a class="reference internal" href="adr/0012-recovery-revocation-and-multi-device-lifecycle.html#review-evidence">Review evidence</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="adr/0013-security-assurance-and-independent-review.html">ADR 0013: Security assurance and independent review</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="adr/0013-security-assurance-and-independent-review.html#context">Context</a></li>
+<li class="toctree-l2"><a class="reference internal" href="adr/0013-security-assurance-and-independent-review.html#decision">Decision</a></li>
+<li class="toctree-l2"><a class="reference internal" href="adr/0013-security-assurance-and-independent-review.html#consequences">Consequences</a></li>
+<li class="toctree-l2"><a class="reference internal" href="adr/0013-security-assurance-and-independent-review.html#alternatives-considered">Alternatives considered</a></li>
+<li class="toctree-l2"><a class="reference internal" href="adr/0013-security-assurance-and-independent-review.html#review-evidence">Review evidence</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="adr/0014-release-packaging-and-provenance.html">ADR 0014: Release packaging, publication, and provenance</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="adr/0014-release-packaging-and-provenance.html#context">Context</a></li>
+<li class="toctree-l2"><a class="reference internal" href="adr/0014-release-packaging-and-provenance.html#decision">Decision</a></li>
+<li class="toctree-l2"><a class="reference internal" href="adr/0014-release-packaging-and-provenance.html#consequences">Consequences</a></li>
+<li class="toctree-l2"><a class="reference internal" href="adr/0014-release-packaging-and-provenance.html#alternatives-considered">Alternatives considered</a></li>
+<li class="toctree-l2"><a class="reference internal" href="adr/0014-release-packaging-and-provenance.html#review-evidence">Review evidence</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="adr/0015-cli-native-authentication.html">ADR 0015: CLI-native authentication boundary</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="adr/0015-cli-native-authentication.html#context">Context</a></li>
+<li class="toctree-l2"><a class="reference internal" href="adr/0015-cli-native-authentication.html#decision">Decision</a></li>
+<li class="toctree-l2"><a class="reference internal" href="adr/0015-cli-native-authentication.html#consequences">Consequences</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="adr/0016-exact-action-approval-protocol.html">ADR 0016: Exact-action approval protocol</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="adr/0016-exact-action-approval-protocol.html#context">Context</a></li>
+<li class="toctree-l2"><a class="reference internal" href="adr/0016-exact-action-approval-protocol.html#decision">Decision</a></li>
+<li class="toctree-l2"><a class="reference internal" href="adr/0016-exact-action-approval-protocol.html#consequences">Consequences</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="adr/0017-local-authentication-agent.html">ADR 0017: Local authentication agent and installation signer</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="adr/0017-local-authentication-agent.html#context">Context</a></li>
+<li class="toctree-l2"><a class="reference internal" href="adr/0017-local-authentication-agent.html#decision">Decision</a></li>
+<li class="toctree-l2"><a class="reference internal" href="adr/0017-local-authentication-agent.html#consequences">Consequences</a></li>
+</ul>
+</li>
 <li class="toctree-l1"><a class="reference internal" href="protocol/README.html">Protocol documentation</a></li>
-<li class="toctree-l1"><a class="reference internal" href="security/README.html">Security documentation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="protocol/domain-model.html">Domain identifiers</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="protocol/domain-model.html#canonical-text">Canonical text</a></li>
+<li class="toctree-l2"><a class="reference internal" href="protocol/domain-model.html#payload-semantics">Payload semantics</a></li>
+<li class="toctree-l2"><a class="reference internal" href="protocol/domain-model.html#error-handling">Error handling</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="protocol/action-approval.html">Exact-action approval protocol</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="protocol/action-approval.html#canonical-action-descriptor">Canonical action descriptor</a></li>
+<li class="toctree-l2"><a class="reference internal" href="protocol/action-approval.html#challenge">Challenge</a></li>
+<li class="toctree-l2"><a class="reference internal" href="protocol/action-approval.html#response">Response</a></li>
+<li class="toctree-l2"><a class="reference internal" href="protocol/action-approval.html#execution-boundary">Execution boundary</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="protocol.html">Protocol specification</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="protocol.html#signed-message-envelope">Signed-message envelope</a></li>
+<li class="toctree-l2"><a class="reference internal" href="protocol.html#normative-structures">Normative structures</a></li>
+<li class="toctree-l2"><a class="reference internal" href="protocol.html#qr-authentication-reference-flow">QR authentication reference flow</a></li>
+<li class="toctree-l2"><a class="reference internal" href="protocol.html#challenge-lifecycle">Challenge lifecycle</a></li>
+<li class="toctree-l2"><a class="reference internal" href="protocol.html#versioning">Versioning</a></li>
+<li class="toctree-l2"><a class="reference internal" href="protocol.html#failure-behavior">Failure behavior</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="crypto.html">Cryptographic primitives</a></li>
+<li class="toctree-l1"><a class="reference internal" href="encoding.html">Canonical encoding</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="encoding.html#normative-v1-profile">Normative v1 profile</a></li>
+<li class="toctree-l2"><a class="reference internal" href="encoding.html#text-and-diagnostic-form">Text and diagnostic form</a></li>
+<li class="toctree-l2"><a class="reference internal" href="encoding.html#conformance-fixture">Conformance fixture</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="assurance.html">Assurance model</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="assurance.html#enrolment-claims">Enrolment claims</a></li>
+<li class="toctree-l2"><a class="reference internal" href="assurance.html#per-signature-claims">Per-signature claims</a></li>
+<li class="toctree-l2"><a class="reference internal" href="assurance.html#policy-evaluation">Policy evaluation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="assurance.html#registry-representation">Registry representation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="assurance.html#platform-interpretation">Platform interpretation</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="security/README.html">Security documentation</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="security/README.html#external-enrolment-trust-boundary">External enrolment trust boundary</a></li>
+<li class="toctree-l2"><a class="reference internal" href="security/README.html#device-registry-persistence-boundary">Device-registry persistence boundary</a></li>
+<li class="toctree-l2"><a class="reference internal" href="security/README.html#qr-authentication-boundary">QR authentication boundary</a></li>
+<li class="toctree-l2"><a class="reference internal" href="security/README.html#exact-action-execution-boundary">Exact-action execution boundary</a></li>
+<li class="toctree-l2"><a class="reference internal" href="security/README.html#local-agent-boundary">Local-agent boundary</a></li>
+</ul>
+</li>
 <li class="toctree-l1"><a class="reference internal" href="operations/README.html">Operations documentation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="operations/device-registry.html">Device registry operations</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="operations/device-registry.html#security-boundary">Security boundary</a></li>
+<li class="toctree-l2"><a class="reference internal" href="operations/device-registry.html#stored-device-state">Stored device state</a></li>
+<li class="toctree-l2"><a class="reference internal" href="operations/device-registry.html#lifecycle">Lifecycle</a></li>
+<li class="toctree-l2"><a class="reference internal" href="operations/device-registry.html#database-creation-and-migration">Database creation and migration</a></li>
+<li class="toctree-l2"><a class="reference internal" href="operations/device-registry.html#backup-upgrade-and-rollback">Backup, upgrade, and rollback</a></li>
+<li class="toctree-l2"><a class="reference internal" href="operations/device-registry.html#operational-checks">Operational checks</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="operations/github-enrolment.html">Operate GitHub trust enrolment</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="operations/github-enrolment.html#register-the-oauth-application">Register the OAuth application</a></li>
+<li class="toctree-l2"><a class="reference internal" href="operations/github-enrolment.html#minimum-access">Minimum access</a></li>
+<li class="toctree-l2"><a class="reference internal" href="operations/github-enrolment.html#privacy-and-retention">Privacy and retention</a></li>
+<li class="toctree-l2"><a class="reference internal" href="operations/github-enrolment.html#failure-and-recovery">Failure and recovery</a></li>
+<li class="toctree-l2"><a class="reference internal" href="operations/github-enrolment.html#reauthentication">Reauthentication</a></li>
+<li class="toctree-l2"><a class="reference internal" href="operations/github-enrolment.html#incident-response">Incident response</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="operations/google-enrolment.html">Operate Google trust enrolment</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="operations/google-enrolment.html#register-the-google-oauth-clients">Register the Google OAuth clients</a></li>
+<li class="toctree-l2"><a class="reference internal" href="operations/google-enrolment.html#enrolment-request">Enrolment request</a></li>
+<li class="toctree-l2"><a class="reference internal" href="operations/google-enrolment.html#discovery-and-signing-key-operation">Discovery and signing-key operation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="operations/google-enrolment.html#identity-and-retention">Identity and retention</a></li>
+<li class="toctree-l2"><a class="reference internal" href="operations/google-enrolment.html#failure-and-recovery">Failure and recovery</a></li>
+<li class="toctree-l2"><a class="reference internal" href="operations/google-enrolment.html#reauthentication-and-incidents">Reauthentication and incidents</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="operations/qr-authentication.html">QR authentication operations</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="operations/qr-authentication.html#reference-ceremony">Reference ceremony</a></li>
+<li class="toctree-l2"><a class="reference internal" href="operations/qr-authentication.html#camera-and-accessible-fallback">Camera and accessible fallback</a></li>
+<li class="toctree-l2"><a class="reference internal" href="operations/qr-authentication.html#direct-local-failure">Direct-local failure</a></li>
+<li class="toctree-l2"><a class="reference internal" href="operations/qr-authentication.html#troubleshooting-and-incident-response">Troubleshooting and incident response</a></li>
+<li class="toctree-l2"><a class="reference internal" href="operations/qr-authentication.html#production-boundary">Production boundary</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="operations/ios.html">iOS application operations</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="operations/ios.html#keeper-assisted-github-authentication">Keeper-assisted GitHub authentication</a></li>
+<li class="toctree-l2"><a class="reference internal" href="operations/ios.html#apple-distribution-prerequisites">Apple distribution prerequisites</a></li>
+<li class="toctree-l2"><a class="reference internal" href="operations/ios.html#release-evidence">Release evidence</a></li>
+<li class="toctree-l2"><a class="reference internal" href="operations/ios.html#current-interoperability-boundary">Current interoperability boundary</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="operations/android.html">Android application operations</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="operations/android.html#keeper-assisted-github-authentication">Keeper-assisted GitHub authentication</a></li>
+<li class="toctree-l2"><a class="reference internal" href="operations/android.html#device-security">Device security</a></li>
+<li class="toctree-l2"><a class="reference internal" href="operations/android.html#play-prerequisites">Play prerequisites</a></li>
+<li class="toctree-l2"><a class="reference internal" href="operations/android.html#current-interoperability-boundary">Current interoperability boundary</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="operations/synoptikon.html">Synoptikon integration operations</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="operations/synoptikon.html#enablement-gates">Enablement gates</a></li>
+<li class="toctree-l2"><a class="reference internal" href="operations/synoptikon.html#bootstrap">Bootstrap</a></li>
+<li class="toctree-l2"><a class="reference internal" href="operations/synoptikon.html#audit-and-diagnostics">Audit and diagnostics</a></li>
+<li class="toctree-l2"><a class="reference internal" href="operations/synoptikon.html#ci-and-acceptance-evidence">CI and acceptance evidence</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="operations/monas.html">Monas standalone integration operations</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="operations/monas.html#enablement-gates">Enablement gates</a></li>
+<li class="toctree-l2"><a class="reference internal" href="operations/monas.html#cli-safety">CLI safety</a></li>
+<li class="toctree-l2"><a class="reference internal" href="operations/monas.html#monas-and-prosopikon-ownership">Monas and Prosopikon ownership</a></li>
+<li class="toctree-l2"><a class="reference internal" href="operations/monas.html#diagnostics-and-evidence">Diagnostics and evidence</a></li>
+<li class="toctree-l2"><a class="reference internal" href="operations/monas.html#ci-and-release-evidence">CI and release evidence</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="operations/discovery.html">Local discovery and direct exchange operations</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="operations/discovery.html#enablement-gates">Enablement gates</a></li>
+<li class="toctree-l2"><a class="reference internal" href="operations/discovery.html#network-and-privacy-policy">Network and privacy policy</a></li>
+<li class="toctree-l2"><a class="reference internal" href="operations/discovery.html#expected-fallback">Expected fallback</a></li>
+<li class="toctree-l2"><a class="reference internal" href="operations/discovery.html#platform-checks">Platform checks</a></li>
+<li class="toctree-l2"><a class="reference internal" href="operations/discovery.html#diagnostics">Diagnostics</a></li>
+<li class="toctree-l2"><a class="reference internal" href="operations/discovery.html#ci-and-acceptance-evidence">CI and acceptance evidence</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="operations/device-lifecycle.html">Recovery, revocation, and multi-device lifecycle operations</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="operations/device-lifecycle.html#readiness-gates">Readiness gates</a></li>
+<li class="toctree-l2"><a class="reference internal" href="operations/device-lifecycle.html#lost-or-possibly-compromised-device">Lost or possibly compromised device</a></li>
+<li class="toctree-l2"><a class="reference internal" href="operations/device-lifecycle.html#replacement-device">Replacement device</a></li>
+<li class="toctree-l2"><a class="reference internal" href="operations/device-lifecycle.html#sole-administrator-recovery">Sole-administrator recovery</a></li>
+<li class="toctree-l2"><a class="reference internal" href="operations/device-lifecycle.html#external-identity-loss">External identity loss</a></li>
+<li class="toctree-l2"><a class="reference internal" href="operations/device-lifecycle.html#historic-evidence">Historic evidence</a></li>
+<li class="toctree-l2"><a class="reference internal" href="operations/device-lifecycle.html#backup-and-incident-evidence">Backup and incident evidence</a></li>
+<li class="toctree-l2"><a class="reference internal" href="operations/device-lifecycle.html#acceptance-exercise">Acceptance exercise</a></li>
+<li class="toctree-l2"><a class="reference internal" href="operations/device-lifecycle.html#current-automation-boundary">Current automation boundary</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="operations/security-hardening.html">Security hardening and independent review operations</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="operations/security-hardening.html#review-readiness">Review readiness</a></li>
+<li class="toctree-l2"><a class="reference internal" href="operations/security-hardening.html#dependency-review-operation">Dependency-review operation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="operations/security-hardening.html#penetration-test-operation">Penetration-test operation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="operations/security-hardening.html#mobile-assessment-operation">Mobile assessment operation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="operations/security-hardening.html#finding-and-risk-gate">Finding and risk gate</a></li>
+<li class="toctree-l2"><a class="reference internal" href="operations/security-hardening.html#compromised-dependency-or-toolchain">Compromised dependency or toolchain</a></li>
+<li class="toctree-l2"><a class="reference internal" href="operations/security-hardening.html#privacy-and-evidence-handling">Privacy and evidence handling</a></li>
+<li class="toctree-l2"><a class="reference internal" href="operations/security-hardening.html#current-jenkins-boundary">Current Jenkins boundary</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="operations/release-packaging.html">Release installation, upgrade, backup, and publication</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="operations/release-packaging.html#before-accepting-a-release">Before accepting a release</a></li>
+<li class="toctree-l2"><a class="reference internal" href="operations/release-packaging.html#clean-host-installation">Clean-host installation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="operations/release-packaging.html#backup-and-restore">Backup and restore</a></li>
+<li class="toctree-l2"><a class="reference internal" href="operations/release-packaging.html#upgrade-and-rollback">Upgrade and rollback</a></li>
+<li class="toctree-l2"><a class="reference internal" href="operations/release-packaging.html#ios-distribution">iOS distribution</a></li>
+<li class="toctree-l2"><a class="reference internal" href="operations/release-packaging.html#android-distribution">Android distribution</a></li>
+<li class="toctree-l2"><a class="reference internal" href="operations/release-packaging.html#documentation-publication">Documentation publication</a></li>
+<li class="toctree-l2"><a class="reference internal" href="operations/release-packaging.html#stop-conditions">Stop conditions</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="operations/cli-authentication.html">CLI authentication operations</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="operations/cli-authentication.html#commands">Commands</a></li>
+<li class="toctree-l2"><a class="reference internal" href="operations/cli-authentication.html#terminal-requirements">Terminal requirements</a></li>
+<li class="toctree-l2"><a class="reference internal" href="operations/cli-authentication.html#response-handling">Response handling</a></li>
+<li class="toctree-l2"><a class="reference internal" href="operations/cli-authentication.html#evidence-and-readiness">Evidence and readiness</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="operations/local-agent.html">Local-agent operations</a></li>
 </ul>
 </div>
 </section>

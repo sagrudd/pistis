@@ -168,7 +168,7 @@ struct MnEmptyState: View {
 struct MnProvenance: View {
     var body: some View {
         VStack(alignment: .leading, spacing: MnSpacing.x2) {
-            Image("mnemosyne-biosciences-logo-master-mono")
+            Image("MnemosyneBiosciencesLogo")
                 .resizable()
                 .scaledToFit()
                 .frame(maxWidth: 216, maxHeight: 96, alignment: .leading)

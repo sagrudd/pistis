@@ -168,9 +168,15 @@ struct MnEmptyState: View {
 struct MnProvenance: View {
     var body: some View {
         VStack(alignment: .leading, spacing: MnSpacing.x2) {
-            Text("MNEMOSYNE BIOSCIENCES")
-                .font(.caption.weight(.semibold))
-                .tracking(1.1)
+            Image("MnemosyneBiosciencesLogo")
+                .resizable()
+                .scaledToFit()
+                .frame(maxWidth: 216, maxHeight: 96, alignment: .leading)
+                // The approved monochrome lock-up is reversed at render time
+                // for the Mnemosyne provenance surface; its source asset stays
+                // byte-for-byte identical to the branding authority.
+                .colorInvert()
+                .accessibilityHidden(true)
             Text("Pistis")
                 .font(.title2.weight(.semibold))
         }

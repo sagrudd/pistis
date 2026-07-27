@@ -1,6 +1,8 @@
 package org.mnemosynebiosciences.pistis.ui.components
 
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
@@ -24,12 +26,16 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.dp
+import org.mnemosynebiosciences.pistis.R
 import org.mnemosynebiosciences.pistis.presentation.EvidenceStatus
 import org.mnemosynebiosciences.pistis.presentation.StatusKind
 import org.mnemosynebiosciences.pistis.ui.theme.MnColor
@@ -205,11 +211,15 @@ fun MnProvenance() {
             .padding(MnSpacing.x4),
         verticalArrangement = Arrangement.spacedBy(MnSpacing.x2),
     ) {
-        Text(
-            "MNEMOSYNE BIOSCIENCES",
-            color = MnColor.OnBrand,
-            style = MaterialTheme.typography.labelMedium,
-            fontWeight = FontWeight.SemiBold,
+        Image(
+            painter = painterResource(R.drawable.mnemosyne_biosciences_logo_master_mono),
+            contentDescription = null,
+            contentScale = ContentScale.Fit,
+            modifier = Modifier
+                .fillMaxWidth()
+                .heightIn(max = 96.dp)
+                .background(MnColor.Raised, RoundedCornerShape(MnRadius.medium))
+                .padding(MnSpacing.x2),
         )
         Text(
             "Pistis",

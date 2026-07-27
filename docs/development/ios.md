@@ -8,10 +8,10 @@ SwiftUI application:
 - `ios/PistisApp` contains the native SwiftUI shell, reviewed design tokens,
   Apple-platform adapters, tests, and Xcode project.
 
-The native shell displays the unmodified approved Mnemosyne Biosciences
-light-surface lock-up from the `mnemosyne_design_language` branding contract.
-Keep it on a light surface; do not recolour, redraw, crop, or use it as a
-control.
+The native shell displays the approved Mnemosyne Biosciences lock-up from the
+`mnemosyne_design_language` branding contract. On the Mnemosyne provenance
+surface, it is reversed non-destructively to white at render time; retain the
+unchanged source asset and do not redraw, crop, or use it as a control.
 
 ADR 0007 is normative for the application architecture, evidence hierarchy,
 Keeper boundary, visual language, and delivery claims.

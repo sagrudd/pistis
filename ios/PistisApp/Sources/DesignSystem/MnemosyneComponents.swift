@@ -172,9 +172,10 @@ struct MnProvenance: View {
                 .resizable()
                 .scaledToFit()
                 .frame(maxWidth: 216, maxHeight: 96, alignment: .leading)
-                .padding(MnSpacing.x2)
-                .background(MnColor.raised)
-                .clipShape(RoundedRectangle(cornerRadius: MnRadius.medium))
+                // The approved monochrome lock-up is reversed at render time
+                // for the Mnemosyne provenance surface; its source asset stays
+                // byte-for-byte identical to the branding authority.
+                .colorInvert()
                 .accessibilityHidden(true)
             Text("Pistis")
                 .font(.title2.weight(.semibold))

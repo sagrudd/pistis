@@ -39,13 +39,18 @@ CREATE TABLE IF NOT EXISTS ceremonies (
 ";
 
 const MIGRATE_V2: &str = "
-CREATE TABLE sessions (
-    session_id BLOB PRIMARY KEY CHECK (length(session_id) = 32),
+CREATE TABLE completion_receipts (
+    idempotency_key BLOB PRIMARY KEY CHECK (length(idempotency_key) = 32),
     challenge_id BLOB NOT NULL UNIQUE
         REFERENCES ceremonies(challenge_id),
     user_id BLOB NOT NULL CHECK (length(user_id) = 16),
     device_id BLOB NOT NULL CHECK (length(device_id) = 16),
-    created_at INTEGER NOT NULL CHECK (created_at >= 0)
+    response_digest BLOB NOT NULL CHECK (length(response_digest) = 32),
+    transfer INTEGER NOT NULL CHECK (transfer IN (1, 2)),
+    authority_reference BLOB NOT NULL CHECK (
+        length(authority_reference) BETWEEN 1 AND 512
+    ),
+    completed_at INTEGER NOT NULL CHECK (completed_at >= 0)
 ) STRICT;
 CREATE TABLE audit_events (
     sequence INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -69,7 +74,7 @@ ALTER TABLE agent_schema_v2 RENAME TO agent_schema;
 /// Ceremony protocol stored by the local agent.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum CeremonyKind {
-    /// Version 1 session authentication.
+    /// Version 1 authentication.
     Login,
     /// Version 2 exact-action approval.
     Action,

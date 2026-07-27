@@ -17,9 +17,10 @@ pub enum AuthoritativeError {
 /// One authoritative durable ceremony and session transaction boundary.
 ///
 /// Implementations own reference lookup, challenge signing, response
-/// verification, single-use consumption, session insertion, and audit
+/// verification, single-use consumption, host authority issuance, and audit
 /// insertion. `submit` must commit those mutations atomically or commit none.
-/// Implementations must never maintain a second shadow ceremony state.
+/// Implementations must never maintain a second shadow ceremony or session
+/// state.
 pub trait AuthoritativeCeremonies {
     /// Creates and durably records one signed login challenge.
     ///

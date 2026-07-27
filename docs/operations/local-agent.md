@@ -34,9 +34,11 @@ Before enabling a future service, verify:
 
 Repository schema version 2 migrates version 1 ceremony databases in an
 immediate transaction. Back up the owner-only database before deployment and
-never downgrade a migrated database. A completed login must produce exactly
-one consumed ceremony, one session row, and one redacted audit row. Treat any
-partial or duplicate observation as corruption and stop the service.
+never downgrade a migrated database. The local reference adapter records one
+consumed ceremony, one non-secret completion receipt, and one redacted audit
+row; it never stores a session. Production completion is valid only when the
+Prosopikon host atomically issues its authority and appends both audit records.
+Treat any partial or duplicate observation as corruption and stop the service.
 
 The CLI now connects to this socket and performs one closed request per fresh
 connection. Server dispatch checks native same-user credentials before reading

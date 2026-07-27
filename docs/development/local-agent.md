@@ -50,30 +50,32 @@ listener failures terminate the service for its supervisor to handle.
 
 `AuthoritativeHandler` routes each closed operation to one
 `AuthoritativeCeremonies` implementation. Its contract requires response
-verification, single-use consumption, session insertion, and audit insertion
-to commit atomically. It explicitly forbids combining the in-memory reference
-service and durable repository as parallel ceremony state machines.
+verification, single-use consumption, host authority issuance, and audit
+insertion to commit atomically. It explicitly forbids combining the in-memory
+reference service and durable repository as parallel ceremony state machines.
 
 ## Verified completion transaction
 
-The version 2 repository schema owns sessions and redacted audit events
-alongside ceremonies. `complete_verified` accepts only facts produced by the
-shared verifier. Inside one immediate transaction it reloads the ceremony,
-checks the exclusive expiry, compares the exact staged response with the bytes
-that were verified, inserts a unique fresh session, inserts one challenge-bound
-audit event, and changes the ceremony to consumed.
+The version 2 local reference schema owns non-secret completion receipts and
+redacted audit events alongside ceremonies; it has no session table.
+`complete_verified` accepts only facts produced by the shared verifier. Inside
+one immediate transaction it reloads the ceremony, checks exclusive expiry,
+compares the exact staged response, inserts a unique idempotency receipt and
+challenge-bound audit event, and changes the ceremony to consumed.
 
-No mutation precedes the exact-response and expiry checks. Session or audit
-constraint failures roll back both inserts and leave the response available
-for a correctly generated fresh session identifier. Concurrent attempts yield
-exactly one session and audit event. Restart preserves all three committed
-facts. Audit retrieval excludes session capabilities and response bytes.
+No mutation precedes the exact-response and expiry checks. Receipt or audit
+constraint failures roll back both inserts and leave the response available.
+Concurrent attempts yield exactly one receipt and audit event. Restart
+preserves all three committed facts. Audit retrieval excludes response bytes
+and authority capabilities.
 
-`CompletionCoordinator` is the only verifier-to-commit path. It loads the exact
-staged response, invokes a mutation-free `StagedResponseVerifier`, obtains a
-fresh operating-system-random session capability, and passes those same bytes
-and verified identity facts to `complete_verified`. Verification or randomness
-failure leaves the response staged and creates no session or audit authority.
+`CompletionCoordinator` is the verifier-to-host boundary. It loads the exact
+staged response through `HostCompletionPort`, invokes a mutation-free
+`StagedResponseVerifier`, obtains a fresh operating-system-random idempotency
+key, and passes those bytes and verified identity facts back to the port.
+Production Prosopikon adapters must perform challenge consumption, generation
+rechecks, authority issuance, idempotency, and both audit appends in one host
+transaction. Verification or randomness failure creates no authority.
 
 ## Signing provider
 

@@ -20,7 +20,9 @@ mod signer;
 mod socket;
 mod verification;
 
-pub use completion::{AuditTransfer, DurableAuditEvent, VerifiedCompletion, VerifiedSession};
+pub use completion::{
+    AuditTransfer, CompletionOutcome, CompletionRequest, DurableAuditEvent, HostCompletionPort,
+};
 pub use daemon::{DaemonControl, SameUserAuthorizer, serve_until};
 pub use dispatch::{AgentHandler, DispatchError, PeerAuthorizer, dispatch_one};
 pub use framing::{MAX_AGENT_MESSAGE_BYTES, SocketFrameError, read_frame, write_frame};
@@ -39,6 +41,6 @@ pub use signer::{
 };
 pub use socket::{AgentSocket, SocketError, connect};
 pub use verification::{
-    CompletionCoordinator, CompletionError, OsSessionIds, SessionIdSource, StagedResponseVerifier,
-    VerifiedPrincipal,
+    CompletionCoordinator, CompletionError, IdempotencyKeySource, OsIdempotencyKeys,
+    StagedResponseVerifier, VerifiedPrincipal,
 };

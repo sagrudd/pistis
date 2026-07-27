@@ -1,6 +1,6 @@
 use crate::{
-    AuditTransfer, CeremonyRecord, CeremonyRepository, CeremonyState, RepositoryError,
-    VerifiedCompletion, VerifiedSession,
+    AuditTransfer, CeremonyRecord, CeremonyState, CompletionOutcome, CompletionRequest,
+    HostCompletionPort, RepositoryError,
 };
 use pistis_domain::{ChallengeId, DeviceId, UserId};
 use std::{error::Error, fmt};
@@ -30,9 +30,9 @@ pub trait StagedResponseVerifier {
     ) -> Result<VerifiedPrincipal, CompletionError>;
 }
 
-/// Fresh session-capability source.
-pub trait SessionIdSource {
-    /// Produces a cryptographically unpredictable non-zero capability.
+/// Fresh completion-idempotency-key source.
+pub trait IdempotencyKeySource {
+    /// Produces a cryptographically unpredictable non-zero key.
     ///
     /// # Errors
     ///
@@ -41,9 +41,9 @@ pub trait SessionIdSource {
 }
 
 /// Operating-system cryptographic session-capability source.
-pub struct OsSessionIds;
+pub struct OsIdempotencyKeys;
 
-impl SessionIdSource for OsSessionIds {
+impl IdempotencyKeySource for OsIdempotencyKeys {
     fn generate(&self) -> Result<[u8; 32], CompletionError> {
         let mut session = [0; 32];
         getrandom::fill(&mut session).map_err(|_| CompletionError::Unavailable)?;
@@ -54,36 +54,38 @@ impl SessionIdSource for OsSessionIds {
     }
 }
 
-/// Concrete staged-verification and durable-completion coordinator.
-pub struct CompletionCoordinator<V, S> {
-    repository: CeremonyRepository,
+/// Concrete staged-verification and host-completion coordinator.
+pub struct CompletionCoordinator<A, V, K> {
+    authority: A,
     verifier: V,
-    sessions: S,
+    idempotency_keys: K,
 }
 
-impl<V, S> CompletionCoordinator<V, S> {
-    /// Constructs the sole completion path over one durable repository.
+impl<A, V, K> CompletionCoordinator<A, V, K> {
+    /// Constructs the sole completion path over one host authority.
     #[must_use]
-    pub const fn new(repository: CeremonyRepository, verifier: V, sessions: S) -> Self {
+    pub const fn new(authority: A, verifier: V, idempotency_keys: K) -> Self {
         Self {
-            repository,
+            authority,
             verifier,
-            sessions,
+            idempotency_keys,
         }
     }
 
     /// Returns the owned components.
-    pub fn into_inner(self) -> (CeremonyRepository, V, S) {
-        (self.repository, self.verifier, self.sessions)
+    pub fn into_inner(self) -> (A, V, K) {
+        (self.authority, self.verifier, self.idempotency_keys)
     }
 }
 
-impl<V: StagedResponseVerifier, S: SessionIdSource> CompletionCoordinator<V, S> {
-    /// Verifies the staged response and atomically establishes authority.
+impl<A: HostCompletionPort, V: StagedResponseVerifier, K: IdempotencyKeySource>
+    CompletionCoordinator<A, V, K>
+{
+    /// Verifies the staged response and asks the host to atomically complete.
     ///
     /// The verifier performs no mutation. The repository then rechecks the
-    /// same response bytes inside its immediate transaction before consuming
-    /// the ceremony, creating the session, and appending audit evidence.
+    /// same response bytes inside its transaction before consuming the
+    /// ceremony, issuing host authority, and appending both audit records.
     ///
     /// # Errors
     ///
@@ -94,8 +96,11 @@ impl<V: StagedResponseVerifier, S: SessionIdSource> CompletionCoordinator<V, S> 
         challenge_id: ChallengeId,
         transfer: AuditTransfer,
         now: u64,
-    ) -> Result<[u8; 32], CompletionError> {
-        let ceremony = self.repository.get(challenge_id).map_err(map_repository)?;
+    ) -> Result<CompletionOutcome, CompletionError> {
+        let ceremony = self
+            .authority
+            .ceremony(challenge_id)
+            .map_err(map_repository)?;
         if ceremony.state != CeremonyState::ResponseAvailable || now >= ceremony.expires_at {
             return Err(CompletionError::Conflict);
         }
@@ -104,28 +109,18 @@ impl<V: StagedResponseVerifier, S: SessionIdSource> CompletionCoordinator<V, S> 
             .as_deref()
             .ok_or(CompletionError::Unavailable)?;
         let principal = self.verifier.verify(&ceremony, staged_response, now)?;
-        let session_id = self.sessions.generate()?;
-        self.repository
-            .complete_verified(&VerifiedCompletion {
+        let idempotency_key = self.idempotency_keys.generate()?;
+        self.authority
+            .complete(&CompletionRequest {
                 challenge_id,
                 verified_response: staged_response.to_vec(),
-                session_id,
+                idempotency_key,
                 user_id: principal.user_id,
                 device_id: principal.device_id,
                 transfer,
                 completed_at: now,
             })
-            .map_err(map_repository)?;
-        Ok(session_id)
-    }
-
-    /// Resolves non-secret session metadata through the same repository.
-    ///
-    /// # Errors
-    ///
-    /// Unknown, corrupt, or unavailable sessions fail closed.
-    pub fn session(&self, session_id: &[u8; 32]) -> Result<VerifiedSession, CompletionError> {
-        self.repository.session(session_id).map_err(map_repository)
+            .map_err(map_repository)
     }
 }
 
@@ -167,7 +162,7 @@ const fn map_repository(error: RepositoryError) -> CompletionError {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{CeremonyKind, CeremonyRecord};
+    use crate::{CeremonyKind, CeremonyRecord, CeremonyRepository};
     use std::{
         fs,
         os::unix::fs::PermissionsExt as _,
@@ -191,9 +186,9 @@ mod tests {
         }
     }
 
-    struct Sessions(Result<[u8; 32], CompletionError>);
+    struct Keys(Result<[u8; 32], CompletionError>);
 
-    impl SessionIdSource for Sessions {
+    impl IdempotencyKeySource for Keys {
         fn generate(&self) -> Result<[u8; 32], CompletionError> {
             self.0
         }
@@ -248,7 +243,7 @@ mod tests {
         let mut coordinator = CompletionCoordinator::new(
             repository(&database),
             Verifier(Ok(principal())),
-            Sessions(Ok([5; 32])),
+            Keys(Ok([5; 32])),
         );
         assert_eq!(
             coordinator.complete(
@@ -256,11 +251,12 @@ mod tests {
                 AuditTransfer::DirectLocal,
                 500,
             ),
-            Ok([5; 32])
-        );
-        assert_eq!(
-            coordinator.session(&[5; 32]).unwrap().user_id,
-            UserId::from_bytes([3; 16])
+            Ok(CompletionOutcome {
+                authority_reference: vec![1; 16],
+                user_id: UserId::from_bytes([3; 16]),
+                device_id: DeviceId::from_bytes([4; 16]),
+                completed_at: 500,
+            })
         );
         let (repository, _, _) = coordinator.into_inner();
         assert_eq!(repository.audit_events().unwrap().len(), 1);
@@ -270,13 +266,10 @@ mod tests {
     #[test]
     fn rejection_and_random_failure_leave_staged_response_unchanged() {
         for (verifier, sessions) in [
-            (
-                Verifier(Err(CompletionError::Rejected)),
-                Sessions(Ok([6; 32])),
-            ),
+            (Verifier(Err(CompletionError::Rejected)), Keys(Ok([6; 32]))),
             (
                 Verifier(Ok(principal())),
-                Sessions(Err(CompletionError::Unavailable)),
+                Keys(Err(CompletionError::Unavailable)),
             ),
         ] {
             let (directory, database) = database();

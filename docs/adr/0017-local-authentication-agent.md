@@ -32,19 +32,20 @@ unique. State transitions use expected-state predicates, and successful
 approval consumption is atomic and terminal. Restart cannot restore a
 consumed, cancelled, denied, failed, or expired challenge to pending.
 
-Schema version 2 adds session and redacted audit tables linked uniquely to the
-consumed challenge. Signature, schema, device, binding, decision, and policy
-verification complete before the commit call. The immediate commit transaction
-then rechecks that the staged response is byte-for-byte the verified response
-and remains unexpired, inserts the fresh session and audit event, and finally
-makes the ceremony consumed. A response substitution, replay, session
-collision, audit failure, or concurrent winner rolls the whole transaction
-back. Session capabilities are never stored in audit rows.
+Schema version 2 adds non-secret completion receipts and redacted audit tables
+linked uniquely to the consumed challenge. It deliberately has no session
+table. Signature, schema, device, binding, decision, and policy verification
+complete before the commit call. The immediate commit transaction rechecks
+the exact staged response and expiry, records the host correlation outcome and
+audit event, and makes the ceremony consumed. Substitution, replay,
+idempotency collision, audit failure, or a concurrent winner rolls the
+transaction back.
 
 One `CompletionCoordinator` loads the staged bytes, calls the mutation-free
-shared-verifier adapter, generates a fresh operating-system-random session
-capability, and supplies the unchanged bytes and verified identity facts to
-that transaction. Verification and randomness failures create no authority.
+shared-verifier adapter, generates a fresh operating-system-random idempotency
+key, and supplies the unchanged bytes and verified identity facts to the
+host-owned completion port. Verification and randomness failures create no
+authority. The returned outcome contains only non-secret correlation facts.
 
 Socket requests use a length-prefixed bounded canonical envelope rather than
 newline or shell syntax. The server rejects unknown operations, unknown fields,
@@ -70,10 +71,13 @@ reject every peer. OS signal bridging, Keychain entitlement and access-control
 configuration, and service installation remain platform packaging concerns.
 
 Semantic dispatch depends on exactly one `AuthoritativeCeremonies` adapter.
-That adapter owns reference lookup, challenge signing, response verification,
-single-use consumption, session insertion, and audit insertion. Completion
-must be one rollback-capable transaction; composing the in-memory reference
-service with the durable repository as two state machines is prohibited.
+Production completion uses one `HostCompletionPort` implemented beside the
+Prosopikon authority. That host transaction owns reference lookup, generation
+and revocation rechecks, single-use consumption, Prosopikon session or
+exact-action authority issuance, idempotency, and both audit appends. The agent
+never issues, stores, or returns session material. Composing the in-memory
+reference service with the durable repository as two state machines is
+prohibited.
 
 ## Consequences
 
@@ -84,8 +88,8 @@ service with the durable repository as two state machines is prohibited.
   advice.
 - Durable single-use behavior can be tested across repository reopen and
   concurrent consumption.
-- Session creation, audit retention, and ceremony consumption cannot commit as
-  partially successful operations.
+- Host authority issuance, audit retention, and ceremony consumption cannot
+  commit as partially successful operations.
 - Portable tests use an explicit test signer. It is impossible to accidentally
   select that signer in production builds.
 - A production daemon is not enabled until its platform peer-credential and

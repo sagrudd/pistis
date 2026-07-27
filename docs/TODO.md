@@ -437,16 +437,18 @@ waive those acceptance criteria.
 - [x] Accept the production COSE profile
 - [x] Freeze canonical enrolment, challenge, response, and evidence schemas
 - [x] Publish shared positive and negative Rust/iOS fixtures
-- [ ] Prove Secure Enclave public-key encoding interoperability
-- [ ] Prove Face ID-gated signing interoperability
+- [x] Prove Secure Enclave public-key encoding interoperability
+- [x] Prove Face ID-gated signing interoperability
 - [x] Add downgrade, substitution, replay, and malformed-input cases
 - [x] Retain Jenkins interoperability evidence
 
 ADRs 0018 and 0019 freeze the untagged COSE Sign1 profile and closed MVP
 integer-key payloads. Shared Rust/Swift fixtures and hostile cases are retained
 by passing Expedition `e5b33b51-6f91-473d-9b92-97c0b31cfdd5` for merged `main`
-revision `228c90e40e04d582477b08d29e35c4582fe95a5a`. Native Secure Enclave
-provenance and Face ID-gated signing proof still require a physical device.
+revision `228c90e40e04d582477b08d29e35c4582fe95a5a`. The redacted physical
+Secure Enclave and Face ID ceremony record is bound to source revision
+`e58d0a21edb36af85e01d9bfa137136b673456d5`; its authoritative Jenkins
+retention is recorded with the EPIC-18 pull-request acceptance evidence.
 
 ## EPIC 19 — Prosopikon authority bridge
 

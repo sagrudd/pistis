@@ -1,0 +1,52 @@
+#!/bin/sh
+# Run the deliberately opt-in EPIC-18 physical iOS interoperability ceremony.
+#
+# The physical XCTest process does not inherit this shell's environment. This
+# runner injects the opt-in flag into a generated, local .xctestrun file rather
+# than weakening the normal shared scheme or committing a permanently enabled
+# test configuration.
+
+set -eu
+
+if [ "$#" -ne 1 ]; then
+    echo "usage: $0 <trusted-device-udid>" >&2
+    exit 64
+fi
+
+device_udid=$1
+derived_data=$(mktemp -d)
+result_bundle=${PISTIS_INTEROPERABILITY_RESULT_BUNDLE:-"$derived_data/physical-interoperability.xcresult"}
+
+if [ -n "${PISTIS_DEVELOPMENT_TEAM:-}" ]; then
+    set -- "DEVELOPMENT_TEAM=$PISTIS_DEVELOPMENT_TEAM"
+else
+    set --
+fi
+
+xcodebuild \
+    -project ios/PistisApp/Pistis.xcodeproj \
+    -scheme Pistis \
+    -destination "id=$device_udid" \
+    -derivedDataPath "$derived_data" \
+    "$@" \
+    build-for-testing
+
+xctestrun=$(find "$derived_data/Build/Products" -name 'Pistis_iphoneos*.xctestrun' -print -quit)
+if [ -z "$xctestrun" ]; then
+    echo "unable to locate the generated iPhone XCTest configuration" >&2
+    exit 70
+fi
+
+enabled_xctestrun="${xctestrun%.xctestrun}-physical-enabled.xctestrun"
+cp "$xctestrun" "$enabled_xctestrun"
+/usr/libexec/PlistBuddy \
+    -c 'Add :PistisTests:TestingEnvironmentVariables:PISTIS_RUN_PHYSICAL_INTEROPERABILITY string 1' \
+    "$enabled_xctestrun"
+
+xcodebuild test-without-building \
+    -xctestrun "$enabled_xctestrun" \
+    -destination "id=$device_udid" \
+    -only-testing:PistisTests/PlatformDeviceInteroperabilityTests/testPhysicalDeviceInteroperabilityCeremony \
+    -resultBundlePath "$result_bundle"
+
+echo "physical interoperability result bundle: $result_bundle"

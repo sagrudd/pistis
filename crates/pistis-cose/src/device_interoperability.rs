@@ -242,6 +242,9 @@ mod tests {
     const POSITIVE: &str = include_str!(
         "../../../fixtures/protocol-v1/cose/device-interoperability-record-example.json"
     );
+    const PHYSICAL_IOS_RECORD: &str = include_str!(
+        "../../../fixtures/protocol-v1/cose/ios-physical-interoperability-record.json"
+    );
 
     fn replace_field(record: &str, field: &str, replacement: &str) -> String {
         let needle = format!("\"{field}\": \"");
@@ -275,6 +278,15 @@ mod tests {
             record.key_id().as_bytes().as_slice(),
             decode_hex(include_str!("../../../fixtures/protocol-v1/cose/key-id.hex").trim_end())
                 .unwrap()
+        );
+    }
+
+    #[test]
+    fn verifies_retained_physical_ios_record() {
+        let record = verify_device_interoperability_record(PHYSICAL_IOS_RECORD.as_bytes()).unwrap();
+        assert_eq!(
+            record.key_id().as_bytes().as_slice(),
+            decode_hex("fb8cc53e5fc6da7ff9082c6560f1150ad5dd04018dc703cd1de5b42fa99cdec5").unwrap()
         );
     }
 

@@ -2,7 +2,7 @@ use p256::ecdsa::signature::Signer as _;
 use p256::ecdsa::{Signature, SigningKey};
 use pistis_canonical::{Value, to_vec};
 use pistis_cose::{CoseError, decode, encode, signing_input, verify_sign1};
-use pistis_crypto::{PublicKey, SignatureError, derive_key_id};
+use pistis_crypto::{PublicKey, SignatureError, derive_key_id, sha256};
 use std::collections::BTreeMap;
 
 const SECRET: [u8; 32] = [
@@ -17,12 +17,9 @@ fn fixture() -> (SigningKey, PublicKey) {
 }
 
 fn payload() -> Vec<u8> {
-    to_vec(&Value::Map(BTreeMap::from([
-        (0, Value::Unsigned(1)),
-        (1, Value::Text("pistis.authentication-response.v1".into())),
-        (2, Value::Bytes(vec![0xa5; 32])),
-    ])))
-    .unwrap()
+    fixture_hex(include_str!(
+        "../../../fixtures/protocol-v1/cose/authentication-response-payload.hex"
+    ))
 }
 
 fn signed_envelope() -> (Vec<u8>, PublicKey) {
@@ -48,8 +45,101 @@ fn positive_vector_is_stable_and_verifies() {
     // Exported for independent Swift conformance tests. This is a public,
     // deterministic test key and must never be used outside test fixtures.
     assert_eq!(
-        hexadecimal(&bytes),
-        "845826a201260458207ad63df38de8c402c7259db7bbc1b97b6890ffaa0a4adf78bc2b873efcabbf8da0584aa300010178217069737469732e61757468656e7469636174696f6e2d726573706f6e73652e7631025820a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5584071296517c3d5fc81a1606e2f6717efa98fa2de073ac3fd68b2155967a55399e7286b77d1e6587da0be79bf0da5aef5e63e9b32bf93f208ae7e87748650582324"
+        bytes,
+        fixture_hex(include_str!(
+            "../../../fixtures/protocol-v1/cose/positive-envelope.hex"
+        ))
+    );
+    assert_eq!(
+        signing_input(&payload(), derive_key_id(&public)).unwrap(),
+        fixture_hex(include_str!(
+            "../../../fixtures/protocol-v1/cose/signing-input.hex"
+        ))
+    );
+    assert_eq!(
+        verified.signature(),
+        fixture_hex(include_str!(
+            "../../../fixtures/protocol-v1/cose/signature.hex"
+        ))
+        .as_slice()
+    );
+    assert_eq!(
+        public.canonical_bytes().as_slice(),
+        fixture_hex(include_str!(
+            "../../../fixtures/protocol-v1/cose/public-key-compressed.hex"
+        ))
+    );
+    assert_eq!(
+        derive_key_id(&public).as_bytes().as_slice(),
+        fixture_hex(include_str!(
+            "../../../fixtures/protocol-v1/cose/key-id.hex"
+        ))
+    );
+}
+
+#[test]
+fn schema_payload_fixtures_are_exact_closed_canonical_maps() {
+    let cases = [
+        (
+            include_str!("../../../fixtures/protocol-v1/cose/device-registration-payload.hex"),
+            14,
+            "pistis.device-registration.v1",
+        ),
+        (
+            include_str!("../../../fixtures/protocol-v1/cose/authentication-challenge-payload.hex"),
+            17,
+            "pistis.authentication-challenge.v1",
+        ),
+        (
+            include_str!("../../../fixtures/protocol-v1/cose/authentication-response-payload.hex"),
+            13,
+            "pistis.authentication-response.v1",
+        ),
+        (
+            include_str!(
+                "../../../fixtures/protocol-v1/cose/authentication-evidence-receipt-payload.hex"
+            ),
+            14,
+            "pistis.authentication-evidence-receipt.v1",
+        ),
+    ];
+    for (hex, field_count, purpose) in cases {
+        let bytes = fixture_hex(hex);
+        let Value::Map(fields) = pistis_canonical::from_slice(&bytes).unwrap() else {
+            panic!("schema fixture must be a map")
+        };
+        assert_eq!(fields.len(), field_count);
+        assert_eq!(fields.get(&0), Some(&Value::Unsigned(1)));
+        assert_eq!(fields.get(&1), Some(&Value::Text(purpose.into())));
+        assert_eq!(to_vec(&Value::Map(fields)).unwrap(), bytes);
+    }
+
+    let challenge = fixture_hex(include_str!(
+        "../../../fixtures/protocol-v1/cose/authentication-challenge-payload.hex"
+    ));
+    let response = fixture_hex(include_str!(
+        "../../../fixtures/protocol-v1/cose/authentication-response-payload.hex"
+    ));
+    let Value::Map(response_fields) = pistis_canonical::from_slice(&response).unwrap() else {
+        unreachable!()
+    };
+    assert_eq!(
+        response_fields.get(&8),
+        Some(&Value::Bytes(sha256(&challenge).into_bytes().to_vec()))
+    );
+
+    let evidence = fixture_hex(include_str!(
+        "../../../fixtures/protocol-v1/cose/authentication-evidence-receipt-payload.hex"
+    ));
+    let envelope = fixture_hex(include_str!(
+        "../../../fixtures/protocol-v1/cose/positive-envelope.hex"
+    ));
+    let Value::Map(evidence_fields) = pistis_canonical::from_slice(&evidence).unwrap() else {
+        unreachable!()
+    };
+    assert_eq!(
+        evidence_fields.get(&7),
+        Some(&Value::Bytes(sha256(&envelope).into_bytes().to_vec()))
     );
 }
 
@@ -170,11 +260,49 @@ fn rejects_wrong_algorithm_kid_width_signature_width_and_noncanonical_payload() 
     );
 }
 
-fn hexadecimal(bytes: &[u8]) -> String {
-    let mut output = String::with_capacity(bytes.len() * 2);
-    for byte in bytes {
-        use std::fmt::Write as _;
-        write!(output, "{byte:02x}").unwrap();
+#[test]
+fn retained_hostile_corpus_fails_with_classified_outcomes() {
+    let (_, public) = fixture();
+    for input in [
+        include_str!("../../../fixtures/protocol-v1/cose/negative-tagged-envelope.hex"),
+        include_str!("../../../fixtures/protocol-v1/cose/negative-detached-payload.hex"),
+        include_str!("../../../fixtures/protocol-v1/cose/negative-unprotected-header.hex"),
+        include_str!("../../../fixtures/protocol-v1/cose/negative-unknown-protected-header.hex"),
+        include_str!("../../../fixtures/protocol-v1/cose/negative-wrong-algorithm.hex"),
+    ] {
+        assert_eq!(
+            verify_sign1(&fixture_hex(input), &public),
+            Err(CoseError::InvalidEnvelope)
+        );
     }
-    output
+    assert_eq!(
+        verify_sign1(
+            &fixture_hex(include_str!(
+                "../../../fixtures/protocol-v1/cose/negative-high-s-signature.hex"
+            )),
+            &public
+        ),
+        Err(CoseError::Signature(SignatureError::NonCanonical))
+    );
+    assert_eq!(
+        verify_sign1(
+            &fixture_hex(include_str!(
+                "../../../fixtures/protocol-v1/cose/negative-substituted-payload.hex"
+            )),
+            &public
+        ),
+        Err(CoseError::Signature(SignatureError::InvalidSignature))
+    );
+}
+
+fn fixture_hex(input: &str) -> Vec<u8> {
+    let input = input.trim().as_bytes();
+    assert!(input.len().is_multiple_of(2));
+    input
+        .chunks_exact(2)
+        .map(|pair| {
+            let text = std::str::from_utf8(pair).unwrap();
+            u8::from_str_radix(text, 16).unwrap()
+        })
+        .collect()
 }

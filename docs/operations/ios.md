@@ -78,8 +78,10 @@ bytes and SHA-256 digest, and raw low-S ES256 signature. It never serializes a
 private key, biometric information, device identifier, Apple credential, or
 production envelope. The simulator test proves this path fails closed.
 
-On a reviewed, signed physical-device test setup, select the trusted device
-identifier and run the ceremony explicitly (normal tests skip it):
+On a reviewed, signed **Face ID-capable** physical-device test setup, select
+the trusted device identifier and run the ceremony explicitly (normal tests
+skip it). The harness rejects Touch ID and unavailable biometry; neither is
+Face ID acceptance evidence:
 
 ```sh
 PISTIS_RUN_PHYSICAL_INTEROPERABILITY=1 xcodebuild \
@@ -92,3 +94,21 @@ PISTIS_RUN_PHYSICAL_INTEROPERABILITY=1 xcodebuild \
 Retrieve the XCTest attachment, independently verify it against the Rust
 verifier, and complete the evidence template. The test-only Secure Enclave
 key namespace must not be registered or used for an authentication session.
+
+Run this command from the repository checkout, replacing the placeholder with
+the saved XCTest JSON attachment. It accepts exactly one file, fails closed on
+any read, schema, encoding, binding, or signature failure, and prints only the
+result and the derived `KeyId`; it does not print the attachment, public key,
+signature, or file path:
+
+```sh
+cargo run --locked -p pistis-cose \
+  --example verify_device_interoperability_record -- \
+  /absolute/path/to/device-interoperability-record.json
+```
+
+Successful output has this exact form:
+
+```text
+verified key_id=key_<lowercase-hex>
+```

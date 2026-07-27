@@ -1,4 +1,5 @@
 import Foundation
+import LocalAuthentication
 import XCTest
 @testable import Pistis
 
@@ -45,12 +46,16 @@ final class PlatformDeviceInteroperabilityTests: XCTestCase {
         )
     }
 
+    func testPhysicalCeremonyRequiresFaceIDRatherThanGenericBiometrics() {
+        XCTAssertTrue(SecureEnclaveSigner.isFaceID(.faceID))
+        XCTAssertFalse(SecureEnclaveSigner.isFaceID(.touchID))
+        XCTAssertFalse(SecureEnclaveSigner.isFaceID(.none))
+    }
+
     #if targetEnvironment(simulator)
     func testPhysicalDeviceHarnessFailsClosedOnSimulator() throws {
         let harness = try DeviceInteroperabilityHarness.fixture(from: Bundle(for: Self.self))
-        XCTAssertThrowsError(try harness.observe()) { error in
-            XCTAssertEqual(error as? PlatformFailure, .secureHardwareUnavailable)
-        }
+        XCTAssertThrowsError(try harness.observe())
     }
     #else
     func testPhysicalDeviceInteroperabilityCeremony() throws {

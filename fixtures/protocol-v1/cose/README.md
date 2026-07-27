@@ -31,3 +31,10 @@ the exact device-registration, authentication-challenge,
 authentication-response, and authentication-evidence-receipt maps accepted in
 ADR 0019. The authentication response contains the SHA-256 digest of the
 retained challenge payload.
+
+`device-interoperability-record-example.json` is a synthetic, non-secret
+example of the exact five-field JSON schema emitted by the test-only iOS
+physical-device ceremony. It deliberately uses the compromised fixture key
+and signature above, so it proves only Rust verifier behavior. A retained
+physical-device record must use its own public key and pass the same strict
+verification before it becomes EPIC-18 evidence.

@@ -158,6 +158,14 @@ final class SecureEnclaveSigner: @unchecked Sendable {
         else {
             throw PlatformFailure.invalidConfiguration
         }
+        // EPIC-18 acceptance specifically requires Face ID evidence. A
+        // successful generic biometric policy can otherwise be satisfied by
+        // Touch ID and must not be relabelled as a Face ID ceremony.
+        let faceIDContext = LAContext()
+        try requireAvailableBiometry(using: faceIDContext)
+        guard Self.isFaceID(faceIDContext.biometryType) else {
+            throw PlatformFailure.userVerificationUnavailable
+        }
         let publicKey = try create()
         let signature = try sign(message: signatureStructure)
         return DeviceInteroperabilityObservation(
@@ -189,6 +197,14 @@ final class SecureEnclaveSigner: @unchecked Sendable {
                 throw PlatformFailure.userVerificationUnavailable
             }
         }
+    }
+
+    /// Whether an evaluated LocalAuthentication context reports Face ID.
+    ///
+    /// Kept separate from policy availability so the physical ceremony can
+    /// reject Touch ID rather than treating it as interchangeable evidence.
+    static func isFaceID(_ biometryType: LABiometryType) -> Bool {
+        biometryType == .faceID
     }
 
     private func findPrivateKey(authenticationContext: LAContext) throws -> SecKey? {

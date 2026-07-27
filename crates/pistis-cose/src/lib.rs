@@ -15,6 +15,13 @@ use std::collections::BTreeMap;
 use std::error::Error;
 use std::fmt;
 
+mod device_interoperability;
+
+pub use device_interoperability::{
+    DeviceInteroperabilityError, DeviceInteroperabilityRecord,
+    verify_device_interoperability_record,
+};
+
 const HEADER_ALGORITHM: u64 = 1;
 const HEADER_KEY_ID: u64 = 4;
 const ES256: i64 = -7;

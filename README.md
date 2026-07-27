@@ -25,8 +25,12 @@ registration and application integrations.
 The canonical planning inputs are:
 
 - [`docs/PROJECT_CHARTER.md`](docs/PROJECT_CHARTER.md)
+- [`docs/MVP_RELEASE_CANDIDATE.md`](docs/MVP_RELEASE_CANDIDATE.md)
 - [`docs/MILESTONE.md`](docs/MILESTONE.md)
 - [`docs/TODO.md`](docs/TODO.md)
+
+The MVP release-candidate document defines the approved `v0.1.0-rc.1`
+vertical slice. The milestone document retains the broader `v1.0` commitment.
 
 Implementation work is tracked in GitHub issues and milestones. Architectural
 decisions are recorded in [`docs/adr`](docs/adr).

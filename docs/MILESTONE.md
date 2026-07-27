@@ -322,6 +322,11 @@ Standalone Monas integration layer and embedding examples.
 
 ## 6. Delivery summary
 
+The `v1.0` plan below remains the complete product commitment.
+`MVP_RELEASE_CANDIDATE.md` defines the approved narrower `v0.1.0-rc.1`
+vertical slice and its delivery epics. MVP completion must not be represented
+as completion of deferred `v1.0` capabilities.
+
 | Milestone | Outcome | Estimated effort |
 | --- | --- | ---: |
 | M0 | Charter reconciliation and delivery baseline | 1 developer-week |

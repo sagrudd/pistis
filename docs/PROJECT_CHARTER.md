@@ -74,7 +74,9 @@ Pistis shall **not**:
 Initial MVP:
 
 -   GitHub
--   Google
+
+The first production candidate qualifies GitHub only. Google remains in the
+v1.0 trust-anchor scope.
 
 Future:
 
@@ -104,11 +106,14 @@ Version 1.0:
 
 Priority order:
 
-1.  Local discovery (mDNS)
-2.  QR code
+1.  QR code
+2.  Local discovery (mDNS, post-MVP convenience)
 3.  Optional remote notification (future)
 
 Authentication is always challenge/response using signed nonces.
+
+The normative first-candidate boundary is defined in
+`MVP_RELEASE_CANDIDATE.md`.
 
 ------------------------------------------------------------------------
 

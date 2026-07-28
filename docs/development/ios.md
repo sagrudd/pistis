@@ -173,6 +173,20 @@ exists; it does not authenticate the user, verify a request, or prove that the
 key remains usable. Operators should resolve the stated missing capability and
 rerun the full ceremony rather than interpreting readiness as acceptance.
 
+## GitHub enrolment boundary
+
+The Identities screen contains a compiled but disabled GitHub enrolment port.
+It validates only non-secret public-client configuration, models a
+credential-free broker result containing the numeric GitHub subject and a
+bounded display login, and explains which authority ports are absent. It does
+not start the browser, contact the broker, persist a token, or create a
+binding.
+
+ADR 0003 accepts authorization-code PKCE through a confidential broker and
+requires another ADR before GitHub device flow. Until that decision and the
+broker/Prosopikon response contracts are reviewed, the disabled state is the
+only production-honest behavior.
+
 ## Design maintenance
 
 Changes to tokens or product presentation must be reconciled with

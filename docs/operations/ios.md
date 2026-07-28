@@ -20,6 +20,40 @@ The operator must configure the trusted broker with the provider registration
 and exact callback allow-list. Never put a GitHub or Google client secret in
 the application bundle. Do not retain provider access tokens on the device.
 
+### Current GitHub enrolment configuration gap
+
+ADR 0003 accepts system-browser authorization-code enrolment with PKCE and an
+operator-controlled confidential exchange broker. It explicitly does **not**
+accept GitHub device flow. Therefore issue 252's “GitHub App with device flow”
+wording cannot be implemented until a separate security review and accepted
+ADR supersedes that part of ADR 0003.
+
+For the currently accepted design, an operator must:
+
+1. register a dedicated non-production GitHub OAuth client;
+2. register exactly `pistis://oauth/callback`;
+3. configure the client for no requested OAuth scopes;
+4. configure an HTTPS confidential broker endpoint with the environment's
+   client secret and exact client-ID/callback allow-list;
+5. expose only the non-secret client ID as `PistisGitHubClientID` and broker
+   URL as `PistisGitHubBrokerExchangeURL` in reviewed iOS build configuration;
+6. verify the broker never returns its client secret or a provider token to
+   the app and erases transient provider credentials on every terminal path;
+7. verify Prosopikon binds the returned numeric GitHub account ID to the
+   intended principal; and
+8. run synthetic broker/callback failure tests before a live account ceremony.
+
+Do not put either build value in source while the environment and broker are
+unapproved. Neither value is itself secret, but committing an unusable or
+production-specific endpoint would blur the reviewed deployment boundary.
+The app reports configuration and missing authority ports separately and keeps
+the enrolment control disabled.
+
+The requested address `stephen@mnemosyne.co.uk` is a Prosopikon principal and
+operator acceptance value, not the GitHub stable identity. ADR 0003 binds
+GitHub's numeric account ID. An email claim or mutable GitHub login must not be
+used to prove or replace that subject.
+
 ## Apple distribution prerequisites
 
 An authorised Apple-team owner must provide and review:

@@ -54,6 +54,8 @@ struct ScanView: View {
                                 : "Only bounded PISTIS1 text is accepted. A scan is never treated as trusted until the production protocol verifier accepts it."
                         )
                             .font(.footnote)
+                            .foregroundStyle(MnColor.textPrimary)
+                            .fixedSize(horizontal: false, vertical: true)
                     }
                 }
 
@@ -139,6 +141,8 @@ private struct ReadinessRow: View {
                     .font(.subheadline.weight(.semibold))
                 Text(item.detail)
                     .font(.footnote)
+                    .foregroundStyle(MnColor.textPrimary)
+                    .fixedSize(horizontal: false, vertical: true)
             }
         }
         .accessibilityElement(children: .combine)

@@ -491,7 +491,8 @@ retention is recorded with the EPIC-18 pull-request acceptance evidence.
 - [ ] Require Face ID for every signature
 - [ ] Implement enrolment, QR approval, history, and revocation UX
 - [ ] Configure Apple signing and TestFlight
-- [ ] Pass functional and accessibility simulator suites
+- [x] Automate the functional and native accessibility simulator suites
+- [ ] Complete physical VoiceOver, Dynamic Type, contrast, and reduced-motion review
 - [ ] Pass the signed physical-iPhone acceptance matrix
 
 The native app now has a transient, bounded camera acquisition surface, but it

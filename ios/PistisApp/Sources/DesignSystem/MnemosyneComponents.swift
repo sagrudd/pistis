@@ -34,6 +34,7 @@ struct MnStatusLabel: View {
         Label(text, systemImage: kind.symbol)
             .font(.subheadline.weight(.semibold))
             .foregroundStyle(kind.color)
+            .fixedSize(horizontal: false, vertical: true)
             .accessibilityElement(children: .combine)
             .accessibilityLabel("Status: \(text)")
     }
@@ -151,8 +152,10 @@ struct MnEmptyState: View {
             VStack(alignment: .leading, spacing: MnSpacing.x3) {
                 Text(title)
                     .font(.headline)
+                    .fixedSize(horizontal: false, vertical: true)
                 Text(explanation)
                     .font(.body)
+                    .fixedSize(horizontal: false, vertical: true)
                 if let actionTitle, let action {
                     Button(actionTitle, action: action)
                         .font(.headline)

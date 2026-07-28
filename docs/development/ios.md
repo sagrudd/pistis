@@ -108,7 +108,7 @@ The native scanner uses AVFoundation metadata capture and accepts at most one
 retains no camera frame, stops after one result, cancels on backgrounding, and
 offers accessible permission, unsupported-code, oversize, and retry states.
 
-Acquisition is not verification. Until proposed ADR 0021 is reviewed and the
+Acquisition is not verification. Although ADR 0021 is accepted, until the
 app has an enrolled installation verification key, a captured value is
 discarded and the app does not present an approval or invoke Face ID. This is a
 deliberate fail-closed state, not a complete authentication ceremony.

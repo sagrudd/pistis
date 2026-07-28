@@ -397,7 +397,7 @@ command hand-off, and key provisioning remain open. The unchecked MVP items
 above are release blockers; a successful library test is not evidence that a
 mobile login or action approval completed.
 
-Issue #301 and Proposed ADR 0022 type the next integration boundary:
+Issue #301 and accepted ADR 0022 type the next integration boundary:
 credential-free begin/status/submit/cancel operations owned by the host
 authority. Production remains disabled until Prosopikon and Monas implement
 the accepted contract and mobile ADR 0021 returns the same signed response.
@@ -500,11 +500,12 @@ retention is recorded with the EPIC-18 pull-request acceptance evidence.
 - [ ] Pass functional and accessibility simulator suites
 - [ ] Pass the signed physical-iPhone acceptance matrix
 
-The native app now has a transient, bounded camera acquisition surface, but it
-deliberately refuses to display or sign captured content until installation
-verification-key trust and the self-contained production QR wrapper are
-accepted. Issue #300 and proposed ADR 0021 track that security prerequisite;
-the detached version-1 QR fixture remains reference-only.
+The native app now has a transient, bounded camera acquisition surface.
+ADR 0021 accepts installation verification-key trust, the self-contained
+production QR wrapper, and signed denial. `pistis-qr` implements the strict
+version-2 outer codec; iOS trust-record delivery, COSE verification, signed
+response construction, and physical-device qualification remain. The detached
+version-1 QR fixture remains reference-only.
 
 ## EPIC 23 — Authentication evidence
 

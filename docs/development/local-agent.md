@@ -87,7 +87,7 @@ ADR 0022 proposes the missing credential-free host port for `begin_login`,
 `HostAgentAuthorityPort` types are contract-review material only. Do not adapt
 the current Monas verified-handoff directory into agent state: it has no
 reviewed status or cancellation semantics and would compete with Prosopikon.
-Production wiring remains disabled until ADR 0022, Prosopikon's asynchronous
+Production wiring remains disabled until accepted ADR 0022's Prosopikon asynchronous
 authority implementation, Monas's adapter, and mobile ADR 0021 are accepted at
 exact compatible revisions.
 

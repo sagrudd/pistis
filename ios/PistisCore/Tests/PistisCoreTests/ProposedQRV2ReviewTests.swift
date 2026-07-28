@@ -3,7 +3,7 @@ import Foundation
 import Testing
 @testable import PistisCore
 
-/// Test-only parser for the review vectors in proposed ADR 0021.
+/// Swift conformance parser for the accepted ADR 0021 review vectors.
 ///
 /// This is deliberately not part of PistisCore's product target. Moving this
 /// behavior into production requires ADR acceptance and specialist review.
@@ -72,7 +72,7 @@ private enum ProposedQRV2ReviewParser {
     }
 }
 
-/// Test-only shape of the enrolled trust lookup required by proposed ADR 0021.
+/// Conformance shape of the enrolled trust lookup required by accepted ADR 0021.
 private protocol ProposedInstallationKeyLookup {
     func compressedPublicKey(for keyID: Data) -> Data?
 }

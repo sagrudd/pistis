@@ -110,13 +110,18 @@ the installation, device, action, or user. The decoder rejects oversized,
 fragmented, padded, non-ASCII, non-canonical, unsupported, trailing, or
 wrong-kind input without downgrade.
 
-The detached signature is an internal reference-harness boundary. It does not
-replace the strict untagged COSE Sign1 structure accepted by
-[ADR 0018](adr/0018-production-cose-sign1-profile.md). Production payload
+The detached version-1 signature is an internal reference-harness boundary.
+Accepted [ADR 0021](adr/0021-production-qr-envelope-and-installation-trust.md)
+defines production frame version 2 as the same prefix and checksum around the
+exact complete strict untagged COSE Sign1 bytes. Its decoder rejects version
+downgrade and kind confusion and returns those exact bytes without re-encoding.
+The COSE profile is accepted by
+[ADR 0018](adr/0018-production-cose-sign1-profile.md), and production payload
 field assignments are frozen by
-[ADR 0019](adr/0019-mvp-signed-message-schemas.md). External mobile
-interoperability still requires shared conformance fixtures and retained
-physical-device evidence.
+[ADR 0019](adr/0019-mvp-signed-message-schemas.md). Approval and denial are
+both signed; denial is auditable refusal and never authenticates a session.
+External mobile interoperability still requires shared conformance fixtures
+and retained physical-device evidence.
 
 Direct-local and response-QR submission enter the same verification path.
 Polling exposes only a coarse lifecycle state and cannot verify, consume, or

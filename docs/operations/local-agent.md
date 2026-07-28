@@ -7,7 +7,7 @@ contracts for the future service. Operators must not construct an improvised
 daemon around test signers or place an installation private key in a file,
 argument, environment variable, shell script, or Jenkins credential.
 
-ADR 0022 is Proposed and its Rust types do not activate a daemon. Packages and
+ADR 0022 is Accepted, but its Rust types alone do not activate a daemon. Packages and
 service managers must leave any future `pistis-agent` unit disabled. Startup
 must fail, rather than select a reduced mode, unless configuration identifies
 an owner-only absolute socket, the accepted host adapter and exact Prosopikon

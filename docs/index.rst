@@ -76,6 +76,7 @@ Architecture and operations
    adr/0022-host-owned-cli-agent-authority-port
    adr/0023-authenticated-mobile-enrolment-exchange
    adr/0024-linux-hardware-signing-providers
+   adr/0023-github-app-device-flow-v0-1
    protocol/README
    protocol/domain-model
    protocol/action-approval

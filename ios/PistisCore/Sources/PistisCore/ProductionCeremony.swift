@@ -30,6 +30,8 @@ public struct InstallationTrustRecord: Codable, Equatable, Sendable {
     public let installationID: Data
     public let displayName: String
     public let audience: String
+    public let userID: Data
+    public let externalIdentityID: Data
     public let fingerprint: Data
     public let installationKeyID: Data
     public let installationPublicKey: Data
@@ -44,6 +46,8 @@ public struct InstallationTrustRecord: Codable, Equatable, Sendable {
         installationID: Data,
         displayName: String,
         audience: String,
+        userID: Data,
+        externalIdentityID: Data,
         fingerprint: Data,
         installationKeyID: Data,
         installationPublicKey: Data,
@@ -56,6 +60,8 @@ public struct InstallationTrustRecord: Codable, Equatable, Sendable {
     ) throws {
         guard installationID.count == 16,
               fingerprint.count == 32,
+              userID.count == 16,
+              externalIdentityID.count == 16,
               installationKeyID.count == 32,
               installationPublicKey.count == 33,
               authorityKeyID.count == 32,
@@ -68,6 +74,8 @@ public struct InstallationTrustRecord: Codable, Equatable, Sendable {
         self.installationID = installationID
         self.displayName = displayName
         self.audience = audience
+        self.userID = userID
+        self.externalIdentityID = externalIdentityID
         self.fingerprint = fingerprint
         self.installationKeyID = installationKeyID
         self.installationPublicKey = installationPublicKey
@@ -196,8 +204,14 @@ public enum ProductionChallengeVerifier {
         guard trust.audience == expectedAudience, challenge.audience == expectedAudience else {
             throw ProductionCeremonyError.wrongAudience
         }
-        guard challenge.externalIdentityID == expectedExternalIdentityID else {
+        guard trust.userID == challenge.userID,
+              trust.externalIdentityID == challenge.externalIdentityID,
+              challenge.externalIdentityID == expectedExternalIdentityID
+        else {
             throw ProductionCeremonyError.wrongIdentity
+        }
+        guard trust.displayName == challenge.installationName else {
+            throw ProductionCeremonyError.keyMismatch
         }
         let nowMilliseconds = UInt64(now.timeIntervalSince1970 * 1_000)
         guard nowMilliseconds >= challenge.issuedAtMilliseconds,

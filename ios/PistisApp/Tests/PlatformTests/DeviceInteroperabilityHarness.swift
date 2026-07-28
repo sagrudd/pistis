@@ -103,7 +103,7 @@ struct DeviceInteroperabilityRecord: Codable, Equatable, Sendable {
         signatureStructure: Data,
         rawES256Signature: Data
     ) throws {
-        guard publicKey.assurance == .secureEnclaveBiometryCurrentSet,
+        guard publicKey.assurance == .secureEnclaveFaceIDCurrentSet,
               publicKey.compressedSEC1.count == 33,
               publicKey.compressedSEC1.first == 0x02 || publicKey.compressedSEC1.first == 0x03,
               // CryptoKit's compact representation is the x-coordinate, not

@@ -28,6 +28,16 @@ final class QRScannerAdapter: NSObject, AVCaptureMetadataOutputObjectsDelegate,
         super.init()
     }
 
+    /// Create the non-retaining camera preview for this scanner session.
+    ///
+    /// The layer displays camera pixels only; no sample-buffer output or photo
+    /// capture output is installed.
+    func makePreviewLayer() -> AVCaptureVideoPreviewLayer {
+        let layer = AVCaptureVideoPreviewLayer(session: session)
+        layer.videoGravity = .resizeAspectFill
+        return layer
+    }
+
     func start(handler: @escaping Handler) async throws {
         guard self.handler == nil else { throw PlatformFailure.invalidConfiguration }
         let authorized: Bool
@@ -40,6 +50,7 @@ final class QRScannerAdapter: NSObject, AVCaptureMetadataOutputObjectsDelegate,
             authorized = false
         }
         guard authorized else { throw PlatformFailure.cameraPermissionDenied }
+        guard !Task.isCancelled else { throw PlatformFailure.operationCancelled }
 
         self.handler = handler
         backgroundObserver = NotificationCenter.default.addObserver(
@@ -61,7 +72,7 @@ final class QRScannerAdapter: NSObject, AVCaptureMetadataOutputObjectsDelegate,
                     self.session.startRunning()
                     continuation.resume()
                 } catch {
-                    self.finish(.failure((error as? PlatformFailure) ?? .cameraUnavailable))
+                    self.clearHandler()
                     continuation.resume(throwing: error)
                 }
             }
@@ -119,13 +130,17 @@ final class QRScannerAdapter: NSObject, AVCaptureMetadataOutputObjectsDelegate,
 
     private func finish(_ result: Result<ScannedQRPayload, PlatformFailure>) {
         let completion = handler
-        handler = nil
         if session.isRunning { session.stopRunning() }
+        clearHandler()
+        completion?(result)
+    }
+
+    private func clearHandler() {
+        handler = nil
         if let backgroundObserver {
             NotificationCenter.default.removeObserver(backgroundObserver)
             self.backgroundObserver = nil
         }
-        completion?(result)
     }
 }
 #else

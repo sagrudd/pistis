@@ -25,3 +25,22 @@ enum PlatformFailure: Error, Equatable, Sendable {
     case operationCancelled
     case productionEnvelopeUnavailable
 }
+
+extension PlatformFailure {
+    var safeUserMessage: String {
+        switch self {
+        case .cameraPermissionDenied:
+            "Camera access is disabled. Allow camera access in Settings, then try again."
+        case .cameraUnavailable:
+            "No supported camera is available. Try again on an iPhone with a working camera."
+        case .qrPayloadTooLarge:
+            "This QR code is larger than the Pistis safety limit."
+        case .qrPayloadUnsupported:
+            "This is not a supported Pistis QR code."
+        case .operationCancelled:
+            "Scanning stopped before a code was captured."
+        default:
+            "Pistis could not complete this operation safely. Please try again."
+        }
+    }
+}

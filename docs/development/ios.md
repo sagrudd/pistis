@@ -80,6 +80,53 @@ This closes the SwiftUI project-creation gate. Simulator evidence does not
 close real-device Secure Enclave, camera, accessibility, signing, archive, or
 TestFlight gates.
 
+## Face ID signing boundary
+
+The production device key is a Secure Enclave P-256 key protected with
+`biometryCurrentSet`. Key creation and every signature require Apple's
+biometric-only policy to be available and require the evaluated biometric type
+to be Face ID. Pistis does not request the device-owner policy, so a passcode
+cannot satisfy a signature request; Touch ID is also rejected because the MVP
+acceptance profile names a Face ID iPhone.
+
+Private-key lookup is constrained to `kSecAttrTokenIDSecureEnclave`; a
+software Keychain key with the same application tag is rejected. The signing
+operation itself also rejects simulator execution before querying Keychain, so
+the invariant does not depend on callers invoking key creation first.
+
+Cancellation, lockout, changed biometric enrolment, missing hardware, a missing
+key, and simulator execution fail closed without producing signature bytes.
+Simulator policy tests can check the selection logic, but task PIS-E22-I256 is
+not physically qualified until a reviewed iPhone run demonstrates one Face ID
+prompt for each requested signature and Jenkins retains the resulting
+non-secret evidence for the exact revision.
+
+## QR acquisition boundary
+
+The native scanner uses AVFoundation metadata capture and accepts at most one
+2,331-byte ASCII `PISTIS1` value. It installs no photo or sample-buffer output,
+retains no camera frame, stops after one result, cancels on backgrounding, and
+offers accessible permission, unsupported-code, oversize, and retry states.
+
+Acquisition is not verification. Until proposed ADR 0021 is reviewed and the
+app has an enrolled installation verification key, a captured value is
+discarded and the app does not present an approval or invoke Face ID. This is a
+deliberate fail-closed state, not a complete authentication ceremony.
+
+### Passwordless readiness
+
+The scanner screen reports five independent coarse states: camera permission,
+Face ID capability, presence of the namespaced device signing key, presence of
+enrolled installation-authority trust, and availability of the accepted
+production verifier. Approval is available only if all five are ready.
+
+The readiness surface is diagnostic, not evidence. It never displays a key
+identifier, public key, QR content, provider identity, endpoint, or scanned
+display value. “Key available” means only that the protected keychain item
+exists; it does not authenticate the user, verify a request, or prove that the
+key remains usable. Operators should resolve the stated missing capability and
+rerun the full ceremony rather than interpreting readiness as acceptance.
+
 ## Design maintenance
 
 Changes to tokens or product presentation must be reconciled with

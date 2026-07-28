@@ -14,7 +14,7 @@ struct DevicePublicKey: Equatable, Sendable {
 }
 
 enum KeyAssurance: String, Equatable, Sendable {
-    case secureEnclaveBiometryCurrentSet
+    case secureEnclaveFaceIDCurrentSet
 }
 
 /// Non-secret output from one physical-device interoperability probe.
@@ -53,7 +53,7 @@ final class SecureEnclaveSigner: @unchecked Sendable {
         guard SecureEnclaveSigner.secureEnclaveIsAvailable else {
             throw PlatformFailure.secureHardwareUnavailable
         }
-        try requireAvailableBiometry(using: LAContext())
+        try requireFaceID(using: LAContext())
         if try keyExists() {
             return try publicKey()
         }
@@ -99,6 +99,14 @@ final class SecureEnclaveSigner: @unchecked Sendable {
         return try devicePublicKey(from: privateKey)
     }
 
+    /// Whether the namespaced device-bound key already exists.
+    ///
+    /// This query never returns key bytes and is used only for coarse
+    /// readiness presentation. It does not create a key or grant authority.
+    func hasExistingKey() throws -> Bool {
+        try keyExists()
+    }
+
     private func devicePublicKey(from privateKey: SecKey) throws -> DevicePublicKey {
         guard let publicKey = SecKeyCopyPublicKey(privateKey) else {
             throw PlatformFailure.publicKeyExtractionFailed
@@ -112,7 +120,7 @@ final class SecureEnclaveSigner: @unchecked Sendable {
         }
         return DevicePublicKey(
             compressedSEC1: try P256Format.compressX963PublicKey(representation),
-            assurance: .secureEnclaveBiometryCurrentSet
+            assurance: .secureEnclaveFaceIDCurrentSet
         )
     }
 
@@ -122,11 +130,17 @@ final class SecureEnclaveSigner: @unchecked Sendable {
     /// raw proof material is assembled by the accepted COSE profile; this
     /// platform adapter does not itself issue authentication authority.
     func sign(message: Data) throws -> Data {
+        // Keep the fail-closed boundary at the operation itself. Callers must
+        // not be able to reach a software Keychain key on a simulator merely
+        // by bypassing `create()`.
+        guard SecureEnclaveSigner.secureEnclaveIsAvailable else {
+            throw PlatformFailure.secureHardwareUnavailable
+        }
         let context = LAContext()
         context.localizedCancelTitle = "Cancel"
         context.localizedReason = authenticationReason
         context.interactionNotAllowed = false
-        try requireAvailableBiometry(using: context)
+        try requireFaceID(using: context)
 
         guard let privateKey = try findPrivateKey(authenticationContext: context) else {
             throw PlatformFailure.keyNotFound
@@ -162,10 +176,7 @@ final class SecureEnclaveSigner: @unchecked Sendable {
         // successful generic biometric policy can otherwise be satisfied by
         // Touch ID and must not be relabelled as a Face ID ceremony.
         let faceIDContext = LAContext()
-        try requireAvailableBiometry(using: faceIDContext)
-        guard Self.isFaceID(faceIDContext.biometryType) else {
-            throw PlatformFailure.userVerificationUnavailable
-        }
+        try requireFaceID(using: faceIDContext)
         let publicKey = try create()
         let signature = try sign(message: signatureStructure)
         return DeviceInteroperabilityObservation(
@@ -199,6 +210,18 @@ final class SecureEnclaveSigner: @unchecked Sendable {
         }
     }
 
+    /// Require Face ID without permitting device-passcode or Touch ID fallback.
+    ///
+    /// `canEvaluatePolicy` populates `biometryType`; checking it after the
+    /// biometric-only policy is available ensures every call to `sign` has the
+    /// assurance claimed by the production iPhone profile.
+    private func requireFaceID(using context: LAContext) throws {
+        try requireAvailableBiometry(using: context)
+        guard Self.isFaceID(context.biometryType) else {
+            throw PlatformFailure.userVerificationUnavailable
+        }
+    }
+
     /// Whether an evaluated LocalAuthentication context reports Face ID.
     ///
     /// Kept separate from policy availability so the physical ceremony can
@@ -208,14 +231,10 @@ final class SecureEnclaveSigner: @unchecked Sendable {
     }
 
     private func findPrivateKey(authenticationContext: LAContext) throws -> SecKey? {
-        let query: [CFString: Any] = [
-            kSecClass: kSecClassKey,
-            kSecAttrKeyType: kSecAttrKeyTypeECSECPrimeRandom,
-            kSecAttrApplicationTag: applicationTag,
-            kSecReturnRef: true,
-            kSecMatchLimit: kSecMatchLimitOne,
-            kSecUseAuthenticationContext: authenticationContext,
-        ]
+        let query = Self.keyLookupQuery(
+            applicationTag: applicationTag,
+            authenticationContext: authenticationContext
+        )
 
         var item: CFTypeRef?
         let status = SecItemCopyMatching(query as CFDictionary, &item)
@@ -236,15 +255,13 @@ final class SecureEnclaveSigner: @unchecked Sendable {
     private func keyExists() throws -> Bool {
         let context = LAContext()
         context.interactionNotAllowed = true
-        let query: [CFString: Any] = [
-            kSecClass: kSecClassKey,
-            kSecAttrKeyType: kSecAttrKeyTypeECSECPrimeRandom,
-            kSecAttrApplicationTag: applicationTag,
-            kSecReturnRef: true,
-            kSecMatchLimit: kSecMatchLimitOne,
-            kSecUseAuthenticationContext: context,
-        ]
-        let status = SecItemCopyMatching(query as CFDictionary, nil)
+        let query = Self.keyLookupQuery(
+            applicationTag: applicationTag,
+            authenticationContext: context
+        )
+
+        var item: CFTypeRef?
+        let status = SecItemCopyMatching(query as CFDictionary, &item)
         switch status {
         case errSecSuccess, errSecInteractionNotAllowed:
             return true
@@ -255,6 +272,26 @@ final class SecureEnclaveSigner: @unchecked Sendable {
         default:
             throw PlatformFailure.signingFailed
         }
+    }
+
+    /// Build the sole lookup shape for this adapter's private key.
+    ///
+    /// The application tag alone is not an assurance boundary: a software
+    /// Keychain key could share it. Constraining the token makes lookup reject
+    /// any such key before it can be reported or used as an Enclave key.
+    static func keyLookupQuery(
+        applicationTag: Data,
+        authenticationContext: LAContext
+    ) -> [CFString: Any] {
+        [
+            kSecClass: kSecClassKey,
+            kSecAttrKeyType: kSecAttrKeyTypeECSECPrimeRandom,
+            kSecAttrTokenID: kSecAttrTokenIDSecureEnclave,
+            kSecAttrApplicationTag: applicationTag,
+            kSecReturnRef: true,
+            kSecMatchLimit: kSecMatchLimitOne,
+            kSecUseAuthenticationContext: authenticationContext,
+        ]
     }
 
     private func mapSecurityError(_ error: CFError?) -> PlatformFailure {

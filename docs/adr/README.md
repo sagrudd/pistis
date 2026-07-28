@@ -19,6 +19,10 @@ Current accepted production-interoperability decisions include:
 cross-host completion decision. Individual implementation pull requests remain
 subject to the review and evidence requirements recorded in that ADR.
 
+[ADR 0021](0021-production-qr-envelope-and-installation-trust.md) proposes the
+production QR wrapper and enrolled installation verification-key binding. No
+production decoder may depend on it until specialist review accepts it.
+
 [ADR 0022](0022-host-owned-cli-agent-authority-port.md) proposes the missing
 credential-free local-agent to host-authority port. It remains inactive until
 specialist acceptance and cross-repository conformance evidence.

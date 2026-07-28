@@ -1,5 +1,6 @@
 import Foundation
 import LocalAuthentication
+import Security
 import XCTest
 @testable import Pistis
 
@@ -18,7 +19,7 @@ final class PlatformDeviceInteroperabilityTests: XCTestCase {
                 0xa0, 0xf4, 0xa1, 0x39, 0x45, 0xd8, 0x98, 0xc2,
                 0x96,
             ]),
-            assurance: .secureEnclaveBiometryCurrentSet
+            assurance: .secureEnclaveFaceIDCurrentSet
         )
         let signature = Data([1] + Array(repeating: 0, count: 31)
             + Array(repeating: 0, count: 31) + [1])
@@ -52,10 +53,32 @@ final class PlatformDeviceInteroperabilityTests: XCTestCase {
         XCTAssertFalse(SecureEnclaveSigner.isFaceID(.none))
     }
 
+    func testTaggedSoftwareKeyLookupRequiresSecureEnclaveToken() {
+        let query = SecureEnclaveSigner.keyLookupQuery(
+            applicationTag: Data("pistis-test-key".utf8),
+            authenticationContext: LAContext()
+        )
+
+        XCTAssertEqual(
+            query[kSecAttrTokenID] as? String,
+            kSecAttrTokenIDSecureEnclave as String
+        )
+    }
+
     #if targetEnvironment(simulator)
     func testPhysicalDeviceHarnessFailsClosedOnSimulator() throws {
         let harness = try DeviceInteroperabilityHarness.fixture(from: Bundle(for: Self.self))
         XCTAssertThrowsError(try harness.observe())
+    }
+
+    func testDirectSigningFailsClosedOnSimulator() throws {
+        let signer = try SecureEnclaveSigner(
+            namespace: "simulator-direct-signing-guard",
+            authenticationReason: "Test simulator rejection."
+        )
+        XCTAssertThrowsError(try signer.sign(message: Data([0xa0]))) { error in
+            XCTAssertEqual(error as? PlatformFailure, .secureHardwareUnavailable)
+        }
     }
     #else
     func testPhysicalDeviceInteroperabilityCeremony() throws {

@@ -115,4 +115,79 @@ final class PlatformPolicyTests: XCTestCase {
             )
         }
     }
+
+    func testScannerFailuresExposeOnlyBoundedRecoveryMessages() {
+        XCTAssertEqual(
+            PlatformFailure.qrPayloadTooLarge.safeUserMessage,
+            "This QR code is larger than the Pistis safety limit."
+        )
+        XCTAssertEqual(
+            PlatformFailure.qrPayloadUnsupported.safeUserMessage,
+            "This is not a supported Pistis QR code."
+        )
+        XCTAssertFalse(
+            PlatformFailure.signingFailed.safeUserMessage.localizedCaseInsensitiveContains(
+                "key"
+            )
+        )
+    }
+
+    func testPasswordlessReadinessRequiresEveryIndependentGate() {
+        let ready = PasswordlessReadiness(
+            camera: .init(id: "camera", title: "Camera", detail: "Ready.", state: .ready),
+            faceID: .init(id: "face-id", title: "Face ID", detail: "Ready.", state: .ready),
+            deviceKey: .init(
+                id: "device-key",
+                title: "Device signing key",
+                detail: "Ready.",
+                state: .ready
+            ),
+            authorityKey: .init(
+                id: "authority-key",
+                title: "Installation authority",
+                detail: "Ready.",
+                state: .ready
+            ),
+            verifier: .init(
+                id: "verifier",
+                title: "Production verifier",
+                detail: "Ready.",
+                state: .ready
+            )
+        )
+        XCTAssertTrue(ready.approvalEnabled)
+
+        for blockedID in ready.items.map(\.id) {
+            let items = ready.items.map {
+                ReadinessItem(
+                    id: $0.id,
+                    title: $0.title,
+                    detail: $0.detail,
+                    state: $0.id == blockedID ? .unavailable : .ready
+                )
+            }
+            let blocked = PasswordlessReadiness(
+                camera: items[0],
+                faceID: items[1],
+                deviceKey: items[2],
+                authorityKey: items[3],
+                verifier: items[4]
+            )
+            XCTAssertFalse(blocked.approvalEnabled, "gate \(blockedID) was bypassed")
+        }
+    }
+
+    @MainActor
+    func testReadinessSnapshotContainsNoKeyOrAttackerMaterial() {
+        let snapshot = PasswordlessReadinessProbe.current()
+        let rendered = snapshot.items
+            .flatMap { [$0.id, $0.title, $0.detail] }
+            .joined(separator: " ")
+            .lowercased()
+
+        XCTAssertFalse(rendered.contains("pistis1:"))
+        XCTAssertFalse(rendered.contains("key_id"))
+        XCTAssertFalse(rendered.contains("endpoint"))
+        XCTAssertFalse(rendered.contains("github"))
+    }
 }

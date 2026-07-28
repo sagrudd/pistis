@@ -72,6 +72,7 @@ Architecture and operations
    adr/0018-production-cose-sign1-profile
    adr/0019-mvp-signed-message-schemas
    adr/0020-prosopikon-pistis-authority-transaction
+   adr/0021-production-qr-envelope-and-installation-trust
    adr/0022-host-owned-cli-agent-authority-port
    protocol/README
    protocol/domain-model

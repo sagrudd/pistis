@@ -7,6 +7,7 @@
 #![forbid(unsafe_code)]
 #![deny(missing_docs)]
 
+mod challenge_signing;
 mod completion;
 mod daemon;
 mod dispatch;
@@ -21,6 +22,10 @@ mod signer;
 mod socket;
 mod verification;
 
+pub use challenge_signing::{
+    AuthenticationChallengeFacts, ChallengeEnvelopeDigest, ChallengePayloadDigest,
+    ChallengeSigningError, HostChallengeSigner, NonceDigest, SignedAuthenticationChallenge,
+};
 pub use completion::{
     AuditTransfer, CompletionOutcome, CompletionRequest, DurableAuditEvent, HostCompletionPort,
 };

@@ -458,6 +458,7 @@ retention is recorded with the EPIC-18 pull-request acceptance evidence.
 
 ## EPIC 19 — Prosopikon authority bridge
 
+- [x] Implement strict host installation COSE challenge signing
 - [ ] Accept the versioned Prosopikon--Pistis port
 - [ ] Persist explicit Pistis-to-Prosopikon principal bindings
 - [ ] Implement administrator-issued single-use invitations

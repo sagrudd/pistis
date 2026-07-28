@@ -104,6 +104,12 @@ and reconcile ADR 0019 and the UI contract.
 - physical iPhone scan, Face ID, direct-return, and response-QR evidence; and
 - exact-revision Jenkins verification by the independent Rust verifier.
 
+The test-only vectors under `fixtures/proposed-qr-v2` make the candidate outer
+bytes executable in Rust and Swift while this ADR is Proposed. They wrap an
+already accepted COSE response fixture and prove that a previously enrolled
+installation key is needed for signature verification. They are review
+material, not a product decoder or evidence of protocol acceptance.
+
 ## Consequences
 
 - Version 1 remains reference-only and is rejected by production mobile paths.

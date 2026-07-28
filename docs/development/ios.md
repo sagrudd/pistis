@@ -123,10 +123,24 @@ The native scanner uses AVFoundation metadata capture and accepts at most one
 retains no camera frame, stops after one result, cancels on backgrounding, and
 offers accessible permission, unsupported-code, oversize, and retry states.
 
-Acquisition is not verification. Although ADR 0021 is accepted, until the
-app has an enrolled installation verification key, a captured value is
-discarded and the app does not present an approval or invoke Face ID. This is a
-deliberate fail-closed state, not a complete authentication ceremony.
+Acquisition is not verification. The production coordinator loads only an
+authenticated enrolment output from the device-only Keychain, verifies the
+exact QR-carried COSE challenge against that enrolled installation key, checks
+the audience, external identity, fingerprint, semantics, and time window, and
+only then presents the signed request facts. Unknown, expired, revoked, or
+substituted installations fail before an approval surface or Face ID prompt.
+
+Approve and deny use the same response path: canonical response encoding,
+fresh Face ID through the enrolled Secure Enclave key, an untagged COSE Sign1
+envelope bounded to 2 KiB, and HTTPS delivery to an enrolled-host allow-list.
+The app polls at most ten times and displays only a terminal authority result;
+a timeout or malformed/oversized authority response is a failure, not an
+implicit acceptance.
+
+`AuthenticatedEnrollmentOutput` is the internal hand-off from the reviewed
+system-browser broker. It atomically binds the authority-issued trust record,
+device response context, and lower-case endpoint host allow-list. Do not add a
+QR, clipboard, fixture, or arbitrary JSON import path to this hand-off.
 
 ### Passwordless readiness
 

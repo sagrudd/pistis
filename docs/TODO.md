@@ -493,19 +493,24 @@ retention is recorded with the EPIC-18 pull-request acceptance evidence.
 - [ ] Register the Mnemosyne Biosciences GitHub App and enable device flow
 - [ ] Implement minimum-permission GitHub device-flow enrolment
 - [ ] Discard GitHub tokens after stable-identity proof
-- [ ] Generate and use the device-protected signing key
-- [ ] Require Face ID for every signature
-- [ ] Implement enrolment, QR approval, history, and revocation UX
+- [x] Generate and use the device-protected signing key
+- [x] Require Face ID for every approval and denial signature
+- [ ] Implement end-user enrolment, history, and revocation UX
+- [x] Wire authenticated trust storage, verified QR review, signed decisions,
+      bounded delivery, and terminal authority status into the Scan UI
 - [ ] Configure Apple signing and TestFlight
 - [ ] Pass functional and accessibility simulator suites
 - [ ] Pass the signed physical-iPhone acceptance matrix
 
-The native app now has a transient, bounded camera acquisition surface.
-ADR 0021 accepts installation verification-key trust, the self-contained
-production QR wrapper, and signed denial. `pistis-qr` implements the strict
-version-2 outer codec; iOS trust-record delivery, COSE verification, signed
-response construction, and physical-device qualification remain. The detached
-version-1 QR fixture remains reference-only.
+The native app has a transient bounded camera surface and a production
+coordinator backed by device-only Keychain trust. ADR 0021 accepts installation
+verification-key trust, the self-contained production QR wrapper, and signed
+denial. The visible Scan flow verifies exact COSE challenge facts before
+presentation; approval and denial use Face ID, the Secure Enclave COSE signer,
+2 KiB allow-listed HTTPS delivery, and terminal authority status. The
+system-browser broker still needs to supply the authenticated enrolment output,
+and end-user enrolment/history/revocation UX plus physical qualification remain.
+The detached version-1 QR fixture remains reference-only.
 
 ## EPIC 23 — Authentication evidence
 

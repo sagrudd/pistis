@@ -24,6 +24,7 @@ enum PlatformFailure: Error, Equatable, Sendable {
     case qrPayloadUnsupported
     case operationCancelled
     case productionEnvelopeUnavailable
+    case enrolmentRequired
 }
 
 extension PlatformFailure {
@@ -39,6 +40,8 @@ extension PlatformFailure {
             "This is not a supported Pistis QR code."
         case .operationCancelled:
             "Scanning stopped before a code was captured."
+        case .enrolmentRequired:
+            "Enrol this installation through the authenticated system-browser flow before scanning."
         default:
             "Pistis could not complete this operation safely. Please try again."
         }

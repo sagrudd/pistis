@@ -18,3 +18,7 @@ Current accepted production-interoperability decisions include:
 [ADR 0020](0020-prosopikon-pistis-authority-transaction.md) is the accepted
 cross-host completion decision. Individual implementation pull requests remain
 subject to the review and evidence requirements recorded in that ADR.
+
+[ADR 0022](0022-host-owned-cli-agent-authority-port.md) proposes the missing
+credential-free local-agent to host-authority port. It remains inactive until
+specialist acceptance and cross-repository conformance evidence.

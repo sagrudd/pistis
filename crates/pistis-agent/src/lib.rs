@@ -12,6 +12,7 @@ mod daemon;
 mod dispatch;
 mod framing;
 mod handler;
+mod host_port;
 #[cfg(target_os = "macos")]
 mod macos;
 mod protocol;
@@ -27,6 +28,10 @@ pub use daemon::{DaemonControl, SameUserAuthorizer, serve_until};
 pub use dispatch::{AgentHandler, DispatchError, PeerAuthorizer, dispatch_one};
 pub use framing::{MAX_AGENT_MESSAGE_BYTES, SocketFrameError, read_frame, write_frame};
 pub use handler::{AuthoritativeCeremonies, AuthoritativeError, AuthoritativeHandler};
+pub use host_port::{
+    HOST_AUTHORITY_PORT_VERSION, HostAgentAuthorityPort, HostAuthorityError, HostCeremonyStatus,
+    HostChallengeProjection, HostPortContractError, HostResponseSubmission,
+};
 #[cfg(target_os = "macos")]
 pub use macos::MacOsKeychainBackend;
 pub use protocol::{

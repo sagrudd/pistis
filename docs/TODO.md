@@ -397,6 +397,12 @@ command hand-off, and key provisioning remain open. The unchecked MVP items
 above are release blockers; a successful library test is not evidence that a
 mobile login or action approval completed.
 
+Issue #301 and Proposed ADR 0022 type the next integration boundary:
+credential-free begin/status/submit/cancel operations owned by the host
+authority. Production remains disabled until Prosopikon and Monas implement
+the accepted contract and mobile ADR 0021 returns the same signed response.
+No filesystem spool is accepted as a substitute state machine.
+
 ---
 
 # Continuous tasks

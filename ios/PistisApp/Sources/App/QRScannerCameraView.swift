@@ -21,7 +21,7 @@ struct QRScannerCameraView: UIViewRepresentable {
             let scanner = try QRScannerAdapter()
             context.coordinator.scanner = scanner
             view.previewLayer = scanner.makePreviewLayer()
-            Task {
+            context.coordinator.startTask = Task {
                 do {
                     try await scanner.start { result in
                         Task { @MainActor in onResult(result) }
@@ -42,12 +42,15 @@ struct QRScannerCameraView: UIViewRepresentable {
     func updateUIView(_: PreviewView, context _: Context) {}
 
     static func dismantleUIView(_: PreviewView, coordinator: Coordinator) {
+        coordinator.startTask?.cancel()
+        coordinator.startTask = nil
         coordinator.scanner?.cancel()
         coordinator.scanner = nil
     }
 
     final class Coordinator {
         var scanner: QRScannerAdapter?
+        var startTask: Task<Void, Never>?
         let onResult: @MainActor (Result<ScannedQRPayload, PlatformFailure>) -> Void
 
         init(

@@ -50,6 +50,7 @@ final class QRScannerAdapter: NSObject, AVCaptureMetadataOutputObjectsDelegate,
             authorized = false
         }
         guard authorized else { throw PlatformFailure.cameraPermissionDenied }
+        guard !Task.isCancelled else { throw PlatformFailure.operationCancelled }
 
         self.handler = handler
         backgroundObserver = NotificationCenter.default.addObserver(

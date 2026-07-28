@@ -72,30 +72,6 @@ pub struct AuthenticationResponseExpectation {
 pub struct VerifiedAuthenticationResponse {
     /// Explicit Face ID-gated decision signed by the device.
     pub decision: Decision,
-    /// Device-selected response creation time.
-    pub issued_at: UnixTimeMillis,
-    /// Device-selected time of local user verification.
-    pub user_verified_at: UnixTimeMillis,
-    /// Authoritatively bound installation.
-    pub installation_id: InstallationId,
-    /// Authoritatively bound challenge.
-    pub challenge_id: ChallengeId,
-    /// Authoritatively bound local principal.
-    pub user_id: UserId,
-    /// Authoritatively bound provider identity.
-    pub external_identity_id: ExternalIdentityId,
-    /// Authoritatively bound enrolled device.
-    pub device_id: DeviceId,
-    /// Derived identifier of the authority-owned verification key.
-    pub device_key_id: KeyId,
-    /// Authoritatively bound relying-party audience.
-    pub audience: String,
-    /// Current verified binding generation.
-    pub binding_generation: u64,
-    /// Current verified policy generation.
-    pub policy_generation: u64,
-    /// Current verified revocation generation.
-    pub revocation_generation: u64,
     /// SHA-256 of the exact submitted COSE envelope.
     pub response_digest: [u8; 32],
 }
@@ -194,18 +170,6 @@ pub fn verify_authentication_response(
 
     Ok(VerifiedAuthenticationResponse {
         decision: response.decision,
-        issued_at: response.issued_at,
-        user_verified_at: response.user_verified_at,
-        installation_id: response.installation_id,
-        challenge_id: response.challenge_id,
-        user_id: response.user_id,
-        external_identity_id: response.external_identity_id,
-        device_id: response.device_id,
-        device_key_id: response.key_id,
-        audience: expected.audience.clone(),
-        binding_generation: expected.current_binding_generation,
-        policy_generation: expected.current_policy_generation,
-        revocation_generation: expected.current_revocation_generation,
         response_digest: sha256(envelope).into_bytes(),
     })
 }

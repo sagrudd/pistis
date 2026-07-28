@@ -105,9 +105,6 @@ fn verifies_signed_approval_and_signed_denial_as_terminal_decisions() {
             verify_authentication_response(&envelope, &fixture.expected, &fixture.credential)
                 .unwrap();
         assert_eq!(verified.decision, decision);
-        assert_eq!(verified.user_id, fixture.expected.user_id);
-        assert_eq!(verified.device_key_id, fixture.credential.key_id);
-        assert_eq!(verified.audience, fixture.expected.audience);
         assert_eq!(verified.response_digest, sha256(&envelope).into_bytes());
     }
 }

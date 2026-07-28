@@ -123,6 +123,14 @@ both signed; denial is auditable refusal and never authenticates a session.
 External mobile interoperability still requires shared conformance fixtures
 and retained physical-device evidence.
 
+The proposed authenticated mobile bootstrap is specified by
+[ADR 0023](adr/0023-authenticated-mobile-enrolment-exchange.md). It introduces
+no implementation authority while proposed. In particular, an authority key
+returned only by an enrolment response is not trusted: it must match the
+digest committed by the administrator-issued, single-use invitation. The
+authority-signed mobile receipt binds the exact device-registration COSE
+envelope and every installation-trust field that iOS may store.
+
 Direct-local and response-QR submission enter the same verification path.
 Polling exposes only a coarse lifecycle state and cannot verify, consume, or
 authenticate. Completion verifies the signature and every stored binding

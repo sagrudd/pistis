@@ -25,6 +25,9 @@ final class PistisUITests: XCTestCase {
 
         XCTAssertTrue(application.buttons["Start camera"].exists)
         XCTAssertTrue(application.staticTexts["Ready to scan"].exists)
+        XCTAssertTrue(application.staticTexts["Passwordless approval unavailable"].exists)
+        XCTAssertTrue(application.staticTexts["Installation authority"].exists)
+        XCTAssertTrue(application.staticTexts["Production verifier"].exists)
         XCTAssertFalse(application.buttons["Approve and verify"].exists)
         XCTAssertFalse(application.buttons["Deny"].exists)
     }

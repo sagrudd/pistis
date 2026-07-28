@@ -108,6 +108,20 @@ app has an enrolled installation verification key, a captured value is
 discarded and the app does not present an approval or invoke Face ID. This is a
 deliberate fail-closed state, not a complete authentication ceremony.
 
+### Passwordless readiness
+
+The scanner screen reports five independent coarse states: camera permission,
+Face ID capability, presence of the namespaced device signing key, presence of
+enrolled installation-authority trust, and availability of the accepted
+production verifier. Approval is available only if all five are ready.
+
+The readiness surface is diagnostic, not evidence. It never displays a key
+identifier, public key, QR content, provider identity, endpoint, or scanned
+display value. “Key available” means only that the protected keychain item
+exists; it does not authenticate the user, verify a request, or prove that the
+key remains usable. Operators should resolve the stated missing capability and
+rerun the full ceremony rather than interpreting readiness as acceptance.
+
 ## Design maintenance
 
 Changes to tokens or product presentation must be reconciled with

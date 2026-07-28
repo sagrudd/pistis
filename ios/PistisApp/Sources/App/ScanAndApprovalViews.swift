@@ -4,6 +4,7 @@ struct ScanView: View {
     @State private var scanning = false
     @State private var scanFailure: PlatformFailure?
     @State private var capturedFrame = false
+    @State private var readiness = PasswordlessReadiness.checking
 
     var body: some View {
         ScrollView {
@@ -56,6 +57,24 @@ struct ScanView: View {
                     }
                 }
 
+                MnPanel {
+                    VStack(alignment: .leading, spacing: MnSpacing.x4) {
+                        MnStatusLabel(
+                            text: readiness.approvalEnabled
+                                ? "Passwordless approval ready"
+                                : "Passwordless approval unavailable",
+                            kind: readiness.approvalEnabled ? .success : .warning
+                        )
+                        ForEach(readiness.items) { item in
+                            ReadinessRow(item: item)
+                        }
+                        if !readiness.approvalEnabled {
+                            Text("Approve remains disabled until every capability and trust check is ready.")
+                                .font(.footnote.weight(.semibold))
+                        }
+                    }
+                }
+
                 if let scanFailure {
                     MnPanel {
                         VStack(alignment: .leading, spacing: MnSpacing.x3) {
@@ -79,6 +98,7 @@ struct ScanView: View {
         }
         .navigationTitle("Scan")
         .mnScreenBackground()
+        .task { readiness = PasswordlessReadinessProbe.current() }
     }
 
     @MainActor
@@ -103,6 +123,53 @@ struct ScanView: View {
 
     private func stopScanning() {
         scanning = false
+    }
+}
+
+private struct ReadinessRow: View {
+    let item: ReadinessItem
+
+    var body: some View {
+        HStack(alignment: .top, spacing: MnSpacing.x3) {
+            Image(systemName: symbol)
+                .foregroundStyle(color)
+                .accessibilityHidden(true)
+            VStack(alignment: .leading, spacing: MnSpacing.x1) {
+                Text(item.title)
+                    .font(.subheadline.weight(.semibold))
+                Text(item.detail)
+                    .font(.footnote)
+            }
+        }
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("\(item.title): \(stateLabel). \(item.detail)")
+    }
+
+    private var symbol: String {
+        switch item.state {
+        case .ready: "checkmark.circle.fill"
+        case .actionRequired: "exclamationmark.circle.fill"
+        case .unavailable: "xmark.octagon.fill"
+        case .checking: "ellipsis.circle.fill"
+        }
+    }
+
+    private var color: Color {
+        switch item.state {
+        case .ready: MnColor.success
+        case .actionRequired: MnColor.warning
+        case .unavailable: MnColor.danger
+        case .checking: MnColor.textPrimary
+        }
+    }
+
+    private var stateLabel: String {
+        switch item.state {
+        case .ready: "Ready"
+        case .actionRequired: "Action required"
+        case .unavailable: "Unavailable"
+        case .checking: "Checking"
+        }
     }
 }
 

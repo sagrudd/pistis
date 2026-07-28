@@ -1,9 +1,10 @@
 //! Production verification boundary for ADR 0019 authentication responses.
 
-use crate::{Decision, MAX_RESPONSE_BYTES, UnixTimeMillis, schema::decode_response};
+use crate::{Decision, UnixTimeMillis, schema::decode_response};
 use pistis_cose::{CoseError, verify_sign1};
 use pistis_crypto::{PublicKey, derive_key_id, sha256};
 use pistis_domain::{ChallengeId, DeviceId, ExternalIdentityId, InstallationId, KeyId, UserId};
+use pistis_qr::MAX_COSE_ENVELOPE_BYTES;
 use std::{error::Error, fmt};
 
 /// Authority-owned, active verification material for the enrolled device.
@@ -120,9 +121,8 @@ pub fn verify_authentication_response(
     expected: &AuthenticationResponseExpectation,
     credential: &AuthenticationResponseCredential,
 ) -> Result<VerifiedAuthenticationResponse, AuthenticationResponseVerificationError> {
-    if envelope.is_empty()
-        || envelope.len() > MAX_RESPONSE_BYTES
-        || expected.audience.is_empty()
+    validate_envelope_size(envelope)?;
+    if expected.audience.is_empty()
         || expected.audience.len() > 128
         || expected.audience.trim() != expected.audience
         || expected.audience.chars().any(char::is_control)
@@ -156,6 +156,8 @@ pub fn verify_authentication_response(
         .map_err(|_| AuthenticationResponseVerificationError::InvalidResponse)?;
     if response.issued_at < expected.challenge_issued_at
         || response.user_verified_at >= expected.challenge_expires_at
+        || response.issued_at > expected.now
+        || response.user_verified_at > expected.now
         || response.installation_id != expected.installation_id
         || response.key_id != credential.key_id
         || response.challenge_id != expected.challenge_id
@@ -174,6 +176,31 @@ pub fn verify_authentication_response(
     })
 }
 
+fn validate_envelope_size(envelope: &[u8]) -> Result<(), AuthenticationResponseVerificationError> {
+    if envelope.is_empty() || envelope.len() > MAX_COSE_ENVELOPE_BYTES {
+        Err(AuthenticationResponseVerificationError::InvalidResponse)
+    } else {
+        Ok(())
+    }
+}
+
 fn map_cose(_: CoseError) -> AuthenticationResponseVerificationError {
     AuthenticationResponseVerificationError::InvalidResponse
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn production_envelope_bound_matches_qr_and_is_inclusive() {
+        assert_eq!(
+            validate_envelope_size(&vec![0; MAX_COSE_ENVELOPE_BYTES]),
+            Ok(())
+        );
+        assert_eq!(
+            validate_envelope_size(&vec![0; MAX_COSE_ENVELOPE_BYTES + 1]),
+            Err(AuthenticationResponseVerificationError::InvalidResponse)
+        );
+    }
 }

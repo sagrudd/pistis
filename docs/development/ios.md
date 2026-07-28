@@ -63,6 +63,32 @@ token. An authorised owner must select the Mnemosyne Biosciences Apple
 Developer team and register the final bundle identifier before device,
 archive, or TestFlight validation.
 
+The native UI suite runs Apple's accessibility audit on onboarding and every
+primary tab. It exercises the GitHub-enrolment readiness and fail-closed
+scanner states without contacting a provider or enabling an approval. Run the
+focused audit with:
+
+```sh
+xcodebuild \
+  -project ios/PistisApp/Pistis.xcodeproj \
+  -scheme Pistis \
+  -destination 'platform=iOS Simulator,name=iPhone 17 Pro' \
+  CODE_SIGNING_ALLOWED=NO \
+  test \
+  -only-testing:PistisUITests/PistisUITests/testPrimarySurfacesPassNativeAccessibilityAudit
+```
+
+This automated audit does not replace physical VoiceOver, Dynamic Type,
+contrast, reduced-motion, camera, or Face ID review.
+
+The scanner is audited at both the top and bottom scroll positions. Xcode 26.6
+reports contrast findings for text partly obscured by a viewport edge; the test
+handles only the exact labels obscured at one position after auditing them
+unobscured at the other. Xcode 26.6 also reports the standard `About Pistis`
+`NavigationLink` label for Dynamic Type despite its scalable semantic `body`
+font. Every other finding remains test-failing; broaden neither exception
+without a documented Xcode regression and review.
+
 ## Review gates
 
 Do not merge a native-platform claim without evidence for the affected gate:
@@ -83,17 +109,17 @@ TestFlight distribution.
 
 ## Current native evidence
 
-On 2026-07-24, Xcode 26.6 built and tested the signing-disabled application on
+On 2026-07-28, Xcode 26.6 built and tested the signing-disabled application on
 the iOS 26.5 iPhone 17 Pro simulator:
 
 - the application and iOS-only platform-adapter branches compiled and linked;
-- all eight platform policy tests passed; and
-- both UI tests passed, covering primary navigation and the approval evidence
-  presentation.
+- all platform policy tests passed; and
+- the functional UI tests and native accessibility audit passed across
+  onboarding and all five primary tabs.
 
 This closes the SwiftUI project-creation gate. Simulator evidence does not
-close real-device Secure Enclave, camera, accessibility, signing, archive, or
-TestFlight gates.
+close real-device Secure Enclave, camera, physical accessibility, signing,
+archive, or TestFlight gates.
 
 ## Face ID signing boundary
 

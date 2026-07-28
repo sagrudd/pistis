@@ -520,7 +520,8 @@ satisfy MVP acceptance.
 - [x] Wire authenticated trust storage, verified QR review, signed decisions,
       bounded delivery, and terminal authority status into the Scan UI
 - [ ] Configure Apple signing and TestFlight
-- [ ] Pass functional and accessibility simulator suites
+- [x] Automate the functional and native accessibility simulator suites
+- [ ] Complete physical VoiceOver, Dynamic Type, contrast, and reduced-motion review
 - [ ] Pass the signed physical-iPhone acceptance matrix
 
 The native app has a transient bounded camera surface and a production

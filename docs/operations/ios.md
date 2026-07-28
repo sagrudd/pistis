@@ -134,6 +134,14 @@ response context through their bounded validating initializers before use. A
 malformed or stale record disables the ceremony rather than being partially
 accepted. Authority status JSON similarly rejects unknown fields.
 
+## Automated accessibility audit
+
+The signing-disabled simulator suite also runs Apple's native accessibility
+audit across onboarding and every primary tab. That repeatable gate requires
+no live account or provider network. It supplements rather than replaces
+physical VoiceOver, Dynamic Type, contrast, reduced-motion, camera, and Face ID
+acceptance.
+
 ## Physical interoperability record
 
 Use the

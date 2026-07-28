@@ -49,6 +49,8 @@ struct ScanView: View {
                         )
                         Text("Only bounded PISTIS1 version-2 challenge text is accepted. Request facts appear only after the enrolled installation key verifies the exact signed payload.")
                             .font(.footnote)
+                            .foregroundStyle(MnColor.textPrimary)
+                            .fixedSize(horizontal: false, vertical: true)
                     }
                 }
 
@@ -165,6 +167,8 @@ private struct ReadinessRow: View {
                     .font(.subheadline.weight(.semibold))
                 Text(item.detail)
                     .font(.footnote)
+                    .foregroundStyle(MnColor.textPrimary)
+                    .fixedSize(horizontal: false, vertical: true)
             }
         }
         .accessibilityElement(children: .combine)

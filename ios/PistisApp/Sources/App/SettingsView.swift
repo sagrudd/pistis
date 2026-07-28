@@ -19,16 +19,26 @@ struct SettingsView: View {
             }
 
             Section("Application") {
-                NavigationLink("Diagnostics") {
+                NavigationLink {
                     DiagnosticsView()
+                } label: {
+                    Text("Diagnostics")
+                        .font(.body)
                 }
                 .frame(minHeight: MnMetrics.minimumTarget)
-                NavigationLink("Privacy and legal") {
+                NavigationLink {
                     PrivacyView()
+                } label: {
+                    Text("Privacy and legal")
+                        .font(.body)
                 }
                 .frame(minHeight: MnMetrics.minimumTarget)
-                NavigationLink("About Pistis") {
+                NavigationLink {
                     AboutView()
+                } label: {
+                    Text("About Pistis")
+                        .font(.body)
+                        .fixedSize(horizontal: false, vertical: true)
                 }
                 .frame(minHeight: MnMetrics.minimumTarget)
             }

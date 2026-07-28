@@ -47,11 +47,18 @@ principal, policy, audit, and evidence outcomes.
 
 Interactive orchestration polls only the coarse status operation on the
 owner-only agent socket. Its 500-millisecond cadence is bounded by the signed
-challenge expiry and is abstracted behind a deterministic runtime for tests.
+challenge expiry using monotonic elapsed time and is abstracted behind a
+deterministic runtime for tests. Each socket exchange has a bounded I/O
+deadline.
 It never polls a public endpoint, transports a bearer, or duplicates authority
 state. Redirected, already protected input selects the framed fallback instead;
 both paths use the same opaque durable reference and authoritative completion
 transaction.
+
+The portable client does not yet translate operating-system termination
+signals into an explicit agent cancellation request. Abrupt termination leaves
+the durable reference pending until authority-owned expiry. Signal bridging is
+a reviewed platform-packaging responsibility under ADR 0017.
 
 ## Terminal rendering contract
 

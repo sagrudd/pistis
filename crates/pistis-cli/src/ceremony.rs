@@ -2,7 +2,7 @@ use crate::{AuthCommand, OutputProfile};
 use std::{
     error::Error,
     fmt, thread,
-    time::{Duration, SystemTime, UNIX_EPOCH},
+    time::{Duration, Instant, SystemTime, UNIX_EPOCH},
 };
 
 const POLL_INTERVAL: Duration = Duration::from_millis(500);
@@ -130,20 +130,39 @@ pub trait CeremonyRuntime {
     fn wait(&mut self, duration: Duration);
 }
 
-struct SystemRuntime;
+struct SystemRuntime {
+    wall_start_millis: Option<u64>,
+    monotonic_start: Instant,
+}
+
+impl SystemRuntime {
+    fn new() -> Self {
+        Self {
+            wall_start_millis: SystemTime::now()
+                .duration_since(UNIX_EPOCH)
+                .ok()
+                .and_then(|duration| u64::try_from(duration.as_millis()).ok()),
+            monotonic_start: Instant::now(),
+        }
+    }
+}
 
 impl CeremonyRuntime for SystemRuntime {
     fn now_millis(&mut self) -> u64 {
-        SystemTime::now()
-            .duration_since(UNIX_EPOCH)
-            .map_or(0, |duration| {
-                u64::try_from(duration.as_millis()).unwrap_or(u64::MAX)
-            })
+        anchored_millis(self.wall_start_millis, self.monotonic_start.elapsed())
     }
 
     fn wait(&mut self, duration: Duration) {
         thread::sleep(duration);
     }
+}
+
+fn anchored_millis(wall_start_millis: Option<u64>, elapsed: Duration) -> u64 {
+    let Some(wall_start_millis) = wall_start_millis else {
+        return u64::MAX;
+    };
+    let elapsed = u64::try_from(elapsed.as_millis()).unwrap_or(u64::MAX);
+    wall_start_millis.saturating_add(elapsed)
 }
 
 /// Stable process outcome.
@@ -208,14 +227,15 @@ impl CeremonyError {
 /// Runs one CLI-only authentication or approval ceremony.
 ///
 /// The QR and explanatory metadata are written before direct-local status is
-/// checked. If no response is available, exactly one response frame is read
-/// from protected input and submitted through the same verifier boundary.
+/// checked. Interactive callers poll the coarse status until a terminal
+/// outcome or local expiry. Protected non-interactive callers may instead
+/// submit exactly one response frame through the same verifier boundary.
 pub fn run(
     command: &AuthCommand,
     backend: &mut impl AuthenticationBackend,
     io: &mut impl CliIo,
 ) -> CliExit {
-    run_with_runtime(command, backend, io, &mut SystemRuntime)
+    run_with_runtime(command, backend, io, &mut SystemRuntime::new())
 }
 
 /// Runs a ceremony with an explicit time boundary.
@@ -511,6 +531,19 @@ mod tests {
         );
         assert_eq!(runtime.waits, vec![Duration::from_millis(250)]);
         assert!(backend.cancelled);
+    }
+
+    #[test]
+    fn production_clock_budget_uses_only_anchored_monotonic_elapsed_time() {
+        assert_eq!(
+            anchored_millis(Some(1_000), Duration::from_millis(750)),
+            1_750
+        );
+        assert_eq!(anchored_millis(None, Duration::ZERO), u64::MAX);
+        assert_eq!(
+            anchored_millis(Some(u64::MAX - 1), Duration::from_millis(2)),
+            u64::MAX
+        );
     }
 
     #[derive(Default)]

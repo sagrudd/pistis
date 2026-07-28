@@ -354,7 +354,9 @@ authentication path.
 - [x] Bind approvals to the exact action and command digest
 - [ ] Support direct-local signed response submission after MVP
 - [x] Support bounded terminal-safe framed response input
-- [x] Implement cancellation, denial, expiry, and interruption handling
+- [x] Implement explicit cancellation, denial, expiry, and protected-input interruption handling
+- [ ] Add reviewed platform signal-to-cancel bridging for abrupt CLI interruption
+  ([issue #306](https://github.com/sagrudd/pistis/issues/306))
 
 ## Security and session handling
 

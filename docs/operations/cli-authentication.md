@@ -60,10 +60,12 @@ zone.
 
 When standard input is an interactive terminal, the CLI polls the owner-only
 local-agent socket every 500 milliseconds. It stops only when the durable host
-authority reports completion, denial, or expiry, or when status transport
-fails. The phone submits to the host/agent path; the CLI neither receives nor
-prints a session capability. Local expiry cancels the still-pending reference.
-This is the normal passwordless CLI path.
+authority reports completion, denial, or expiry, or when a bounded status
+exchange fails. The local expiry budget is anchored once and advances with a
+monotonic clock, so wall-clock adjustment cannot extend it. The phone submits
+to the host/agent path; the CLI neither receives nor prints a session
+capability. Local expiry cancels the still-pending reference. This is the
+normal passwordless CLI path.
 
 The fallback reader accepts exactly one bounded ASCII `PISTIS1` response
 transfer, optionally terminated by LF or CRLF. It rejects escape sequences,
@@ -83,10 +85,13 @@ expiry or cancellation, and its signed response cannot complete the new
 reference. If the agent or host is temporarily unavailable, retry only after
 restoring that same authority; do not construct a local session or bearer.
 
-On denial, expiry, interruption, malformed input, adapter failure, or
-presentation failure, the ceremony fails closed and cancels its pending
-reference. Operators must never bypass that result by constructing a session
-manually.
+On denial, expiry, a detected protected-input interruption, malformed input,
+adapter failure, or presentation failure, the ceremony fails closed and
+requests cancellation of its pending reference. Abrupt process termination,
+including the current portable CLI's default Ctrl-C handling, cannot guarantee
+that request; the durable authority remains responsible for expiry. A reviewed
+platform signal bridge is required before claiming signal-to-cancel support.
+Operators must never bypass a failed result by constructing a session manually.
 
 ## Evidence and readiness
 

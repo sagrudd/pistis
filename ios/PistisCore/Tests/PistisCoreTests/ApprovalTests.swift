@@ -24,12 +24,15 @@ import Testing
     #expect(facts.isAcceptedByInstallation)
 }
 
-@Test func denialCannotProceedToLocalAuthentication() throws {
+@Test func denialRequiresLocalAuthenticationAndSignature() throws {
     var facts = ApprovalFacts(challenge: Fixtures.challenge())
     try facts.decide(.denied, at: Fixtures.now.addingTimeInterval(1))
-    #expect(throws: ApprovalTransitionError.notApproved) {
-        try facts.recordLocalAuthentication(.verified(method: .faceID, fallbackUsed: false))
-    }
+    try facts.recordLocalAuthentication(.verified(method: .faceID, fallbackUsed: false))
+    try facts.recordSignature(.created(
+        keyID: "device-key-1",
+        signatureDigest: Fixtures.fingerprintB
+    ))
+    #expect(facts.decision == .denied)
 }
 
 @Test func signatureRequiresSuccessfulFreshUserVerification() throws {

@@ -1,4 +1,5 @@
 import SwiftUI
+import PistisCore
 
 struct ScanView: View {
     @State private var scanning = false
@@ -44,14 +45,14 @@ struct ScanView: View {
                     VStack(alignment: .leading, spacing: MnSpacing.x2) {
                         MnStatusLabel(
                             text: capturedFrame
-                                ? "Code captured; verification unavailable"
+                                ? "Production request captured; enrolment required"
                                 : (scanning ? "Camera active" : "Ready to scan"),
                             kind: capturedFrame ? .warning : .neutral
                         )
                         Text(
                             capturedFrame
-                                ? "Pistis discarded the unverified frame. Production challenge verification is not yet enabled, so no approval can be shown or signed."
-                                : "Only bounded PISTIS1 text is accepted. A scan is never treated as trusted until the production protocol verifier accepts it."
+                                ? "The PISTIS1 version-2 envelope is structurally valid, but no request facts are shown until an enrolled installation key verifies its signature."
+                                : "Only bounded PISTIS1 version-2 challenge text is accepted. A scan is never trusted until the enrolled installation key verifies it."
                         )
                             .font(.footnote)
                     }
@@ -105,9 +106,18 @@ struct ScanView: View {
     private func handleScan(_ result: Result<ScannedQRPayload, PlatformFailure>) {
         scanning = false
         switch result {
-        case .success:
-            capturedFrame = true
-            scanFailure = nil
+        case let .success(payload):
+            do {
+                // Acquisition is now connected to the accepted production
+                // transport parser. This proves structure only; presentation
+                // remains disabled until enrolled trust verifies the signature.
+                _ = try ProductionQRV2.decodeChallenge(payload.text)
+                capturedFrame = true
+                scanFailure = nil
+            } catch {
+                capturedFrame = false
+                scanFailure = .qrPayloadUnsupported
+            }
         case let .failure(failure):
             guard failure != .operationCancelled else { return }
             capturedFrame = false

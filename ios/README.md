@@ -32,3 +32,24 @@ The Scan tab includes a non-secret passwordless-readiness panel. It reports
 camera, Face ID, device-key, enrolled-authority, and production-verifier
 availability separately. These are coarse diagnostics only; every gate must be
 ready before approval can be enabled.
+
+## Production ceremony boundary
+
+The app target links the local `PistisCore` package. Its scanner accepts only
+the bounded ADR 0021 `PISTIS1` version-2 challenge frame. The core decodes the
+exact COSE envelope and ADR 0019 payload, selects a previously enrolled trust
+record, and verifies the enrolled key identifier, P-256 signature,
+fingerprint, audience, external identity, and validity window before returning
+facts that may be displayed.
+
+Responses for both `approved` and `denied` use the same fresh Face ID and
+Secure Enclave signing path. Cancel is the only unsigned dismissal. Direct
+HTTPS delivery accepts a signed endpoint hint only when its host also appears
+in the enrolled allow-list, and keeps local signing, transfer, and the
+server's authoritative result as separate states.
+
+The repository contains no development trust record. Until authenticated host
+enrolment installs an authority-verified record and identity binding, a
+structurally valid scan reports that enrolment is required and displays no
+challenge facts or decision controls. Never add fixture keys,
+trust-on-first-scan, or simulator signing fallbacks to bypass this boundary.

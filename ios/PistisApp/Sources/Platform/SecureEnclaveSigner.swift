@@ -122,6 +122,12 @@ final class SecureEnclaveSigner: @unchecked Sendable {
     /// raw proof material is assembled by the accepted COSE profile; this
     /// platform adapter does not itself issue authentication authority.
     func sign(message: Data) throws -> Data {
+        // Keep the fail-closed boundary at the operation itself. Callers must
+        // not be able to reach a software Keychain key on a simulator merely
+        // by bypassing `create()`.
+        guard SecureEnclaveSigner.secureEnclaveIsAvailable else {
+            throw PlatformFailure.secureHardwareUnavailable
+        }
         let context = LAContext()
         context.localizedCancelTitle = "Cancel"
         context.localizedReason = authenticationReason
@@ -217,14 +223,10 @@ final class SecureEnclaveSigner: @unchecked Sendable {
     }
 
     private func findPrivateKey(authenticationContext: LAContext) throws -> SecKey? {
-        let query: [CFString: Any] = [
-            kSecClass: kSecClassKey,
-            kSecAttrKeyType: kSecAttrKeyTypeECSECPrimeRandom,
-            kSecAttrApplicationTag: applicationTag,
-            kSecReturnRef: true,
-            kSecMatchLimit: kSecMatchLimitOne,
-            kSecUseAuthenticationContext: authenticationContext,
-        ]
+        let query = Self.keyLookupQuery(
+            applicationTag: applicationTag,
+            authenticationContext: authenticationContext
+        )
 
         var item: CFTypeRef?
         let status = SecItemCopyMatching(query as CFDictionary, &item)
@@ -245,15 +247,13 @@ final class SecureEnclaveSigner: @unchecked Sendable {
     private func keyExists() throws -> Bool {
         let context = LAContext()
         context.interactionNotAllowed = true
-        let query: [CFString: Any] = [
-            kSecClass: kSecClassKey,
-            kSecAttrKeyType: kSecAttrKeyTypeECSECPrimeRandom,
-            kSecAttrApplicationTag: applicationTag,
-            kSecReturnRef: true,
-            kSecMatchLimit: kSecMatchLimitOne,
-            kSecUseAuthenticationContext: context,
-        ]
-        let status = SecItemCopyMatching(query as CFDictionary, nil)
+        let query = Self.keyLookupQuery(
+            applicationTag: applicationTag,
+            authenticationContext: context
+        )
+
+        var item: CFTypeRef?
+        let status = SecItemCopyMatching(query as CFDictionary, &item)
         switch status {
         case errSecSuccess, errSecInteractionNotAllowed:
             return true
@@ -264,6 +264,26 @@ final class SecureEnclaveSigner: @unchecked Sendable {
         default:
             throw PlatformFailure.signingFailed
         }
+    }
+
+    /// Build the sole lookup shape for this adapter's private key.
+    ///
+    /// The application tag alone is not an assurance boundary: a software
+    /// Keychain key could share it. Constraining the token makes lookup reject
+    /// any such key before it can be reported or used as an Enclave key.
+    static func keyLookupQuery(
+        applicationTag: Data,
+        authenticationContext: LAContext
+    ) -> [CFString: Any] {
+        [
+            kSecClass: kSecClassKey,
+            kSecAttrKeyType: kSecAttrKeyTypeECSECPrimeRandom,
+            kSecAttrTokenID: kSecAttrTokenIDSecureEnclave,
+            kSecAttrApplicationTag: applicationTag,
+            kSecReturnRef: true,
+            kSecMatchLimit: kSecMatchLimitOne,
+            kSecUseAuthenticationContext: authenticationContext,
+        ]
     }
 
     private func mapSecurityError(_ error: CFError?) -> PlatformFailure {

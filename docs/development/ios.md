@@ -89,6 +89,11 @@ to be Face ID. Pistis does not request the device-owner policy, so a passcode
 cannot satisfy a signature request; Touch ID is also rejected because the MVP
 acceptance profile names a Face ID iPhone.
 
+Private-key lookup is constrained to `kSecAttrTokenIDSecureEnclave`; a
+software Keychain key with the same application tag is rejected. The signing
+operation itself also rejects simulator execution before querying Keychain, so
+the invariant does not depend on callers invoking key creation first.
+
 Cancellation, lockout, changed biometric enrolment, missing hardware, a missing
 key, and simulator execution fail closed without producing signature bytes.
 Simulator policy tests can check the selection logic, but task PIS-E22-I256 is

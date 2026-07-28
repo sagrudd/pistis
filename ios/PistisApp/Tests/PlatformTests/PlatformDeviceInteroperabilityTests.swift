@@ -1,5 +1,6 @@
 import Foundation
 import LocalAuthentication
+import Security
 import XCTest
 @testable import Pistis
 
@@ -52,10 +53,56 @@ final class PlatformDeviceInteroperabilityTests: XCTestCase {
         XCTAssertFalse(SecureEnclaveSigner.isFaceID(.none))
     }
 
+    func testKeyLookupRequiresSecureEnclaveToken() {
+        let query = SecureEnclaveSigner.keyLookupQuery(
+            applicationTag: Data("pistis-test-key".utf8),
+            authenticationContext: LAContext()
+        )
+
+        XCTAssertEqual(
+            query[kSecAttrTokenID] as? String,
+            kSecAttrTokenIDSecureEnclave as String
+        )
+    }
+
     #if targetEnvironment(simulator)
     func testPhysicalDeviceHarnessFailsClosedOnSimulator() throws {
         let harness = try DeviceInteroperabilityHarness.fixture(from: Bundle(for: Self.self))
         XCTAssertThrowsError(try harness.observe())
+    }
+
+    func testDirectSigningRejectsTaggedSoftwareKeyOnSimulator() throws {
+        let namespace = "simulator-software-key-\(UUID().uuidString)"
+        let tag = Data("org.mnemosyne.pistis.device-key.\(namespace)".utf8)
+        let privateAttributes: [CFString: Any] = [
+            kSecAttrIsPermanent: true,
+            kSecAttrApplicationTag: tag,
+        ]
+        let attributes: [CFString: Any] = [
+            kSecAttrKeyType: kSecAttrKeyTypeECSECPrimeRandom,
+            kSecAttrKeySizeInBits: 256,
+            kSecPrivateKeyAttrs: privateAttributes,
+        ]
+        var creationError: Unmanaged<CFError>?
+        guard SecKeyCreateRandomKey(attributes as CFDictionary, &creationError) != nil else {
+            throw XCTSkip("Simulator Keychain cannot create a tagged software key.")
+        }
+        defer {
+            let query: [CFString: Any] = [
+                kSecClass: kSecClassKey,
+                kSecAttrKeyType: kSecAttrKeyTypeECSECPrimeRandom,
+                kSecAttrApplicationTag: tag,
+            ]
+            SecItemDelete(query as CFDictionary)
+        }
+
+        let signer = try SecureEnclaveSigner(
+            namespace: namespace,
+            authenticationReason: "Test simulator rejection."
+        )
+        XCTAssertThrowsError(try signer.sign(message: Data([0xa0]))) { error in
+            XCTAssertEqual(error as? PlatformFailure, .secureHardwareUnavailable)
+        }
     }
     #else
     func testPhysicalDeviceInteroperabilityCeremony() throws {

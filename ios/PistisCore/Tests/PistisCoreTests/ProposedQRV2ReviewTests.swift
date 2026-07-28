@@ -1,7 +1,9 @@
-import CryptoKit
 import Foundation
 import Testing
 @testable import PistisCore
+
+#if canImport(CryptoKit)
+import CryptoKit
 
 /// Swift conformance parser for the accepted ADR 0021 review vectors.
 ///
@@ -193,3 +195,4 @@ private extension Data {
         }
     }
 }
+#endif

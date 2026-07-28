@@ -590,6 +590,17 @@ name = "pistis-canonical"
 version = "0.1.0"
 
 [[package]]
+name = "pistis-cose"
+version = "0.1.0"
+dependencies = [
+ "pistis-canonical",
+ "pistis-crypto",
+ "pistis-domain",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
 name = "pistis-crypto"
 version = "0.1.0"
 dependencies = [
@@ -659,6 +670,7 @@ version = "0.1.0"
 dependencies = [
  "base64",
  "pistis-canonical",
+ "pistis-cose",
  "pistis-crypto",
  "qrcode",
 ]

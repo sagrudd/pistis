@@ -116,7 +116,7 @@ public struct VerifiedAuthenticationChallenge: Equatable, Sendable {
     public let endpointHints: [URL]
 }
 
-public struct DeviceResponseContext: Equatable, Sendable {
+public struct DeviceResponseContext: Codable, Equatable, Sendable {
     public let deviceID: Data
     public let deviceKeyID: Data
     public let userID: Data

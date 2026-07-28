@@ -61,6 +61,30 @@ fixture conformance is not evidence of physical Secure Enclave or Face ID
 behavior. No release may describe the detached reference envelope as the
 production mobile protocol.
 
+## Production ceremony operation
+
+Complete GitHub enrolment in the iOS system browser before scanning. A
+successful authenticated broker callback must install one
+`AuthenticatedEnrollmentOutput`; operators must not sideload a trust record or
+copy a key from a QR code. The record is stored as
+`kSecAttrAccessibleWhenUnlockedThisDeviceOnly`, is not synchronizable, and is
+removed on explicit revocation. Replacement enrolment overwrites the complete
+record atomically.
+
+On the Scan tab, all five readiness rows must be ready. Scan the Monas
+`PISTIS1` version-2 QR and compare the displayed audience, installation, local
+user, external-identity identifier, installation fingerprint, expiry, and
+route with the initiating browser. Choose Approve or Deny; both choices must
+produce a fresh Face ID prompt. Success is only the terminal state returned by
+the installation authority. A pending timeout, delivery error, unknown host,
+or malformed authority response must not be described as acceptance.
+
+For MVP transport, the challenge supplies one HTTPS response endpoint and may
+supply a second HTTPS status endpoint. Both hosts must already appear in the
+authenticated enrolment allow-list. Request and response bodies are limited to
+2 KiB; redirects, credentials in URLs, fragments, non-HTTPS URLs, and unknown
+hosts fail closed.
+
 ## Physical interoperability record
 
 Use the

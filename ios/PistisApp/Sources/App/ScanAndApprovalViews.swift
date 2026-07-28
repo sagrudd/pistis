@@ -2,9 +2,9 @@ import SwiftUI
 import PistisCore
 
 struct ScanView: View {
+    @StateObject private var ceremony = ProductionCeremonyCoordinator()
     @State private var scanning = false
     @State private var scanFailure: PlatformFailure?
-    @State private var capturedFrame = false
     @State private var readiness = PasswordlessReadiness.checking
 
     var body: some View {
@@ -44,16 +44,10 @@ struct ScanView: View {
                 MnPanel {
                     VStack(alignment: .leading, spacing: MnSpacing.x2) {
                         MnStatusLabel(
-                            text: capturedFrame
-                                ? "Production request captured; enrolment required"
-                                : (scanning ? "Camera active" : "Ready to scan"),
-                            kind: capturedFrame ? .warning : .neutral
+                            text: statusText,
+                            kind: statusKind
                         )
-                        Text(
-                            capturedFrame
-                                ? "The PISTIS1 version-2 envelope is structurally valid, but no request facts are shown until an enrolled installation key verifies its signature."
-                                : "Only bounded PISTIS1 version-2 challenge text is accepted. A scan is never trusted until the enrolled installation key verifies it."
-                        )
+                        Text("Only bounded PISTIS1 version-2 challenge text is accepted. Request facts appear only after the enrolled installation key verifies the exact signed payload.")
                             .font(.footnote)
                     }
                 }
@@ -99,7 +93,10 @@ struct ScanView: View {
         }
         .navigationTitle("Scan")
         .mnScreenBackground()
-        .task { readiness = PasswordlessReadinessProbe.current() }
+        .task { readiness = await PasswordlessReadinessProbe.current() }
+        .sheet(item: reviewBinding) { request in
+            ApprovalView(request: request, coordinator: ceremony)
+        }
     }
 
     @MainActor
@@ -107,32 +104,51 @@ struct ScanView: View {
         scanning = false
         switch result {
         case let .success(payload):
-            do {
-                // Acquisition is now connected to the accepted production
-                // transport parser. This proves structure only; presentation
-                // remains disabled until enrolled trust verifies the signature.
-                _ = try ProductionQRV2.decodeChallenge(payload.text)
-                capturedFrame = true
-                scanFailure = nil
-            } catch {
-                capturedFrame = false
-                scanFailure = .qrPayloadUnsupported
+            scanFailure = nil
+            Task {
+                await ceremony.accept(qrText: payload.text)
+                if case let .failed(failure) = ceremony.phase {
+                    scanFailure = failure
+                }
             }
         case let .failure(failure):
             guard failure != .operationCancelled else { return }
-            capturedFrame = false
             scanFailure = failure
         }
     }
 
     private func startScanning() {
-        capturedFrame = false
+        ceremony.reset()
         scanFailure = nil
         scanning = true
     }
 
     private func stopScanning() {
         scanning = false
+    }
+
+    private var reviewBinding: Binding<ApprovalRequest?> {
+        Binding {
+            if case let .review(request) = ceremony.phase { request } else { nil }
+        } set: { value in
+            if value == nil { ceremony.reset() }
+        }
+    }
+
+    private var statusText: String {
+        switch ceremony.phase {
+        case .verifying: "Verifying enrolled installation"
+        case .review: "Verified request ready for review"
+        default: scanning ? "Camera active" : "Ready to scan"
+        }
+    }
+
+    private var statusKind: MnStatusKind {
+        switch ceremony.phase {
+        case .review: .success
+        case .verifying: .warning
+        default: .neutral
+        }
     }
 }
 
@@ -185,8 +201,8 @@ private struct ReadinessRow: View {
 
 struct ApprovalView: View {
     let request: ApprovalRequest
+    @ObservedObject var coordinator: ProductionCeremonyCoordinator
     @Environment(\.dismiss) private var dismiss
-    @State private var result: ApprovalResult?
 
     var body: some View {
         NavigationStack {
@@ -222,10 +238,10 @@ struct ApprovalView: View {
 
                     VStack(spacing: MnSpacing.x3) {
                         MnPrimaryButton("Approve and verify", systemImage: "checkmark.shield") {
-                            result = .unavailable
+                            Task { await coordinator.decide(.approved) }
                         }
                         Button("Deny") {
-                            result = .denied
+                            Task { await coordinator.decide(.denied) }
                         }
                         .font(.headline)
                         .foregroundStyle(MnColor.danger)
@@ -242,26 +258,44 @@ struct ApprovalView: View {
                         .frame(minHeight: MnMetrics.minimumTarget)
                 }
             }
-            .sheet(item: $result) { result in
+            .sheet(item: resultBinding) { result in
                 ApprovalResultView(result: result) {
-                    self.result = nil
+                    coordinator.reset()
                     dismiss()
                 }
             }
             .mnScreenBackground()
         }
     }
+
+    private var resultBinding: Binding<ApprovalPresentation?> {
+        Binding {
+            switch coordinator.phase {
+            case let .submitting(decision): .submitting(decision)
+            case let .terminal(status): .terminal(status)
+            case let .failed(failure): .failed(failure)
+            default: nil
+            }
+        } set: { _ in }
+    }
 }
 
-private enum ApprovalResult: String, Identifiable {
-    case unavailable
-    case denied
+private enum ApprovalPresentation: Identifiable {
+    case submitting(AuthenticationDecision)
+    case terminal(AuthoritativeCeremonyStatus)
+    case failed(PlatformFailure)
 
-    var id: String { rawValue }
+    var id: String {
+        switch self {
+        case let .submitting(decision): "submitting-\(decision.rawValue)"
+        case let .terminal(status): "terminal-\(status.state.rawValue)"
+        case .failed: "failed"
+        }
+    }
 }
 
 private struct ApprovalResultView: View {
-    let result: ApprovalResult
+    let result: ApprovalPresentation
     let done: () -> Void
 
     var body: some View {
@@ -269,32 +303,23 @@ private struct ApprovalResultView: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: MnSpacing.x6) {
                     MnSectionHeading(
-                        result == .unavailable ? "Approval unavailable" : "Request denied",
-                        orientation: result == .unavailable
-                            ? "This development source cannot produce a production mobile envelope."
-                            : "No device signature was produced."
+                        title,
+                        orientation: orientation
                     )
                     MnPanel {
                         VStack(alignment: .leading, spacing: MnSpacing.x4) {
                             MnStatusLabel(
-                                text: result == .unavailable ? "Human decision: Not recorded" : "Human decision: Denied",
-                                kind: result == .unavailable ? .warning : .danger
-                            )
-                            MnStatusLabel(
-                                text: "Device signature: Not produced",
-                                kind: .neutral
-                            )
-                            MnStatusLabel(
-                                text: "Transfer: Not attempted",
-                                kind: .neutral
-                            )
-                            MnStatusLabel(
-                                text: "Server verification: Not applicable",
-                                kind: .neutral
+                                text: statusText,
+                                kind: statusKind
                             )
                         }
                     }
-                    MnPrimaryButton("Done", action: done)
+                    if isTerminal {
+                        MnPrimaryButton("Done", action: done)
+                    } else {
+                        ProgressView()
+                            .accessibilityLabel("Waiting for the installation authority")
+                    }
                 }
                 .padding(MnMetrics.screenGutter)
             }
@@ -302,5 +327,45 @@ private struct ApprovalResultView: View {
             .navigationBarTitleDisplayMode(.inline)
             .mnScreenBackground()
         }
+    }
+
+    private var title: String {
+        switch result {
+        case .submitting: "Recording decision"
+        case let .terminal(status): status.state == .completed
+            ? "Authentication accepted" : "Authority result"
+        case .failed: "Authentication failed"
+        }
+    }
+
+    private var orientation: String {
+        switch result {
+        case .submitting:
+            "Face ID, device signature, delivery, and authority verification are in progress."
+        case let .terminal(status):
+            "The installation authority returned \(status.state.rawValue)."
+        case let .failed(failure):
+            failure.safeUserMessage
+        }
+    }
+
+    private var statusText: String {
+        switch result {
+        case let .submitting(decision): "Human decision: \(decision.rawValue)"
+        case let .terminal(status): "Authority state: \(status.state.rawValue)"
+        case .failed: "No authoritative completion was recorded"
+        }
+    }
+
+    private var statusKind: MnStatusKind {
+        switch result {
+        case .submitting: .warning
+        case let .terminal(status): status.state == .completed ? .success : .danger
+        case .failed: .danger
+        }
+    }
+
+    private var isTerminal: Bool {
+        if case .submitting = result { false } else { true }
     }
 }

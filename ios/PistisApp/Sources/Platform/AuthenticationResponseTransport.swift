@@ -2,7 +2,7 @@ import Foundation
 
 enum AuthoritativeCeremonyState: String, Codable, Equatable, Sendable {
     case pending
-    case accepted
+    case completed
     case denied
     case rejected
     case expired
@@ -14,14 +14,21 @@ enum AuthoritativeCeremonyState: String, Codable, Equatable, Sendable {
 struct AuthoritativeCeremonyStatus: Codable, Equatable, Sendable {
     let state: AuthoritativeCeremonyState
     let evidenceID: String?
+
+    private enum CodingKeys: String, CodingKey {
+        case state
+        case evidenceID = "evidence_id"
+    }
 }
 
 /// Bounded HTTPS response delivery. A signed endpoint hint is transport input,
 /// not authority; the caller supplies the host allow-list from enrolled trust.
 struct AuthenticationResponseTransport: Sendable {
+    static let maximumEnvelopeBytes = 2_048
+    static let maximumResponseBytes = 2_048
+
     private let allowedHosts: Set<String>
     private let session: URLSession
-    private let maximumResponseBytes = 65_536
 
     init(allowedHosts: Set<String>, session: URLSession = .shared) throws {
         guard !allowedHosts.isEmpty,
@@ -37,7 +44,7 @@ struct AuthenticationResponseTransport: Sendable {
         -> AuthoritativeCeremonyStatus
     {
         try validate(endpoint)
-        guard !envelope.isEmpty, envelope.count <= 65_536 else {
+        guard !envelope.isEmpty, envelope.count <= Self.maximumEnvelopeBytes else {
             throw PlatformFailure.invalidConfiguration
         }
         var request = URLRequest(url: endpoint)
@@ -47,7 +54,7 @@ struct AuthenticationResponseTransport: Sendable {
         request.setValue("application/json", forHTTPHeaderField: "Accept")
         request.timeoutInterval = 15
         let (data, response) = try await session.data(for: request)
-        return try decode(data: data, response: response)
+        return try decode(data: data, response: response, expectedURL: endpoint)
     }
 
     func status(at endpoint: URL) async throws -> AuthoritativeCeremonyStatus {
@@ -57,7 +64,7 @@ struct AuthenticationResponseTransport: Sendable {
         request.setValue("application/json", forHTTPHeaderField: "Accept")
         request.timeoutInterval = 15
         let (data, response) = try await session.data(for: request)
-        return try decode(data: data, response: response)
+        return try decode(data: data, response: response, expectedURL: endpoint)
     }
 
     private func validate(_ endpoint: URL) throws {
@@ -70,15 +77,24 @@ struct AuthenticationResponseTransport: Sendable {
         else { throw PlatformFailure.invalidConfiguration }
     }
 
-    private func decode(data: Data, response: URLResponse) throws
+    private func decode(data: Data, response: URLResponse, expectedURL: URL) throws
         -> AuthoritativeCeremonyStatus
     {
         guard let http = response as? HTTPURLResponse,
               (200 ... 299).contains(http.statusCode),
-              data.count <= maximumResponseBytes
+              http.url == expectedURL,
+              data.count <= Self.maximumResponseBytes
         else { throw PlatformFailure.productionEnvelopeUnavailable }
         do {
-            return try JSONDecoder().decode(AuthoritativeCeremonyStatus.self, from: data)
+            let status = try JSONDecoder().decode(AuthoritativeCeremonyStatus.self, from: data)
+            guard status.evidenceID.map({
+                    !$0.isEmpty && $0.utf8.count <= 128
+                        && !$0.unicodeScalars.contains(
+                            where: CharacterSet.controlCharacters.contains
+                        )
+                }) ?? true
+            else { throw PlatformFailure.productionEnvelopeUnavailable }
+            return status
         } catch {
             throw PlatformFailure.productionEnvelopeUnavailable
         }

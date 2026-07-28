@@ -1,4 +1,5 @@
 import Foundation
+import PistisCore
 import XCTest
 @testable import Pistis
 
@@ -178,8 +179,10 @@ final class PlatformPolicyTests: XCTestCase {
     }
 
     @MainActor
-    func testReadinessSnapshotContainsNoKeyOrAttackerMaterial() {
-        let snapshot = PasswordlessReadinessProbe.current()
+    func testReadinessSnapshotContainsNoKeyOrAttackerMaterial() async {
+        let snapshot = await PasswordlessReadinessProbe.current(
+            trustStore: EmptyTrustStore()
+        )
         let rendered = snapshot.items
             .flatMap { [$0.id, $0.title, $0.detail] }
             .joined(separator: " ")
@@ -190,4 +193,41 @@ final class PlatformPolicyTests: XCTestCase {
         XCTAssertFalse(rendered.contains("endpoint"))
         XCTAssertFalse(rendered.contains("github"))
     }
+
+    func testTransportUsesProtocolTwoKiBBounds() {
+        XCTAssertEqual(AuthenticationResponseTransport.maximumEnvelopeBytes, 2_048)
+        XCTAssertEqual(AuthenticationResponseTransport.maximumResponseBytes, 2_048)
+    }
+
+    func testAuthorityStatusDecodesExactMonasWireNames() throws {
+        let status = try JSONDecoder().decode(
+            AuthoritativeCeremonyStatus.self,
+            from: Data(#"{"state":"completed","evidence_id":null}"#.utf8)
+        )
+        XCTAssertEqual(status.state, .completed)
+        XCTAssertNil(status.evidenceID)
+        XCTAssertThrowsError(
+            try JSONDecoder().decode(
+                AuthoritativeCeremonyStatus.self,
+                from: Data(#"{"state":"accepted","evidence_id":null}"#.utf8)
+            )
+        )
+    }
+
+    @MainActor
+    func testCoordinatorFailsClosedWithoutAuthenticatedEnrolment() async {
+        let coordinator = ProductionCeremonyCoordinator(
+            trustStore: EmptyTrustStore(),
+            now: { Date(timeIntervalSince1970: 1_700_000_000) }
+        )
+        await coordinator.accept(qrText: "PISTIS1:attacker.0000000000000000")
+        XCTAssertEqual(coordinator.phase, .failed(.enrolmentRequired))
+    }
+}
+
+private actor EmptyTrustStore: InstallationTrustStoring {
+    func record(installationID _: Data) -> InstallationTrustRecord? { nil }
+    func activeEnrollment() -> AuthenticatedEnrollmentOutput? { nil }
+    func installAuthenticated(_: AuthenticatedEnrollmentOutput) {}
+    func revoke(installationID _: Data) {}
 }

@@ -72,6 +72,7 @@ Architecture and operations
    adr/0018-production-cose-sign1-profile
    adr/0019-mvp-signed-message-schemas
    adr/0020-prosopikon-pistis-authority-transaction
+   adr/0023-github-app-device-flow-v0-1
    protocol/README
    protocol/domain-model
    protocol/action-approval

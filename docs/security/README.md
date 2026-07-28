@@ -24,6 +24,16 @@ must be redacted, cleared on every terminal path, and excluded from persistent
 evidence. Provider email, login, and hosted-domain values are mutable metadata,
 not identity keys.
 
+ADR 0023 is a **Proposed** v0.1 GitHub App device-flow profile. If accepted,
+it supersedes only the GitHub transport portions of ADRs 0003, 0007 and 0008.
+Its device code, user code, access/refresh token, browser and `/user` response
+remain transient capabilities; its browser-suspended state does no polling;
+and it requires explicit confirmation, platform-key proof and an atomic
+Prosopikon invitation/principal/device receipt. Persistent throttles and
+redacted audit mitigate but do not eliminate phishing/session-misbinding risk.
+Until acceptance, ADR 0003's brokered PKCE transport remains the active GitHub
+enrolment policy.
+
 ## Device-registry persistence boundary
 
 The local device registry is security-sensitive authorization state. It stores

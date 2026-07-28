@@ -1,14 +1,14 @@
 # ADR 0023: GitHub App device flow for v0.1 enrolment
 
-- Status: Proposed
+- Status: Accepted
 - Date: 2026-07-28
 - Decision owners: Trust, mobile, Prosopikon authority, security, and evidence
 - Related issue: PIS-E22-I252
-- Supersedes on acceptance: the GitHub enrolment **transport sections only**
+- Supersedes: the GitHub enrolment **transport sections only**
   of ADRs 0003, 0007, and 0008 for the v0.1 profile
 
 ADR numbers 0021 and 0022 are reserved by earlier open proposed ADR pull
-requests. This proposal intentionally uses 0023 even while those proposals
+requests. This decision intentionally uses 0023 even while those proposals
 remain unmerged, so no branch reuses a number under review.
 
 ## Context
@@ -25,7 +25,7 @@ OAuth callback correlation, PKCE nor `state`. A `device_code` is a transient
 polling capability and a displayed `user_code` can be phished or used to mix
 the browser account with the wrong local invitation.
 
-This proposal preserves the non-transport invariants of ADRs 0003, 0007 and
+This decision preserves the non-transport invariants of ADRs 0003, 0007 and
 0008: GitHub's non-zero numeric `id` is the provider subject; login, email and
 profile fields are mutable display/policy data; provider tokens are transient;
 routine authentication is local; device keys are platform protected; and
@@ -35,9 +35,9 @@ transport profile for iOS and Android. The MVP release baseline still supports
 iOS only; Android may implement and test this same profile but cannot claim
 v0.1 release support until its separate MVP gate changes.
 
-## Proposed decision
+## Decision
 
-If accepted, ADR 0023 supersedes only the cited GitHub transport sections of
+ADR 0023 supersedes only the cited GitHub transport sections of
 ADRs 0003, 0007 and 0008 for v0.1. Google, a future GitHub authorization-code
 PKCE/broker profile, stable-subject semantics, authority ownership and device
 assurance policies are not superseded.
@@ -395,8 +395,8 @@ or receive a GitHub passkey or Keeper vault secret.
 
 ### Acceptance, canary and rollback
 
-This Proposed ADR activates nothing. Before implementation is enabled, review
-requires deterministic synthetic tests for every state/field/error/bound,
+Acceptance of this ADR activates nothing. Before implementation is enabled,
+review requires deterministic synthetic tests for every state/field/error/bound,
 interval/slow-down/retry/expiry path, secret-redaction path, authority
 substitution/replay/rollback/idempotency case and fixture conformance; physical
 iOS and Android lifecycle/browser/biometric/key-proof tests; and exact-revision
@@ -434,9 +434,24 @@ with a distinct profile identifier and migration rules. It must not silently
 fall back from this profile or weaken its numeric-subject, proof, transaction,
 confirmation or token-retention invariants.
 
+## Decision record
+
+The project owner accepted this decision on 2026-07-28 after the recorded
+mobile, security, protocol, and authority review. That acceptance explicitly
+includes the residual public-client impersonation and user-code phishing risk
+described above; the platform-key proof, fresh biometric confirmation, bounded
+polling, token non-retention, and single Prosopikon authority transaction are
+mandatory compensating controls.
+
+This decision record does not activate a client ID or authorize an
+implementation or production deployment. Issue PIS-E22-I252 remains the
+implementation and enablement gate, including the configuration commitment,
+physical-device evidence, canary, attack exercise, and production attestation
+required by this ADR.
+
 ## Consequences
 
-- v0.1 gains a precise no-secret-broker GitHub App transport proposal without
+- v0.1 gains a precise no-secret-broker GitHub App transport profile without
   turning a public client ID into an authority credential.
 - Device flow has weaker provider-side correlation than PKCE, so trusted
   browser lifecycle, explicit confirmation, platform-key proof and authority

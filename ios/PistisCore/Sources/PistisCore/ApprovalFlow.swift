@@ -63,7 +63,9 @@ public struct ApprovalFlowReducer: Sendable {
         case (.awaitingDecision(var facts), let .decide(decision, at)):
             do {
                 try facts.decide(decision, at: at)
-                return decision == .denied ? .finished(facts) : .awaitingLocalAuthentication(facts)
+                // ADR 0021 requires authenticated, signed evidence for both
+                // approval and denial. A local dismissal remains cancellation.
+                return .awaitingLocalAuthentication(facts)
             } catch {
                 return .failed(.interrupted)
             }

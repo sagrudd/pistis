@@ -27,6 +27,21 @@ swift test --package-path ios/PistisCore
 The portable suite is deterministic and does not contact GitHub, Google,
 Keeper, Apple, or a Pistis server.
 
+The app directly links this local package. For production ceremony changes,
+also prove that link and the platform adapters compile:
+
+```sh
+xcodebuild -project ios/PistisApp/Pistis.xcodeproj \
+  -scheme Pistis -sdk iphonesimulator \
+  -destination 'generic/platform=iOS Simulator' \
+  CODE_SIGNING_ALLOWED=NO build
+```
+
+ADR 0021 forbids trust-on-first-scan. Tests may inject an enrolled record, but
+the application obtains production trust only from the authenticated
+Prosopikon enrolment transaction. Approval and denial both require fresh local
+authentication and a Secure Enclave signature; cancellation is not a denial.
+
 ## Native validation
 
 Native validation requires full Xcode, not the standalone Apple Command Line

@@ -35,6 +35,23 @@ Implementation and production enablement remain gated by ADR 0023's reviewed
 configuration, physical-device, canary, attack-exercise, and attestation
 evidence.
 
+ADR 0024 records the accepted MVP deployment and product security profile.
+Routine authentication is site-local; GitHub participates only in enrolment
+and explicit re-enrolment. Customer sites have distinct Prosopikon authority,
+installation identity, site-local CA, audit, and recovery state. Mnemosyne has
+no implicit routine customer-data access. QR and open-app LAN discovery are
+untrusted transports for the same durable transaction, and Jenkins or
+DASObjectStore receives only its short-lived audience-bound product session.
+APNs/background notification, Bluetooth, a WAN broker, remote attestation, and
+routine remote support are explicitly outside v0.1.
+
+The same decision requires minimized seven-year audit by default, encrypted
+site backups that exclude mobile private keys and transient credentials,
+two-of-three governed recovery, no third-party mobile analytics/advertising/
+cloud-crash SDK, and explicit user-exported redacted diagnostics. Legal and
+privacy review remains a production gate; it does not authorize weakening any
+technical privacy boundary while that review is pending.
+
 ## Device-registry persistence boundary
 
 The local device registry is security-sensitive authorization state. It stores

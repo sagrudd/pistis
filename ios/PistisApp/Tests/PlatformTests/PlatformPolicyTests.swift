@@ -223,6 +223,53 @@ final class PlatformPolicyTests: XCTestCase {
         await coordinator.accept(qrText: "PISTIS1:attacker.0000000000000000")
         XCTAssertEqual(coordinator.phase, .failed(.enrolmentRequired))
     }
+
+    @MainActor
+    func testBrowserEnrolmentNeverWritesUnverifiedBrokerOutput() async {
+        let store = RecordingTrustStore()
+        let coordinator = SystemBrowserEnrollmentCoordinator(
+            authorize: {
+                OAuthAuthorizationCode(code: "one-use", codeVerifier: String(repeating: "v", count: 43))
+            },
+            broker: RejectingEnrollmentBroker(),
+            trustStore: store
+        )
+        do {
+            try await coordinator.enroll(
+                exactDeviceRegistrationEnvelope: Data([0x84, 0x01])
+            )
+            XCTFail("unverified broker exchange unexpectedly succeeded")
+        } catch {
+            XCTAssertEqual(error as? PlatformFailure, .productionEnvelopeUnavailable)
+        }
+        let installCount = await store.installCount()
+        XCTAssertEqual(installCount, 0)
+    }
+
+    @MainActor
+    func testBrowserEnrolmentRejectsOversizeBeforeAuthorization() async {
+        var authorized = false
+        let coordinator = SystemBrowserEnrollmentCoordinator(
+            authorize: {
+                authorized = true
+                return OAuthAuthorizationCode(
+                    code: "one-use",
+                    codeVerifier: String(repeating: "v", count: 43)
+                )
+            },
+            broker: RejectingEnrollmentBroker(),
+            trustStore: RecordingTrustStore()
+        )
+        do {
+            try await coordinator.enroll(
+                exactDeviceRegistrationEnvelope: Data(repeating: 0, count: 2_049)
+            )
+            XCTFail("oversized registration unexpectedly succeeded")
+        } catch {
+            XCTAssertEqual(error as? PlatformFailure, .invalidConfiguration)
+        }
+        XCTAssertFalse(authorized)
+    }
 }
 
 private actor EmptyTrustStore: InstallationTrustStoring {
@@ -230,4 +277,22 @@ private actor EmptyTrustStore: InstallationTrustStoring {
     func activeEnrollment() -> AuthenticatedEnrollmentOutput? { nil }
     func installAuthenticated(_: AuthenticatedEnrollmentOutput) {}
     func revoke(installationID _: Data) {}
+}
+
+private struct RejectingEnrollmentBroker: EnrollmentReceiptExchanging {
+    func exchangeAndVerify(
+        authorization _: OAuthAuthorizationCode,
+        exactDeviceRegistrationEnvelope _: Data
+    ) throws -> AuthenticatedEnrollmentOutput {
+        throw PlatformFailure.productionEnvelopeUnavailable
+    }
+}
+
+private actor RecordingTrustStore: InstallationTrustStoring {
+    private var installs = 0
+    func record(installationID _: Data) -> InstallationTrustRecord? { nil }
+    func activeEnrollment() -> AuthenticatedEnrollmentOutput? { nil }
+    func installAuthenticated(_: AuthenticatedEnrollmentOutput) { installs += 1 }
+    func revoke(installationID _: Data) {}
+    func installCount() -> Int { installs }
 }

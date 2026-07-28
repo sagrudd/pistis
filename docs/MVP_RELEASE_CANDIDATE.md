@@ -4,6 +4,8 @@
 **Candidate:** `v0.1.0-rc.1`  
 **Approved:** 27 July 2026
 
+**Deployment profile amended:** 28 July 2026 by ADR 0024
+
 ## Purpose
 
 This document defines the shortest production-credible Pistis vertical slice.
@@ -37,7 +39,9 @@ authority.
 
 - GitHub is the sole production enrolment trust anchor.
 - iOS is the sole supported mobile platform.
-- QR is the sole required challenge/response transport.
+- QR is the mandatory fallback challenge/response transport. Open-app,
+  site-local LAN discovery is also in scope; both complete the same durable
+  authority transaction.
 - Monas and Synoptikon/Mneion are both required relying routes.
 - Propylaion is the required post-authentication home for the Monas standalone
   route. It projects installed, accessible, and ready offerings but never
@@ -50,7 +54,9 @@ authority.
 - Both routes use one versioned Prosopikon--Pistis authority and transaction
   port.
 - Administrator-issued invitations are the sole enrolment route.
-- One active iOS device is supported per Prosopikon principal.
+- The initial acceptance principal uses one active iOS device. The authority
+  follows ADR 0012's policy-bounded multi-device model rather than encoding a
+  one-device protocol shortcut.
 - Lost-device recovery is revoke, invalidate sessions, and re-enrol. Private
   keys are never migrated or recovered.
 - CLI sessions supervise an exact command and never print or export reusable
@@ -66,7 +72,7 @@ The first candidate does not qualify:
 
 - Android as a supported client;
 - Google enrolment;
-- nearby discovery or direct local transport;
+- Bluetooth discovery, closed-app notification, and WAN discovery;
 - self-service account creation or inferred identity matching;
 - multiple active devices or key migration;
 - report, dataset, workflow, or multi-party signing;

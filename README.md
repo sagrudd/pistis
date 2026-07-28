@@ -36,7 +36,10 @@ The canonical planning inputs are:
 - [`docs/TODO.md`](docs/TODO.md)
 
 The MVP release-candidate document defines the approved `v0.1.0-rc.1`
-vertical slice. The milestone document retains the broader `v1.0` commitment.
+vertical slice. [ADR 0024](docs/adr/0024-mvp-deployment-and-product-profile.md)
+records the owner-approved deployment, product-session, mobile, recovery,
+privacy, distribution, and licensing profile gathered during the MVP decision
+review. The milestone document retains the broader `v1.0` commitment.
 
 Implementation work is tracked in GitHub issues and milestones. Architectural
 decisions are recorded in [`docs/adr`](docs/adr).
@@ -84,4 +87,9 @@ Do not report vulnerabilities in public issues. Follow
 
 ## License
 
-Pistis is licensed under the [Mozilla Public License 2.0](LICENSE).
+Pistis Core and the public protocol implementation in this repository are
+licensed under the [Mozilla Public License 2.0](LICENSE). Mnemosyne names,
+logos, and application icons are reserved brand assets and are not licensed by
+the MPL. ADR 0024 records the owner-approved intent for future separately
+hosted mobile application repositories; that intent is subject to formal legal
+review and does not revoke rights already granted for published source.

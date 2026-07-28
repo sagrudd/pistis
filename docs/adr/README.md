@@ -42,3 +42,7 @@ blocked pending specialist security and cryptography review.
 and 0022 remain reserved by earlier unmerged proposals. It supersedes only the
 GitHub enrolment transport sections of ADRs 0003, 0007, and 0008 for v0.1;
 stable numeric-subject and Prosopikon authority invariants remain unchanged.
+
+[ADR 0024](0024-mvp-deployment-and-product-profile.md) is **Accepted**. It
+records the owner-approved MVP identity, customer deployment, product-session,
+mobile, recovery, privacy, distribution, licensing, and deferred-work profile.

@@ -77,6 +77,7 @@ Architecture and operations
    adr/0023-authenticated-mobile-enrolment-exchange
    adr/0024-linux-hardware-signing-providers
    adr/0023-github-app-device-flow-v0-1
+   adr/0024-mvp-deployment-and-product-profile
    protocol/README
    protocol/domain-model
    protocol/action-approval
@@ -102,3 +103,4 @@ Architecture and operations
    operations/cli-authentication
    operations/local-agent
    operations/linux-hardware-signing
+   operations/mvp-deployment-profile

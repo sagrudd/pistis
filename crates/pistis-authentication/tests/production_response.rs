@@ -155,6 +155,13 @@ fn rejects_replay_expiry_inactive_and_key_substitution() {
         Err(VerifyError::Expired)
     );
 
+    let mut future = fixture.expected.clone();
+    future.now = UnixTimeMillis(1_225);
+    assert_eq!(
+        verify_authentication_response(&envelope, &future, &fixture.credential),
+        Err(VerifyError::BindingMismatch)
+    );
+
     let mut inactive = fixture.credential.clone();
     inactive.active = false;
     assert_eq!(
@@ -202,7 +209,7 @@ fn rejects_malformed_unknown_field_invalid_signature_and_oversize() {
         unknown,
         invalid_signature,
         high_s,
-        vec![0; pistis_authentication::MAX_RESPONSE_BYTES + 1],
+        vec![0; pistis_qr::MAX_COSE_ENVELOPE_BYTES + 1],
     ] {
         assert_eq!(
             verify_authentication_response(&malicious, &fixture.expected, &fixture.credential),

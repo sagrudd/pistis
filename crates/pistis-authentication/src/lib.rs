@@ -22,9 +22,8 @@ pub use action::{
 };
 pub use model::{
     AuditEvent, AuthenticatedSessionId, ChallengeContext, ChallengeDocument, Completion, Decision,
-    DeviceCredential, DeviceDirectory, LoginHandle, LoginStatus, MAX_RESPONSE_BYTES,
-    PreAuthSessionId, PublicFailure, RandomSource, ResponseEnvelope, ServiceError, TransferMode,
-    UnixTimeMillis,
+    DeviceCredential, DeviceDirectory, LoginHandle, LoginStatus, PreAuthSessionId, PublicFailure,
+    RandomSource, ResponseEnvelope, ServiceError, TransferMode, UnixTimeMillis,
 };
 pub use production_response::{
     AuthenticationResponseCredential, AuthenticationResponseExpectation,

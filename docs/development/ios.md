@@ -142,6 +142,18 @@ system-browser broker. It atomically binds the authority-issued trust record,
 device response context, and lower-case endpoint host allow-list. Do not add a
 QR, clipboard, fixture, or arbitrary JSON import path to this hand-off.
 
+`SystemBrowserEnrollmentCoordinator` is the only sequencing path from a
+validated OAuth callback to that Keychain mutation. It sends the one-use code,
+PKCE verifier, and exact bounded device-registration envelope to an
+`EnrollmentReceiptExchanging` implementation. That implementation must verify
+the authority receipt before returning. If browser authorization, exchange, or
+verification fails, the coordinator performs no Keychain write.
+
+The concrete exchange is blocked on issue 318. The current server repositories
+have no route or response schema carrying the signed receipt, its bound device
+registration, and authenticated authority bootstrap material. Do not implement
+that missing contract ad hoc in the app.
+
 ### Passwordless readiness
 
 The scanner screen reports five independent coarse states: camera permission,

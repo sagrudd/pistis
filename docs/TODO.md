@@ -492,6 +492,7 @@ retention is recorded with the EPIC-18 pull-request acceptance evidence.
 
 - [ ] Register the Mnemosyne Biosciences GitHub App and enable device flow
 - [ ] Implement minimum-permission GitHub device-flow enrolment
+- [ ] Freeze and implement the authenticated mobile receipt exchange (#318)
 - [ ] Discard GitHub tokens after stable-identity proof
 - [x] Generate and use the device-protected signing key
 - [x] Require Face ID for every approval and denial signature

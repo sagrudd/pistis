@@ -71,6 +71,12 @@ copy a key from a QR code. The record is stored as
 removed on explicit revocation. Replacement enrolment overwrites the complete
 record atomically.
 
+Until issue 318 lands across Prosopikon and Monas, the production broker
+implementation remains unavailable and enrolment must fail before Keychain
+mutation. A development fixture, copied JSON response, bare authority key, or
+TLS success is not an acceptable substitute for the signed authority receipt
+and its authenticated bootstrap proof.
+
 On the Scan tab, all five readiness rows must be ready. Scan the Monas
 `PISTIS1` version-2 QR and compare the displayed audience, installation, local
 user, external-identity identifier, installation fingerprint, expiry, and

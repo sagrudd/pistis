@@ -1,5 +1,6 @@
 import XCTest
 
+@MainActor
 final class PistisUITests: XCTestCase {
     func testPrimaryNavigationIsVisible() {
         let application = XCUIApplication()
@@ -13,6 +14,19 @@ final class PistisUITests: XCTestCase {
         XCTAssertTrue(application.tabBars.buttons["Scan"].exists)
         XCTAssertTrue(application.tabBars.buttons["History"].exists)
         XCTAssertTrue(application.tabBars.buttons["Settings"].exists)
+    }
+
+    func testGitHubEnrolmentExplainsItsDisabledSecurityBoundary() {
+        let application = XCUIApplication()
+        application.launch()
+        if application.buttons["Continue to Pistis"].exists {
+            application.buttons["Continue to Pistis"].tap()
+        }
+
+        XCTAssertTrue(application.staticTexts["GitHub enrolment unavailable"].exists)
+        XCTAssertTrue(application.buttons["Enrol with GitHub"].exists)
+        XCTAssertFalse(application.buttons["Enrol with GitHub"].isEnabled)
+        XCTAssertTrue(application.staticTexts["Configuration missing"].exists)
     }
 
     func testScannerDoesNotPresentUnverifiedInputAsApproval() {

@@ -177,6 +177,65 @@ final class PlatformPolicyTests: XCTestCase {
         }
     }
 
+    func testGitHubEnrolmentConfigurationIsExactAndCredentialFree() throws {
+        let configuration = try GitHubEnrolmentConfiguration(
+            clientID: "PublicClient123",
+            authorizationEndpoint: try XCTUnwrap(
+                URL(string: "https://github.com/login/oauth/authorize")
+            ),
+            callbackURL: try XCTUnwrap(URL(string: "pistis://oauth/callback")),
+            brokerExchangeEndpoint: try XCTUnwrap(
+                URL(string: "https://pistis.example.test/oauth/github/exchange")
+            )
+        )
+        XCTAssertEqual(configuration.clientID, "PublicClient123")
+
+        let invalidBrokers = [
+            "http://pistis.example.test/oauth/github/exchange",
+            "https://user:secret@pistis.example.test/oauth/github/exchange",
+            "https://pistis.example.test/oauth/github/exchange?token=secret",
+        ]
+        for value in invalidBrokers {
+            XCTAssertThrowsError(
+                try GitHubEnrolmentConfiguration(
+                    clientID: "PublicClient123",
+                    authorizationEndpoint: XCTUnwrap(
+                        URL(string: "https://github.com/login/oauth/authorize")
+                    ),
+                    callbackURL: XCTUnwrap(URL(string: "pistis://oauth/callback")),
+                    brokerExchangeEndpoint: XCTUnwrap(URL(string: value))
+                )
+            )
+        }
+    }
+
+    func testGitHubIdentityProofUsesNumericSubjectAndBoundedDisplayOnly() throws {
+        let proof = try GitHubStableIdentityProof(
+            numericSubject: 1_842_030,
+            displayLogin: "synthetic-user"
+        )
+        XCTAssertEqual(proof.numericSubject, 1_842_030)
+        XCTAssertThrowsError(
+            try GitHubStableIdentityProof(
+                numericSubject: 0,
+                displayLogin: "synthetic-user"
+            )
+        )
+        XCTAssertThrowsError(
+            try GitHubStableIdentityProof(
+                numericSubject: 1,
+                displayLogin: "attacker\ncontent"
+            )
+        )
+    }
+
+    func testGitHubEnrolmentRemainsDisabledWithoutAuthorityPorts() {
+        let readiness = GitHubEnrolmentReadiness.current()
+        XCTAssertFalse(readiness.state.mayStart)
+        XCTAssertFalse(readiness.configurationLabel.localizedCaseInsensitiveContains("secret"))
+        XCTAssertFalse(readiness.identityRule.contains("@"))
+    }
+
     @MainActor
     func testReadinessSnapshotContainsNoKeyOrAttackerMaterial() {
         let snapshot = PasswordlessReadinessProbe.current()

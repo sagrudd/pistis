@@ -7,6 +7,21 @@ contracts for the future service. Operators must not construct an improvised
 daemon around test signers or place an installation private key in a file,
 argument, environment variable, shell script, or Jenkins credential.
 
+ADR 0022 is Proposed and its Rust types do not activate a daemon. Packages and
+service managers must leave any future `pistis-agent` unit disabled. Startup
+must fail, rather than select a reduced mode, unless configuration identifies
+an owner-only absolute socket, the accepted host adapter and exact Prosopikon
+revision, initialized private authority database, reviewed installation signer,
+enrolled-device verifier source, and fixed Monas audience.
+
+Never put a bearer, cookie, signed response, private key or credential in an
+environment file or systemd command line. A future `EnvironmentFile=` may
+contain non-secret absolute paths and identifiers only. Until the ADR gate is
+satisfied, RPM/systemd packaging may install documentation and a masked or
+disabled placeholder, but must not create a socket or use an in-memory
+authority. Prosopikon PR 10, Monas PR 5 and mobile ADR 0021 are review inputs,
+not production pins.
+
 The intended per-user layout is:
 
 ```text

@@ -45,6 +45,14 @@ entered on standard input or another explicitly protected input channel. Both
 routes converge on the existing single-use verifier and produce the same
 principal, policy, audit, and evidence outcomes.
 
+Interactive orchestration polls only the coarse status operation on the
+owner-only agent socket. Its 500-millisecond cadence is bounded by the signed
+challenge expiry and is abstracted behind a deterministic runtime for tests.
+It never polls a public endpoint, transports a bearer, or duplicates authority
+state. Redirected, already protected input selects the framed fallback instead;
+both paths use the same opaque durable reference and authoritative completion
+transaction.
+
 ## Terminal rendering contract
 
 The renderer shall:

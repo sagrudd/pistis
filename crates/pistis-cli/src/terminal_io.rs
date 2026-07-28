@@ -1,4 +1,4 @@
-use crate::{CeremonyError, ChallengePresentation, CliIo, OutputProfile};
+use crate::{CeremonyError, ChallengePresentation, CliIo, OutputProfile, ResponsePath};
 use pistis_qr::{
     GlyphSet, ModulePolarity, TerminalProfile, read_response_transfer, render_for_terminal,
 };
@@ -41,6 +41,13 @@ impl<R, W> TerminalIo<R, W> {
 }
 
 impl<R: BufRead, W: Write> CliIo for TerminalIo<R, W> {
+    fn response_path(&self) -> ResponsePath {
+        if self.protected_input {
+            ResponsePath::FramedInput
+        } else {
+            ResponsePath::DirectLocal
+        }
+    }
     fn write_text(&mut self, text: &str) -> Result<(), CeremonyError> {
         self.writer
             .write_all(text.as_bytes())

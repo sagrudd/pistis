@@ -403,6 +403,13 @@ authority. Production remains disabled until Prosopikon and Monas implement
 the accepted contract and mobile ADR 0021 returns the same signed response.
 No filesystem spool is accepted as a substitute state machine.
 
+The interactive lifecycle gap is closed by issue #297: after QR presentation,
+the CLI now polls the owner-only agent until the durable authority completes,
+denies, or expires the ceremony. Redirected protected input continues through
+the same single-use submission boundary. This does not itself supply or deploy
+the Prosopikon adapter, agent service, mobile response transport, or supervised
+action capability.
+
 ---
 
 # Continuous tasks

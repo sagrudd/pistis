@@ -72,6 +72,10 @@ profiles, and current fail-closed readiness boundary are documented in the
 [`CLI development guide`](docs/development/cli-authentication.md),
 [`ADR 0015`](docs/adr/0015-cli-native-authentication.md), and
 [`CLI operator guide`](docs/operations/cli-authentication.md).
+An interactive `pistis auth login` now keeps the QR ceremony open and polls the
+owner-only local agent until the durable authority reports approval, denial, or
+expiry. This removes any need to paste a response into an ordinary terminal;
+deployment still requires the reviewed agent and Prosopikon host adapter.
 
 ## Security
 

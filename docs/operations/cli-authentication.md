@@ -58,6 +58,13 @@ zone.
 
 ## Response handling
 
+When standard input is an interactive terminal, the CLI polls the owner-only
+local-agent socket every 500 milliseconds. It stops only when the durable host
+authority reports completion, denial, or expiry, or when status transport
+fails. The phone submits to the host/agent path; the CLI neither receives nor
+prints a session capability. Local expiry cancels the still-pending reference.
+This is the normal passwordless CLI path.
+
 The fallback reader accepts exactly one bounded ASCII `PISTIS1` response
 transfer, optionally terminated by LF or CRLF. It rejects escape sequences,
 other controls, non-ASCII input, excessive input, malformed checksums, and the
@@ -69,6 +76,12 @@ Standard input must be a protected, non-echoing source. The CLI refuses framed
 response entry from an interactive terminal because the portable client cannot
 prove that echo has been disabled. Pipe a response from a dedicated protected
 descriptor; never type or paste it at an ordinary shell prompt.
+
+A newly invoked command creates a new challenge. Restart never revives an old
+challenge: the previous durable reference remains subject to its authoritative
+expiry or cancellation, and its signed response cannot complete the new
+reference. If the agent or host is temporarily unavailable, retry only after
+restoring that same authority; do not construct a local session or bearer.
 
 On denial, expiry, interruption, malformed input, adapter failure, or
 presentation failure, the ceremony fails closed and cancels its pending

@@ -397,6 +397,13 @@ command hand-off, and key provisioning remain open. The unchecked MVP items
 above are release blockers; a successful library test is not evidence that a
 mobile login or action approval completed.
 
+The interactive lifecycle gap is closed by issue #297: after QR presentation,
+the CLI now polls the owner-only agent until the durable authority completes,
+denies, or expires the ceremony. Redirected protected input continues through
+the same single-use submission boundary. This does not itself supply or deploy
+the Prosopikon adapter, agent service, mobile response transport, or supervised
+action capability.
+
 ---
 
 # Continuous tasks

@@ -14,8 +14,8 @@ mod local_agent;
 mod terminal_io;
 
 pub use ceremony::{
-    AuthenticationBackend, CeremonyError, ChallengePresentation, CliExit, CliIo, DirectStatus,
-    PendingCeremony, run,
+    AuthenticationBackend, CeremonyError, CeremonyRuntime, ChallengePresentation, CliExit, CliIo,
+    DirectStatus, PendingCeremony, ResponsePath, run, run_with_runtime,
 };
 pub use command::{AuthCommand, OutputProfile, ParseError, parse};
 pub use execution::{

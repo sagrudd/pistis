@@ -86,3 +86,20 @@ covering challenge state, session rotation, and immutable audit evidence.
 Configure no-store browser responses, secure capability cookies, CSRF
 protection, rate limits, metrics, backups, and recovery. Complete the separate
 COSE interoperability work before using an external mobile implementation.
+
+### Host response verification
+
+Production hosts must pass the exact bounded COSE Sign1 response to
+`pistis_authentication::verify_authentication_response`. The verifier accepts
+only the ADR 0018 untagged ES256 envelope and the closed ADR 0019 response map.
+Its inputs are authority-owned: the active enrolled public key and key ID,
+persisted challenge digest and nonce digest, exact identities, audience,
+exclusive expiry, replay state, and captured/current binding, policy, and
+revocation generations.
+
+The verifier returns credential-free facts only. A signed `approved` result may
+be offered to the Prosopikon-owned atomic completion transaction; a signed
+`denied` result is terminal and must never create a session. Neither result
+authorizes a caller to bypass Prosopikon challenge consumption, generation
+rechecks, session issuance, or audit persistence. Never construct “verified”
+facts from HTTP fields, QR contents, scanned keys, or a detached v1 signature.

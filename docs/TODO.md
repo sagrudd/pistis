@@ -491,6 +491,7 @@ retention is recorded with the EPIC-18 pull-request acceptance evidence.
 ## EPIC 22 — iOS production qualification
 
 - [ ] Register the Mnemosyne Biosciences GitHub App and enable device flow
+- [x] Expose the strict Rust verifier for signed production responses
 - [ ] Implement minimum-permission GitHub device-flow enrolment
 - [ ] Discard GitHub tokens after stable-identity proof
 - [ ] Generate and use the device-protected signing key
@@ -503,9 +504,12 @@ retention is recorded with the EPIC-18 pull-request acceptance evidence.
 The native app now has a transient, bounded camera acquisition surface.
 ADR 0021 accepts installation verification-key trust, the self-contained
 production QR wrapper, and signed denial. `pistis-qr` implements the strict
-version-2 outer codec; iOS trust-record delivery, COSE verification, signed
-response construction, and physical-device qualification remain. The detached
-version-1 QR fixture remains reference-only.
+version-2 outer codec. `pistis-authentication::verify_authentication_response`
+is the production host boundary for authority-owned enrolled keys and persisted
+challenge facts; it returns only credential-free verified facts for the
+Prosopikon transaction. iOS trust-record delivery, complete app wiring, and
+physical-device qualification remain. The detached version-1 QR fixture
+remains reference-only.
 
 ## EPIC 23 — Authentication evidence
 

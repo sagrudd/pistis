@@ -12,15 +12,17 @@ pub struct InstallationSignature {
 
 /// Non-exportable installation-signing provider.
 pub trait InstallationSigner {
-    /// Signs exact canonical challenge bytes.
+    /// Signs the exact bytes supplied by a reviewed protocol adapter.
     ///
-    /// There is intentionally no method for exporting private-key material.
+    /// For production COSE challenges the adapter supplies the complete
+    /// `Sig_structure`, not the embedded payload. There is intentionally no
+    /// method for exporting private-key material.
     ///
     /// # Errors
     ///
     /// Fails closed when the configured key, user-presence policy, or provider
     /// is unavailable.
-    fn sign(&self, canonical: &[u8]) -> Result<InstallationSignature, SignerError>;
+    fn sign(&self, message: &[u8]) -> Result<InstallationSignature, SignerError>;
 }
 
 /// Narrow platform Keychain operation used by [`KeychainSigner`].
@@ -68,11 +70,11 @@ impl<B> KeychainSigner<B> {
 }
 
 impl<B: KeychainBackend> InstallationSigner for KeychainSigner<B> {
-    fn sign(&self, canonical: &[u8]) -> Result<InstallationSignature, SignerError> {
-        if canonical.is_empty() || canonical.len() > 64 * 1024 {
+    fn sign(&self, message: &[u8]) -> Result<InstallationSignature, SignerError> {
+        if message.is_empty() || message.len() > 64 * 1024 {
             return Err(SignerError::InvalidMessage);
         }
-        self.backend.sign_with_key(&self.label, canonical)
+        self.backend.sign_with_key(&self.label, message)
     }
 }
 

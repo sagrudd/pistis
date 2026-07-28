@@ -99,6 +99,14 @@ final class SecureEnclaveSigner: @unchecked Sendable {
         return try devicePublicKey(from: privateKey)
     }
 
+    /// Whether the namespaced device-bound key already exists.
+    ///
+    /// This query never returns key bytes and is used only for coarse
+    /// readiness presentation. It does not create a key or grant authority.
+    func hasExistingKey() throws -> Bool {
+        try keyExists()
+    }
+
     private func devicePublicKey(from privateKey: SecKey) throws -> DevicePublicKey {
         guard let publicKey = SecKeyCopyPublicKey(privateKey) else {
             throw PlatformFailure.publicKeyExtractionFailed

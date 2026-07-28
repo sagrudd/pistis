@@ -494,6 +494,12 @@ retention is recorded with the EPIC-18 pull-request acceptance evidence.
 - [ ] Pass functional and accessibility simulator suites
 - [ ] Pass the signed physical-iPhone acceptance matrix
 
+The native app now has a transient, bounded camera acquisition surface, but it
+deliberately refuses to display or sign captured content until installation
+verification-key trust and the self-contained production QR wrapper are
+accepted. Issue #300 and proposed ADR 0021 track that security prerequisite;
+the detached version-1 QR fixture remains reference-only.
+
 ## EPIC 23 — Authentication evidence
 
 - [ ] Freeze the detached authentication-evidence schema

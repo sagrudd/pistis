@@ -18,3 +18,7 @@ Current accepted production-interoperability decisions include:
 [ADR 0020](0020-prosopikon-pistis-authority-transaction.md) is the accepted
 cross-host completion decision. Individual implementation pull requests remain
 subject to the review and evidence requirements recorded in that ADR.
+
+[ADR 0021](0021-production-qr-envelope-and-installation-trust.md) proposes the
+production QR wrapper and enrolled installation verification-key binding. No
+production decoder may depend on it until specialist review accepts it.

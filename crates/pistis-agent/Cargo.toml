@@ -21,5 +21,8 @@ rusqlite.workspace = true
 p256.workspace = true
 security-framework.workspace = true
 
+[dev-dependencies]
+p256.workspace = true
+
 [lints]
 workspace = true

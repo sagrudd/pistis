@@ -807,6 +807,7 @@ version = "0.1.0"
 dependencies = [
  "p256",
  "pistis-canonical",
+ "pistis-cose",
  "pistis-crypto",
  "pistis-domain",
  "pistis-qr",

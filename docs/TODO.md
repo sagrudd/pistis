@@ -491,6 +491,7 @@ retention is recorded with the EPIC-18 pull-request acceptance evidence.
 ## EPIC 22 — iOS production qualification
 
 - [ ] Register the Mnemosyne Biosciences GitHub App and enable device flow
+- [x] Expose the strict Rust verifier for signed production responses
 - [ ] Implement minimum-permission GitHub device-flow enrolment
 - [ ] Freeze and implement the authenticated mobile receipt exchange (#318)
 - [ ] Discard GitHub tokens after stable-identity proof
@@ -508,10 +509,13 @@ coordinator backed by device-only Keychain trust. ADR 0021 accepts installation
 verification-key trust, the self-contained production QR wrapper, and signed
 denial. The visible Scan flow verifies exact COSE challenge facts before
 presentation; approval and denial use Face ID, the Secure Enclave COSE signer,
-2 KiB allow-listed HTTPS delivery, and terminal authority status. The
-system-browser broker still needs to supply the authenticated enrolment output,
-and end-user enrolment/history/revocation UX plus physical qualification remain.
-The detached version-1 QR fixture remains reference-only.
+2 KiB allow-listed HTTPS delivery, and terminal authority status.
+`pistis-authentication::verify_authentication_response` is the production host
+boundary for authority-owned enrolled keys and persisted challenge facts; it
+returns only credential-free verified facts for the Prosopikon transaction.
+The system-browser broker still needs to supply the authenticated enrolment
+output, and end-user enrolment/history/revocation UX plus physical
+qualification remain. The detached version-1 QR fixture remains reference-only.
 
 ## EPIC 23 — Authentication evidence
 

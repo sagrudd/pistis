@@ -26,3 +26,8 @@ signed approval and denial responses.
 [ADR 0022](0022-host-owned-cli-agent-authority-port.md) accepts the
 credential-free local-agent to host-authority port. Activation remains gated
 on its implementation and cross-repository conformance evidence.
+
+[ADR 0023](0023-authenticated-mobile-enrolment-exchange.md) proposes the
+one-use mobile enrolment exchange, invitation-bound authority-key bootstrap,
+and complete signed installation-trust receipt. Product implementation is
+blocked until specialist review accepts it.

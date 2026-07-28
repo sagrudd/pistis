@@ -5,6 +5,13 @@
 > This TODO list decomposes the milestones into implementation-sized tasks.
 > Each item should generally be completable within 0.5–2 developer days.
 
+The owner-approved v0.1 deployment and product decisions are tracked by
+[EPIC 26 / issue #309](https://github.com/sagrudd/pistis/issues/309) and
+[ADR 0024](adr/0024-mvp-deployment-and-product-profile.md). Implementations
+that affect customer installation, GitHub enrolment, mobile assurance,
+nearby/QR transport, Jenkins or DASObjectStore sessions, recovery, privacy,
+distribution, or licensing must trace their acceptance to that decision.
+
 ## Legend
 
 - [ ] Not started

@@ -73,6 +73,7 @@ Architecture and operations
    adr/0019-mvp-signed-message-schemas
    adr/0020-prosopikon-pistis-authority-transaction
    adr/0023-github-app-device-flow-v0-1
+   adr/0024-mvp-deployment-and-product-profile
    protocol/README
    protocol/domain-model
    protocol/action-approval
@@ -96,3 +97,4 @@ Architecture and operations
    operations/release-packaging
    operations/cli-authentication
    operations/local-agent
+   operations/mvp-deployment-profile

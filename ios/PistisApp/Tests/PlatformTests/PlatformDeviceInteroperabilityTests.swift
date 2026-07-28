@@ -18,7 +18,7 @@ final class PlatformDeviceInteroperabilityTests: XCTestCase {
                 0xa0, 0xf4, 0xa1, 0x39, 0x45, 0xd8, 0x98, 0xc2,
                 0x96,
             ]),
-            assurance: .secureEnclaveBiometryCurrentSet
+            assurance: .secureEnclaveFaceIDCurrentSet
         )
         let signature = Data([1] + Array(repeating: 0, count: 31)
             + Array(repeating: 0, count: 31) + [1])

@@ -14,7 +14,7 @@ struct DevicePublicKey: Equatable, Sendable {
 }
 
 enum KeyAssurance: String, Equatable, Sendable {
-    case secureEnclaveBiometryCurrentSet
+    case secureEnclaveFaceIDCurrentSet
 }
 
 /// Non-secret output from one physical-device interoperability probe.
@@ -53,7 +53,7 @@ final class SecureEnclaveSigner: @unchecked Sendable {
         guard SecureEnclaveSigner.secureEnclaveIsAvailable else {
             throw PlatformFailure.secureHardwareUnavailable
         }
-        try requireAvailableBiometry(using: LAContext())
+        try requireFaceID(using: LAContext())
         if try keyExists() {
             return try publicKey()
         }
@@ -112,7 +112,7 @@ final class SecureEnclaveSigner: @unchecked Sendable {
         }
         return DevicePublicKey(
             compressedSEC1: try P256Format.compressX963PublicKey(representation),
-            assurance: .secureEnclaveBiometryCurrentSet
+            assurance: .secureEnclaveFaceIDCurrentSet
         )
     }
 
@@ -126,7 +126,7 @@ final class SecureEnclaveSigner: @unchecked Sendable {
         context.localizedCancelTitle = "Cancel"
         context.localizedReason = authenticationReason
         context.interactionNotAllowed = false
-        try requireAvailableBiometry(using: context)
+        try requireFaceID(using: context)
 
         guard let privateKey = try findPrivateKey(authenticationContext: context) else {
             throw PlatformFailure.keyNotFound
@@ -162,10 +162,7 @@ final class SecureEnclaveSigner: @unchecked Sendable {
         // successful generic biometric policy can otherwise be satisfied by
         // Touch ID and must not be relabelled as a Face ID ceremony.
         let faceIDContext = LAContext()
-        try requireAvailableBiometry(using: faceIDContext)
-        guard Self.isFaceID(faceIDContext.biometryType) else {
-            throw PlatformFailure.userVerificationUnavailable
-        }
+        try requireFaceID(using: faceIDContext)
         let publicKey = try create()
         let signature = try sign(message: signatureStructure)
         return DeviceInteroperabilityObservation(
@@ -196,6 +193,18 @@ final class SecureEnclaveSigner: @unchecked Sendable {
             default:
                 throw PlatformFailure.userVerificationUnavailable
             }
+        }
+    }
+
+    /// Require Face ID without permitting device-passcode or Touch ID fallback.
+    ///
+    /// `canEvaluatePolicy` populates `biometryType`; checking it after the
+    /// biometric-only policy is available ensures every call to `sign` has the
+    /// assurance claimed by the production iPhone profile.
+    private func requireFaceID(using context: LAContext) throws {
+        try requireAvailableBiometry(using: context)
+        guard Self.isFaceID(context.biometryType) else {
+            throw PlatformFailure.userVerificationUnavailable
         }
     }
 

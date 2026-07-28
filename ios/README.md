@@ -23,3 +23,7 @@ or provider access token.
 
 Keeper participation is system-mediated: GitHub asks iOS for its passkey and
 iOS may offer Keeper. Pistis never reads Keeper vault contents or passkeys.
+
+The MVP signing key is Secure Enclave-backed and bound to the current Face ID
+set. Every signature invokes Apple's biometric-only policy and additionally
+rejects non-Face-ID biometric hardware; there is no device-passcode fallback.

@@ -115,4 +115,20 @@ final class PlatformPolicyTests: XCTestCase {
             )
         }
     }
+
+    func testScannerFailuresExposeOnlyBoundedRecoveryMessages() {
+        XCTAssertEqual(
+            PlatformFailure.qrPayloadTooLarge.safeUserMessage,
+            "This QR code is larger than the Pistis safety limit."
+        )
+        XCTAssertEqual(
+            PlatformFailure.qrPayloadUnsupported.safeUserMessage,
+            "This is not a supported Pistis QR code."
+        )
+        XCTAssertFalse(
+            PlatformFailure.signingFailed.safeUserMessage.localizedCaseInsensitiveContains(
+                "key"
+            )
+        )
+    }
 }

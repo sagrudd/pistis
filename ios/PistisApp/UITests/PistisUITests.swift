@@ -15,18 +15,17 @@ final class PistisUITests: XCTestCase {
         XCTAssertTrue(application.tabBars.buttons["Settings"].exists)
     }
 
-    func testApprovalKeepsEvidenceStatesSeparate() {
+    func testScannerDoesNotPresentUnverifiedInputAsApproval() {
         let application = XCUIApplication()
         application.launch()
         if application.buttons["Continue to Pistis"].exists {
             application.buttons["Continue to Pistis"].tap()
         }
         application.tabBars.buttons["Scan"].tap()
-        application.buttons["View approval design example"].tap()
 
-        XCTAssertTrue(application.staticTexts["Local user"].exists)
-        XCTAssertTrue(application.staticTexts["External identity"].exists)
-        XCTAssertTrue(application.buttons["Approve and verify"].exists)
-        XCTAssertTrue(application.buttons["Deny"].exists)
+        XCTAssertTrue(application.buttons["Start camera"].exists)
+        XCTAssertTrue(application.staticTexts["Ready to scan"].exists)
+        XCTAssertFalse(application.buttons["Approve and verify"].exists)
+        XCTAssertFalse(application.buttons["Deny"].exists)
     }
 }

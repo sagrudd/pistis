@@ -1,54 +1,108 @@
 import SwiftUI
 
 struct ScanView: View {
-    @State private var showingApproval = false
+    @State private var scanning = false
+    @State private var scanFailure: PlatformFailure?
+    @State private var capturedFrame = false
 
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: MnSpacing.x6) {
                 MnSectionHeading(
-                    "Scanner design",
-                    orientation: "This placeholder shows the intended QR acquisition area. It does not access the camera in this unvalidated source build."
+                    "Scan a Pistis request",
+                    orientation: "Point the camera at a Pistis QR code. Captured frames are not saved."
                 )
 
                 ZStack {
                     RoundedRectangle(cornerRadius: MnRadius.large)
                         .fill(MnColor.textPrimary)
                         .aspectRatio(1, contentMode: .fit)
-                    Image(systemName: "qrcode.viewfinder")
-                        .resizable()
-                        .scaledToFit()
-                        .frame(width: 112, height: 112)
-                        .foregroundStyle(MnColor.onBrand)
-                        .accessibilityHidden(true)
-                    Text("Camera preview")
-                        .font(.caption)
-                        .foregroundStyle(MnColor.onBrand)
-                        .frame(maxHeight: .infinity, alignment: .bottom)
-                        .padding(MnSpacing.x4)
+                    if scanning {
+                        QRScannerCameraView(onResult: handleScan)
+                            .clipShape(RoundedRectangle(cornerRadius: MnRadius.large))
+                            .aspectRatio(1, contentMode: .fill)
+                        Image(systemName: "viewfinder")
+                            .resizable()
+                            .scaledToFit()
+                            .frame(width: 160, height: 160)
+                            .foregroundStyle(MnColor.onBrand)
+                            .accessibilityHidden(true)
+                    } else {
+                        Image(systemName: "qrcode.viewfinder")
+                            .resizable()
+                            .scaledToFit()
+                            .frame(width: 112, height: 112)
+                            .foregroundStyle(MnColor.onBrand)
+                            .accessibilityHidden(true)
+                    }
                 }
                 .accessibilityElement(children: .ignore)
-                .accessibilityLabel("Scanner design placeholder")
+                .accessibilityLabel(scanning ? "Camera scanning for a Pistis QR code" : "QR scanner stopped")
 
                 MnPanel {
                     VStack(alignment: .leading, spacing: MnSpacing.x2) {
-                        MnStatusLabel(text: "Camera integration not validated", kind: .warning)
-                        Text("This source build does not claim a working scanner. Camera frames will not be saved when native validation is complete.")
+                        MnStatusLabel(
+                            text: capturedFrame
+                                ? "Code captured; verification unavailable"
+                                : (scanning ? "Camera active" : "Ready to scan"),
+                            kind: capturedFrame ? .warning : .neutral
+                        )
+                        Text(
+                            capturedFrame
+                                ? "Pistis discarded the unverified frame. Production challenge verification is not yet enabled, so no approval can be shown or signed."
+                                : "Only bounded PISTIS1 text is accepted. A scan is never treated as trusted until the production protocol verifier accepts it."
+                        )
                             .font(.footnote)
                     }
                 }
 
-                MnPrimaryButton("View approval design example", systemImage: "doc.text.magnifyingglass") {
-                    showingApproval = true
+                if let scanFailure {
+                    MnPanel {
+                        VStack(alignment: .leading, spacing: MnSpacing.x3) {
+                            MnStatusLabel(text: "Scan failed", kind: .danger)
+                            Text(scanFailure.safeUserMessage)
+                            Button("Try again") { startScanning() }
+                                .font(.headline)
+                                .frame(minHeight: MnMetrics.minimumTarget)
+                        }
+                    }
+                }
+
+                MnPrimaryButton(
+                    scanning ? "Stop scanning" : "Start camera",
+                    systemImage: scanning ? "stop.circle" : "camera.viewfinder"
+                ) {
+                    scanning ? stopScanning() : startScanning()
                 }
             }
             .padding(MnMetrics.screenGutter)
         }
         .navigationTitle("Scan")
-        .sheet(isPresented: $showingApproval) {
-            ApprovalView(request: DemonstrationData.approval)
-        }
         .mnScreenBackground()
+    }
+
+    @MainActor
+    private func handleScan(_ result: Result<ScannedQRPayload, PlatformFailure>) {
+        scanning = false
+        switch result {
+        case .success:
+            capturedFrame = true
+            scanFailure = nil
+        case let .failure(failure):
+            guard failure != .operationCancelled else { return }
+            capturedFrame = false
+            scanFailure = failure
+        }
+    }
+
+    private func startScanning() {
+        capturedFrame = false
+        scanFailure = nil
+        scanning = true
+    }
+
+    private func stopScanning() {
+        scanning = false
     }
 }
 

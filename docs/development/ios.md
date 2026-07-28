@@ -96,6 +96,18 @@ not physically qualified until a reviewed iPhone run demonstrates one Face ID
 prompt for each requested signature and Jenkins retains the resulting
 non-secret evidence for the exact revision.
 
+## QR acquisition boundary
+
+The native scanner uses AVFoundation metadata capture and accepts at most one
+2,331-byte ASCII `PISTIS1` value. It installs no photo or sample-buffer output,
+retains no camera frame, stops after one result, cancels on backgrounding, and
+offers accessible permission, unsupported-code, oversize, and retry states.
+
+Acquisition is not verification. Until proposed ADR 0021 is reviewed and the
+app has an enrolled installation verification key, a captured value is
+discarded and the app does not present an approval or invoke Face ID. This is a
+deliberate fail-closed state, not a complete authentication ceremony.
+
 ## Design maintenance
 
 Changes to tokens or product presentation must be reconciled with

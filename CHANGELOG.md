@@ -10,6 +10,9 @@ a Changelog and releases follow Semantic Versioning.
 - A proposed installation-local GitHub Device Flow verifier that keeps provider
   tokens outside mobile and authority boundaries while preserving Prosopikon
   as the sole durable enrolment state machine.
+- A proposed pipe-only, alternate-screen first-device QR presentation that
+  binds the canonical invitation, authority descriptor, intended identity,
+  and exact Monas HTTPS origin without manual bearer transport.
 - Repository governance, planning, automation, and quality-gate bootstrap.
 - Strongly typed protocol identifiers with canonical textual forms.
 - Strict deterministic-CBOR serialization, parsing, and golden fixtures.

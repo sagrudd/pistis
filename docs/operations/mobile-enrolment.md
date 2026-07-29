@@ -15,8 +15,13 @@ review and the evidence gates in that ADR.
    Confirm that its key identifier is derived from that key and record the
    descriptor digest through the approved administrator channel.
 3. Issue a short-lived, installation- and audience-specific invitation for the
-   intended immutable Prosopikon principal. Deliver its exact bytes only to the
-   intended enrolment device. Never place the invitation in a URL or ticket.
+   intended immutable Prosopikon principal. Until proposed ADR 0028 is accepted
+   and implemented, stop here: no supported first-device presentation exists.
+   The proposed flow pipes the canonical producer directly into a Pistis
+   alternate-screen QR presenter and permits scanning only from the app's
+   explicit enrolment surface. Never place the invitation in argv, an
+   environment value, file, URL, clipboard, ticket, log, or retained
+   screenshot.
 4. Have the user complete the foreground GitHub App Device Flow. The phone
    polls only within ADR 0025's interval and expiry bounds and clears its
    transient device code, user code, and provider token on every terminal path.

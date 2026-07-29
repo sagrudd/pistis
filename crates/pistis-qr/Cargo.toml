@@ -10,6 +10,7 @@ description = "Bounded QR transport framing and rendering for Pistis"
 [dependencies]
 base64.workspace = true
 pistis-canonical.workspace = true
+pistis-cose.workspace = true
 pistis-crypto.workspace = true
 qrcode.workspace = true
 

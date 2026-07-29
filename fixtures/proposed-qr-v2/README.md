@@ -1,8 +1,7 @@
-# Proposed production QR v2 review vectors
+# Production QR v2 conformance vectors
 
-These vectors are **not an accepted production protocol**. They make proposed
-ADR 0021 byte-exact so Rust, Swift, protocol, and security reviewers can review
-one concrete representation before implementation.
+These vectors make accepted ADR 0021 byte-exact so Rust, Swift, protocol, and
+security implementations consume one concrete representation.
 
 `response-positive.qr.txt` wraps the already accepted ADR 0018
 `positive-envelope.hex` as response kind `2` in deterministic CBOR:
@@ -15,14 +14,13 @@ The source COSE fixture contains an authentication response. The outer
 `PISTIS1` checksum detects scanning corruption only. Neither this synthetic
 fixture nor successful parsing grants authority.
 
-Production code must not consume this directory until ADR 0021 is Accepted.
-Test-only review parsers reject version 1, challenge/response kind confusion,
+Production parsers reject version 1, challenge/response kind confusion,
 padding, non-ASCII or alternate alphabets, checksum changes, structural
 changes, and invalid COSE.
 
 Review commands:
 
 ```sh
-cargo test --locked -p pistis-qr --test proposed_v2_review
+cargo test --locked -p pistis-qr --test production_v2
 swift test --package-path ios/PistisCore
 ```

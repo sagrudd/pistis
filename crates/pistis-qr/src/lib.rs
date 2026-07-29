@@ -7,6 +7,7 @@
 
 mod frame;
 mod matrix;
+mod production_frame;
 mod response_input;
 mod terminal_render;
 
@@ -15,6 +16,9 @@ pub use frame::{
     TransferRef, decode, encode,
 };
 pub use matrix::{Module, ModuleMatrix, render};
+pub use production_frame::{
+    MAX_COSE_ENVELOPE_BYTES, ProductionTransferRef, decode_production, encode_production,
+};
 pub use response_input::{ResponseInputError, read_response_input, read_response_transfer};
 pub use terminal_render::{
     GlyphSet, ModulePolarity, TerminalProfile, TerminalQr, TerminalRenderError, render_for_terminal,

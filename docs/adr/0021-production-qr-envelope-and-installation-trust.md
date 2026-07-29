@@ -1,9 +1,10 @@
 # ADR 0021: Production QR envelope and installation trust
 
-- Status: Proposed
+- Status: Accepted
 - Date: 2026-07-28
+- Accepted: 2026-07-28 by the project owner
 - Decision owners: Pistis protocol, cryptography, iOS, CLI, and Prosopikon maintainers
-- Security review: required before implementation
+- Security review: owner accepted signed approval and denial on 2026-07-28
 - Tracking issue: [#300](https://github.com/sagrudd/pistis/issues/300)
 
 ## Context
@@ -19,7 +20,7 @@ content as a request. Its remembered installation currently has a fingerprint,
 not the installation verification key and authority chain needed to verify the
 challenge's COSE signature and key identifier.
 
-## Proposed decision
+## Decision
 
 ### Production transport
 
@@ -89,10 +90,10 @@ challenge verification and must satisfy the accepted HTTPS allow-list policy.
 Delivery, server verification, and host-session creation remain separate
 states in the UI and history.
 
-Denial semantics require specialist review before implementation: the accepted
-schema permits a signed `denied` response, while the existing iOS reference UX
-states that denial produces no device signature. Review must select one rule
-and reconcile ADR 0019 and the UI contract.
+Approval and denial responses are both cryptographically signed after explicit
+local user verification. A signed denial is authenticated, auditable evidence
+of refusal and never creates a session. The iOS contract must not represent an
+unsigned local dismissal as a protocol denial.
 
 ## Required conformance evidence
 
@@ -104,11 +105,9 @@ and reconcile ADR 0019 and the UI contract.
 - physical iPhone scan, Face ID, direct-return, and response-QR evidence; and
 - exact-revision Jenkins verification by the independent Rust verifier.
 
-The test-only vectors under `fixtures/proposed-qr-v2` make the candidate outer
-bytes executable in Rust and Swift while this ADR is Proposed. They wrap an
-already accepted COSE response fixture and prove that a previously enrolled
-installation key is needed for signature verification. They are review
-material, not a product decoder or evidence of protocol acceptance.
+The vectors under `fixtures/proposed-qr-v2` pin the accepted outer bytes in
+Rust and Swift. They wrap an accepted COSE response fixture and prove that a
+previously enrolled installation key is needed for signature verification.
 
 ## Consequences
 

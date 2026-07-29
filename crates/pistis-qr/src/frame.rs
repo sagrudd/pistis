@@ -6,10 +6,10 @@ use std::collections::BTreeMap;
 use std::error::Error;
 use std::fmt;
 
-const PREFIX: &str = "PISTIS1:";
+pub(crate) const PREFIX: &str = "PISTIS1:";
 const VERSION: u64 = 1;
 const CHECKSUM_BYTES: usize = 8;
-const CHECKSUM_HEX_BYTES: usize = CHECKSUM_BYTES * 2;
+pub(crate) const CHECKSUM_HEX_BYTES: usize = CHECKSUM_BYTES * 2;
 const FRAME_FIELDS: &[u64] = &[0, 1, 2, 3];
 
 /// Maximum accepted text length for one version-40 QR symbol at EC level M.
@@ -30,7 +30,7 @@ pub enum TransferKind {
 }
 
 impl TransferKind {
-    fn parse(value: u64) -> Result<Self, QrError> {
+    pub(crate) fn parse(value: u64) -> Result<Self, QrError> {
         match value {
             1 => Ok(Self::Challenge),
             2 => Ok(Self::Response),
@@ -73,6 +73,8 @@ pub enum QrError {
     UnsupportedKind,
     /// The detached signature has the wrong width.
     InvalidSignature,
+    /// The production COSE Sign1 envelope is malformed or unsupported.
+    InvalidEnvelope,
     /// The QR encoder cannot represent the transfer at EC level M.
     Unrepresentable,
 }
@@ -90,6 +92,7 @@ impl fmt::Display for QrError {
             Self::UnsupportedVersion => "unsupported QR transport version",
             Self::UnsupportedKind => "unsupported or unexpected QR transfer kind",
             Self::InvalidSignature => "invalid QR transfer signature width",
+            Self::InvalidEnvelope => "invalid production COSE Sign1 envelope",
             Self::Unrepresentable => "QR transfer cannot be represented",
         })
     }
@@ -211,7 +214,7 @@ fn take_bytes(fields: &mut BTreeMap<u64, Value>, field: u64) -> Result<Vec<u8>, 
     }
 }
 
-fn checksum(body: &str) -> [u8; CHECKSUM_BYTES] {
+pub(crate) fn checksum(body: &str) -> [u8; CHECKSUM_BYTES] {
     let mut checked = Vec::with_capacity(PREFIX.len() + body.len());
     checked.extend_from_slice(PREFIX.as_bytes());
     checked.extend_from_slice(body.as_bytes());
@@ -221,7 +224,7 @@ fn checksum(body: &str) -> [u8; CHECKSUM_BYTES] {
     output
 }
 
-fn append_hex(output: &mut String, bytes: &[u8]) {
+pub(crate) fn append_hex(output: &mut String, bytes: &[u8]) {
     const HEX: &[u8; 16] = b"0123456789abcdef";
     for byte in bytes {
         output.push(char::from(HEX[usize::from(byte >> 4)]));
@@ -229,7 +232,7 @@ fn append_hex(output: &mut String, bytes: &[u8]) {
     }
 }
 
-fn decode_checksum(input: &str) -> Result<[u8; CHECKSUM_BYTES], QrError> {
+pub(crate) fn decode_checksum(input: &str) -> Result<[u8; CHECKSUM_BYTES], QrError> {
     let mut output = [0; CHECKSUM_BYTES];
     for (index, pair) in input.as_bytes().chunks_exact(2).enumerate() {
         output[index] = hex_value(pair[0])?

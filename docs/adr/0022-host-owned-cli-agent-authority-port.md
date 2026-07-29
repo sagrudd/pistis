@@ -1,9 +1,10 @@
 # ADR 0022: Host-owned CLI agent authority port
 
-- Status: Proposed
+- Status: Accepted
 - Date: 2026-07-28
+- Accepted: 2026-07-28 by the project owner
 - Decision owners: Pistis, Prosopikon, Monas, CLI and mobile maintainers
-- Specialist review: required before production activation
+- Specialist review: accepted by the project owner on 2026-07-28
 - Related review: mobile/web QR transport ADR 0021
 
 ## Context
@@ -74,10 +75,10 @@ a protected channel. Login completion is never action authority.
 
 ## Deployment gate
 
-No production daemon is activated by this Proposed ADR. A package may install
+No production daemon is activated by this ADR alone. A package may install
 a disabled service template, but startup must fail unless:
 
-- this ADR is Accepted after specialist review;
+- this accepted ADR remains the implemented authority contract;
 - the exact Prosopikon implementation passes authority conformance;
 - Monas implements the port against that same reviewed revision;
 - agent socket and authority service ownership agree;
@@ -126,4 +127,3 @@ Before acceptance and activation, retain:
 - Persist verified state in both agent and Prosopikon: partial-commit risk.
 - Poll the public web route from CLI: violates the CLI-only requirement.
 - Treat login as exact-action approval: consent and binding failure.
-

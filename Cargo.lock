@@ -938,6 +938,7 @@ version = "0.1.0"
 dependencies = [
  "base64",
  "pistis-canonical",
+ "pistis-cose",
  "pistis-crypto",
  "qrcode",
 ]

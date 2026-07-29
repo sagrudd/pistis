@@ -580,6 +580,7 @@ name = "pistis-authentication"
 version = "0.1.0"
 dependencies = [
  "pistis-canonical",
+ "pistis-cose",
  "pistis-crypto",
  "pistis-domain",
  "pistis-qr",

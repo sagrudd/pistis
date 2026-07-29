@@ -199,14 +199,30 @@ rerun the full ceremony rather than interpreting readiness as acceptance.
 ## GitHub enrolment boundary
 
 The Identities screen contains a compiled but disabled GitHub App enrolment
-port. It validates the exact non-secret Device Flow endpoints and public client
-configuration, models only the bounded numeric-subject result, and explains
-which authority ports are absent. It does not start Device Flow, poll GitHub,
-persist a token, or create a binding.
+port. The dependency-injected native adapter now implements the ADR 0025
+provider boundary through numeric-subject retrieval: exact endpoints and public
+client ID, redirect/cookie/cache refusal, strict duplicate-aware JSON parsing,
+bounded monotonic polling, `authorization_pending`, five-second `slow_down`,
+bounded transient retries, expiry, cancellation/background handling, one-use
+`/user`, and transient token clearing. Its deterministic tests use no public
+network or credential.
 
-ADR 0025 accepts Device Flow and rejects a broker for v0.1. Until the bounded
-poller and Prosopikon transaction are implemented and reviewed, the disabled
-state is the only production-honest behavior.
+That adapter is not wired to the view and its result is not enrolment. The
+reviewed API revision and App-configuration digest are not present in the
+application bundle. More importantly, the GitHub TLS response is observed
+inside the not-yet-enrolled phone. Signing its numeric subject with the
+proposed device key would prove possession of that key, but would not prove to
+Prosopikon that GitHub issued the subject. ADR 0025 refers to a one-use verified
+provider/authority capability; no trusted token-free issuer port for that
+capability exists yet. Do not promote a phone assertion, display login, email,
+or raw GitHub bearer token into that missing proof.
+
+ADR 0025 accepts Device Flow and rejects a broker for v0.1. Until the reviewed
+configuration commitment, persistent throttle, trusted provider-capability
+issuer, signed binding, atomic Prosopikon transaction, and receipt exchange are
+implemented and reviewed, the disabled state is the only production-honest
+behavior. The coordinator performs no Keychain mutation and exposes only an
+`awaitingConfirmation` result for the future authority integration.
 
 ## Design maintenance
 

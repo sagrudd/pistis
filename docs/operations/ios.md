@@ -31,18 +31,32 @@ For the accepted v0.1 design, an operator must:
 1. use the reviewed organisation-owned GitHub App with Device Flow enabled;
 2. request no scopes and retain no provider token;
 3. expose only its non-secret public client ID as `PistisGitHubClientID` in
-   reviewed iOS build configuration;
+   reviewed iOS build configuration; the v0.1 build accepts only
+   `Iv23lievHWZTGyot0BXa`;
 4. verify the exact device-code, access-token, and authenticated-user
-   endpoints and the reviewed App configuration digest;
+   endpoints, set the reviewed `PistisGitHubAPIVersion`, and set the 64-digit
+   hexadecimal `PistisGitHubAppConfigurationDigest`;
 5. keep polling bounded by GitHub's interval, expiry, and error semantics;
 6. verify Prosopikon atomically binds the numeric GitHub account ID, invitation,
    device key, and signed receipt; and
 7. run synthetic phishing, substitution, expiry, denial, and rate-limit tests
    before a live account ceremony.
 
-The app reports public-client configuration and missing authority ports
-separately and keeps enrolment disabled until the complete Device Flow and
-Prosopikon transaction are implemented.
+The dependency-injected iOS provider client and coordinator implement the
+bounded GitHub wire flow through local numeric-subject retrieval. They do not
+persist a device code, access token, refresh token, provider response, or
+authenticated trust record. The compiled application deliberately does not
+contain the three configuration keys above and does not wire the coordinator
+to the Identities screen.
+
+Local `/user` validation proves what the phone observed over its GitHub TLS
+connection. It does not, by itself, give Prosopikon an authority-verifiable
+provider assertion: the proposed device key is not trusted before enrolment.
+The remaining cross-project design must identify a trusted issuer for ADR
+0025's one-use verified capability without sending the GitHub bearer token to
+Monas or Prosopikon. Until that issuer, the signed binding, atomic commit, and
+receipt verification exist, the app keeps enrolment disabled and performs no
+Keychain mutation.
 
 The requested address `stephen@mnemosyne.co.uk` is a Prosopikon principal and
 operator acceptance value, not the GitHub stable identity. ADR 0003 binds

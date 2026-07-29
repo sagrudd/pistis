@@ -180,16 +180,21 @@ final class PlatformPolicyTests: XCTestCase {
 
     func testGitHubEnrolmentConfigurationIsExactAndCredentialFree() throws {
         let configuration = try GitHubEnrolmentConfiguration(
-            clientID: "PublicClient123",
+            clientID: GitHubEnrolmentConfiguration.reviewedClientID,
             deviceCodeEndpoint: try XCTUnwrap(
                 URL(string: "https://github.com/login/device/code")
             ),
             accessTokenEndpoint: try XCTUnwrap(
                 URL(string: "https://github.com/login/oauth/access_token")
             ),
-            authenticatedUserEndpoint: try XCTUnwrap(URL(string: "https://api.github.com/user"))
+            authenticatedUserEndpoint: try XCTUnwrap(URL(string: "https://api.github.com/user")),
+            apiVersion: "2022-11-28",
+            appConfigurationDigest: Data(repeating: 0x55, count: 32)
         )
-        XCTAssertEqual(configuration.clientID, "PublicClient123")
+        XCTAssertEqual(
+            configuration.clientID,
+            GitHubEnrolmentConfiguration.reviewedClientID
+        )
 
         let invalidDeviceEndpoints = [
             "http://github.com/login/device/code",
@@ -199,17 +204,35 @@ final class PlatformPolicyTests: XCTestCase {
         for value in invalidDeviceEndpoints {
             XCTAssertThrowsError(
                 try GitHubEnrolmentConfiguration(
-                    clientID: "PublicClient123",
+                    clientID: GitHubEnrolmentConfiguration.reviewedClientID,
                     deviceCodeEndpoint: XCTUnwrap(URL(string: value)),
                     accessTokenEndpoint: XCTUnwrap(
                         URL(string: "https://github.com/login/oauth/access_token")
                     ),
                     authenticatedUserEndpoint: XCTUnwrap(
                         URL(string: "https://api.github.com/user")
-                    )
+                    ),
+                    apiVersion: "2022-11-28",
+                    appConfigurationDigest: Data(repeating: 0x55, count: 32)
                 )
             )
         }
+        XCTAssertThrowsError(
+            try GitHubEnrolmentConfiguration(
+                clientID: "Iv23lievAttackerClient",
+                deviceCodeEndpoint: XCTUnwrap(
+                    URL(string: "https://github.com/login/device/code")
+                ),
+                accessTokenEndpoint: XCTUnwrap(
+                    URL(string: "https://github.com/login/oauth/access_token")
+                ),
+                authenticatedUserEndpoint: XCTUnwrap(
+                    URL(string: "https://api.github.com/user")
+                ),
+                apiVersion: "2022-11-28",
+                appConfigurationDigest: Data(repeating: 0x55, count: 32)
+            )
+        )
     }
 
     func testGitHubIdentityProofUsesNumericSubjectAndBoundedDisplayOnly() throws {

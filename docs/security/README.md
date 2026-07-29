@@ -37,6 +37,16 @@ Implementation and production enablement remain gated by ADR 0025's reviewed
 configuration, physical-device, canary, attack-exercise, and attestation
 evidence.
 
+The native provider adapter currently stops after transient `/user` retrieval.
+That result is a phone observation, not an authority-verified identity
+assertion. Because the proposed device key is not yet enrolled, its signature
+cannot make the observation independently trustworthy to Prosopikon. The
+accepted transaction refers to a one-use verified capability, but the trusted
+issuer and token-free delivery contract for that capability are not yet
+implemented. No adapter may solve this by forwarding a GitHub bearer token,
+trusting phone JSON, or treating the proposed key as pre-enrolled. Enrolment
+therefore remains disabled before any authority or Keychain mutation.
+
 ADR 0026 records the accepted MVP deployment and product security profile.
 Routine authentication is site-local; GitHub participates only in enrolment
 and explicit re-enrolment. Customer sites have distinct Prosopikon authority,

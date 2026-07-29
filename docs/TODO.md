@@ -87,9 +87,12 @@ distribution, or licensing must trace their acceptance to that decision.
 # EPIC 3 — GitHub trust
 
 - [x] Define and validate the GitHub App registration contract
-- [ ] Implement the bounded ADR 0025 Device Flow
+- [x] Implement the bounded ADR 0025 iOS provider client and coordinator
+- [ ] Add the persistent installation-local Device Flow throttle
 - [ ] Verify the reviewed GitHub App configuration digest
 - [x] Retrieve and validate the stable numeric GitHub user ID
+- [ ] Issue the one-use authority-verifiable provider capability without
+      forwarding or trusting a GitHub bearer token
 - [ ] Commit the invitation, provider binding, device, and receipt atomically
 - [ ] Add Device Flow and authority-transaction integration tests
 
@@ -540,10 +543,13 @@ presentation; approval and denial use Face ID, the Secure Enclave COSE signer,
 `pistis-authentication::verify_authentication_response` is the production host
 boundary for authority-owned enrolled keys and persisted challenge facts; it
 returns only credential-free verified facts for the Prosopikon transaction.
-The bounded Device Flow and Prosopikon authority transaction still need to
-supply the authenticated enrolment output, and end-user
-enrolment/history/revocation UX plus physical qualification remain. The
-detached version-1 QR fixture remains reference-only.
+The bounded iOS Device Flow client now reaches a locally validated numeric
+GitHub subject without retaining provider credentials. The trusted issuer for
+ADR 0025's one-use provider capability, reviewed configuration digest,
+Prosopikon authority transaction, and signed receipt still need to supply the
+authenticated enrolment output. End-user enrolment/history/revocation UX plus
+physical qualification also remain. The detached version-1 QR fixture remains
+reference-only.
 
 Issue #318 and accepted ADR 0023 define the remaining trust bootstrap. No
 endpoint or Keychain installation may be represented as production enrolment

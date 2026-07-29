@@ -3,7 +3,15 @@ use pistis_agent::{
     AgentFailure, AgentReference, AgentRequest, AgentResponse, AgentStatus, connect,
     decode_response, encode_request, read_frame, write_frame,
 };
-use std::path::{Path, PathBuf};
+use std::{
+    path::{Path, PathBuf},
+    sync::mpsc,
+    thread,
+    time::Duration,
+};
+
+const AGENT_IO_TIMEOUT: Duration = Duration::from_secs(2);
+const AGENT_CONNECT_TIMEOUT: Duration = Duration::from_secs(2);
 
 /// Authentication backend connected to the owner-only local-agent socket.
 pub struct SocketAuthenticationBackend {
@@ -26,7 +34,16 @@ impl SocketAuthenticationBackend {
     }
 
     fn call(&self, request: &AgentRequest) -> Result<AgentResponse, CeremonyError> {
-        let mut stream = connect(&self.socket_path).map_err(|_| CeremonyError::Unavailable)?;
+        let socket_path = self.socket_path.clone();
+        let (sender, receiver) = mpsc::sync_channel(1);
+        thread::spawn(move || {
+            let _ = sender.send(connect(&socket_path));
+        });
+        let mut stream = receiver
+            .recv_timeout(AGENT_CONNECT_TIMEOUT)
+            .map_err(|_| CeremonyError::Unavailable)?
+            .map_err(|_| CeremonyError::Unavailable)?;
+        configure_io_deadline(&stream)?;
         let request = encode_request(request).map_err(|_| CeremonyError::Rejected)?;
         write_frame(&mut stream, &request).map_err(|_| CeremonyError::Unavailable)?;
         let response = read_frame(&mut stream).map_err(|_| CeremonyError::Unavailable)?;
@@ -38,6 +55,13 @@ impl SocketAuthenticationBackend {
     pub fn socket_path(&self) -> &Path {
         &self.socket_path
     }
+}
+
+fn configure_io_deadline(stream: &std::os::unix::net::UnixStream) -> Result<(), CeremonyError> {
+    stream
+        .set_read_timeout(Some(AGENT_IO_TIMEOUT))
+        .and_then(|()| stream.set_write_timeout(Some(AGENT_IO_TIMEOUT)))
+        .map_err(|_| CeremonyError::Unavailable)
 }
 
 impl AuthenticationBackend for SocketAuthenticationBackend {
@@ -218,5 +242,13 @@ mod tests {
         );
         server.join().unwrap();
         fs::remove_dir_all(directory).unwrap();
+    }
+
+    #[test]
+    fn client_socket_io_is_bounded() {
+        let (client, _server) = UnixStream::pair().unwrap();
+        configure_io_deadline(&client).unwrap();
+        assert_eq!(client.read_timeout().unwrap(), Some(AGENT_IO_TIMEOUT));
+        assert_eq!(client.write_timeout().unwrap(), Some(AGENT_IO_TIMEOUT));
     }
 }

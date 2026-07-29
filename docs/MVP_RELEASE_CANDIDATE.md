@@ -4,6 +4,8 @@
 **Candidate:** `v0.1.0-rc.1`  
 **Approved:** 27 July 2026
 
+**Deployment profile amended:** 28 July 2026 by ADR 0026
+
 ## Purpose
 
 This document defines the shortest production-credible Pistis vertical slice.
@@ -21,8 +23,11 @@ The candidate shall let one existing Prosopikon principal:
 3. create one device-protected signing key in the iOS application;
 4. scan and explicitly approve a QR authentication challenge using Face ID;
 5. authenticate through either the Monas route or the Synoptikon/Mneion route;
-6. run an exact CLI action through a supervised, non-exportable session; and
-7. export redacted authentication evidence that an offline verifier can
+6. land on the Propylaion product home after Monas authentication and navigate
+   to an authorized Jenkins or DASObjectStore offering without knowing its
+   private host or port;
+7. run an exact CLI action through a supervised, non-exportable session; and
+8. export redacted authentication evidence that an offline verifier can
    validate.
 
 Prosopikon remains the authority for immutable principals, tenants,
@@ -34,14 +39,24 @@ authority.
 
 - GitHub is the sole production enrolment trust anchor.
 - iOS is the sole supported mobile platform.
-- QR is the sole required challenge/response transport.
+- QR is the mandatory fallback challenge/response transport. Open-app,
+  site-local LAN discovery is also in scope; both complete the same durable
+  authority transaction.
 - Monas and Synoptikon/Mneion are both required relying routes.
+- Propylaion is the required post-authentication home for the Monas standalone
+  route. It projects installed, accessible, and ready offerings but never
+  authenticates, grants access, supervises products, or proxies their APIs.
+- The first required Propylaion profile contains Jenkins and DASObjectStore.
+  Navigation is host-relative, reveals no private port or bearer material, and
+  each selected product re-authorizes the accepted Monas context.
 - The Synoptikon route is implemented by the Mneion server and web deployment
   in the `mnemosyne` repository.
 - Both routes use one versioned Prosopikon--Pistis authority and transaction
   port.
 - Administrator-issued invitations are the sole enrolment route.
-- One active iOS device is supported per Prosopikon principal.
+- The initial acceptance principal uses one active iOS device. The authority
+  follows ADR 0012's policy-bounded multi-device model rather than encoding a
+  one-device protocol shortcut.
 - Lost-device recovery is revoke, invalidate sessions, and re-enrol. Private
   keys are never migrated or recovered.
 - CLI sessions supervise an exact command and never print or export reusable
@@ -57,11 +72,10 @@ The first candidate does not qualify:
 
 - Android as a supported client;
 - Google enrolment;
-- nearby discovery or direct local transport;
+- Bluetooth discovery, closed-app notification, and WAN discovery;
 - self-service account creation or inferred identity matching;
 - multiple active devices or key migration;
 - report, dataset, workflow, or multi-party signing;
-- TPM or HSM installation-key sealing; or
 - public production use before independent review.
 
 Android source and local discovery may remain build-tested previews. They must
@@ -98,18 +112,23 @@ It never accepts a personal access token, GitHub password, passkey, or
 password-manager secret. Keeper or another credential provider may participate
 only in GitHub's own browser ceremony.
 
-Each installation generates its signing key locally. For MVP the key is a
-non-symlink, service-account-owned private file loaded through systemd
-credentials. Environment variables and command arguments are forbidden.
-Encrypted offline backup, explicit restore, rotation, and audit are required.
-TPM/HSM sealing is deferred.
+Each Linux authentication authority selects exactly one reviewed,
+non-exporting hardware provider through the provider-neutral boundary in
+proposed ADR 0024. TPM2 is the first implementation and PKCS#11 is the second.
+The configured provider and enrolled public key are fixed before the service
+listens; absence or failure never selects an ordinary-file signer or another
+provider. Ordinary Jenkins and DASObjectStore workers remain keyless.
+Environment variables and command arguments are forbidden for authorization
+values. Recovery is revoke, invalidate sessions, provision a new
+non-exportable key, and re-enrol; Pistis never backs up private-key material.
 
 ## Acceptance and release gates
 
 Jenkins is authoritative for Rust, Swift-package, Android-preview,
 documentation, packaging, and exact-revision cross-repository tests. The
-cross-repository expedition pins Pistis, Prosopikon, Monas, and Mnemosyne
-revisions and retains its complete dossier.
+portfolio expedition pins Pistis, Prosopikon, Monas, Propylaion, Jenkins,
+DASObjectStore, and Mnemosyne revisions as applicable to each route and
+retains its complete dossier.
 
 One physical Face ID iPhone on the current production iOS major version is the
 mandatory security acceptance device. A signed record bound to the exact
@@ -132,11 +151,12 @@ complete and every critical or high finding is closed.
 | EPIC 18 | Rust/iOS COSE interoperability | EPIC 17 |
 | EPIC 19 | Prosopikon--Pistis authority bridge | EPIC 18 |
 | EPIC 20 | Monas production authentication route | EPIC 19 |
+| EPIC 26 | Propylaion standalone product home | EPIC 20 |
 | EPIC 21 | Synoptikon/Mneion production route | EPIC 19 |
 | EPIC 22 | iOS production qualification | EPICs 18--21 |
 | EPIC 23 | Authentication evidence and offline verification | EPIC 19 |
 | EPIC 24 | RPM, systemd, and operational lifecycle | EPICs 19--23 |
-| EPIC 25 | Security qualification and `v0.1.0-rc.1` | EPICs 20--24 |
+| EPIC 25 | Security qualification and `v0.1.0-rc.1` | EPICs 20--24 and 26 |
 
 EPIC 16 remains the owner of CLI/local-agent completion and depends on EPICs
 18, 19, and 23 for its production path.
@@ -148,6 +168,7 @@ stabilize
   -> freeze Rust/iOS interoperability
   -> implement the Prosopikon authority bridge
   -> implement Monas and Synoptikon/Mneion host adapters
+  -> land the Monas user on Propylaion and re-authorize Jenkins/DASObjectStore
   -> pass physical iOS end-to-end acceptance
   -> qualify packages and operations
   -> assemble and approve v0.1.0-rc.1

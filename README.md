@@ -7,10 +7,11 @@ authentication, explicit approval, and portable verifiable evidence.
 Repository bootstrap and EPIC-0 are complete. EPIC-1 establishes the typed
 protocol domain, deterministic encoding, and single-use challenge lifecycle;
 EPIC-2 adds ES256 cryptographic verification and the structured verification
-pipeline; EPIC-3 adds GitHub PKCE trust enrolment and durable provider-neutral
+pipeline; EPIC-3 defines GitHub trust enrolment and durable provider-neutral
 identity bindings; EPIC-4 adds locally verified Google OpenID Connect
 enrolment keyed by canonical issuer and stable subject. Later epics add device
-registration and application integrations. EPIC-16 makes terminal-native
+registration and application integrations. ADR 0025 selects no-broker GitHub
+App Device Flow for the v0.1 transport. EPIC-16 makes terminal-native
 authentication and approval a release-blocking primary product surface, using
 ASCII/Unicode QR exchange with the supported iOS application and requiring no
 browser or web application. Android interoperability remains part of the
@@ -36,7 +37,10 @@ The canonical planning inputs are:
 - [`docs/TODO.md`](docs/TODO.md)
 
 The MVP release-candidate document defines the approved `v0.1.0-rc.1`
-vertical slice. The milestone document retains the broader `v1.0` commitment.
+vertical slice. [ADR 0026](docs/adr/0026-mvp-deployment-and-product-profile.md)
+records the owner-approved deployment, product-session, mobile, recovery,
+privacy, distribution, and licensing profile gathered during the MVP decision
+review. The milestone document retains the broader `v1.0` commitment.
 
 Implementation work is tracked in GitHub issues and milestones. Architectural
 decisions are recorded in [`docs/adr`](docs/adr).
@@ -72,6 +76,10 @@ profiles, and current fail-closed readiness boundary are documented in the
 [`CLI development guide`](docs/development/cli-authentication.md),
 [`ADR 0015`](docs/adr/0015-cli-native-authentication.md), and
 [`CLI operator guide`](docs/operations/cli-authentication.md).
+An interactive `pistis auth login` now keeps the QR ceremony open and polls the
+owner-only local agent until the durable authority reports approval, denial, or
+expiry. This removes any need to paste a response into an ordinary terminal;
+deployment still requires the reviewed agent and Prosopikon host adapter.
 
 ## Security
 
@@ -80,4 +88,9 @@ Do not report vulnerabilities in public issues. Follow
 
 ## License
 
-Pistis is licensed under the [Mozilla Public License 2.0](LICENSE).
+Pistis Core and the public protocol implementation in this repository are
+licensed under the [Mozilla Public License 2.0](LICENSE). Mnemosyne names,
+logos, and application icons are reserved brand assets and are not licensed by
+the MPL. ADR 0026 records the owner-approved intent for future separately
+hosted mobile application repositories; that intent is subject to formal legal
+review and does not revoke rights already granted for published source.

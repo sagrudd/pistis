@@ -76,7 +76,7 @@ public struct ApprovalFacts: Equatable, Sendable {
     }
 
     public mutating func recordLocalAuthentication(_ fact: LocalAuthenticationFact) throws {
-        guard decision == .approved else { throw ApprovalTransitionError.notApproved }
+        guard decision != nil else { throw ApprovalTransitionError.decisionRequired }
         guard localAuthentication == .notRequested else {
             throw ApprovalTransitionError.localAuthenticationAlreadyRecorded
         }
@@ -122,7 +122,7 @@ public struct ApprovalFacts: Equatable, Sendable {
 public enum ApprovalTransitionError: Error, Equatable, Sendable {
     case decisionAlreadyRecorded
     case challengeExpired
-    case notApproved
+    case decisionRequired
     case localAuthenticationAlreadyRecorded
     case userVerificationRequired
     case signatureAlreadyRecorded

@@ -11,6 +11,8 @@ description = "Durable owner-only local authentication agent boundary"
 getrandom.workspace = true
 nix.workspace = true
 pistis-canonical.workspace = true
+pistis-authentication.workspace = true
+pistis-cose.workspace = true
 pistis-domain.workspace = true
 pistis-crypto.workspace = true
 rusqlite.workspace = true
@@ -18,6 +20,9 @@ rusqlite.workspace = true
 [target.'cfg(target_os = "macos")'.dependencies]
 p256.workspace = true
 security-framework.workspace = true
+
+[dev-dependencies]
+p256.workspace = true
 
 [lints]
 workspace = true

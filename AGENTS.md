@@ -45,6 +45,18 @@ features.
 - Protocol behavior requires conformance fixtures and negative cases.
 - Security-sensitive parsers and verifiers should be fuzzed.
 - Tests must be deterministic and must not depend on public network services.
+- Run the complete relevant local gates before opening or updating a pull
+  request. Do not use Jenkins as the first feedback loop for formatting,
+  compilation, unit tests, lint, architecture, mobile-source, or documentation
+  defects.
+- Retained Jenkins provenance is required for milestone and release candidates,
+  cross-project acceptance locksets, and tasks whose acceptance explicitly
+  requires governed native evidence. It is not required for every intermediate
+  commit or minor pull request.
+- For a stack of compatible changes, consolidate the reviewed heads onto one
+  short-lived milestone integration branch, test the combined head locally,
+  and submit one exact-revision Expedition. Cancel superseded intermediate
+  runs through the supported audited control path.
 
 ## Documentation
 
@@ -73,6 +85,10 @@ features.
   require specialist review and an accepted ADR before implementation.
 - A reviewer verifies tests, docs, compatibility, threat impact, and issue
   acceptance notes.
+- Milestone-level qualification does not waive specialist review. Security,
+  cryptography, canonical encoding, protocol, and schema changes retain their
+  individual ADR and review trace when consolidated into an integration
+  candidate.
 - For a cross-project decision, the project owner may accept the ADR after a
   documented review that names the affected authority owners and confirms
   authority ownership, transaction atomicity, secret boundaries, negative-path

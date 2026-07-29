@@ -5,6 +5,13 @@
 > This TODO list decomposes the milestones into implementation-sized tasks.
 > Each item should generally be completable within 0.5–2 developer days.
 
+The owner-approved v0.1 deployment and product decisions are tracked by
+[EPIC 26 / issue #309](https://github.com/sagrudd/pistis/issues/309) and
+[ADR 0026](adr/0026-mvp-deployment-and-product-profile.md). Implementations
+that affect customer installation, GitHub enrolment, mobile assurance,
+nearby/QR transport, Jenkins or DASObjectStore sessions, recovery, privacy,
+distribution, or licensing must trace their acceptance to that decision.
+
 ## Legend
 
 - [ ] Not started
@@ -79,12 +86,15 @@
 
 # EPIC 3 — GitHub trust
 
-- [x] Define and validate the OAuth application registration contract
-- [x] Implement PKCE flow
-- [x] Validate callback
-- [x] Retrieve stable GitHub user id
-- [x] Persist identity binding
-- [x] Add integration tests
+- [x] Define and validate the GitHub App registration contract
+- [x] Implement the bounded ADR 0025 iOS provider client and coordinator
+- [ ] Add the persistent installation-local Device Flow throttle
+- [ ] Verify the reviewed GitHub App configuration digest
+- [x] Retrieve and validate the stable numeric GitHub user ID
+- [ ] Issue the one-use authority-verifiable provider capability without
+      forwarding or trusting a GitHub bearer token
+- [ ] Commit the invitation, provider binding, device, and receipt atomically
+- [ ] Add Device Flow and authority-transaction integration tests
 
 ---
 
@@ -131,7 +141,7 @@ open under milestone M5.
 Implementation source and portable tests are present on the EPIC-7 delivery
 branch. These boxes remain open until the applicable evidence exists: full
 Xcode native compilation, simulator and real-device security/accessibility
-tests, Apple signing and TestFlight, broker/verifier integration, and the COSE
+tests, Apple signing and TestFlight, Device Flow/verifier integration, and the COSE
 ADR plus shared mobile conformance fixtures required by ADR 0006. The issue
 tracker records signing, TestFlight, and production QR interoperability as
 blocked rather than complete.
@@ -354,7 +364,9 @@ authentication path.
 - [x] Bind approvals to the exact action and command digest
 - [ ] Support direct-local signed response submission after MVP
 - [x] Support bounded terminal-safe framed response input
-- [x] Implement cancellation, denial, expiry, and interruption handling
+- [x] Implement explicit cancellation, denial, expiry, and protected-input interruption handling
+- [ ] Add reviewed platform signal-to-cancel bridging for abrupt CLI interruption
+  ([issue #306](https://github.com/sagrudd/pistis/issues/306))
 
 ## Security and session handling
 
@@ -402,6 +414,13 @@ credential-free begin/status/submit/cancel operations owned by the host
 authority. Production remains disabled until Prosopikon and Monas implement
 the accepted contract and mobile ADR 0021 returns the same signed response.
 No filesystem spool is accepted as a substitute state machine.
+
+The interactive lifecycle gap is closed by issue #297: after QR presentation,
+the CLI now polls the owner-only agent until the durable authority completes,
+denies, or expires the ceremony. Redirected protected input continues through
+the same single-use submission boundary. This does not itself supply or deploy
+the Prosopikon adapter, agent service, mobile response transport, or supervised
+action capability.
 
 ---
 
@@ -458,6 +477,7 @@ retention is recorded with the EPIC-18 pull-request acceptance evidence.
 
 ## EPIC 19 — Prosopikon authority bridge
 
+- [x] Implement strict host installation COSE challenge signing
 - [ ] Accept the versioned Prosopikon--Pistis port
 - [ ] Persist explicit Pistis-to-Prosopikon principal bindings
 - [ ] Implement administrator-issued single-use invitations
@@ -478,6 +498,11 @@ retention is recorded with the EPIC-18 pull-request acceptance evidence.
 - [ ] Exercise restart, concurrency, backup, restore, and corruption paths
 - [ ] Retain exact-revision cross-repository Jenkins evidence
 
+Successful authentication is not a complete standalone user journey. Monas
+must redirect its normal Prosopikon-backed session to the Propylaion home
+defined by EPIC 26; neither a raw product port nor a developer-only route may
+satisfy MVP acceptance.
+
 ## EPIC 21 — Synoptikon/Mneion MVP route
 
 - [ ] Pin reviewed Pistis and Prosopikon revisions in Mnemosyne
@@ -491,21 +516,45 @@ retention is recorded with the EPIC-18 pull-request acceptance evidence.
 ## EPIC 22 — iOS production qualification
 
 - [ ] Register the Mnemosyne Biosciences GitHub App and enable device flow
+- [x] Expose the strict Rust verifier for signed production responses
+- [x] Accept the authenticated mobile enrolment exchange contract (ADR 0023)
+- [ ] Implement the bounded Monas exchange and Prosopikon enrolment transaction
+- [ ] Verify the signed trust bundle before atomic iOS Keychain installation
+- [ ] Share exact Rust/Swift enrolment fixtures and hostile cases
 - [ ] Implement minimum-permission GitHub device-flow enrolment
+- [ ] Freeze and implement the authenticated mobile receipt exchange (#318)
 - [ ] Discard GitHub tokens after stable-identity proof
-- [ ] Generate and use the device-protected signing key
-- [ ] Require Face ID for every signature
-- [ ] Implement enrolment, QR approval, history, and revocation UX
+- [x] Generate and use the device-protected signing key
+- [x] Require Face ID for every approval and denial signature
+- [ ] Implement end-user enrolment, history, and revocation UX
+- [x] Wire authenticated trust storage, verified QR review, signed decisions,
+      bounded delivery, and terminal authority status into the Scan UI
 - [ ] Configure Apple signing and TestFlight
-- [ ] Pass functional and accessibility simulator suites
+- [x] Automate the functional and native accessibility simulator suites
+- [ ] Complete physical VoiceOver, Dynamic Type, contrast, and reduced-motion review
 - [ ] Pass the signed physical-iPhone acceptance matrix
 
-The native app now has a transient, bounded camera acquisition surface.
-ADR 0021 accepts installation verification-key trust, the self-contained
-production QR wrapper, and signed denial. `pistis-qr` implements the strict
-version-2 outer codec; iOS trust-record delivery, COSE verification, signed
-response construction, and physical-device qualification remain. The detached
-version-1 QR fixture remains reference-only.
+The native app has a transient bounded camera surface and a production
+coordinator backed by device-only Keychain trust. ADR 0021 accepts installation
+verification-key trust, the self-contained production QR wrapper, and signed
+denial. The visible Scan flow verifies exact COSE challenge facts before
+presentation; approval and denial use Face ID, the Secure Enclave COSE signer,
+2 KiB allow-listed HTTPS delivery, and terminal authority status.
+`pistis-authentication::verify_authentication_response` is the production host
+boundary for authority-owned enrolled keys and persisted challenge facts; it
+returns only credential-free verified facts for the Prosopikon transaction.
+The bounded iOS Device Flow client now reaches a locally validated numeric
+GitHub subject without retaining provider credentials. The trusted issuer for
+ADR 0025's one-use provider capability, reviewed configuration digest,
+Prosopikon authority transaction, and signed receipt still need to supply the
+authenticated enrolment output. End-user enrolment/history/revocation UX plus
+physical qualification also remain. The detached version-1 QR fixture remains
+reference-only.
+
+Issue #318 and accepted ADR 0023 define the remaining trust bootstrap. No
+endpoint or Keychain installation may be represented as production enrolment
+until the shared fixture, retry, restart, concurrency, substitution, and
+pre-mutation negative tests pass cross-project review.
 
 ## EPIC 23 — Authentication evidence
 
@@ -520,20 +569,56 @@ version-1 QR fixture remains reference-only.
 ## EPIC 24 — Packaging and operations
 
 - [ ] Package the service, local agent, CLI, migrations, and systemd units
-- [ ] Generate installation keys during privileged bootstrap
-- [ ] Load keys through systemd credentials
-- [ ] Implement encrypted installation-key backup and explicit restore
+- [ ] Accept ADR 0024 after specialist security and cryptography review
+- [ ] Implement the provider-neutral Linux `InstallationSigner` boundary
+- [ ] Deliver and qualify the TPM2 provider
+- [ ] Deliver and qualify the PKCS#11 provider
+- [ ] Provision a non-exportable installation key in exactly one configured
+  provider
+- [ ] Deliver provider authorization through a protected service credential
+  without arguments, environment variables, or repository files
+- [ ] Keep Jenkins, DASObjectStore, and other relying workers keyless
 - [ ] Document rotation, recovery, upgrade, rollback, and diagnostics
 - [ ] Enforce service-account ownership and non-symlink private state
 - [ ] Build RPM/SRPM, SBOM, checksums, and provenance
 - [ ] Test clean install, upgrade, rollback, backup, and restore
+
+## EPIC 26 — Propylaion standalone product home
+
+- [ ] Close the Pistis acceptance gate tracked by
+  [#321](https://github.com/sagrudd/pistis/issues/321)
+- [ ] Deliver the minimum Propylaion contract, composition, access, Monas
+  adapter, accessible UI, and readiness slices tracked by
+  [Propylaion #22](https://github.com/sagrudd/propylaion/issues/22)
+- [ ] Mount Propylaion under the Monas public origin and make it the successful
+  Pistis login destination as tracked by
+  [Monas #17](https://github.com/sagrudd/monas/issues/17)
+- [ ] Define stable product descriptors for Jenkins and DASObjectStore
+- [ ] Consume verified Prosopikon access decisions without interpreting browser
+  claims or raw role labels
+- [ ] Keep presence, access, readiness, and progression as independent states
+- [ ] Admit only host-relative product routes without exposing private hosts,
+  ports, credentials, or bearer material
+- [ ] Require Jenkins and DASObjectStore to re-authorize the accepted Monas
+  context at their own boundaries
+- [ ] Preserve the other offering plus sign-out and support during one-product
+  or Propylaion degradation
+- [ ] Pass browser, restart, unsafe-route, hidden-product, revoked-authority,
+  and partial-outage tests
+- [ ] Retain exact Pistis, Prosopikon, Monas, Propylaion, Jenkins, and
+  DASObjectStore revisions in the portfolio Jenkins dossier
+
+This is a release-blocking usability gate, not a transfer of authority.
+Propylaion projects and explains authoritative facts; Monas remains the public
+host, Prosopikon remains the principal/session authority, and each target
+product remains responsible for authorization.
 
 ## EPIC 25 — MVP security and release candidate
 
 - [ ] Complete the MVP threat-model review
 - [ ] Complete dependency and privacy reviews
 - [ ] Pass fuzzing and negative-path acceptance
-- [ ] Run the four-repository Jenkins acceptance expedition
+- [ ] Run the exact-revision portfolio Jenkins acceptance expedition
 - [ ] Verify the signed physical-iPhone record
 - [ ] Assemble immutable `v0.1.0-rc.1` artefacts and manifest
 - [ ] Record internal release approval against the manifest digest

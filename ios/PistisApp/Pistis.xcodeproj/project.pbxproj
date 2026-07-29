@@ -6,6 +6,10 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		10AFF0000000000000000001 /* PistisCore in Frameworks */ = {isa = PBXBuildFile; productRef = 10AFF0000000000000000003 /* PistisCore */; };
+/* End PBXBuildFile section */
+
 /* Begin PBXContainerItemProxy section */
 		10A000000000000000000021 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
@@ -57,6 +61,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				10AFF0000000000000000001 /* PistisCore in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -118,6 +123,9 @@
 				10A000000000000000000042 /* Resources */,
 			);
 			name = Pistis;
+			packageProductDependencies = (
+				10AFF0000000000000000003 /* PistisCore */,
+			);
 			productName = Pistis;
 			productReference = 10A000000000000000000031 /* Pistis.app */;
 			productType = "com.apple.product-type.application";
@@ -198,6 +206,9 @@
 			minimizedProjectReferenceProxies = 1;
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 10A000000000000000000003 /* Products */;
+			packageReferences = (
+				10AFF0000000000000000002 /* XCLocalSwiftPackageReference "../PistisCore" */,
+			);
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
@@ -207,6 +218,21 @@
 			);
 		};
 /* End PBXProject section */
+
+/* Begin XCLocalSwiftPackageReference section */
+		10AFF0000000000000000002 /* XCLocalSwiftPackageReference "../PistisCore" */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = ../PistisCore;
+		};
+/* End XCLocalSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		10AFF0000000000000000003 /* PistisCore */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 10AFF0000000000000000002 /* XCLocalSwiftPackageReference "../PistisCore" */;
+			productName = PistisCore;
+		};
+/* End XCSwiftPackageProductDependency section */
 
 /* Begin PBXResourcesBuildPhase section */
 		10A000000000000000000064 /* Resources */ = {isa = PBXResourcesBuildPhase; buildActionMask = 2147483647; files = (); runOnlyForDeploymentPostprocessing = 0; };

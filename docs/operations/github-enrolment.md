@@ -1,98 +1,76 @@
 # Operate GitHub trust enrolment
 
 GitHub is a trust anchor for enrolment, not an online dependency for routine
-Pistis authentication. This guide covers OAuth App registration, privacy, and
-recovery from interrupted enrolment.
+Pistis authentication. ADR 0025 defines the v0.1 GitHub App Device Flow
+profile. It supersedes callback, OAuth-state, PKCE, confidential-broker, and
+authorization-code transport requirements from earlier ADRs for v0.1.
 
-## Register the OAuth application
+## Register the GitHub App
 
-Create a dedicated GitHub OAuth App for each deployment environment. Do not
-reuse production registration for development or conformance tests.
+Use the reviewed organisation-owned GitHub App for each environment. The v0.1
+profile requires:
 
-Configure:
+- Device Flow enabled;
+- user authorization-token expiration enabled;
+- no installation-time user authorization;
+- no active webhook or subscribed events;
+- no explicit repository, organisation, or account permissions;
+- GitHub's unavoidable implicit Metadata read only; and
+- availability to any GitHub account, with Pistis enrolment still
+  invitation-only.
 
-- **Application name:** an environment-specific, user-recognizable name;
-- **Homepage URL:** the operator-controlled Pistis information page;
-- **Authorization callback URL:** the exact callback URI compiled or
-  configured for that environment; and
-- **Device flow:** disabled unless a later accepted ADR selects it.
+Record only the public client ID in reviewed application configuration. Do not
+create or distribute a client secret, App private key, webhook secret, personal
+access token, or callback URL for this profile. The public client ID is not an
+authority credential.
 
-Record the public client ID in application configuration. Generate the client
-secret only in the operator-controlled confidential exchange broker; never
-distribute or package it with a native Pistis client. Configure the broker to
-accept only the registered client ID and exact callback, pass the one-use code
-and PKCE verifier to GitHub, and return the short-lived token only to the
-initiating enrolment attempt over an authenticated confidential channel.
-Disable enrolment when that broker is unavailable or its registration
-preflight fails. The broker must not persist tokens, select identity fields, or
-create a trusted binding.
+Before enabling an implementation, compare the exact App configuration digest
+required by ADR 0025. A changed owner, slug, client-ID fingerprint, endpoint,
+permission, event, webhook, installation, or token-expiration setting disables
+enrolment until review passes again.
 
-The callback must use an application-claimed HTTPS link where the platform can
-verify ownership, or a uniquely assigned private-use scheme. Register only the
-single exact callback. Wildcards, open redirects, fragments, and runtime
-callback overrides are prohibited.
+## Exact provider boundary
 
-## Minimum access
+The implementation may contact only the exact endpoints in ADR 0025:
 
-Request an empty OAuth scope. The authenticated-user endpoint exposes the
-stable numeric account ID and public profile data without a broader scope.
-Do not request `repo`, `gist`, organization, write, or email scope. If a future
-policy needs non-public email, that data expansion requires privacy review and
-must not change the identity key.
+- `https://github.com/login/device/code`;
+- `https://github.com/login/oauth/access_token`; and
+- `https://api.github.com/user`.
 
-The application must show the account returned by the authenticated-user
-endpoint before the user confirms the device binding. The numeric `id` is the
-subject. The login, display name, profile URL, and public email are optional
-snapshots and never authorize a user.
+Honor GitHub's returned polling interval, expiry, `slow_down`,
+`authorization_pending`, `access_denied`, and `expired_token` semantics within
+the stricter local bounds. Do not poll while the app is backgrounded. Resume
+only after an explicit foreground action and fresh platform authentication.
 
-## Privacy and retention
+The app must show the account returned by the authenticated-user endpoint
+before the user confirms the invitation, installation, and device binding.
+The non-zero numeric `id` is the provider subject. Login, display name, profile
+URL, and public email are mutable snapshots and never authorize a user.
 
-Persist only:
+## Authority commit
 
-- provider type and authority;
-- decimal GitHub numeric user ID;
-- consented display snapshots;
-- provider-response and authentication timestamps;
-- the local installation, application instance, and device public-key
-  binding; and
-- protocol and verifier versions needed to assess the evidence.
+A successful provider poll is not enrolment. The device must bind the numeric
+subject, invitation, public key, assurance, installation, policy generation,
+App configuration digest, and fresh authority challenge into the exact signed
+binding defined by ADR 0025. Prosopikon then performs the ADR 0023 invitation,
+principal, device, receipt, reconciliation, and audit transaction atomically.
 
-Never persist the authorization code, access token, PKCE verifier, `state`,
-cookies, browser history, or complete provider response. Redact bearer tokens,
-authorization codes, and callback query strings from logs and diagnostics.
-Clear transient material after success, cancellation, timeout, or error.
-
-Binding records follow the installation's identity-record retention policy.
-Display snapshots may be refreshed or erased independently without changing
-the stable subject. Revocation prevents future authorization but does not
-rewrite retained historical evidence.
+Persist only the minimized authority receipt and permitted display snapshots.
+Never persist the device code, user code, access or refresh token, complete
+provider response, browser history, or private key. Clear transient material
+on success, denial, cancellation, backgrounding, timeout, malformed response,
+rate-limit termination, or network failure.
 
 ## Failure and recovery
 
-An enrolment attempt is untrusted until provider identity, callback state, and
-device-key binding have all validated and the binding commits atomically.
-
 | Event | Required outcome |
 | --- | --- |
-| User cancels or GitHub denies access | Clear the attempt and show a neutral cancellation; create no binding. |
-| Callback state, URI, or attempt differs | Reject as a security error, clear the attempt, and require a new browser flow. |
-| Callback is replayed | Reject it; an attempt can complete at most once. |
-| Authorization code expires or exchange fails | Clear secrets and restart from a new authorization request. |
-| Network fails or GitHub is unavailable | Preserve no partial trust; allow an explicit retry with fresh state and PKCE material. |
+| User cancels or GitHub denies access | Clear the attempt and create no binding. |
+| User code or provider subject is substituted | Fail closed, audit coarsely, and require a fresh invitation and Device Flow. |
+| Poll interval or expiry is violated | Stop polling, clear transient material, and create no binding. |
+| GitHub or the network is unavailable | Preserve no partial trust; retry explicitly with a fresh device code. |
 | Authenticated-user response is malformed | Reject it and create no binding. |
-| Returned account is not the expected account | Let the user cancel or explicitly restart with account selection. |
-
-Retries never reuse `state`, authorization codes, or PKCE material.
-
-## Reauthentication
-
-Require a complete new provider ceremony for:
-
-- initial enrolment;
-- changing the provider identity bound to a local user;
-- replacement or recovery device enrolment;
-- administrator-requested identity revalidation; and
-- metadata refresh when local policy requires fresh provider authentication.
+| Authority commit is uncertain | Use only ADR 0025's signed receipt lookup and bounded reconciliation. |
 
 Do not contact GitHub for routine challenge signing or verification. A login
 rename alone does not require rebinding because the numeric subject remains
@@ -100,9 +78,12 @@ stable.
 
 ## Incident response
 
-If transient credentials may have leaked, revoke the OAuth authorization in
-GitHub, clear pending local attempts, inspect redacted audit events, and begin
-a fresh enrolment. If the OAuth client ID or callback registration changes,
-disable enrolment until compatibility and redirect validation have passed
-again. A suspected subject-substitution or callback attack is security
-sensitive and follows `SECURITY.md`.
+If transient credentials may have leaked, revoke the GitHub App user
+authorization, clear pending attempts, inspect redacted audit events, and begin
+a fresh invitation and Device Flow. A suspected subject, user-code, invitation,
+device-key, or App-configuration substitution is security sensitive and
+follows `SECURITY.md`.
+
+A future authorization-code or confidential-broker profile requires a distinct
+accepted ADR and profile identifier. It must not silently replace or fall back
+from the v0.1 Device Flow profile.

@@ -17,3 +17,5 @@ recovery, backup, audit, and incident-response guidance.
 - [Release installation, upgrade, backup, and publication](release-packaging.md)
 - [CLI authentication operations](cli-authentication.md)
 - [Local authentication agent operations](local-agent.md)
+- [Linux hardware signing operations](linux-hardware-signing.md)
+- [MVP deployment profile](mvp-deployment-profile.md)

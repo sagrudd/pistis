@@ -72,3 +72,51 @@ does not create a key automatically, accept private bytes, invoke the
 key is intentionally withheld until the agent code-signing identifier, access
 group, user-presence policy, rotation procedure, and recovery consequences are
 reviewed together.
+
+## Production challenge signing boundary
+
+`HostChallengeSigner` is the production counterpart to the phone verifier. A
+host adapter supplies the enrolled installation public key, its independently
+configured Pistis `KeyId`, and an `InstallationSigner` implementation. The
+constructor derives the key identifier again and rejects malformed or
+substituted configuration before the provider is invoked.
+
+For every login, the adapter must:
+
+1. obtain authority-selected identifiers, audience, expiry, and binding facts
+   from Prosopikon;
+2. generate the challenge identifier and nonce with the reviewed host random
+   source;
+3. construct the complete ADR 0019 `ChallengeDocument`;
+4. call `HostChallengeSigner::sign` exactly once;
+5. pass the returned canonical payload and COSE envelope unchanged to the
+   Prosopikon begin transaction; and
+6. render only that exact envelope through the version-2 QR codec.
+
+The provider receives the exact ADR 0018 COSE `Sig_structure`, not the payload.
+The adapter verifies the provider's returned key identifier and signature
+against the configured public key before returning any output. It has no
+private-key export method and never accepts private bytes.
+
+The returned authority facts deliberately distinguish:
+
+- `payload_digest`: SHA-256 of the canonical ADR 0019 payload; this is
+  Prosopikon's durable `challenge_digest`;
+- `envelope_digest`: SHA-256 of the exact untagged COSE Sign1 bytes; this is a
+  separately named signed-envelope fingerprint; and
+- `nonce_digest`: SHA-256 of the raw nonce.
+
+Do not interchange these digests. Persist the payload and envelope only inside
+the single durable challenge transaction. The raw nonce must not be copied to
+logs, diagnostics, a second repository, or a second state machine.
+
+A platform provider is responsible for enforcing its own key-store access and
+permission policy before returning a signature. Unsafe path ownership,
+symlinks, group/world-readable key material, missing HSM policy, an ambiguous
+key selector, or a secret-store response containing private material must
+produce a coarse `SignerError` and no signature. The generic boundary does not
+weaken or repair provider permissions.
+
+[ADR 0024](../adr/0024-linux-hardware-signing-providers.md) proposes the Linux
+provider-neutral boundary, with TPM2 first and PKCS#11 second. Linux
+implementation remains prohibited until specialist review accepts that ADR.

@@ -9,6 +9,7 @@
 
 mod action;
 mod model;
+mod production_response;
 mod schema;
 mod service;
 
@@ -23,6 +24,11 @@ pub use model::{
     AuditEvent, AuthenticatedSessionId, ChallengeContext, ChallengeDocument, Completion, Decision,
     DeviceCredential, DeviceDirectory, LoginHandle, LoginStatus, PreAuthSessionId, PublicFailure,
     RandomSource, ResponseEnvelope, ServiceError, TransferMode, UnixTimeMillis,
+};
+pub use production_response::{
+    AuthenticationResponseCredential, AuthenticationResponseExpectation,
+    AuthenticationResponseVerificationError, VerifiedAuthenticationResponse,
+    verify_authentication_response,
 };
 pub use schema::{decode_challenge, encode_challenge, encode_response};
 pub use service::AuthenticationService;

@@ -4,7 +4,12 @@ This page records the intended M11 operational boundary. Source, debug builds,
 or emulator results are not evidence of Play distribution or hardware-backed
 assurance.
 
-## Keeper-assisted GitHub authentication
+## Future Android Keeper-assisted GitHub authentication
+
+Android is outside the v0.1 release baseline. The broker/PKCE text below
+describes an earlier future profile and is not an active v0.1 deployment
+procedure. Any Android enrolment implementation must adopt ADR 0025 Device Flow
+or receive a separate accepted profile before activation.
 
 Pistis opens GitHub in the external system browser with fresh PKCE and state.
 On supported Android versions, GitHub may ask the browser for its

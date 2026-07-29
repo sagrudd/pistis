@@ -74,6 +74,10 @@ Architecture and operations
    adr/0020-prosopikon-pistis-authority-transaction
    adr/0021-production-qr-envelope-and-installation-trust
    adr/0022-host-owned-cli-agent-authority-port
+   adr/0023-authenticated-mobile-enrolment-exchange
+   adr/0024-linux-hardware-signing-providers
+   adr/0025-github-app-device-flow-v0-1
+   adr/0026-mvp-deployment-and-product-profile
    protocol/README
    protocol/domain-model
    protocol/action-approval
@@ -86,6 +90,7 @@ Architecture and operations
    operations/device-registry
    operations/github-enrolment
    operations/google-enrolment
+   operations/mobile-enrolment
    operations/qr-authentication
    operations/ios
    operations/android
@@ -97,3 +102,5 @@ Architecture and operations
    operations/release-packaging
    operations/cli-authentication
    operations/local-agent
+   operations/linux-hardware-signing
+   operations/mvp-deployment-profile

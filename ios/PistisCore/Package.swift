@@ -8,8 +8,19 @@ let package = Package(
     products: [
         .library(name: "PistisCore", targets: ["PistisCore"]),
     ],
+    dependencies: [
+        .package(
+            url: "https://github.com/apple/swift-crypto.git",
+            exact: "4.5.1"
+        ),
+    ],
     targets: [
-        .target(name: "PistisCore"),
+        .target(
+            name: "PistisCore",
+            dependencies: [
+                .product(name: "Crypto", package: "swift-crypto"),
+            ]
+        ),
         .testTarget(name: "PistisCoreTests", dependencies: ["PistisCore"]),
     ]
 )

@@ -8,6 +8,7 @@ repository.workspace = true
 
 [dependencies]
 pistis-canonical.workspace = true
+pistis-cose.workspace = true
 pistis-crypto.workspace = true
 pistis-domain.workspace = true
 pistis-qr.workspace = true

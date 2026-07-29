@@ -1,4 +1,5 @@
 import Foundation
+import PistisCore
 import XCTest
 @testable import Pistis
 
@@ -177,9 +178,95 @@ final class PlatformPolicyTests: XCTestCase {
         }
     }
 
+    func testGitHubEnrolmentConfigurationIsExactAndCredentialFree() throws {
+        let configuration = try GitHubEnrolmentConfiguration(
+            clientID: GitHubEnrolmentConfiguration.reviewedClientID,
+            deviceCodeEndpoint: try XCTUnwrap(
+                URL(string: "https://github.com/login/device/code")
+            ),
+            accessTokenEndpoint: try XCTUnwrap(
+                URL(string: "https://github.com/login/oauth/access_token")
+            ),
+            authenticatedUserEndpoint: try XCTUnwrap(URL(string: "https://api.github.com/user")),
+            apiVersion: "2022-11-28",
+            appConfigurationDigest: Data(repeating: 0x55, count: 32)
+        )
+        XCTAssertEqual(
+            configuration.clientID,
+            GitHubEnrolmentConfiguration.reviewedClientID
+        )
+
+        let invalidDeviceEndpoints = [
+            "http://github.com/login/device/code",
+            "https://github.com/login/oauth/authorize",
+            "https://attacker.example/login/device/code",
+        ]
+        for value in invalidDeviceEndpoints {
+            XCTAssertThrowsError(
+                try GitHubEnrolmentConfiguration(
+                    clientID: GitHubEnrolmentConfiguration.reviewedClientID,
+                    deviceCodeEndpoint: XCTUnwrap(URL(string: value)),
+                    accessTokenEndpoint: XCTUnwrap(
+                        URL(string: "https://github.com/login/oauth/access_token")
+                    ),
+                    authenticatedUserEndpoint: XCTUnwrap(
+                        URL(string: "https://api.github.com/user")
+                    ),
+                    apiVersion: "2022-11-28",
+                    appConfigurationDigest: Data(repeating: 0x55, count: 32)
+                )
+            )
+        }
+        XCTAssertThrowsError(
+            try GitHubEnrolmentConfiguration(
+                clientID: "Iv23lievAttackerClient",
+                deviceCodeEndpoint: XCTUnwrap(
+                    URL(string: "https://github.com/login/device/code")
+                ),
+                accessTokenEndpoint: XCTUnwrap(
+                    URL(string: "https://github.com/login/oauth/access_token")
+                ),
+                authenticatedUserEndpoint: XCTUnwrap(
+                    URL(string: "https://api.github.com/user")
+                ),
+                apiVersion: "2022-11-28",
+                appConfigurationDigest: Data(repeating: 0x55, count: 32)
+            )
+        )
+    }
+
+    func testGitHubIdentityProofUsesNumericSubjectAndBoundedDisplayOnly() throws {
+        let proof = try GitHubStableIdentityProof(
+            numericSubject: 1_842_030,
+            displayLogin: "synthetic-user"
+        )
+        XCTAssertEqual(proof.numericSubject, 1_842_030)
+        XCTAssertThrowsError(
+            try GitHubStableIdentityProof(
+                numericSubject: 0,
+                displayLogin: "synthetic-user"
+            )
+        )
+        XCTAssertThrowsError(
+            try GitHubStableIdentityProof(
+                numericSubject: 1,
+                displayLogin: "attacker\ncontent"
+            )
+        )
+    }
+
+    func testGitHubEnrolmentRemainsDisabledWithoutAuthorityPorts() {
+        let readiness = GitHubEnrolmentReadiness.current()
+        XCTAssertFalse(readiness.state.mayStart)
+        XCTAssertFalse(readiness.configurationLabel.localizedCaseInsensitiveContains("secret"))
+        XCTAssertFalse(readiness.identityRule.contains("@"))
+    }
+
     @MainActor
-    func testReadinessSnapshotContainsNoKeyOrAttackerMaterial() {
-        let snapshot = PasswordlessReadinessProbe.current()
+    func testReadinessSnapshotContainsNoKeyOrAttackerMaterial() async {
+        let snapshot = await PasswordlessReadinessProbe.current(
+            trustStore: EmptyTrustStore()
+        )
         let rendered = snapshot.items
             .flatMap { [$0.id, $0.title, $0.detail] }
             .joined(separator: " ")
@@ -190,4 +277,204 @@ final class PlatformPolicyTests: XCTestCase {
         XCTAssertFalse(rendered.contains("endpoint"))
         XCTAssertFalse(rendered.contains("github"))
     }
+
+    func testTransportUsesProtocolTwoKiBBounds() {
+        XCTAssertEqual(AuthenticationResponseTransport.maximumEnvelopeBytes, 2_048)
+        XCTAssertEqual(AuthenticationResponseTransport.maximumResponseBytes, 2_048)
+    }
+
+    func testAuthorityStatusDecodesExactMonasWireNames() throws {
+        let status = try JSONDecoder().decode(
+            AuthoritativeCeremonyStatus.self,
+            from: Data(#"{"state":"completed","evidence_id":null}"#.utf8)
+        )
+        XCTAssertEqual(status.state, .completed)
+        XCTAssertNil(status.evidenceID)
+        XCTAssertThrowsError(
+            try JSONDecoder().decode(
+                AuthoritativeCeremonyStatus.self,
+                from: Data(#"{"state":"accepted","evidence_id":null}"#.utf8)
+            )
+        )
+        XCTAssertThrowsError(
+            try JSONDecoder().decode(
+                AuthoritativeCeremonyStatus.self,
+                from: Data(
+                    #"{"state":"completed","evidence_id":null,"redirect":"https://attacker.test"}"#
+                        .utf8
+                )
+            )
+        )
+    }
+
+    func testTransportRejectsNonCanonicalAllowedHosts() {
+        for host in [
+            "Jenkins.mnemosyne.test",
+            "jenkins.mnemosyne.test.",
+            "jenkins..mnemosyne.test",
+            "jenkins.mnemosyne.test/path",
+            "jënkins.mnemosyne.test",
+            "127.0.0.1",
+            "2130706433",
+            "0x7f000001",
+            "0177.0.0.1",
+            "127.1",
+            "::1",
+        ] {
+            XCTAssertThrowsError(
+                try AuthenticationResponseTransport(allowedHosts: [host]),
+                "non-canonical host unexpectedly accepted: \(host)"
+            )
+        }
+    }
+
+    func testTransportDelegateRefusesRedirectBeforeBodyReplay() throws {
+        let original = try XCTUnwrap(
+            URL(string: "https://jenkins.mnemosyne.test/auth/pistis")
+        )
+        let redirected = try XCTUnwrap(
+            URL(string: "https://attacker.test/capture")
+        )
+        let response = try XCTUnwrap(
+            HTTPURLResponse(
+                url: original,
+                statusCode: 307,
+                httpVersion: "HTTP/1.1",
+                headerFields: ["Location": redirected.absoluteString]
+            )
+        )
+        var followedRequest: URLRequest? = URLRequest(url: redirected)
+        RedirectRejectingSessionDelegate().urlSession(
+            .shared,
+            task: URLSession.shared.dataTask(with: original),
+            willPerformHTTPRedirection: response,
+            newRequest: URLRequest(url: redirected)
+        ) {
+            followedRequest = $0
+        }
+        XCTAssertNil(followedRequest)
+    }
+
+    func testPersistedEnrollmentOutputRejectsUnknownFields() throws {
+        let trust = try InstallationTrustRecord(
+            installationID: Data(repeating: 1, count: 16),
+            displayName: "Mnemosyne Jenkins",
+            audience: "jenkins.mnemosyne.test",
+            userID: Data(repeating: 2, count: 16),
+            externalIdentityID: Data(repeating: 3, count: 16),
+            fingerprint: Data(repeating: 4, count: 32),
+            installationKeyID: Data(repeating: 5, count: 32),
+            installationPublicKey: Data([2]) + Data(repeating: 6, count: 32),
+            authorityKeyID: Data(repeating: 7, count: 32),
+            authorityReceipt: Data([1]),
+            policyGeneration: 1,
+            revocationGeneration: 1,
+            expiresAt: Date(timeIntervalSince1970: 1_800_000_000),
+            active: true
+        )
+        let context = try DeviceResponseContext(
+            deviceID: Data(repeating: 8, count: 16),
+            deviceKeyID: Data(repeating: 9, count: 32),
+            userID: trust.userID,
+            externalIdentityID: trust.externalIdentityID
+        )
+        let output = try AuthenticatedEnrollmentOutput(
+            trust: trust,
+            responseContext: context,
+            allowedHosts: ["jenkins.mnemosyne.test"]
+        )
+        var object = try XCTUnwrap(
+            JSONSerialization.jsonObject(with: JSONEncoder().encode(output))
+                as? [String: Any]
+        )
+        object["unexpected"] = true
+        XCTAssertThrowsError(
+            try JSONDecoder().decode(
+                AuthenticatedEnrollmentOutput.self,
+                from: JSONSerialization.data(withJSONObject: object)
+            )
+        )
+    }
+
+    @MainActor
+    func testCoordinatorFailsClosedWithoutAuthenticatedEnrolment() async {
+        let coordinator = ProductionCeremonyCoordinator(
+            trustStore: EmptyTrustStore(),
+            now: { Date(timeIntervalSince1970: 1_700_000_000) }
+        )
+        await coordinator.accept(qrText: "PISTIS1:attacker.0000000000000000")
+        XCTAssertEqual(coordinator.phase, .failed(.enrolmentRequired))
+    }
+
+    @MainActor
+    func testBrowserEnrolmentNeverWritesUnverifiedBrokerOutput() async {
+        let store = RecordingTrustStore()
+        let coordinator = SystemBrowserEnrollmentCoordinator(
+            authorize: {
+                OAuthAuthorizationCode(code: "one-use", codeVerifier: String(repeating: "v", count: 43))
+            },
+            broker: RejectingEnrollmentBroker(),
+            trustStore: store
+        )
+        do {
+            try await coordinator.enroll(
+                exactDeviceRegistrationEnvelope: Data([0x84, 0x01])
+            )
+            XCTFail("unverified broker exchange unexpectedly succeeded")
+        } catch {
+            XCTAssertEqual(error as? PlatformFailure, .productionEnvelopeUnavailable)
+        }
+        let installCount = await store.installCount()
+        XCTAssertEqual(installCount, 0)
+    }
+
+    @MainActor
+    func testBrowserEnrolmentRejectsOversizeBeforeAuthorization() async {
+        var authorized = false
+        let coordinator = SystemBrowserEnrollmentCoordinator(
+            authorize: {
+                authorized = true
+                return OAuthAuthorizationCode(
+                    code: "one-use",
+                    codeVerifier: String(repeating: "v", count: 43)
+                )
+            },
+            broker: RejectingEnrollmentBroker(),
+            trustStore: RecordingTrustStore()
+        )
+        do {
+            try await coordinator.enroll(
+                exactDeviceRegistrationEnvelope: Data(repeating: 0, count: 2_049)
+            )
+            XCTFail("oversized registration unexpectedly succeeded")
+        } catch {
+            XCTAssertEqual(error as? PlatformFailure, .invalidConfiguration)
+        }
+        XCTAssertFalse(authorized)
+    }
+}
+
+private actor EmptyTrustStore: InstallationTrustStoring {
+    func record(installationID _: Data) -> InstallationTrustRecord? { nil }
+    func activeEnrollment() -> AuthenticatedEnrollmentOutput? { nil }
+    func installAuthenticated(_: AuthenticatedEnrollmentOutput) {}
+    func revoke(installationID _: Data) {}
+}
+
+private struct RejectingEnrollmentBroker: EnrollmentReceiptExchanging {
+    func exchangeAndVerify(
+        authorization _: OAuthAuthorizationCode,
+        exactDeviceRegistrationEnvelope _: Data
+    ) throws -> AuthenticatedEnrollmentOutput {
+        throw PlatformFailure.productionEnvelopeUnavailable
+    }
+}
+
+private actor RecordingTrustStore: InstallationTrustStoring {
+    private var installs = 0
+    func record(installationID _: Data) -> InstallationTrustRecord? { nil }
+    func activeEnrollment() -> AuthenticatedEnrollmentOutput? { nil }
+    func installAuthenticated(_: AuthenticatedEnrollmentOutput) { installs += 1 }
+    func revoke(installationID _: Data) {}
+    func installCount() -> Int { installs }
 }

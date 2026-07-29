@@ -790,7 +790,9 @@ dependencies = [
  "getrandom 0.3.4",
  "nix",
  "p256",
+ "pistis-authentication",
  "pistis-canonical",
+ "pistis-cose",
  "pistis-crypto",
  "pistis-domain",
  "rusqlite",
@@ -807,6 +809,7 @@ version = "0.1.0"
 dependencies = [
  "p256",
  "pistis-canonical",
+ "pistis-cose",
  "pistis-crypto",
  "pistis-domain",
  "pistis-qr",

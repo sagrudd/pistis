@@ -11,6 +11,13 @@ the relevant GitHub issue before starting.
 4. Run the local quality gates.
 5. Open a pull request using the repository template.
 
+Local gates are the ordinary pull-request feedback loop. Jenkins retains
+authoritative provenance for milestone/release candidates, cross-project
+acceptance locksets, and explicitly governed native evidence—not every minor
+commit. Compatible reviewed changes may be consolidated and qualified once at
+their final integration head; their original issues, ADRs, commits, and review
+history must remain traceable.
+
 Developer Certificate of Origin sign-off (`git commit -s`) is encouraged.
 
 ## Quality gates
@@ -25,7 +32,9 @@ cargo audit
 cargo deny check
 ```
 
-Markdown files must pass markdownlint. CI is authoritative.
+Markdown files must pass markdownlint. Local checks establish ordinary change
+readiness; the exact-revision Jenkins dossier is authoritative for milestone
+qualification.
 
 Keep code hierarchical and modular according to
 `docs/development/code-structure.md`. Rust files over 1,000 physical lines fail

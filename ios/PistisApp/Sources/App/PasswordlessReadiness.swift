@@ -68,22 +68,27 @@ struct PasswordlessReadiness: Equatable, Sendable {
 
 @MainActor
 enum PasswordlessReadinessProbe {
-    static func current() -> PasswordlessReadiness {
-        PasswordlessReadiness(
+    static func current(
+        trustStore: any InstallationTrustStoring = InstallationTrustKeychain.shared
+    ) async -> PasswordlessReadiness {
+        let hasTrust = (try? await trustStore.activeEnrollment()) != nil
+        return PasswordlessReadiness(
             camera: camera(),
             faceID: faceID(),
             deviceKey: deviceKey(),
             authorityKey: .init(
                 id: "authority-key",
                 title: "Installation authority",
-                detail: "No enrolled installation verification key is available.",
-                state: .actionRequired
+                detail: hasTrust
+                    ? "Authenticated installation trust is stored in Keychain."
+                    : "No authenticated installation trust is stored.",
+                state: hasTrust ? .ready : .actionRequired
             ),
             verifier: .init(
                 id: "verifier",
                 title: "Production verifier",
-                detail: "Production QR verification awaits accepted protocol review.",
-                state: .unavailable
+                detail: "The accepted QR v2 and COSE verifier is available.",
+                state: .ready
             )
         )
     }

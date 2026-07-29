@@ -26,3 +26,28 @@ signed approval and denial responses.
 [ADR 0022](0022-host-owned-cli-agent-authority-port.md) accepts the
 credential-free local-agent to host-authority port. Activation remains gated
 on its implementation and cross-repository conformance evidence.
+
+[ADR 0023](0023-authenticated-mobile-enrolment-exchange.md) accepts the
+one-use mobile enrolment exchange, invitation-bound authority-key bootstrap,
+server-held GitHub callback correlation, and complete signed
+installation-trust receipt. Product activation remains blocked until
+cross-project implementation review and evidence pass.
+
+ADR 0025 supersedes ADR 0023's callback, OAuth-state, PKCE, broker, and
+authorization-code transport requirements for v0.1. ADR 0023's authority-key
+bootstrap, signed binding, atomic commit, receipt, reconciliation, and audit
+transaction remain normative.
+
+[ADR 0024](0024-linux-hardware-signing-providers.md) proposes the
+provider-neutral Linux installation-signing boundary, with TPM2 first and
+PKCS#11 second. Project-owner direction is approved; implementation remains
+blocked pending specialist security and cryptography review.
+
+[ADR 0025](0025-github-app-device-flow-v0-1.md) is **Accepted**. It supersedes
+only the GitHub enrolment transport sections of ADRs 0003, 0007, 0008, and
+0023 for v0.1; stable numeric-subject and Prosopikon authority invariants
+remain unchanged.
+
+[ADR 0026](0026-mvp-deployment-and-product-profile.md) is **Accepted**. It
+records the owner-approved MVP identity, customer deployment, product-session,
+mobile, recovery, privacy, distribution, licensing, and deferred-work profile.

@@ -71,6 +71,12 @@ a Changelog and releases follow Semantic Versioning.
   authentication challenge and response diagnostic schemas. These JSON views
   remain non-normative and are never signed or accepted on protocol boundaries.
 
+### Fixed
+
+- Correct the operator-guide SHA-256 for the retained physical-iPhone
+  interoperability record and enforce the documentation-to-fixture binding in
+  a deterministic regression test.
+
 ### Security
 
 - Upgrade `jsonwebtoken` to the patched 10.x validation implementation and use

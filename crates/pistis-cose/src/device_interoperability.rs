@@ -245,6 +245,7 @@ mod tests {
     const PHYSICAL_IOS_RECORD: &str = include_str!(
         "../../../fixtures/protocol-v1/cose/ios-physical-interoperability-record.json"
     );
+    const IOS_OPERATOR_GUIDE: &str = include_str!("../../../docs/operations/ios.md");
 
     fn replace_field(record: &str, field: &str, replacement: &str) -> String {
         let needle = format!("\"{field}\": \"");
@@ -287,6 +288,15 @@ mod tests {
         assert_eq!(
             record.key_id().as_bytes().as_slice(),
             decode_hex("fb8cc53e5fc6da7ff9082c6560f1150ad5dd04018dc703cd1de5b42fa99cdec5").unwrap()
+        );
+    }
+
+    #[test]
+    fn operator_guide_pins_exact_retained_physical_ios_record_digest() {
+        let digest = lowercase_hex(sha256(PHYSICAL_IOS_RECORD.as_bytes()).as_bytes());
+        assert!(
+            IOS_OPERATOR_GUIDE.contains(&format!("`{digest}`")),
+            "operator guide must publish the exact retained record SHA-256"
         );
     }
 

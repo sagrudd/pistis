@@ -245,6 +245,7 @@ mod tests {
     const PHYSICAL_IOS_RECORD: &str = include_str!(
         "../../../fixtures/protocol-v1/cose/ios-physical-interoperability-record.json"
     );
+    const IOS_OPERATIONS_GUIDE: &str = include_str!("../../../docs/operations/ios.md");
 
     fn replace_field(record: &str, field: &str, replacement: &str) -> String {
         let needle = format!("\"{field}\": \"");
@@ -288,6 +289,16 @@ mod tests {
             record.key_id().as_bytes().as_slice(),
             decode_hex("fb8cc53e5fc6da7ff9082c6560f1150ad5dd04018dc703cd1de5b42fa99cdec5").unwrap()
         );
+    }
+
+    #[test]
+    fn retained_physical_ios_digest_matches_operator_guide() {
+        let digest = lowercase_hex(sha256(PHYSICAL_IOS_RECORD.as_bytes()).as_bytes());
+        assert_eq!(
+            digest,
+            "b8802b44f02ba0321803b76f3a12fe7d6c684ae696c476f24a418f575f1d9f71"
+        );
+        assert!(IOS_OPERATIONS_GUIDE.contains(&format!("`{digest}`")));
     }
 
     #[test]

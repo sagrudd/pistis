@@ -67,6 +67,8 @@ a Changelog and releases follow Semantic Versioning.
 
 ### Changed
 
+- Correct the documented SHA-256 of the retained physical-iOS evidence record
+  and guard it against future operator-guide drift.
 - Replace the incomplete generic challenge diagnostic schema with closed
   authentication challenge and response diagnostic schemas. These JSON views
   remain non-normative and are never signed or accepted on protocol boundaries.

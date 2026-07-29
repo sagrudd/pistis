@@ -493,7 +493,7 @@ retention is recorded with the EPIC-18 pull-request acceptance evidence.
 
 - [ ] Register the Mnemosyne Biosciences GitHub App and enable device flow
 - [x] Expose the strict Rust verifier for signed production responses
-- [~] Accept the authenticated mobile enrolment exchange contract (ADR 0023)
+- [x] Accept the authenticated mobile enrolment exchange contract (ADR 0023)
 - [ ] Implement the bounded Monas exchange and Prosopikon enrolment transaction
 - [ ] Verify the signed trust bundle before atomic iOS Keychain installation
 - [ ] Share exact Rust/Swift enrolment fixtures and hostile cases
@@ -522,10 +522,10 @@ The system-browser broker still needs to supply the authenticated enrolment
 output, and end-user enrolment/history/revocation UX plus physical
 qualification remain. The detached version-1 QR fixture remains reference-only.
 
-Issue #318 and proposed ADR 0023 define the remaining trust bootstrap. No
+Issue #318 and accepted ADR 0023 define the remaining trust bootstrap. No
 endpoint or Keychain installation may be represented as production enrolment
-until specialist review accepts the ADR and the shared fixture, retry,
-restart, concurrency, substitution, and pre-mutation negative tests pass.
+until the shared fixture, retry, restart, concurrency, substitution, and
+pre-mutation negative tests pass cross-project review.
 
 ## EPIC 23 — Authentication evidence
 

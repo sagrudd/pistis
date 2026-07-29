@@ -70,7 +70,6 @@ The first candidate does not qualify:
 - self-service account creation or inferred identity matching;
 - multiple active devices or key migration;
 - report, dataset, workflow, or multi-party signing;
-- TPM or HSM installation-key sealing; or
 - public production use before independent review.
 
 Android source and local discovery may remain build-tested previews. They must
@@ -107,11 +106,15 @@ It never accepts a personal access token, GitHub password, passkey, or
 password-manager secret. Keeper or another credential provider may participate
 only in GitHub's own browser ceremony.
 
-Each installation generates its signing key locally. For MVP the key is a
-non-symlink, service-account-owned private file loaded through systemd
-credentials. Environment variables and command arguments are forbidden.
-Encrypted offline backup, explicit restore, rotation, and audit are required.
-TPM/HSM sealing is deferred.
+Each Linux authentication authority selects exactly one reviewed,
+non-exporting hardware provider through the provider-neutral boundary in
+proposed ADR 0024. TPM2 is the first implementation and PKCS#11 is the second.
+The configured provider and enrolled public key are fixed before the service
+listens; absence or failure never selects an ordinary-file signer or another
+provider. Ordinary Jenkins and DASObjectStore workers remain keyless.
+Environment variables and command arguments are forbidden for authorization
+values. Recovery is revoke, invalidate sessions, provision a new
+non-exportable key, and re-enrol; Pistis never backs up private-key material.
 
 ## Acceptance and release gates
 

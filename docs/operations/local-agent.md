@@ -116,3 +116,7 @@ symlinks, group/world-readable key material, missing HSM policy, an ambiguous
 key selector, or a secret-store response containing private material must
 produce a coarse `SignerError` and no signature. The generic boundary does not
 weaken or repair provider permissions.
+
+[ADR 0024](../adr/0024-linux-hardware-signing-providers.md) proposes the Linux
+provider-neutral boundary, with TPM2 first and PKCS#11 second. Linux
+implementation remains prohibited until specialist review accepts that ADR.

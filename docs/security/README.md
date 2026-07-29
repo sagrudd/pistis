@@ -8,9 +8,11 @@ and penetration-test scopes belong here. Vulnerabilities must be reported using
 
 GitHub OAuth and Google OpenID Connect are online only during external-identity
 enrolment and explicit reauthentication. They do not participate in routine
-local authentication. A provider response creates no trust until callback
-correlation, provider-specific identity validation, device-key binding, and
-durable commit all succeed.
+local authentication. A provider response creates no trust until its selected
+transport correlation, provider-specific identity validation, device-key
+binding, and durable commit all succeed. ADR 0025 GitHub Device Flow uses the
+invitation, App-configuration digest, platform-key proof, and explicit account
+confirmation instead of callback state.
 
 Google enrolment additionally depends on authenticated discovery and rotating
 public signing keys. Discovery starts at a fixed Google URI; issuer, endpoint,
@@ -18,14 +20,14 @@ algorithm, signature, audience, authorized presenter, time, and nonce checks
 fail closed. Cached public metadata may improve availability but must not
 extend token validity or permit an unknown key indefinitely.
 
-Authorization codes, bearer and ID tokens, PKCE verifiers, state, nonce, and
-complete provider responses cross the transient-enrolment boundary only. They
-must be redacted, cleared on every terminal path, and excluded from persistent
-evidence. Provider email, login, and hosted-domain values are mutable metadata,
-not identity keys.
+Device/user codes, authorization codes, bearer and ID tokens, PKCE verifiers,
+state, nonce, and complete provider responses cross their selected
+transient-enrolment boundary only. They must be redacted, cleared on every
+terminal path, and excluded from persistent evidence. Provider email, login,
+and hosted-domain values are mutable metadata, not identity keys.
 
 ADR 0025 is the **Accepted** v0.1 GitHub App device-flow profile. It supersedes
-only the GitHub transport portions of ADRs 0003, 0007 and 0008.
+only the GitHub transport portions of ADRs 0003, 0007, 0008, and 0023.
 Its device code, user code, access/refresh token, browser and `/user` response
 remain transient capabilities; its browser-suspended state does no polling;
 and it requires explicit confirmation, platform-key proof and an atomic

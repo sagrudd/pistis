@@ -17,10 +17,12 @@ The adapter must:
 - ignore unrelated response members without copying the full response into
   durable evidence.
 
-Tests must also exercise callback cancellation, wrong or absent `state`,
-callback replay, expired attempts, token-exchange failure, provider timeouts,
-and persistence failure. Every failure must assert that no binding was
-committed and transient secrets were cleared.
+Tests must also exercise user-code and provider-subject substitution,
+background cancellation, bounded polling intervals, `slow_down`,
+`authorization_pending`, denial, expiry, malformed responses, provider
+timeouts, authority-commit failure, and persistence failure. Every failure must
+assert that no binding was committed and transient codes and tokens were
+cleared.
 
 Tests that simulate two responses with the same numeric `id` and different
 `login` values must produce the same provider identity. Responses with the
@@ -34,8 +36,9 @@ expected outcome in `fixtures/provider/github/README.md`. Never record traffic
 from a real GitHub session.
 
 Provider response changes may extend the accepted input, but must not change
-the stable-subject rule. A change to identity semantics, callback validation,
-token retention, or durable evidence requires security review and an ADR.
+the stable-subject rule. A change to identity semantics, Device Flow
+correlation, token retention, or durable evidence requires security review and
+an ADR.
 
 ## Google fixture contract
 

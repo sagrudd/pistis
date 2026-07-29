@@ -38,9 +38,11 @@ Purpose: `pistis.enrolment-intent.v1`.
 
 The intent begins proof of control of an external identity and shall contain
 `enrolment_id`, `provider`, `redirect_binding`, `nonce`, `expires_at_ms`, and
-the requested local `user_id`. `redirect_binding` binds the exact callback
-origin and provider transaction. An intent is installation-signed. A provider
-name, callback, user, or nonce from any other intent must not be substituted.
+the requested local `user_id`. `redirect_binding` binds the exact selected
+provider transport and transaction. For ADR 0025 Device Flow it binds the
+profile and reviewed App-configuration digest, not a callback URI. An intent
+is installation-signed. A provider, transport, user, or nonce from any other
+intent must not be substituted.
 
 ### External identity binding
 
@@ -124,11 +126,12 @@ External mobile interoperability still requires shared conformance fixtures
 and retained physical-device evidence.
 
 The accepted authenticated mobile bootstrap is specified by
-[ADR 0023](adr/0023-authenticated-mobile-enrolment-exchange.md). It introduces
-an HTTPS GitHub callback whose server-held result is represented to iOS only
-by a one-use opaque correlation. In particular, an authority key returned only
-by an enrolment response is not trusted: it must match the digest committed by
-the administrator-issued, single-use invitation. The authority-signed mobile
+[ADR 0023](adr/0023-authenticated-mobile-enrolment-exchange.md). ADR 0025
+supersedes its callback, OAuth-state, PKCE, broker, and authorization-code
+transport for v0.1 while retaining the invitation-bound authority bootstrap
+and atomic Prosopikon transaction. An authority key returned only by an
+enrolment response is not trusted: it must match the digest committed by the
+administrator-issued, single-use invitation. The authority-signed mobile
 receipt binds the exact device-registration COSE envelope and every
 installation-trust field that iOS may store.
 

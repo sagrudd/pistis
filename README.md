@@ -7,10 +7,11 @@ authentication, explicit approval, and portable verifiable evidence.
 Repository bootstrap and EPIC-0 are complete. EPIC-1 establishes the typed
 protocol domain, deterministic encoding, and single-use challenge lifecycle;
 EPIC-2 adds ES256 cryptographic verification and the structured verification
-pipeline; EPIC-3 adds GitHub PKCE trust enrolment and durable provider-neutral
+pipeline; EPIC-3 defines GitHub trust enrolment and durable provider-neutral
 identity bindings; EPIC-4 adds locally verified Google OpenID Connect
 enrolment keyed by canonical issuer and stable subject. Later epics add device
-registration and application integrations. EPIC-16 makes terminal-native
+registration and application integrations. ADR 0025 selects no-broker GitHub
+App Device Flow for the v0.1 transport. EPIC-16 makes terminal-native
 authentication and approval a release-blocking primary product surface, using
 ASCII/Unicode QR exchange with the supported iOS application and requiring no
 browser or web application. Android interoperability remains part of the

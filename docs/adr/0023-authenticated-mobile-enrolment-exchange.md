@@ -1,11 +1,12 @@
 # ADR 0023: Authenticated mobile enrolment exchange
 
-- Status: Proposed
+- Status: Accepted
 - Date: 2026-07-28
+- Accepted: 2026-07-29
 - Decision owners: Pistis protocol and mobile security, Prosopikon authority,
   Monas transport, and security review
 - Tracking issue: [#318](https://github.com/sagrudd/pistis/issues/318)
-- Implementation: prohibited until this ADR is accepted
+- Implementation: permitted subject to the review and evidence gates below
 
 ## Context
 
@@ -25,7 +26,27 @@ be an installation trust record and must not be overloaded.
 
 ### Ownership and route
 
-Monas exposes exactly:
+GitHub returns only to the registered HTTPS callback:
+
+```text
+GET /auth/github/callback
+```
+
+Monas consumes the authorization code at that callback and retains all GitHub
+credentials server-side. It redirects the initiating iOS application to:
+
+```text
+pistis://oauth/callback?correlation=<opaque-one-use-value>
+```
+
+The correlation is a fresh, unpredictable, single-use value. It is bound in
+server-side state to the OAuth state, the pending enrolment transaction, the
+invitation digest, and the device key identifier. It is neither a GitHub
+authorization code nor a bearer credential for any other operation. The
+custom-scheme callback contains no OAuth code, token, PKCE value, provider
+subject, invitation, or mutable identity data.
+
+The application completes enrolment through:
 
 ```text
 POST /auth/pistis/v1/enrolments/exchange
@@ -37,7 +58,8 @@ The route requires HTTPS, is never enabled on plain HTTP, and sets
 and a restrictive content-security policy on every response.
 
 Monas owns the exact callback allow-list, OAuth state/correlation, PKCE broker,
-CSRF/origin boundary, request limits, and JSON transport. Prosopikon owns
+the pending-attempt binding, CSRF/origin boundary, request limits, and JSON
+transport. Prosopikon owns
 invitation consumption, provider/principal binding, policy and revocation
 generations, the atomic enrolment transaction, and authority signing. Pistis
 owns canonical payloads, COSE verification, shared fixtures, and the iOS
@@ -95,16 +117,21 @@ The request is one JSON object with exactly these members:
 ```text
 version                         integer, exactly 1
 invitation                      base64url without padding, decoded <= 512 bytes
-oauth_code                      printable ASCII, 1..512 bytes
-pkce_verifier                   RFC 7636 unreserved ASCII, 43..128 bytes
+correlation                     base64url without padding, decoded 32 bytes
 device_registration_cose        base64url without padding, decoded <= 2,048 bytes
 ```
 
 Unknown, duplicate, missing, mis-typed, padded-base64, non-canonical
 base64url, malformed UTF-8, trailing input, and bodies larger than 8,192 bytes
 are rejected before provider exchange. The callback URI, client identifier,
-OAuth `state`, and local attempt are server-held correlation state and are
-never accepted from this body.
+OAuth code, PKCE verifier, OAuth `state`, provider credentials, and local
+attempt are server-held state and are never accepted from this body.
+
+The server consumes the correlation only in the atomic enrolment transaction
+and only after its pending-attempt bindings match the submitted invitation and
+device registration. A failed transaction does not make the correlation
+reusable for a different request; an exact retry is governed solely by the
+idempotency result described below.
 
 `device_registration_cose` is the exact untagged COSE Sign1 envelope from ADR
 0018 containing the ADR 0019 `pistis.device-registration.v1` payload. Its
@@ -171,8 +198,8 @@ mobile_enrolment_receipt_cose   base64url of exact authority-signed receipt
 ```
 
 The encoded response body must be at most 16,384 bytes. It contains no OAuth
-token, invitation, invitation secret, PKCE value, session bearer, browser
-cookie, private key, or mutable provider display value.
+code or token, correlation, invitation, invitation secret, PKCE value, session
+bearer, browser cookie, private key, or mutable provider display value.
 
 iOS must verify, in order and before any Keychain mutation:
 

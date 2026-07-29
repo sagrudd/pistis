@@ -1,9 +1,9 @@
 # Mobile enrolment operations
 
-This runbook describes the operator obligations proposed by
+This runbook describes the operator obligations accepted by
 [ADR 0023](../adr/0023-authenticated-mobile-enrolment-exchange.md). The
-exchange must remain disabled until that ADR is accepted and its implementation
-passes cross-project review.
+exchange must remain disabled until its implementation passes cross-project
+review and the evidence gates in that ADR.
 
 ## Bootstrap
 
@@ -16,7 +16,10 @@ passes cross-project review.
 3. Issue a short-lived, installation- and audience-specific invitation for the
    intended immutable Prosopikon principal. Deliver its exact bytes only to the
    intended enrolment device. Never place the invitation in a URL or ticket.
-4. Have the user complete GitHub authentication in the system browser. A
+4. Have the user complete GitHub authentication in the system browser. GitHub
+   returns only to Monas over the registered HTTPS callback. Monas gives the
+   app only a one-use opaque correlation through `pistis://oauth/callback`; it
+   never sends the GitHub code, token, or PKCE verifier to the phone. A
    successful provider callback is not enrolment: the device registration and
    Prosopikon transaction must also complete.
 5. Confirm only the coarse enrolment outcome and generated audit correlation.

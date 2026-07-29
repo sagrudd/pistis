@@ -94,6 +94,51 @@ public struct InstallationTrustRecord: Codable, Equatable, Sendable {
         self.active = active
     }
 
+    private enum CodingKeys: String, CodingKey, CaseIterable {
+        case installationID
+        case displayName
+        case audience
+        case userID
+        case externalIdentityID
+        case fingerprint
+        case installationKeyID
+        case installationPublicKey
+        case authorityKeyID
+        case authorityReceipt
+        case policyGeneration
+        case revocationGeneration
+        case expiresAt
+        case active
+    }
+
+    public init(from decoder: any Decoder) throws {
+        let untyped = try decoder.container(keyedBy: ProductionCodingKey.self)
+        guard Set(untyped.allKeys.map(\.stringValue))
+            == Set(CodingKeys.allCases.map(\.rawValue))
+        else {
+            throw DecodingError.dataCorrupted(
+                .init(codingPath: decoder.codingPath, debugDescription: "invalid trust fields")
+            )
+        }
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        try self.init(
+            installationID: container.decode(Data.self, forKey: .installationID),
+            displayName: container.decode(String.self, forKey: .displayName),
+            audience: container.decode(String.self, forKey: .audience),
+            userID: container.decode(Data.self, forKey: .userID),
+            externalIdentityID: container.decode(Data.self, forKey: .externalIdentityID),
+            fingerprint: container.decode(Data.self, forKey: .fingerprint),
+            installationKeyID: container.decode(Data.self, forKey: .installationKeyID),
+            installationPublicKey: container.decode(Data.self, forKey: .installationPublicKey),
+            authorityKeyID: container.decode(Data.self, forKey: .authorityKeyID),
+            authorityReceipt: container.decode(Data.self, forKey: .authorityReceipt),
+            policyGeneration: container.decode(UInt64.self, forKey: .policyGeneration),
+            revocationGeneration: container.decode(UInt64.self, forKey: .revocationGeneration),
+            expiresAt: container.decode(Date.self, forKey: .expiresAt),
+            active: container.decode(Bool.self, forKey: .active)
+        )
+    }
+
     private static func bounded(_ value: String, maximum: Int) -> Bool {
         !value.isEmpty && value.utf8.count <= maximum
             && value == value.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -137,6 +182,46 @@ public struct DeviceResponseContext: Codable, Equatable, Sendable {
         self.deviceKeyID = deviceKeyID
         self.userID = userID
         self.externalIdentityID = externalIdentityID
+    }
+
+    private enum CodingKeys: String, CodingKey, CaseIterable {
+        case deviceID
+        case deviceKeyID
+        case userID
+        case externalIdentityID
+    }
+
+    public init(from decoder: any Decoder) throws {
+        let untyped = try decoder.container(keyedBy: ProductionCodingKey.self)
+        guard Set(untyped.allKeys.map(\.stringValue))
+            == Set(CodingKeys.allCases.map(\.rawValue))
+        else {
+            throw DecodingError.dataCorrupted(
+                .init(codingPath: decoder.codingPath, debugDescription: "invalid context fields")
+            )
+        }
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        try self.init(
+            deviceID: container.decode(Data.self, forKey: .deviceID),
+            deviceKeyID: container.decode(Data.self, forKey: .deviceKeyID),
+            userID: container.decode(Data.self, forKey: .userID),
+            externalIdentityID: container.decode(Data.self, forKey: .externalIdentityID)
+        )
+    }
+}
+
+private struct ProductionCodingKey: CodingKey {
+    let stringValue: String
+    let intValue: Int?
+
+    init?(stringValue: String) {
+        self.stringValue = stringValue
+        intValue = nil
+    }
+
+    init?(intValue: Int) {
+        stringValue = String(intValue)
+        self.intValue = intValue
     }
 }
 
@@ -271,7 +356,7 @@ public enum ProductionChallengeVerifier {
         let endpoints = try endpointStrings.map { value -> URL in
             guard let url = URL(string: value), url.scheme == "https",
                   url.user == nil, url.password == nil, url.host != nil,
-                  url.fragment == nil
+                  url.fragment == nil, isCanonicalHTTPSHost(url)
             else { throw ProductionCeremonyError.invalidEndpoint }
             return url
         }
@@ -292,6 +377,25 @@ public enum ProductionChallengeVerifier {
             installationFingerprint: fingerprint,
             endpointHints: endpoints
         )
+    }
+
+    private static func isCanonicalHTTPSHost(_ url: URL) -> Bool {
+        guard let components = URLComponents(url: url, resolvingAgainstBaseURL: false),
+              components.scheme == "https",
+              let host = components.host,
+              components.percentEncodedHost == host,
+              host == host.lowercased(),
+              host.utf8.count <= 253,
+              host.unicodeScalars.allSatisfy(\.isASCII),
+              !host.hasSuffix(".")
+        else { return false }
+        return host.split(separator: ".", omittingEmptySubsequences: false).allSatisfy {
+            !$0.isEmpty && $0.utf8.count <= 63
+                && $0.first != "-" && $0.last != "-"
+                && $0.utf8.allSatisfy {
+                    (48 ... 57).contains($0) || (97 ... 122).contains($0) || $0 == 45
+                }
+        }
     }
 }
 

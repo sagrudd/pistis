@@ -107,6 +107,58 @@ final class ProductionCeremonyTests: XCTestCase {
         ))
         XCTAssertTrue(payload.contains(Data("denied".utf8)))
     }
+
+    func testPersistedTrustIsRevalidatedDuringDecode() throws {
+        let record = try Fixture(key: P256.Signing.PrivateKey()).trust
+        let encoded = try JSONEncoder().encode(record)
+        var object = try XCTUnwrap(
+            JSONSerialization.jsonObject(with: encoded) as? [String: Any]
+        )
+        object["installationID"] = Data(repeating: 0, count: 15).base64EncodedString()
+        XCTAssertThrowsError(
+            try JSONDecoder().decode(
+                InstallationTrustRecord.self,
+                from: JSONSerialization.data(withJSONObject: object)
+            )
+        )
+
+        object = try XCTUnwrap(
+            JSONSerialization.jsonObject(with: encoded) as? [String: Any]
+        )
+        object["unexpected"] = true
+        XCTAssertThrowsError(
+            try JSONDecoder().decode(
+                InstallationTrustRecord.self,
+                from: JSONSerialization.data(withJSONObject: object)
+            )
+        )
+    }
+
+    func testChallengeRejectsNonCanonicalHTTPSHosts() async throws {
+        for endpoint in [
+            "https://Jenkins.mnemosyne.test/auth/pistis",
+            "https://jenkins.mnemosyne.test./auth/pistis",
+            "https://jenkins..mnemosyne.test/auth/pistis",
+            "https://%6aenkins.mnemosyne.test/auth/pistis",
+        ] {
+            let material = try Fixture(
+                key: P256.Signing.PrivateKey(),
+                endpoint: endpoint
+            )
+            do {
+                _ = try await ProductionChallengeVerifier.verify(
+                    qrText: material.qr,
+                    trustRepository: FixedTrust(record: material.trust),
+                    expectedAudience: "jenkins.mnemosyne.test",
+                    expectedExternalIdentityID: Data(repeating: 0x44, count: 16),
+                    now: Date(timeIntervalSince1970: 1_700_000_001)
+                )
+                XCTFail("non-canonical endpoint unexpectedly accepted: \(endpoint)")
+            } catch {
+                XCTAssertEqual(error as? ProductionCeremonyError, .invalidEndpoint)
+            }
+        }
+    }
 }
 
 private actor FixedTrust: InstallationTrustReading {
@@ -122,14 +174,18 @@ private struct Fixture {
     let qr: String
     let trust: InstallationTrustRecord
 
-    init(key: P256.Signing.PrivateKey) throws {
+    init(
+        key: P256.Signing.PrivateKey,
+        endpoint: String = "https://jenkins.mnemosyne.test/auth/pistis"
+    ) throws {
         let installationID = Data(repeating: 0x11, count: 16)
         let keyID = Data(repeating: 0x22, count: 32)
         let fingerprint = Data(repeating: 0x33, count: 32)
         payload = Self.challenge(
             installationID: installationID,
             keyID: keyID,
-            fingerprint: fingerprint
+            fingerprint: fingerprint,
+            endpoint: endpoint
         )
         let structure = try CoseSign1.signatureStructure(keyID: keyID, payload: payload)
         let signature = Self.lowS(try key.signature(for: structure).rawRepresentation)
@@ -156,7 +212,8 @@ private struct Fixture {
     private static func challenge(
         installationID: Data,
         keyID: Data,
-        fingerprint: Data
+        fingerprint: Data,
+        endpoint: String
     ) -> Data {
         var output = Data([0xb1])
         output += uint(0) + uint(1)
@@ -175,7 +232,7 @@ private struct Fixture {
         output += uint(13) + text("stephen")
         output += uint(14) + bytes(Data(repeating: 0x99, count: 32))
         output += uint(15) + bytes(fingerprint)
-        output += uint(16) + Data([0x81]) + text("https://jenkins.mnemosyne.test/auth/pistis")
+        output += uint(16) + Data([0x81]) + text(endpoint)
         return output
     }
 

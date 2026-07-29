@@ -212,6 +212,98 @@ final class PlatformPolicyTests: XCTestCase {
                 from: Data(#"{"state":"accepted","evidence_id":null}"#.utf8)
             )
         )
+        XCTAssertThrowsError(
+            try JSONDecoder().decode(
+                AuthoritativeCeremonyStatus.self,
+                from: Data(
+                    #"{"state":"completed","evidence_id":null,"redirect":"https://attacker.test"}"#
+                        .utf8
+                )
+            )
+        )
+    }
+
+    func testTransportRejectsNonCanonicalAllowedHosts() {
+        for host in [
+            "Jenkins.mnemosyne.test",
+            "jenkins.mnemosyne.test.",
+            "jenkins..mnemosyne.test",
+            "jenkins.mnemosyne.test/path",
+            "jënkins.mnemosyne.test",
+        ] {
+            XCTAssertThrowsError(
+                try AuthenticationResponseTransport(allowedHosts: [host]),
+                "non-canonical host unexpectedly accepted: \(host)"
+            )
+        }
+    }
+
+    func testTransportDelegateRefusesRedirectBeforeBodyReplay() throws {
+        let original = try XCTUnwrap(
+            URL(string: "https://jenkins.mnemosyne.test/auth/pistis")
+        )
+        let redirected = try XCTUnwrap(
+            URL(string: "https://attacker.test/capture")
+        )
+        let response = try XCTUnwrap(
+            HTTPURLResponse(
+                url: original,
+                statusCode: 307,
+                httpVersion: "HTTP/1.1",
+                headerFields: ["Location": redirected.absoluteString]
+            )
+        )
+        var followedRequest: URLRequest? = URLRequest(url: redirected)
+        RedirectRejectingSessionDelegate().urlSession(
+            .shared,
+            task: URLSession.shared.dataTask(with: original),
+            willPerformHTTPRedirection: response,
+            newRequest: URLRequest(url: redirected)
+        ) {
+            followedRequest = $0
+        }
+        XCTAssertNil(followedRequest)
+    }
+
+    func testPersistedEnrollmentOutputRejectsUnknownFields() throws {
+        let trust = try InstallationTrustRecord(
+            installationID: Data(repeating: 1, count: 16),
+            displayName: "Mnemosyne Jenkins",
+            audience: "jenkins.mnemosyne.test",
+            userID: Data(repeating: 2, count: 16),
+            externalIdentityID: Data(repeating: 3, count: 16),
+            fingerprint: Data(repeating: 4, count: 32),
+            installationKeyID: Data(repeating: 5, count: 32),
+            installationPublicKey: Data([2]) + Data(repeating: 6, count: 32),
+            authorityKeyID: Data(repeating: 7, count: 32),
+            authorityReceipt: Data([1]),
+            policyGeneration: 1,
+            revocationGeneration: 1,
+            expiresAt: Date(timeIntervalSince1970: 1_800_000_000),
+            active: true
+        )
+        let context = try DeviceResponseContext(
+            deviceID: Data(repeating: 8, count: 16),
+            deviceKeyID: Data(repeating: 9, count: 32),
+            userID: trust.userID,
+            externalIdentityID: trust.externalIdentityID
+        )
+        let output = try AuthenticatedEnrollmentOutput(
+            trust: trust,
+            responseContext: context,
+            allowedHosts: ["jenkins.mnemosyne.test"]
+        )
+        var object = try XCTUnwrap(
+            JSONSerialization.jsonObject(with: JSONEncoder().encode(output))
+                as? [String: Any]
+        )
+        object["unexpected"] = true
+        XCTAssertThrowsError(
+            try JSONDecoder().decode(
+                AuthenticatedEnrollmentOutput.self,
+                from: JSONSerialization.data(withJSONObject: object)
+            )
+        )
     }
 
     @MainActor

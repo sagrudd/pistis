@@ -22,13 +22,52 @@ struct AuthenticatedEnrollmentOutput: Codable, Equatable, Sendable {
         guard trust.userID == responseContext.userID,
               trust.externalIdentityID == responseContext.externalIdentityID,
               !allowedHosts.isEmpty,
-              allowedHosts.allSatisfy({
-                  !$0.isEmpty && $0 == $0.lowercased() && !$0.contains("/")
-              })
+              allowedHosts.allSatisfy({ CanonicalHTTPSHost.parse($0) != nil })
         else { throw PlatformFailure.invalidConfiguration }
         self.trust = trust
         self.responseContext = responseContext
         self.allowedHosts = allowedHosts
+    }
+
+    private enum CodingKeys: String, CodingKey, CaseIterable {
+        case trust
+        case responseContext
+        case allowedHosts
+    }
+
+    init(from decoder: any Decoder) throws {
+        let untyped = try decoder.container(keyedBy: TrustCodingKey.self)
+        guard Set(untyped.allKeys.map(\.stringValue))
+            == Set(CodingKeys.allCases.map(\.rawValue))
+        else {
+            throw DecodingError.dataCorrupted(
+                .init(codingPath: decoder.codingPath, debugDescription: "invalid trust fields")
+            )
+        }
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        try self.init(
+            trust: container.decode(InstallationTrustRecord.self, forKey: .trust),
+            responseContext: container.decode(
+                DeviceResponseContext.self,
+                forKey: .responseContext
+            ),
+            allowedHosts: container.decode(Set<String>.self, forKey: .allowedHosts)
+        )
+    }
+}
+
+private struct TrustCodingKey: CodingKey {
+    let stringValue: String
+    let intValue: Int?
+
+    init?(stringValue: String) {
+        self.stringValue = stringValue
+        intValue = nil
+    }
+
+    init?(intValue: Int) {
+        stringValue = String(intValue)
+        self.intValue = intValue
     }
 }
 

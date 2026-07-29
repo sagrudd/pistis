@@ -1,7 +1,14 @@
-import CryptoKit
 import Foundation
 @testable import PistisCore
 import XCTest
+
+#if canImport(CryptoKit)
+import CryptoKit
+#elseif canImport(Crypto)
+import Crypto
+#else
+#error("PistisCoreTests require CryptoKit or Apple Swift Crypto")
+#endif
 
 final class ProductionCeremonyTests: XCTestCase {
     func testProductionChallengeRequiresEnrolledKeyAndVerifiesExactPayload() async throws {

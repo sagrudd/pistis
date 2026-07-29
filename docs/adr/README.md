@@ -51,3 +51,9 @@ remain unchanged.
 [ADR 0026](0026-mvp-deployment-and-product-profile.md) is **Accepted**. It
 records the owner-approved MVP identity, customer deployment, product-session,
 mobile, recovery, privacy, distribution, licensing, and deferred-work profile.
+
+[ADR 0027](0027-local-provider-verifier.md) is **Proposed**. It defines the
+installation-local GitHub Device Flow verifier needed to turn a phone-assisted
+provider ceremony into Prosopikon-owned authority evidence without forwarding
+a bearer or trusting mobile JSON. ADR 0025 remains normative until specialist
+and project-owner acceptance.

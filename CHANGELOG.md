@@ -7,6 +7,9 @@ a Changelog and releases follow Semantic Versioning.
 
 ### Added
 
+- A proposed installation-local GitHub Device Flow verifier that keeps provider
+  tokens outside mobile and authority boundaries while preserving Prosopikon
+  as the sole durable enrolment state machine.
 - Repository governance, planning, automation, and quality-gate bootstrap.
 - Strongly typed protocol identifiers with canonical textual forms.
 - Strict deterministic-CBOR serialization, parsing, and golden fixtures.

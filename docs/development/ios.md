@@ -219,13 +219,15 @@ provider/authority capability; no trusted token-free issuer port for that
 capability exists yet. Do not promote a phone assertion, display login, email,
 or raw GitHub bearer token into that missing proof.
 
-ADR 0025 accepts Device Flow and rejects a broker for v0.1. Until the reviewed
-configuration commitment, persistent throttle, trusted provider-capability
-issuer, signed binding, atomic Prosopikon transaction, and receipt exchange are
-implemented and reviewed, this screen must remain visibly labelled as an
-identity-verification evaluation and must not claim authority enrolment. The
-coordinator performs no Keychain mutation and exposes only an
-`awaitingConfirmation` result for the future authority integration.
+ADR 0025 accepts direct-mobile Device Flow and rejects a broker for v0.1.
+Proposed ADR 0027 would supersede that transport by placing one constrained
+provider-verifier adapter inside the customer installation while keeping
+Prosopikon as the sole durable state machine. Until that decision and its
+configuration commitment, throttle, signed binding, atomic transaction, and
+receipt exchange are accepted, implemented, and reviewed, this screen must
+remain visibly labelled as an identity-verification evaluation and must not
+claim authority enrolment. The coordinator performs no Keychain mutation and
+exposes only an `awaitingConfirmation` result for future authority integration.
 
 ## Design maintenance
 

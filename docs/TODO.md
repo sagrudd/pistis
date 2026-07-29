@@ -91,6 +91,8 @@ distribution, or licensing must trace their acceptance to that decision.
 - [ ] Add the persistent installation-local Device Flow throttle
 - [ ] Verify the reviewed GitHub App configuration digest
 - [x] Retrieve and validate the stable numeric GitHub user ID
+- [ ] Review and accept or reject ADR 0027's installation-local provider
+      verifier and authority-owned one-use operation
 - [ ] Issue the one-use authority-verifiable provider capability without
       forwarding or trusting a GitHub bearer token
 - [ ] Commit the invitation, provider binding, device, and receipt atomically
@@ -544,12 +546,13 @@ presentation; approval and denial use Face ID, the Secure Enclave COSE signer,
 boundary for authority-owned enrolled keys and persisted challenge facts; it
 returns only credential-free verified facts for the Prosopikon transaction.
 The bounded iOS Device Flow client now reaches a locally validated numeric
-GitHub subject without retaining provider credentials. The trusted issuer for
-ADR 0025's one-use provider capability, reviewed configuration digest,
-Prosopikon authority transaction, and signed receipt still need to supply the
-authenticated enrolment output. End-user enrolment/history/revocation UX plus
-physical qualification also remain. The detached version-1 QR fixture remains
-reference-only.
+GitHub subject without retaining provider credentials. Proposed ADR 0027 moves
+the authoritative provider exchange to an installation-local verifier and
+keeps the one-use operation in Prosopikon, but it is not accepted. The reviewed
+configuration digest, authority transaction, and signed receipt still need to
+supply the authenticated enrolment output. End-user
+enrolment/history/revocation UX plus physical qualification also remain. The
+detached version-1 QR fixture remains reference-only.
 
 Issue #318 and accepted ADR 0023 define the remaining trust bootstrap. No
 endpoint or Keychain installation may be represented as production enrolment

@@ -26,3 +26,8 @@ signed approval and denial responses.
 [ADR 0022](0022-host-owned-cli-agent-authority-port.md) accepts the
 credential-free local-agent to host-authority port. Activation remains gated
 on its implementation and cross-repository conformance evidence.
+
+[ADR 0024](0024-linux-hardware-signing-providers.md) proposes the
+provider-neutral Linux installation-signing boundary, with TPM2 first and
+PKCS#11 second. Project-owner direction is approved; implementation remains
+blocked pending specialist security and cryptography review.

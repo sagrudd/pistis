@@ -74,6 +74,7 @@ Architecture and operations
    adr/0020-prosopikon-pistis-authority-transaction
    adr/0021-production-qr-envelope-and-installation-trust
    adr/0022-host-owned-cli-agent-authority-port
+   adr/0024-linux-hardware-signing-providers
    protocol/README
    protocol/domain-model
    protocol/action-approval
@@ -97,3 +98,4 @@ Architecture and operations
    operations/release-packaging
    operations/cli-authentication
    operations/local-agent
+   operations/linux-hardware-signing

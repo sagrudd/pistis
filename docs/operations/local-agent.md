@@ -72,3 +72,7 @@ does not create a key automatically, accept private bytes, invoke the
 key is intentionally withheld until the agent code-signing identifier, access
 group, user-presence policy, rotation procedure, and recovery consequences are
 reviewed together.
+
+[ADR 0024](../adr/0024-linux-hardware-signing-providers.md) proposes the Linux
+provider-neutral boundary, with TPM2 first and PKCS#11 second. Linux
+implementation remains prohibited until specialist review accepts that ADR.

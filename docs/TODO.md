@@ -520,9 +520,15 @@ version-1 QR fixture remains reference-only.
 ## EPIC 24 — Packaging and operations
 
 - [ ] Package the service, local agent, CLI, migrations, and systemd units
-- [ ] Generate installation keys during privileged bootstrap
-- [ ] Load keys through systemd credentials
-- [ ] Implement encrypted installation-key backup and explicit restore
+- [ ] Accept ADR 0024 after specialist security and cryptography review
+- [ ] Implement the provider-neutral Linux `InstallationSigner` boundary
+- [ ] Deliver and qualify the TPM2 provider
+- [ ] Deliver and qualify the PKCS#11 provider
+- [ ] Provision a non-exportable installation key in exactly one configured
+  provider
+- [ ] Deliver provider authorization through a protected service credential
+  without arguments, environment variables, or repository files
+- [ ] Keep Jenkins, DASObjectStore, and other relying workers keyless
 - [ ] Document rotation, recovery, upgrade, rollback, and diagnostics
 - [ ] Enforce service-account ownership and non-symlink private state
 - [ ] Build RPM/SRPM, SBOM, checksums, and provenance

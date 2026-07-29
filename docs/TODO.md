@@ -548,9 +548,12 @@ returns only credential-free verified facts for the Prosopikon transaction.
 The bounded iOS Device Flow client now reaches a locally validated numeric
 GitHub subject without retaining provider credentials. Proposed ADR 0027 moves
 the authoritative provider exchange to an installation-local verifier and
-keeps the one-use operation in Prosopikon, but it is not accepted. The reviewed
-configuration digest, authority transaction, and signed receipt still need to
-supply the authenticated enrolment output. End-user
+keeps the one-use operation in Prosopikon, but it is not accepted. The proposal
+now also requires a closed, attended enrolment-only Monas startup profile
+because the normal runtime correctly rejects a fresh principal with no trusted
+device. The reviewed configuration digest, authority transaction, signed
+receipt, and fail-closed transition into normal login still need to supply the
+authenticated enrolment output. End-user
 enrolment/history/revocation UX plus physical qualification also remain. The
 detached version-1 QR fixture remains reference-only.
 

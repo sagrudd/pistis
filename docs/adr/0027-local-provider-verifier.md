@@ -157,6 +157,47 @@ The development software installation signer is orthogonal. It may support an
 isolated evaluation of Monas challenge signing but does not authenticate the
 provider verifier and does not make the deployment production eligible.
 
+### Fresh-authority startup lifecycle
+
+A fresh authority has no provider binding or trusted device, while the normal
+Monas Pistis runtime correctly refuses to listen until
+`pistis_login_target` resolves both. The verifier cannot be reached through
+that normal runtime. Implementations shall not solve this circular dependency
+by inserting a device manually, weakening normal startup, or running a second
+authority.
+
+Monas shall therefore define one explicit, attended `provider_enrolment`
+startup mode. It is a deployment setting, not a browser, mobile, invitation,
+or query parameter. In that mode Monas:
+
+- opens the exact fresh authority and verifies its configured active
+  principal, tenant, authority revision, installation identity and signer;
+- requires no active or suspended provider binding or device for that
+  principal and requires one still-valid first-device invitation;
+- deliberately does not call the normal login-target readiness check;
+- mounts only the versioned first-device enrolment begin, status, cancel,
+  confirmation and bounded mobile transport plus coarse health/support;
+- does not mount product, Propylaion, login, session, compatibility-password,
+  EasyConnect, Jenkins, general Prosopikon, or ordinary Pistis ceremony routes;
+- retains no provider token or device code across restart and creates no
+  session; and
+- becomes terminal for new enrolment work when the exact invitation commits,
+  is denied, expires, or is cancelled.
+
+Successful commit does not hot-upgrade the process into an authenticated
+product host. The attended operator stops it, removes the enrolment-only
+setting and invitation material, and starts normal Monas. Normal startup then
+performs the unchanged `pistis_login_target` check against the newly committed
+binding and trusted credential. A process configured for enrolment mode after
+an active or suspended device exists fails before listening.
+
+The compatibility password registry must be absent and non-writable in both
+modes. The first invitation is issued by the attended Prosopikon CLI while
+Monas is stopped; its bearer is delivered only through the reviewed enrolment
+bootstrap input and is never written to the environment file, command line,
+logs, or evidence. Exact packaging, socket activation, restart, and cleanup
+behavior require Monas and Prosopikon review before implementation.
+
 ### Audit and privacy
 
 Durable authority audit records only the provider-verification and enrolment
@@ -181,6 +222,10 @@ would create an oracle.
 - deterministic tests for every GitHub response, bound, interval, retry,
   timeout, cancellation, restart, concurrency, replay, rollback, and
   substitution path;
+- startup tests proving normal mode rejects an unenrolled principal,
+  enrolment-only mode exposes only its closed route set, a pre-existing device
+  rejects enrolment mode, and successful commit requires an attended restart
+  into normal mode;
 - tests proving provider credentials never enter Monas transport, Prosopikon,
   SQLite, logs, evidence, crash reports, or mobile storage;
 - an attended consented GitHub canary using the reviewed development App and a
@@ -196,6 +241,8 @@ would create an oracle.
 - The user still completes GitHub Device Flow on the phone, but the
   installation rather than the phone owns the provider exchange.
 - No dedicated Mnemosyne broker or customer callback registration is needed.
+- Fresh installation gains a deliberately separate, temporary enrolment-only
+  process profile; normal Monas startup remains fail-closed and unchanged.
 - ADR 0025's current direct-mobile client remains useful only as a visibly
   non-authoritative diagnostic until replaced in the enrolment flow.
 - The local installation gains outbound GitHub dependency during enrolment;

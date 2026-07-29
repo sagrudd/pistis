@@ -36,7 +36,7 @@ final class PistisUITests: XCTestCase {
 
     private func handleScanTopViewportFinding(_ issue: XCUIAccessibilityAuditIssue) -> Bool {
         let partlyObscuredAtBottom = [
-            "Only bounded PISTIS1 text is accepted. A scan is never treated as trusted until the production protocol verifier accepts it.",
+            "Only bounded PISTIS1 version-2 challenge text is accepted. Request facts appear only after the enrolled installation key verifies the exact signed payload.",
             "Passwordless approval unavailable",
             "Camera",
         ]
@@ -48,7 +48,7 @@ final class PistisUITests: XCTestCase {
         let partlyObscuredAtTop = [
             "Scan",
             "Ready to scan",
-            "Production QR verification awaits accepted protocol review.",
+            "The accepted QR v2 and COSE verifier is available.",
             "Start camera",
         ]
         return issue.auditType == .contrast

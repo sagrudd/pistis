@@ -97,8 +97,8 @@ Do not merge a native-platform claim without evidence for the affected gate:
 - simulator build and unit/UI tests using the repository's selected Xcode;
 - real-device Secure Enclave and biometry tests;
 - shared Rust/iOS canonical encoding and signature fixtures;
-- OAuth callback, cancellation, and negative tests against a non-production
-  broker;
+- bounded Device Flow polling, cancellation, phishing, substitution, and
+  negative tests against a non-production GitHub App;
 - VoiceOver, Dynamic Type, contrast, and reduced-motion review;
 - archive, signing, privacy manifest, export compliance, and TestFlight
   evidence for distribution work.
@@ -166,24 +166,21 @@ are refused by the URL loading delegate before any signed body can be replayed,
 and authority status decoders reject unknown fields.
 
 `AuthenticatedEnrollmentOutput` is the internal hand-off from the reviewed
-system-browser broker. It atomically binds the authority-issued trust record,
+Prosopikon authority transaction. It atomically binds the authority-issued trust record,
 device response context, and lower-case endpoint host allow-list. Do not add a
 QR, clipboard, fixture, or arbitrary JSON import path to this hand-off.
 Persistence decoding is strict: the complete field set must be present with no
 unknown fields, and decoded trust and response-context values must pass their
 normal validating initializers again before the Keychain record is usable.
 
-`SystemBrowserEnrollmentCoordinator` is the only sequencing path from a
-validated OAuth callback to that Keychain mutation. It sends the one-use code,
-PKCE verifier, and exact bounded device-registration envelope to an
-`EnrollmentReceiptExchanging` implementation. That implementation must verify
-the authority receipt before returning. If browser authorization, exchange, or
-verification fails, the coordinator performs no Keychain write.
+`SystemBrowserEnrollmentCoordinator` retains the previously reviewed,
+fail-closed authorization-code scaffold for a possible future broker profile.
+ADR 0025 excludes it from v0.1 and it must not be wired into the application.
+The v0.1 Device Flow coordinator must perform the same sole Keychain mutation
+only after the exact Prosopikon authority receipt verifies.
 
-The concrete exchange is blocked on issue 318. The current server repositories
-have no route or response schema carrying the signed receipt, its bound device
-registration, and authenticated authority bootstrap material. Do not implement
-that missing contract ad hoc in the app.
+The concrete Device Flow and authority exchange are blocked on issues 252 and
+318. Do not implement the missing cross-project contract ad hoc in the app.
 
 ### Passwordless readiness
 
@@ -201,17 +198,15 @@ rerun the full ceremony rather than interpreting readiness as acceptance.
 
 ## GitHub enrolment boundary
 
-The Identities screen contains a compiled but disabled GitHub enrolment port.
-It validates only non-secret public-client configuration, models a
-credential-free broker result containing the numeric GitHub subject and a
-bounded display login, and explains which authority ports are absent. It does
-not start the browser, contact the broker, persist a token, or create a
-binding.
+The Identities screen contains a compiled but disabled GitHub App enrolment
+port. It validates the exact non-secret Device Flow endpoints and public client
+configuration, models only the bounded numeric-subject result, and explains
+which authority ports are absent. It does not start Device Flow, poll GitHub,
+persist a token, or create a binding.
 
-ADR 0003 accepts authorization-code PKCE through a confidential broker and
-requires another ADR before GitHub device flow. Until that decision and the
-broker/Prosopikon response contracts are reviewed, the disabled state is the
-only production-honest behavior.
+ADR 0025 accepts Device Flow and rejects a broker for v0.1. Until the bounded
+poller and Prosopikon transaction are implemented and reviewed, the disabled
+state is the only production-honest behavior.
 
 ## Design maintenance
 

@@ -181,30 +181,32 @@ final class PlatformPolicyTests: XCTestCase {
     func testGitHubEnrolmentConfigurationIsExactAndCredentialFree() throws {
         let configuration = try GitHubEnrolmentConfiguration(
             clientID: "PublicClient123",
-            authorizationEndpoint: try XCTUnwrap(
-                URL(string: "https://github.com/login/oauth/authorize")
+            deviceCodeEndpoint: try XCTUnwrap(
+                URL(string: "https://github.com/login/device/code")
             ),
-            callbackURL: try XCTUnwrap(URL(string: "pistis://oauth/callback")),
-            brokerExchangeEndpoint: try XCTUnwrap(
-                URL(string: "https://pistis.example.test/oauth/github/exchange")
-            )
+            accessTokenEndpoint: try XCTUnwrap(
+                URL(string: "https://github.com/login/oauth/access_token")
+            ),
+            authenticatedUserEndpoint: try XCTUnwrap(URL(string: "https://api.github.com/user"))
         )
         XCTAssertEqual(configuration.clientID, "PublicClient123")
 
-        let invalidBrokers = [
-            "http://pistis.example.test/oauth/github/exchange",
-            "https://user:secret@pistis.example.test/oauth/github/exchange",
-            "https://pistis.example.test/oauth/github/exchange?token=secret",
+        let invalidDeviceEndpoints = [
+            "http://github.com/login/device/code",
+            "https://github.com/login/oauth/authorize",
+            "https://attacker.example/login/device/code",
         ]
-        for value in invalidBrokers {
+        for value in invalidDeviceEndpoints {
             XCTAssertThrowsError(
                 try GitHubEnrolmentConfiguration(
                     clientID: "PublicClient123",
-                    authorizationEndpoint: XCTUnwrap(
-                        URL(string: "https://github.com/login/oauth/authorize")
+                    deviceCodeEndpoint: XCTUnwrap(URL(string: value)),
+                    accessTokenEndpoint: XCTUnwrap(
+                        URL(string: "https://github.com/login/oauth/access_token")
                     ),
-                    callbackURL: XCTUnwrap(URL(string: "pistis://oauth/callback")),
-                    brokerExchangeEndpoint: XCTUnwrap(URL(string: value))
+                    authenticatedUserEndpoint: XCTUnwrap(
+                        URL(string: "https://api.github.com/user")
+                    )
                 )
             )
         }

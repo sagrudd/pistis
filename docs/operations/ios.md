@@ -6,48 +6,43 @@ a signed or TestFlight build exists.
 
 ## Keeper-assisted GitHub authentication
 
-Pistis opens GitHub in an Apple system authentication session. If Keeper is
-enabled under iOS Passwords, AutoFill, and Passkeys and contains the user's
-GitHub passkey, iOS may offer Keeper when GitHub requests that passkey. Keeper
-and iOS complete the assertion for `github.com`; Pistis receives only the
-OAuth callback.
+Pistis opens the GitHub Device Flow verification URI in an Apple system
+authentication session. If Keeper is enabled under iOS Passwords, AutoFill,
+and Passkeys and contains the user's GitHub passkey, iOS may offer Keeper when
+GitHub requests that passkey. Keeper and iOS complete the assertion for
+`github.com`; Pistis receives no passkey or callback credential.
 
 Pistis never asks Keeper for a vault item, passkey, private key, password, or
 token. It cannot use a GitHub passkey to sign a Pistis approval. The Pistis
 device signing key is separate and non-exportable in the Secure Enclave.
 
-The operator must configure the trusted broker with the provider registration
-and exact callback allow-list. Never put a GitHub or Google client secret in
-the application bundle. Do not retain provider access tokens on the device.
+The operator configures the reviewed GitHub App public client identifier and
+exact ADR 0025 endpoint profile. Never put a GitHub or Google client secret in
+the application bundle. Device codes and provider access tokens are transient
+and must be erased on every terminal path.
 
 ### Current GitHub enrolment configuration gap
 
-ADR 0003 accepts system-browser authorization-code enrolment with PKCE and an
-operator-controlled confidential exchange broker. It explicitly does **not**
-accept GitHub device flow. Therefore issue 252's “GitHub App with device flow”
-wording cannot be implemented until a separate security review and accepted
-ADR supersedes that part of ADR 0003.
+ADR 0025 accepts GitHub App Device Flow and supersedes the callback, PKCE, and
+broker transport requirements of ADRs 0003, 0007, 0008, and 0023 for v0.1.
 
-For the currently accepted design, an operator must:
+For the accepted v0.1 design, an operator must:
 
-1. register a dedicated non-production GitHub OAuth client;
-2. register exactly `pistis://oauth/callback`;
-3. configure the client for no requested OAuth scopes;
-4. configure an HTTPS confidential broker endpoint with the environment's
-   client secret and exact client-ID/callback allow-list;
-5. expose only the non-secret client ID as `PistisGitHubClientID` and broker
-   URL as `PistisGitHubBrokerExchangeURL` in reviewed iOS build configuration;
-6. verify the broker never returns its client secret or a provider token to
-   the app and erases transient provider credentials on every terminal path;
-7. verify Prosopikon binds the returned numeric GitHub account ID to the
-   intended principal; and
-8. run synthetic broker/callback failure tests before a live account ceremony.
+1. use the reviewed organisation-owned GitHub App with Device Flow enabled;
+2. request no scopes and retain no provider token;
+3. expose only its non-secret public client ID as `PistisGitHubClientID` in
+   reviewed iOS build configuration;
+4. verify the exact device-code, access-token, and authenticated-user
+   endpoints and the reviewed App configuration digest;
+5. keep polling bounded by GitHub's interval, expiry, and error semantics;
+6. verify Prosopikon atomically binds the numeric GitHub account ID, invitation,
+   device key, and signed receipt; and
+7. run synthetic phishing, substitution, expiry, denial, and rate-limit tests
+   before a live account ceremony.
 
-Do not put either build value in source while the environment and broker are
-unapproved. Neither value is itself secret, but committing an unusable or
-production-specific endpoint would blur the reviewed deployment boundary.
-The app reports configuration and missing authority ports separately and keeps
-the enrolment control disabled.
+The app reports public-client configuration and missing authority ports
+separately and keeps enrolment disabled until the complete Device Flow and
+Prosopikon transaction are implemented.
 
 The requested address `stephen@mnemosyne.co.uk` is a Prosopikon principal and
 operator acceptance value, not the GitHub stable identity. ADR 0003 binds
@@ -97,19 +92,19 @@ production mobile protocol.
 
 ## Production ceremony operation
 
-Complete GitHub enrolment in the iOS system browser before scanning. A
-successful authenticated broker callback must install one
-`AuthenticatedEnrollmentOutput`; operators must not sideload a trust record or
-copy a key from a QR code. The record is stored as
+Complete GitHub enrolment through the foreground Device Flow before scanning.
+The verified Prosopikon authority transaction must install one
+`AuthenticatedEnrollmentOutput`; operators must not sideload a trust record
+or copy a key from a QR code. The record is stored as
 `kSecAttrAccessibleWhenUnlockedThisDeviceOnly`, is not synchronizable, and is
 removed on explicit revocation. Replacement enrolment overwrites the complete
 record atomically.
 
-Until issue 318 lands across Prosopikon and Monas, the production broker
-implementation remains unavailable and enrolment must fail before Keychain
-mutation. A development fixture, copied JSON response, bare authority key, or
-TLS success is not an acceptable substitute for the signed authority receipt
-and its authenticated bootstrap proof.
+Until issues 252 and 318 land across Pistis, Prosopikon, and Monas, the
+production Device Flow remains unavailable and enrolment must fail before
+Keychain mutation. A development fixture, copied JSON response, bare authority
+key, provider poll success, or TLS success is not an acceptable substitute for
+the signed authority receipt and its authenticated bootstrap proof.
 
 On the Scan tab, all five readiness rows must be ready. Scan the Monas
 `PISTIS1` version-2 QR and compare the displayed audience, installation, local

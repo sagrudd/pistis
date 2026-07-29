@@ -16,7 +16,7 @@ struct IdentitiesView: View {
                 if identities.isEmpty {
                     MnEmptyState(
                         title: "No enrolled identities",
-                        explanation: "Provider enrolment requires a configured Pistis broker and has not run on this device.",
+                        explanation: "Provider enrolment requires a configured GitHub App and has not run on this device.",
                         actionTitle: nil
                     )
                 }
@@ -50,7 +50,7 @@ struct IdentitiesView: View {
                             .tint(MnColor.action)
                             .disabled(true)
                             .accessibilityHint(
-                                "Requires accepted broker and Prosopikon enrolment ports"
+                                "Requires the reviewed Device Flow and Prosopikon enrolment ports"
                             )
                     }
                 }
@@ -100,7 +100,7 @@ struct IdentitiesView: View {
                         .frame(minWidth: MnMetrics.minimumTarget, minHeight: MnMetrics.minimumTarget)
                 }
                 .disabled(true)
-                .accessibilityHint("Requires a configured Pistis broker")
+                .accessibilityHint("Requires a configured GitHub App")
             }
         }
         .mnScreenBackground()

@@ -39,9 +39,9 @@ PKCS#11 second. Project-owner direction is approved; implementation remains
 blocked pending specialist security and cryptography review.
 
 [ADR 0025](0025-github-app-device-flow-v0-1.md) is **Accepted**. It supersedes
-only the GitHub enrolment transport sections of ADRs 0003, 0007, and 0008 for
-v0.1; stable numeric-subject and Prosopikon authority invariants remain
-unchanged.
+only the GitHub enrolment transport sections of ADRs 0003, 0007, 0008, and
+0023 for v0.1; stable numeric-subject and Prosopikon authority invariants
+remain unchanged.
 
 [ADR 0026](0026-mvp-deployment-and-product-profile.md) is **Accepted**. It
 records the owner-approved MVP identity, customer deployment, product-session,

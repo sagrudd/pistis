@@ -5,7 +5,7 @@
 - Decision owners: Trust, mobile, Prosopikon authority, security, and evidence
 - Related issue: PIS-E22-I252
 - Supersedes: the GitHub enrolment **transport sections only**
-  of ADRs 0003, 0007, and 0008 for the v0.1 profile
+  of ADRs 0003, 0007, 0008, and 0023 for the v0.1 profile
 
 This decision was reviewed as ADR 0023 on its source branch. Integration
 renumbered it mechanically to ADR 0025 because accepted mobile-enrolment and
@@ -18,6 +18,13 @@ ceremony. ADR 0003 accepts GitHub authorization-code PKCE through a
 confidential broker; ADRs 0007 and 0008 consequently specify a brokered
 system-browser transport. That is incompatible with the approved no-broker
 v0.1 deployment shape and cannot be changed by implication.
+
+ADR 0023 later accepted the authority-owned invitation, binding, receipt, and
+audit transaction together with an authorization-code callback transport.
+The project owner's subsequent GitHub App decision selected Device Flow and no
+broker for v0.1. This ADR therefore preserves ADR 0023's authority transaction
+and signed enrolment-result invariants while superseding only its callback,
+OAuth-state, PKCE, broker, and authorization-code transport requirements.
 
 GitHub Apps support the OAuth 2.0 Device Authorization Grant using their public
 client ID. It removes the client-secret exchange broker, but provides neither
@@ -37,10 +44,12 @@ v0.1 release support until its separate MVP gate changes.
 
 ## Decision
 
-ADR 0025 supersedes only the cited GitHub transport sections of
-ADRs 0003, 0007 and 0008 for v0.1. Google, a future GitHub authorization-code
-PKCE/broker profile, stable-subject semantics, authority ownership and device
-assurance policies are not superseded.
+ADR 0025 supersedes only the cited GitHub transport sections of ADRs 0003,
+0007, 0008, and 0023 for v0.1. ADR 0023's invitation-bound authority-key
+bootstrap, signed device binding, atomic Prosopikon commit, receipt,
+reconciliation, and audit requirements remain normative. Google, a future
+GitHub authorization-code PKCE/broker profile, stable-subject semantics,
+authority ownership, and device-assurance policies are not superseded.
 
 Official GitHub contracts used by this profile are [GitHub App user access
 tokens via device flow](https://docs.github.com/en/apps/creating-github-apps/authenticating-with-a-github-app/generating-a-user-access-token-for-a-github-app),

@@ -116,8 +116,14 @@ The final spelling is implementation-owned, but the boundary is normative:
 - broken pipe, signal, terminal loss, expiry, or verification failure yields
   only a coarse error and no automatic replacement invitation.
 
-The producer requires the governed local administrator authority and peer
-credential check. Unrelated shell access is not enrolment authorization.
+The producer requires the governed local administrator authority and verifies
+the owner, mode, lifecycle, and authorization of the exact authority database
+before issuance. An anonymous pipe does not expose portable peer credentials,
+so neither process may claim that the pipe authenticates its peer. Pistis
+authenticates the producer output by verifying the purpose-bound COSE
+signature and committed authority descriptor; its pipe checks provide
+confidentiality hygiene and message framing, not caller identity. Unrelated
+shell access is not enrolment authorization.
 
 ### Terminal behavior
 

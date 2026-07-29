@@ -7,6 +7,9 @@ a Changelog and releases follow Semantic Versioning.
 
 ### Added
 
+- Correct the proposed first-device decisions so pending provider operations
+  remain non-terminal and anonymous pipes are not misrepresented as a
+  peer-authentication mechanism.
 - A proposed installation-local GitHub Device Flow verifier that keeps provider
   tokens outside mobile and authority boundaries while preserving Prosopikon
   as the sole durable enrolment state machine.

@@ -72,11 +72,13 @@ That capability permits only status, cancellation, and final confirmation for
 the exact operation. It is not provider proof, cannot mark an operation
 verified, and is never accepted by `commit_enrolment_v1`.
 
-Pending, denied, expired, cancelled, and consumed states are terminal.
-Concurrent completion uses one compare-and-set transition. A verified row is
-consumed in the same SQLite transaction as the invitation, provider binding,
-trusted device credential, generations, receipt, and audit. Exact committed
-replay returns the immutable receipt; divergent replay fails closed.
+Denied, expired, cancelled, and consumed states are terminal. Pending may
+transition only to verified, denied, cancelled, or expired; verified may
+transition only to consumed, cancelled, or expired. Concurrent completion uses
+one compare-and-set transition. A verified row is consumed in the same SQLite
+transaction as the invitation, provider binding, trusted device credential,
+generations, receipt, and audit. Exact committed replay returns the immutable
+receipt; divergent replay fails closed.
 The authority derives the final `commit_digest` only after the verified subject
 is present and the phone supplies the complete signed binding. It accepts that
 digest only when the binding's initial fields match the durable operation and

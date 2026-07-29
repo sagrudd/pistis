@@ -10,6 +10,8 @@ a Changelog and releases follow Semantic Versioning.
 - Correct the proposed first-device decisions so pending provider operations
   remain non-terminal and anonymous pipes are not misrepresented as a
   peer-authentication mechanism.
+- Require a distinct 32-byte CSPRNG mobile polling capability whose durable
+  authority state contains only the digest.
 - A proposed installation-local GitHub Device Flow verifier that keeps provider
   tokens outside mobile and authority boundaries while preserving Prosopikon
   as the sole durable enrolment state machine.

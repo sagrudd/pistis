@@ -66,8 +66,9 @@ client-generated enrolment `operation_id`. The row is bound to:
 - issue time, lifetime, and terminal expiry; and
 - a fresh operation nonce and canonical digest of those initial fields.
 
-The public mobile transport receives a separate bounded polling capability
-for the exact `provider_verification_id`.
+The public mobile transport receives a distinct fresh 32-byte CSPRNG polling
+capability for the exact `provider_verification_id`; Prosopikon stores only its
+digest.
 That capability permits only status, cancellation, and final confirmation for
 the exact operation. It is not provider proof, cannot mark an operation
 verified, and is never accepted by `commit_enrolment_v1`.

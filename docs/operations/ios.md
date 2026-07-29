@@ -235,7 +235,7 @@ signature interoperability. It does not assert TestFlight distribution, QR
 authentication, a browser route, CLI approval, cancellation behaviour, a
 second prompt, or biometry-set invalidation; those are separate MVP gates.
 Its SHA-256 digest is
-`2c2523a88bc49ce94f0f4aa62235d44684f374f78fd80344ec5a3f95d8509349`.
+`b8802b44f02ba0321803b76f3a12fe7d6c684ae696c476f24a418f575f1d9f71`.
 The authoritative Jenkins Expedition retains the exact observation and
 verification result as a dossier artifact; see the PR acceptance record for
 the Expedition identifier.

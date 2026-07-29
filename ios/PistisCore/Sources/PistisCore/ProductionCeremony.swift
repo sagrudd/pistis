@@ -1,5 +1,12 @@
-import CryptoKit
 import Foundation
+
+#if canImport(CryptoKit)
+import CryptoKit
+#elseif canImport(Crypto)
+import Crypto
+#else
+#error("PistisCore requires CryptoKit or Apple Swift Crypto")
+#endif
 
 public enum ProductionCeremonyError: Error, Equatable, Sendable {
     case malformedFrame

@@ -553,7 +553,9 @@ now also requires a closed, attended enrolment-only Monas startup profile
 because the normal runtime correctly rejects a fresh principal with no trusted
 device. The reviewed configuration digest, authority transaction, signed
 receipt, and fail-closed transition into normal login still need to supply the
-authenticated enrolment output. End-user
+authenticated enrolment output. The protected CLI-to-phone presentation of
+the first invitation also remains undefined; copying the bearer or placing it
+in a URL is not an acceptable substitute. End-user
 enrolment/history/revocation UX plus physical qualification also remain. The
 detached version-1 QR fixture remains reference-only.
 

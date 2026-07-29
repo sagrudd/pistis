@@ -33,6 +33,11 @@ server-held GitHub callback correlation, and complete signed
 installation-trust receipt. Product activation remains blocked until
 cross-project implementation review and evidence pass.
 
+ADR 0025 supersedes ADR 0023's callback, OAuth-state, PKCE, broker, and
+authorization-code transport requirements for v0.1. ADR 0023's authority-key
+bootstrap, signed binding, atomic commit, receipt, reconciliation, and audit
+transaction remain normative.
+
 [ADR 0024](0024-linux-hardware-signing-providers.md) proposes the
 provider-neutral Linux installation-signing boundary, with TPM2 first and
 PKCS#11 second. Project-owner direction is approved; implementation remains

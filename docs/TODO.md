@@ -86,12 +86,12 @@ distribution, or licensing must trace their acceptance to that decision.
 
 # EPIC 3 — GitHub trust
 
-- [x] Define and validate the OAuth application registration contract
-- [x] Implement PKCE flow
-- [x] Validate callback
-- [x] Retrieve stable GitHub user id
-- [x] Persist identity binding
-- [x] Add integration tests
+- [x] Define and validate the GitHub App registration contract
+- [ ] Implement the bounded ADR 0025 Device Flow
+- [ ] Verify the reviewed GitHub App configuration digest
+- [x] Retrieve and validate the stable numeric GitHub user ID
+- [ ] Commit the invitation, provider binding, device, and receipt atomically
+- [ ] Add Device Flow and authority-transaction integration tests
 
 ---
 
@@ -138,7 +138,7 @@ open under milestone M5.
 Implementation source and portable tests are present on the EPIC-7 delivery
 branch. These boxes remain open until the applicable evidence exists: full
 Xcode native compilation, simulator and real-device security/accessibility
-tests, Apple signing and TestFlight, broker/verifier integration, and the COSE
+tests, Apple signing and TestFlight, Device Flow/verifier integration, and the COSE
 ADR plus shared mobile conformance fixtures required by ADR 0006. The issue
 tracker records signing, TestFlight, and production QR interoperability as
 blocked rather than complete.
@@ -540,9 +540,10 @@ presentation; approval and denial use Face ID, the Secure Enclave COSE signer,
 `pistis-authentication::verify_authentication_response` is the production host
 boundary for authority-owned enrolled keys and persisted challenge facts; it
 returns only credential-free verified facts for the Prosopikon transaction.
-The system-browser broker still needs to supply the authenticated enrolment
-output, and end-user enrolment/history/revocation UX plus physical
-qualification remain. The detached version-1 QR fixture remains reference-only.
+The bounded Device Flow and Prosopikon authority transaction still need to
+supply the authenticated enrolment output, and end-user
+enrolment/history/revocation UX plus physical qualification remain. The
+detached version-1 QR fixture remains reference-only.
 
 Issue #318 and accepted ADR 0023 define the remaining trust bootstrap. No
 endpoint or Keychain installation may be represented as production enrolment

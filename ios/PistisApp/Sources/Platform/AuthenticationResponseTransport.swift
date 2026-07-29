@@ -60,6 +60,7 @@ enum CanonicalHTTPSHost {
               value.utf8.count <= 253,
               value.unicodeScalars.allSatisfy(\.isASCII),
               !value.hasSuffix("."),
+              !isNumericIPAddressForm(value),
               value.split(separator: ".", omittingEmptySubsequences: false).allSatisfy({
                   !$0.isEmpty && $0.utf8.count <= 63
                       && $0.first != "-" && $0.last != "-"
@@ -82,6 +83,26 @@ enum CanonicalHTTPSHost {
             components.percentEncodedHost == host
         else { return nil }
         return parse(host)
+    }
+
+    private static func isNumericIPAddressForm(_ host: String) -> Bool {
+        let components = host.split(separator: ".", omittingEmptySubsequences: false)
+        guard (1 ... 4).contains(components.count) else { return false }
+        return components.allSatisfy(isNumericAddressComponent)
+    }
+
+    private static func isNumericAddressComponent(_ component: Substring) -> Bool {
+        let bytes = Array(component.utf8)
+        guard !bytes.isEmpty else { return false }
+        if bytes.count > 2, bytes[0] == 48, bytes[1] == 120 {
+            return bytes.dropFirst(2).allSatisfy {
+                (48 ... 57).contains($0) || (97 ... 102).contains($0)
+            }
+        }
+        if bytes.count > 1, bytes[0] == 48 {
+            return bytes.dropFirst().allSatisfy { (48 ... 55).contains($0) }
+        }
+        return bytes.allSatisfy { (48 ... 57).contains($0) }
     }
 }
 

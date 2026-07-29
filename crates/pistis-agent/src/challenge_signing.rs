@@ -74,7 +74,7 @@ pub struct AuthenticationChallengeFacts {
     pub endpoint_hints: Vec<String>,
     /// Digest of the exact canonical payload.
     pub payload_digest: ChallengePayloadDigest,
-    /// Digest of the exact COSE envelope; use as durable challenge digest.
+    /// Digest of the exact COSE envelope; a separate signed-envelope fingerprint.
     pub envelope_digest: ChallengeEnvelopeDigest,
     /// Digest of the secret nonce.
     pub nonce_digest: NonceDigest,

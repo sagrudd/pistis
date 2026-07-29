@@ -230,6 +230,12 @@ final class PlatformPolicyTests: XCTestCase {
             "jenkins..mnemosyne.test",
             "jenkins.mnemosyne.test/path",
             "jënkins.mnemosyne.test",
+            "127.0.0.1",
+            "2130706433",
+            "0x7f000001",
+            "0177.0.0.1",
+            "127.1",
+            "::1",
         ] {
             XCTAssertThrowsError(
                 try AuthenticationResponseTransport(allowedHosts: [host]),

@@ -54,7 +54,6 @@ impl Fixture {
             user_id: challenge.user_id,
             external_identity_id: challenge.external_identity_id,
             device_id: DeviceId::from_bytes([9; 16]),
-            audience: challenge.audience.clone(),
             binding_generation: 10,
             current_binding_generation: 10,
             policy_generation: 11,

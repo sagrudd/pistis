@@ -140,6 +140,12 @@ final class ProductionCeremonyTests: XCTestCase {
             "https://jenkins.mnemosyne.test./auth/pistis",
             "https://jenkins..mnemosyne.test/auth/pistis",
             "https://%6aenkins.mnemosyne.test/auth/pistis",
+            "https://127.0.0.1/auth/pistis",
+            "https://2130706433/auth/pistis",
+            "https://0x7f000001/auth/pistis",
+            "https://0177.0.0.1/auth/pistis",
+            "https://127.1/auth/pistis",
+            "https://[::1]/auth/pistis",
         ] {
             let material = try Fixture(
                 key: P256.Signing.PrivateKey(),

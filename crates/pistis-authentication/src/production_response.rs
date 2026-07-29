@@ -47,8 +47,6 @@ pub struct AuthenticationResponseExpectation {
     pub external_identity_id: ExternalIdentityId,
     /// Enrolled device selected by the authority.
     pub device_id: DeviceId,
-    /// Installation-scoped relying-party audience.
-    pub audience: String,
     /// Binding generation captured when the challenge was created.
     pub binding_generation: u64,
     /// Current binding generation.
@@ -88,7 +86,7 @@ pub enum AuthenticationResponseVerificationError {
     Expired,
     /// The durable authority reports that the challenge was already consumed.
     Replayed,
-    /// A binding, digest, identity, time, audience, or generation was substituted.
+    /// A binding, digest, identity, time, or generation was substituted.
     BindingMismatch,
 }
 
@@ -122,13 +120,6 @@ pub fn verify_authentication_response(
     credential: &AuthenticationResponseCredential,
 ) -> Result<VerifiedAuthenticationResponse, AuthenticationResponseVerificationError> {
     validate_envelope_size(envelope)?;
-    if expected.audience.is_empty()
-        || expected.audience.len() > 128
-        || expected.audience.trim() != expected.audience
-        || expected.audience.chars().any(char::is_control)
-    {
-        return Err(AuthenticationResponseVerificationError::InvalidResponse);
-    }
     if !credential.active || derive_key_id(&credential.public_key) != credential.key_id {
         return Err(AuthenticationResponseVerificationError::InactiveCredential);
     }

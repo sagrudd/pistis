@@ -478,6 +478,11 @@ retention is recorded with the EPIC-18 pull-request acceptance evidence.
 - [ ] Exercise restart, concurrency, backup, restore, and corruption paths
 - [ ] Retain exact-revision cross-repository Jenkins evidence
 
+Successful authentication is not a complete standalone user journey. Monas
+must redirect its normal Prosopikon-backed session to the Propylaion home
+defined by EPIC 26; neither a raw product port nor a developer-only route may
+satisfy MVP acceptance.
+
 ## EPIC 21 — Synoptikon/Mneion MVP route
 
 - [ ] Pin reviewed Pistis and Prosopikon revisions in Mnemosyne
@@ -528,12 +533,42 @@ version-1 QR fixture remains reference-only.
 - [ ] Build RPM/SRPM, SBOM, checksums, and provenance
 - [ ] Test clean install, upgrade, rollback, backup, and restore
 
+## EPIC 26 — Propylaion standalone product home
+
+- [ ] Close the Pistis acceptance gate tracked by
+  [#321](https://github.com/sagrudd/pistis/issues/321)
+- [ ] Deliver the minimum Propylaion contract, composition, access, Monas
+  adapter, accessible UI, and readiness slices tracked by
+  [Propylaion #22](https://github.com/sagrudd/propylaion/issues/22)
+- [ ] Mount Propylaion under the Monas public origin and make it the successful
+  Pistis login destination as tracked by
+  [Monas #17](https://github.com/sagrudd/monas/issues/17)
+- [ ] Define stable product descriptors for Jenkins and DASObjectStore
+- [ ] Consume verified Prosopikon access decisions without interpreting browser
+  claims or raw role labels
+- [ ] Keep presence, access, readiness, and progression as independent states
+- [ ] Admit only host-relative product routes without exposing private hosts,
+  ports, credentials, or bearer material
+- [ ] Require Jenkins and DASObjectStore to re-authorize the accepted Monas
+  context at their own boundaries
+- [ ] Preserve the other offering plus sign-out and support during one-product
+  or Propylaion degradation
+- [ ] Pass browser, restart, unsafe-route, hidden-product, revoked-authority,
+  and partial-outage tests
+- [ ] Retain exact Pistis, Prosopikon, Monas, Propylaion, Jenkins, and
+  DASObjectStore revisions in the portfolio Jenkins dossier
+
+This is a release-blocking usability gate, not a transfer of authority.
+Propylaion projects and explains authoritative facts; Monas remains the public
+host, Prosopikon remains the principal/session authority, and each target
+product remains responsible for authorization.
+
 ## EPIC 25 — MVP security and release candidate
 
 - [ ] Complete the MVP threat-model review
 - [ ] Complete dependency and privacy reviews
 - [ ] Pass fuzzing and negative-path acceptance
-- [ ] Run the four-repository Jenkins acceptance expedition
+- [ ] Run the exact-revision portfolio Jenkins acceptance expedition
 - [ ] Verify the signed physical-iPhone record
 - [ ] Assemble immutable `v0.1.0-rc.1` artefacts and manifest
 - [ ] Record internal release approval against the manifest digest

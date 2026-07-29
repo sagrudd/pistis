@@ -21,8 +21,11 @@ The candidate shall let one existing Prosopikon principal:
 3. create one device-protected signing key in the iOS application;
 4. scan and explicitly approve a QR authentication challenge using Face ID;
 5. authenticate through either the Monas route or the Synoptikon/Mneion route;
-6. run an exact CLI action through a supervised, non-exportable session; and
-7. export redacted authentication evidence that an offline verifier can
+6. land on the Propylaion product home after Monas authentication and navigate
+   to an authorized Jenkins or DASObjectStore offering without knowing its
+   private host or port;
+7. run an exact CLI action through a supervised, non-exportable session; and
+8. export redacted authentication evidence that an offline verifier can
    validate.
 
 Prosopikon remains the authority for immutable principals, tenants,
@@ -36,6 +39,12 @@ authority.
 - iOS is the sole supported mobile platform.
 - QR is the sole required challenge/response transport.
 - Monas and Synoptikon/Mneion are both required relying routes.
+- Propylaion is the required post-authentication home for the Monas standalone
+  route. It projects installed, accessible, and ready offerings but never
+  authenticates, grants access, supervises products, or proxies their APIs.
+- The first required Propylaion profile contains Jenkins and DASObjectStore.
+  Navigation is host-relative, reveals no private port or bearer material, and
+  each selected product re-authorizes the accepted Monas context.
 - The Synoptikon route is implemented by the Mneion server and web deployment
   in the `mnemosyne` repository.
 - Both routes use one versioned Prosopikon--Pistis authority and transaction
@@ -108,8 +117,9 @@ TPM/HSM sealing is deferred.
 
 Jenkins is authoritative for Rust, Swift-package, Android-preview,
 documentation, packaging, and exact-revision cross-repository tests. The
-cross-repository expedition pins Pistis, Prosopikon, Monas, and Mnemosyne
-revisions and retains its complete dossier.
+portfolio expedition pins Pistis, Prosopikon, Monas, Propylaion, Jenkins,
+DASObjectStore, and Mnemosyne revisions as applicable to each route and
+retains its complete dossier.
 
 One physical Face ID iPhone on the current production iOS major version is the
 mandatory security acceptance device. A signed record bound to the exact
@@ -132,11 +142,12 @@ complete and every critical or high finding is closed.
 | EPIC 18 | Rust/iOS COSE interoperability | EPIC 17 |
 | EPIC 19 | Prosopikon--Pistis authority bridge | EPIC 18 |
 | EPIC 20 | Monas production authentication route | EPIC 19 |
+| EPIC 26 | Propylaion standalone product home | EPIC 20 |
 | EPIC 21 | Synoptikon/Mneion production route | EPIC 19 |
 | EPIC 22 | iOS production qualification | EPICs 18--21 |
 | EPIC 23 | Authentication evidence and offline verification | EPIC 19 |
 | EPIC 24 | RPM, systemd, and operational lifecycle | EPICs 19--23 |
-| EPIC 25 | Security qualification and `v0.1.0-rc.1` | EPICs 20--24 |
+| EPIC 25 | Security qualification and `v0.1.0-rc.1` | EPICs 20--24 and 26 |
 
 EPIC 16 remains the owner of CLI/local-agent completion and depends on EPICs
 18, 19, and 23 for its production path.
@@ -148,6 +159,7 @@ stabilize
   -> freeze Rust/iOS interoperability
   -> implement the Prosopikon authority bridge
   -> implement Monas and Synoptikon/Mneion host adapters
+  -> land the Monas user on Propylaion and re-authorize Jenkins/DASObjectStore
   -> pass physical iOS end-to-end acceptance
   -> qualify packages and operations
   -> assemble and approve v0.1.0-rc.1

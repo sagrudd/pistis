@@ -1,10 +1,10 @@
-# ADR 0024: MVP deployment, product, and mobile profile
+# ADR 0026: MVP deployment, product, and mobile profile
 
 - Status: Accepted
 - Date: 2026-07-28
 - Decision owner: Project owner
 - Related issue: PIS-E26 / #309
-- Depends on: ADRs 0011, 0012, 0015, 0016, 0020, and 0023
+- Depends on: ADRs 0011, 0012, 0015, 0016, 0020, and 0025
 - Supersedes: conflicting scope statements in `MVP_RELEASE_CANDIDATE.md`
 
 ## Context
@@ -197,4 +197,3 @@ The following are explicitly outside the v0.1 profile and require new review:
   evidence remain release gates rather than software defects.
 - Product implementation and test issues must cite this ADR when they
   implement one of these decisions.
-

@@ -38,11 +38,11 @@ provider-neutral Linux installation-signing boundary, with TPM2 first and
 PKCS#11 second. Project-owner direction is approved; implementation remains
 blocked pending specialist security and cryptography review.
 
-[ADR 0023](0023-github-app-device-flow-v0-1.md) is **Accepted**. Numbers 0021
-and 0022 remain reserved by earlier unmerged proposals. It supersedes only the
-GitHub enrolment transport sections of ADRs 0003, 0007, and 0008 for v0.1;
-stable numeric-subject and Prosopikon authority invariants remain unchanged.
+[ADR 0025](0025-github-app-device-flow-v0-1.md) is **Accepted**. It supersedes
+only the GitHub enrolment transport sections of ADRs 0003, 0007, and 0008 for
+v0.1; stable numeric-subject and Prosopikon authority invariants remain
+unchanged.
 
-[ADR 0024](0024-mvp-deployment-and-product-profile.md) is **Accepted**. It
+[ADR 0026](0026-mvp-deployment-and-product-profile.md) is **Accepted**. It
 records the owner-approved MVP identity, customer deployment, product-session,
 mobile, recovery, privacy, distribution, licensing, and deferred-work profile.

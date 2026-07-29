@@ -7,7 +7,7 @@
 
 The owner-approved v0.1 deployment and product decisions are tracked by
 [EPIC 26 / issue #309](https://github.com/sagrudd/pistis/issues/309) and
-[ADR 0024](adr/0024-mvp-deployment-and-product-profile.md). Implementations
+[ADR 0026](adr/0026-mvp-deployment-and-product-profile.md). Implementations
 that affect customer installation, GitHub enrolment, mobile assurance,
 nearby/QR transport, Jenkins or DASObjectStore sessions, recovery, privacy,
 distribution, or licensing must trace their acceptance to that decision.

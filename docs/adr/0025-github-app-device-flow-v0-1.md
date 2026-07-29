@@ -1,4 +1,4 @@
-# ADR 0023: GitHub App device flow for v0.1 enrolment
+# ADR 0025: GitHub App device flow for v0.1 enrolment
 
 - Status: Accepted
 - Date: 2026-07-28
@@ -7,9 +7,9 @@
 - Supersedes: the GitHub enrolment **transport sections only**
   of ADRs 0003, 0007, and 0008 for the v0.1 profile
 
-ADR numbers 0021 and 0022 are reserved by earlier open proposed ADR pull
-requests. This decision intentionally uses 0023 even while those proposals
-remain unmerged, so no branch reuses a number under review.
+This decision was reviewed as ADR 0023 on its source branch. Integration
+renumbered it mechanically to ADR 0025 because accepted mobile-enrolment and
+proposed Linux-signer decisions now occupy ADRs 0023 and 0024.
 
 ## Context
 
@@ -37,7 +37,7 @@ v0.1 release support until its separate MVP gate changes.
 
 ## Decision
 
-ADR 0023 supersedes only the cited GitHub transport sections of
+ADR 0025 supersedes only the cited GitHub transport sections of
 ADRs 0003, 0007 and 0008 for v0.1. Google, a future GitHub authorization-code
 PKCE/broker profile, stable-subject semantics, authority ownership and device
 assurance policies are not superseded.

@@ -4,7 +4,7 @@
 **Candidate:** `v0.1.0-rc.1`  
 **Approved:** 27 July 2026
 
-**Deployment profile amended:** 28 July 2026 by ADR 0024
+**Deployment profile amended:** 28 July 2026 by ADR 0026
 
 ## Purpose
 

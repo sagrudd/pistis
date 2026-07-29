@@ -1,7 +1,7 @@
 # MVP deployment profile
 
 This page is the operator-facing summary of
-[ADR 0024](../adr/0024-mvp-deployment-and-product-profile.md). ADR 0024 and the
+[ADR 0026](../adr/0026-mvp-deployment-and-product-profile.md). ADR 0026 and the
 protocol ADRs remain authoritative where this checklist is abbreviated.
 
 ## Site shape
@@ -30,7 +30,7 @@ For the initial Mnemosyne evaluation, the administrator invitation binds:
 | Public Client ID | `Iv23lievHWZTGyot0BXa` |
 
 The email is not an identity key. Before production enablement, verify the
-reviewed GitHub App configuration digest required by ADR 0023. Do not put a
+reviewed GitHub App configuration digest required by ADR 0025. Do not put a
 client secret, App key, user token, personal access token, password, or
 passphrase in source control or a command argument.
 
@@ -82,4 +82,3 @@ physical v0.1 release gate.
 Formal legal and privacy review remains required before external production
 for the mobile proprietary-source plan, EULA, Terms, Privacy, Security, and
 Support pages.
-

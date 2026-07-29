@@ -24,18 +24,18 @@ must be redacted, cleared on every terminal path, and excluded from persistent
 evidence. Provider email, login, and hosted-domain values are mutable metadata,
 not identity keys.
 
-ADR 0023 is the **Accepted** v0.1 GitHub App device-flow profile. It supersedes
+ADR 0025 is the **Accepted** v0.1 GitHub App device-flow profile. It supersedes
 only the GitHub transport portions of ADRs 0003, 0007 and 0008.
 Its device code, user code, access/refresh token, browser and `/user` response
 remain transient capabilities; its browser-suspended state does no polling;
 and it requires explicit confirmation, platform-key proof and an atomic
 Prosopikon invitation/principal/device receipt. Persistent throttles and
 redacted audit mitigate but do not eliminate phishing/session-misbinding risk.
-Implementation and production enablement remain gated by ADR 0023's reviewed
+Implementation and production enablement remain gated by ADR 0025's reviewed
 configuration, physical-device, canary, attack-exercise, and attestation
 evidence.
 
-ADR 0024 records the accepted MVP deployment and product security profile.
+ADR 0026 records the accepted MVP deployment and product security profile.
 Routine authentication is site-local; GitHub participates only in enrolment
 and explicit re-enrolment. Customer sites have distinct Prosopikon authority,
 installation identity, site-local CA, audit, and recovery state. Mnemosyne has

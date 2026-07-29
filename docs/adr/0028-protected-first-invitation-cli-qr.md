@@ -89,8 +89,11 @@ spelling. Enrolment paths are fixed by protocol and never supplied by the QR.
 Outer field 3 is the exact ADR-0023 authority descriptor. Its digest equals
 invitation key 8 and presentation key 14. Its derived key ID equals the COSE
 `kid`, and its public key verifies the signature. The presentation ID is
-unique and one-use. Prosopikon stores only presentation and invitation digests,
-not another invitation secret.
+unique correlation, not an independently consumed capability. Prosopikon
+stores only presentation and invitation digests, not another invitation
+secret. The canonical invitation and durable provider operation remain the
+only one-use state machines; a duplicate scan or begin cannot create a second
+operation for the same invitation.
 
 ### Producer and protected pipe
 
@@ -168,6 +171,7 @@ No GitHub token enters the phone or QR.
 Dismissal before begin clears locally. After begin, the phone cancels through
 the exact polling capability. An exact retry may re-present the same valid
 bytes only while the authority reports the same pending operation. The
+presentation digest is correlation evidence, not a second replay ledger. The
 producer must not silently issue a second invitation. Terminal or unknown
 state requires a new attended ceremony.
 

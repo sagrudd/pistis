@@ -12,6 +12,9 @@ a Changelog and releases follow Semantic Versioning.
   peer-authentication mechanism.
 - Require a distinct 32-byte CSPRNG mobile polling capability whose durable
   authority state contains only the digest.
+- Keep first-device replay authority singular: presentation IDs are
+  correlation-only, while the invitation and durable provider operation own
+  one-use state.
 - A proposed installation-local GitHub Device Flow verifier that keeps provider
   tokens outside mobile and authority boundaries while preserving Prosopikon
   as the sole durable enrolment state machine.

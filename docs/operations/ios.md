@@ -45,9 +45,12 @@ For the accepted v0.1 design, an operator must:
 The dependency-injected iOS provider client and coordinator implement the
 bounded GitHub wire flow through local numeric-subject retrieval. They do not
 persist a device code, access token, refresh token, provider response, or
-authenticated trust record. The compiled application deliberately does not
-contain the three configuration keys above and does not wire the coordinator
-to the Identities screen.
+authenticated trust record. The development application contains the three
+reviewed public configuration keys and wires the coordinator to the
+Identities screen. It labels the successful result as identity verification,
+not authority enrolment. The exact canonical public configuration record is
+``fixtures/github-app-configuration-v1.json`` and its SHA-256 is compiled as
+``PistisGitHubAppConfigurationDigest``.
 
 Local `/user` validation proves what the phone observed over its GitHub TLS
 connection. It does not, by itself, give Prosopikon an authority-verifiable

@@ -33,6 +33,12 @@
 	</array>
 	<key>LSApplicationCategoryType</key>
 	<string>public.app-category.utilities</string>
+	<key>PistisGitHubAPIVersion</key>
+	<string>2022-11-28</string>
+	<key>PistisGitHubAppConfigurationDigest</key>
+	<string>bf7968030abdf7d3dabb389f32cd4c5310c1ec4c9c625d38d13be6efae230663</string>
+	<key>PistisGitHubClientID</key>
+	<string>Iv23lievHWZTGyot0BXa</string>
 	<key>NSCameraUsageDescription</key>
 	<string>Pistis scans authentication and approval challenges. Camera frames are not retained.</string>
 	<key>NSFaceIDUsageDescription</key>

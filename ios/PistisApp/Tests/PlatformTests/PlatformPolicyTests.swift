@@ -189,7 +189,8 @@ final class PlatformPolicyTests: XCTestCase {
             ),
             authenticatedUserEndpoint: try XCTUnwrap(URL(string: "https://api.github.com/user")),
             apiVersion: "2022-11-28",
-            appConfigurationDigest: Data(repeating: 0x55, count: 32)
+            appConfigurationDigest:
+                GitHubEnrolmentConfiguration.reviewedAppConfigurationDigest
         )
         XCTAssertEqual(
             configuration.clientID,
@@ -213,13 +214,31 @@ final class PlatformPolicyTests: XCTestCase {
                         URL(string: "https://api.github.com/user")
                     ),
                     apiVersion: "2022-11-28",
-                    appConfigurationDigest: Data(repeating: 0x55, count: 32)
+                    appConfigurationDigest:
+                        GitHubEnrolmentConfiguration.reviewedAppConfigurationDigest
                 )
             )
         }
         XCTAssertThrowsError(
             try GitHubEnrolmentConfiguration(
                 clientID: "Iv23lievAttackerClient",
+                deviceCodeEndpoint: XCTUnwrap(
+                    URL(string: "https://github.com/login/device/code")
+                ),
+                accessTokenEndpoint: XCTUnwrap(
+                    URL(string: "https://github.com/login/oauth/access_token")
+                ),
+                authenticatedUserEndpoint: XCTUnwrap(
+                    URL(string: "https://api.github.com/user")
+                ),
+                apiVersion: "2022-11-28",
+                appConfigurationDigest:
+                    GitHubEnrolmentConfiguration.reviewedAppConfigurationDigest
+            )
+        )
+        XCTAssertThrowsError(
+            try GitHubEnrolmentConfiguration(
+                clientID: GitHubEnrolmentConfiguration.reviewedClientID,
                 deviceCodeEndpoint: XCTUnwrap(
                     URL(string: "https://github.com/login/device/code")
                 ),
@@ -255,9 +274,9 @@ final class PlatformPolicyTests: XCTestCase {
         )
     }
 
-    func testGitHubEnrolmentRemainsDisabledWithoutAuthorityPorts() {
+    func testGitHubDeviceFlowIsReadyWithoutClaimingAuthorityEnrolment() {
         let readiness = GitHubEnrolmentReadiness.current()
-        XCTAssertFalse(readiness.state.mayStart)
+        XCTAssertTrue(readiness.state.mayStart)
         XCTAssertFalse(readiness.configurationLabel.localizedCaseInsensitiveContains("secret"))
         XCTAssertFalse(readiness.identityRule.contains("@"))
     }

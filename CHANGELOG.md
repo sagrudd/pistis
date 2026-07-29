@@ -45,6 +45,10 @@ a Changelog and releases follow Semantic Versioning.
 - A closed additive v2 exact-action descriptor, challenge, and response schema
   with downgrade/substitution rejection and an agent-controlled single-use
   revalidation and direct-execution boundary.
+- A development-evaluation iOS GitHub Device Flow screen using the reviewed
+  organisation App configuration, explicit foreground resume, stable numeric
+  identity display, transient credential clearing, and an honest boundary
+  before Prosopikon authority enrolment.
 - Owner-only local-agent SQLite and Unix-socket foundations with bounded
   canonical framing, restart-safe single-use ceremony transitions, and a
   non-exportable installation-signing provider contract.

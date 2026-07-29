@@ -198,8 +198,8 @@ rerun the full ceremony rather than interpreting readiness as acceptance.
 
 ## GitHub enrolment boundary
 
-The Identities screen contains a compiled but disabled GitHub App enrolment
-port. The dependency-injected native adapter now implements the ADR 0025
+The Identities screen exposes a development-evaluation GitHub Device Flow.
+The dependency-injected native adapter implements the ADR 0025
 provider boundary through numeric-subject retrieval: exact endpoints and public
 client ID, redirect/cookie/cache refusal, strict duplicate-aware JSON parsing,
 bounded monotonic polling, `authorization_pending`, five-second `slow_down`,
@@ -207,8 +207,10 @@ bounded transient retries, expiry, cancellation/background handling, one-use
 `/user`, and transient token clearing. Its deterministic tests use no public
 network or credential.
 
-That adapter is not wired to the view and its result is not enrolment. The
-reviewed API revision and App-configuration digest are not present in the
+The view presents the one-time code, opens GitHub, resumes polling only after
+an explicit user action, and displays the verified numeric subject. Its result
+is not enrolment. The public client, API revision, and digest of
+``fixtures/github-app-configuration-v1.json`` are compiled into the
 application bundle. More importantly, the GitHub TLS response is observed
 inside the not-yet-enrolled phone. Signing its numeric subject with the
 proposed device key would prove possession of that key, but would not prove to
@@ -220,8 +222,9 @@ or raw GitHub bearer token into that missing proof.
 ADR 0025 accepts Device Flow and rejects a broker for v0.1. Until the reviewed
 configuration commitment, persistent throttle, trusted provider-capability
 issuer, signed binding, atomic Prosopikon transaction, and receipt exchange are
-implemented and reviewed, the disabled state is the only production-honest
-behavior. The coordinator performs no Keychain mutation and exposes only an
+implemented and reviewed, this screen must remain visibly labelled as an
+identity-verification evaluation and must not claim authority enrolment. The
+coordinator performs no Keychain mutation and exposes only an
 `awaitingConfirmation` result for the future authority integration.
 
 ## Design maintenance

@@ -15,9 +15,90 @@ struct AuthoritativeCeremonyStatus: Codable, Equatable, Sendable {
     let state: AuthoritativeCeremonyState
     let evidenceID: String?
 
-    private enum CodingKeys: String, CodingKey {
+    private enum CodingKeys: String, CodingKey, CaseIterable {
         case state
         case evidenceID = "evidence_id"
+    }
+
+    init(state: AuthoritativeCeremonyState, evidenceID: String?) {
+        self.state = state
+        self.evidenceID = evidenceID
+    }
+
+    init(from decoder: any Decoder) throws {
+        let untyped = try decoder.container(keyedBy: WireCodingKey.self)
+        let allowed = Set(CodingKeys.allCases.map(\.rawValue))
+        guard Set(untyped.allKeys.map(\.stringValue)).isSubset(of: allowed) else {
+            throw DecodingError.dataCorrupted(
+                .init(codingPath: decoder.codingPath, debugDescription: "unknown status field")
+            )
+        }
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        state = try container.decode(AuthoritativeCeremonyState.self, forKey: .state)
+        evidenceID = try container.decodeIfPresent(String.self, forKey: .evidenceID)
+    }
+}
+
+private struct WireCodingKey: CodingKey {
+    let stringValue: String
+    let intValue: Int?
+
+    init?(stringValue: String) {
+        self.stringValue = stringValue
+        intValue = nil
+    }
+
+    init?(intValue: Int) {
+        stringValue = String(intValue)
+        self.intValue = intValue
+    }
+}
+
+enum CanonicalHTTPSHost {
+    static func parse(_ value: String) -> String? {
+        guard value == value.lowercased(),
+              value.utf8.count <= 253,
+              value.unicodeScalars.allSatisfy(\.isASCII),
+              !value.hasSuffix("."),
+              value.split(separator: ".", omittingEmptySubsequences: false).allSatisfy({
+                  !$0.isEmpty && $0.utf8.count <= 63
+                      && $0.first != "-" && $0.last != "-"
+                      && $0.utf8.allSatisfy {
+                          (48 ... 57).contains($0)
+                              || (97 ... 122).contains($0) || $0 == 45
+                      }
+              })
+        else { return nil }
+        return value
+    }
+
+    static func from(_ endpoint: URL) -> String? {
+        guard let components = URLComponents(
+            url: endpoint,
+            resolvingAgainstBaseURL: false
+        ),
+            components.scheme == "https",
+            let host = components.host,
+            components.percentEncodedHost == host
+        else { return nil }
+        return parse(host)
+    }
+}
+
+/// Redirects are refused at the URL loading boundary. Validating only the final
+/// response URL would be too late because URLSession may already have replayed
+/// a signed POST body to the redirect target.
+final class RedirectRejectingSessionDelegate:
+    NSObject, URLSessionTaskDelegate, @unchecked Sendable
+{
+    func urlSession(
+        _: URLSession,
+        task _: URLSessionTask,
+        willPerformHTTPRedirection _: HTTPURLResponse,
+        newRequest _: URLRequest,
+        completionHandler: @escaping (URLRequest?) -> Void
+    ) {
+        completionHandler(nil)
     }
 }
 
@@ -30,14 +111,22 @@ struct AuthenticationResponseTransport: Sendable {
     private let allowedHosts: Set<String>
     private let session: URLSession
 
-    init(allowedHosts: Set<String>, session: URLSession = .shared) throws {
-        guard !allowedHosts.isEmpty,
-              allowedHosts.allSatisfy({
-                  !$0.isEmpty && $0 == $0.lowercased() && !$0.contains("/")
-              })
+    init(
+        allowedHosts: Set<String>,
+        configuration: URLSessionConfiguration = .ephemeral
+    ) throws {
+        let canonicalHosts = Set(allowedHosts.compactMap(CanonicalHTTPSHost.parse))
+        guard !allowedHosts.isEmpty, canonicalHosts.count == allowedHosts.count
         else { throw PlatformFailure.invalidConfiguration }
-        self.allowedHosts = allowedHosts
-        self.session = session
+        self.allowedHosts = canonicalHosts
+        configuration.httpShouldSetCookies = false
+        configuration.urlCache = nil
+        configuration.requestCachePolicy = .reloadIgnoringLocalCacheData
+        session = URLSession(
+            configuration: configuration,
+            delegate: RedirectRejectingSessionDelegate(),
+            delegateQueue: nil
+        )
     }
 
     func submit(envelope: Data, to endpoint: URL) async throws
@@ -72,7 +161,7 @@ struct AuthenticationResponseTransport: Sendable {
               endpoint.user == nil,
               endpoint.password == nil,
               endpoint.fragment == nil,
-              let host = endpoint.host?.lowercased(),
+              let host = CanonicalHTTPSHost.from(endpoint),
               allowedHosts.contains(host)
         else { throw PlatformFailure.invalidConfiguration }
     }

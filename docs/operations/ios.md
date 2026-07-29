@@ -89,7 +89,16 @@ For MVP transport, the challenge supplies one HTTPS response endpoint and may
 supply a second HTTPS status endpoint. Both hosts must already appear in the
 authenticated enrolment allow-list. Request and response bodies are limited to
 2 KiB; redirects, credentials in URLs, fragments, non-HTTPS URLs, and unknown
-hosts fail closed.
+hosts fail closed. Allow-list and challenge hosts use canonical lower-case
+ASCII DNS form without an empty label or trailing dot. URLSession is configured
+to refuse a redirect before it can replay a signed POST body; observing and
+rejecting only the final response URL is not sufficient.
+
+Keychain reads are untrusted persistence input. The app rejects unknown or
+missing top-level enrolment fields and reconstructs the trust record and device
+response context through their bounded validating initializers before use. A
+malformed or stale record disables the ceremony rather than being partially
+accepted. Authority status JSON similarly rejects unknown fields.
 
 ## Physical interoperability record
 

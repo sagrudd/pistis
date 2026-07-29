@@ -135,12 +135,17 @@ fresh Face ID through the enrolled Secure Enclave key, an untagged COSE Sign1
 envelope bounded to 2 KiB, and HTTPS delivery to an enrolled-host allow-list.
 The app polls at most ten times and displays only a terminal authority result;
 a timeout or malformed/oversized authority response is a failure, not an
-implicit acceptance.
+implicit acceptance. Hosts are canonical lower-case ASCII DNS names, redirects
+are refused by the URL loading delegate before any signed body can be replayed,
+and authority status decoders reject unknown fields.
 
 `AuthenticatedEnrollmentOutput` is the internal hand-off from the reviewed
 system-browser broker. It atomically binds the authority-issued trust record,
 device response context, and lower-case endpoint host allow-list. Do not add a
 QR, clipboard, fixture, or arbitrary JSON import path to this hand-off.
+Persistence decoding is strict: the complete field set must be present with no
+unknown fields, and decoded trust and response-context values must pass their
+normal validating initializers again before the Keychain record is usable.
 
 `SystemBrowserEnrollmentCoordinator` is the only sequencing path from a
 validated OAuth callback to that Keychain mutation. It sends the one-use code,

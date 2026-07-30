@@ -80,6 +80,7 @@ Architecture and operations
    adr/0026-mvp-deployment-and-product-profile
    adr/0027-local-provider-verifier
    adr/0028-protected-first-invitation-cli-qr
+   adr/0029-qr-bound-app-scoped-host-trust
    protocol/README
    protocol/domain-model
    protocol/action-approval

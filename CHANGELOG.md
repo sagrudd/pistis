@@ -7,6 +7,8 @@ a Changelog and releases follow Semantic Versioning.
 
 ### Added
 
+- Propose QR-bound, app-scoped host trust in ADR 0029 and withdraw the manual
+  iOS root-certificate trust ceremony from MVP acceptance.
 - Add the accepted version-3 first-device presentation verifier, protected
   pipe-only terminal QR presenter, shared Rust/Swift fixtures, iOS scanner,
   fixed-origin server-driven Device Flow transport, and canonical

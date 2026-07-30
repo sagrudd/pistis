@@ -7,6 +7,8 @@ a Changelog and releases follow Semantic Versioning.
 
 ### Added
 
+- Bind the reviewed GitHub App configuration fixture, Info.plist digest, and
+  Swift runtime digest with a deterministic regression test.
 - Correct the proposed first-device decisions so pending provider operations
   remain non-terminal and anonymous pipes are not misrepresented as a
   peer-authentication mechanism.

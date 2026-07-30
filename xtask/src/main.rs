@@ -165,6 +165,15 @@ fn valid_rust_location(path: &Path) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::fmt::Write as _;
+
+    use sha2::{Digest, Sha256};
+
+    const GITHUB_APP_CONFIGURATION: &[u8] =
+        include_bytes!("../../fixtures/github-app-configuration-v1.json");
+    const IOS_INFO_PLIST: &str = include_str!("../../ios/PistisApp/Info.plist");
+    const IOS_GITHUB_CONFIGURATION: &str =
+        include_str!("../../ios/PistisApp/Sources/App/GitHubEnrolmentReadiness.swift");
 
     #[test]
     fn accepts_hierarchical_source_below_limit() {
@@ -222,5 +231,45 @@ mod tests {
             "Protocol table is generated atomically.".to_owned(),
         )]);
         assert!(validate_rust_file(&path, &source, &exceptions).is_ok());
+    }
+
+    #[test]
+    fn reviewed_github_app_digest_matches_fixture_plist_and_swift() {
+        let digest = Sha256::digest(GITHUB_APP_CONFIGURATION);
+        let mut digest_hex = String::with_capacity(64);
+        for byte in digest {
+            write!(&mut digest_hex, "{byte:02x}").unwrap();
+        }
+        assert!(
+            IOS_INFO_PLIST.contains(&format!("<string>{digest_hex}</string>")),
+            "Info.plist must embed the canonical GitHub App fixture digest"
+        );
+
+        let byte_list = IOS_GITHUB_CONFIGURATION
+            .split_once("static let reviewedAppConfigurationDigest = Data([")
+            .expect("reviewed Swift digest declaration")
+            .1
+            .split_once("])")
+            .expect("closed Swift digest declaration")
+            .0;
+        let swift_digest = byte_list
+            .split(',')
+            .map(str::trim)
+            .filter(|token| !token.is_empty())
+            .map(|token| {
+                u8::from_str_radix(
+                    token
+                        .strip_prefix("0x")
+                        .expect("Swift digest bytes use hexadecimal"),
+                    16,
+                )
+                .expect("Swift digest byte")
+            })
+            .collect::<Vec<_>>();
+        assert_eq!(
+            swift_digest,
+            &digest[..],
+            "Swift must enforce the canonical GitHub App fixture digest"
+        );
     }
 }

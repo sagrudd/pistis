@@ -1,11 +1,12 @@
 # ADR 0032: Retire incompatible local trust
 
-- Status: Proposed
+- Status: Accepted
 - Date: 2026-07-30
+- Accepted: 2026-07-30
 - Decision owners: Pistis mobile security, Prosopikon authority, and product
   owner
 - Tracking issue: [#352](https://github.com/sagrudd/pistis/issues/352)
-- Implementation: prohibited until accepted
+- Implementation: permitted with specialist review and the required evidence
 
 ## Context
 

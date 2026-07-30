@@ -51,6 +51,26 @@ invitation's authority-descriptor commitment, authority signature, exact
 registration digest, complete binding, generations, times, audience, and
 allowed hosts, followed by one atomic Keychain update.
 
+After that update, the iOS Identities and Installations screens project the
+verified Keychain record immediately and whenever the app becomes active.
+They show only the provider class, opaque stable identity identifier,
+installation name, allowed host, public fingerprint, and active state. A
+Keychain read failure is an explicit unavailable state, never a false
+``No enrolled identities`` claim. Authority receipts, response capabilities,
+device and authority key identifiers, private keys, provider credentials, and
+invitation material are never projected into these screens.
+
+An expired or inactive record remains visible as inventory but never passes
+the active-enrolment accessor used by authentication. Inventory presentation
+and authorization therefore cannot become competing trust decisions.
+
+The same record contributes a minimized local ``Device enrolled`` history
+entry recording receipt verification and installation. Existing version-one
+records do not retain an independently displayable observation timestamp, so
+the app labels that time unavailable instead of deriving or inventing it.
+Local history is diagnostic context only; Prosopikon remains the authoritative
+audit source.
+
 The app verifies the exact returned bundle and byte-identical registration,
 independently verifies the canonical ADR 0025 registration under the Secure
 Enclave device key, verifies the receipt only under the committed

@@ -80,6 +80,9 @@ protocol InstallationTrustStoring: InstallationTrustReading {
 /// Keychain-backed single-device MVP trust repository.
 actor InstallationTrustKeychain: InstallationTrustStoring {
     static let shared = InstallationTrustKeychain()
+    nonisolated static let enrollmentDidChangeNotification = Notification.Name(
+        "org.mnemosynebiosciences.pistis.enrollment-did-change"
+    )
 
     private let service = "org.mnemosynebiosciences.pistis.installation-trust.v1"
     private let account = "primary"
@@ -98,6 +101,12 @@ actor InstallationTrustKeychain: InstallationTrustStoring {
         return output
     }
 
+    /// Return the durable record for inventory presentation, including an
+    /// expired or inactive record that must no longer authorize requests.
+    func enrollmentInventoryRecord() throws -> AuthenticatedEnrollmentOutput? {
+        try load()
+    }
+
     /// Whether the create-once slot is occupied, including by expired trust.
     func hasStoredEnrollment() throws -> Bool {
         try load() != nil
@@ -108,6 +117,10 @@ actor InstallationTrustKeychain: InstallationTrustStoring {
             existing: load(),
             proposed: output
         ) == .idempotent {
+            NotificationCenter.default.post(
+                name: Self.enrollmentDidChangeNotification,
+                object: nil
+            )
             return
         }
         let data = try JSONEncoder().encode(output)
@@ -123,6 +136,10 @@ actor InstallationTrustKeychain: InstallationTrustStoring {
         guard SecItemAdd(insertion as CFDictionary, nil) == errSecSuccess else {
             throw PlatformFailure.invalidConfiguration
         }
+        NotificationCenter.default.post(
+            name: Self.enrollmentDidChangeNotification,
+            object: nil
+        )
         #else
         throw PlatformFailure.invalidConfiguration
         #endif
@@ -154,6 +171,10 @@ actor InstallationTrustKeychain: InstallationTrustStoring {
         guard status == errSecSuccess || status == errSecItemNotFound else {
             throw PlatformFailure.invalidConfiguration
         }
+        NotificationCenter.default.post(
+            name: Self.enrollmentDidChangeNotification,
+            object: nil
+        )
         #else
         throw PlatformFailure.invalidConfiguration
         #endif

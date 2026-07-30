@@ -2,6 +2,7 @@ import SwiftUI
 
 struct HistoryView: View {
     let events: [HistoryEvent]
+    let loadFailure: Bool
 
     var body: some View {
         List(events) { event in
@@ -28,7 +29,7 @@ struct HistoryView: View {
                         .font(.subheadline)
                     MnStatusLabel(
                         text: event.decision,
-                        kind: event.decision == "Approved" ? .success : .danger
+                        kind: successful(event.decision) ? .success : .danger
                     )
                 }
                 .padding(.vertical, MnSpacing.x2)
@@ -51,7 +52,14 @@ struct HistoryView: View {
                 .background(MnColor.canvas)
         }
         .overlay {
-            if events.isEmpty {
+            if loadFailure {
+                MnEmptyState(
+                    title: "Local history unavailable",
+                    explanation: "Pistis could not safely read the protected enrolment record. Unlock this device and try again.",
+                    actionTitle: nil
+                )
+                .padding(MnMetrics.screenGutter)
+            } else if events.isEmpty {
                 MnEmptyState(
                     title: "No local history",
                     explanation: "Approvals and denials observed on this device will appear here. This is not the authoritative audit record.",
@@ -62,6 +70,10 @@ struct HistoryView: View {
         }
         .mnScreenBackground()
     }
+
+    private func successful(_ outcome: String) -> Bool {
+        outcome == "Approved" || outcome == "Verified"
+    }
 }
 
 private struct HistoryDetailView: View {
@@ -71,8 +83,8 @@ private struct HistoryDetailView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: MnSpacing.x4) {
                 MnStatusLabel(
-                    text: "Human decision: \(event.decision)",
-                    kind: event.decision == "Approved" ? .success : .danger
+                    text: "Outcome: \(event.decision)",
+                    kind: successful(event.decision) ? .success : .danger
                 )
                 MnPanel {
                     VStack(alignment: .leading, spacing: MnSpacing.x4) {
@@ -95,5 +107,9 @@ private struct HistoryDetailView: View {
         }
         .navigationTitle(event.action)
         .mnScreenBackground()
+    }
+
+    private func successful(_ outcome: String) -> Bool {
+        outcome == "Approved" || outcome == "Verified"
     }
 }

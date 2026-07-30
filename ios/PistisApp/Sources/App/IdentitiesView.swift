@@ -2,6 +2,7 @@ import SwiftUI
 
 struct IdentitiesView: View {
     let identities: [IdentitySummary]
+    let loadFailure: Bool
 
     var body: some View {
         ScrollView {
@@ -12,7 +13,13 @@ struct IdentitiesView: View {
                 )
                 .padding(.bottom, MnSpacing.x1)
 
-                if identities.isEmpty {
+                if loadFailure {
+                    MnEmptyState(
+                        title: "Identity record unavailable",
+                        explanation: "Pistis could not safely read the protected enrolment record. Unlock this device and try again.",
+                        actionTitle: nil
+                    )
+                } else if identities.isEmpty {
                     MnEmptyState(
                         title: "No enrolled identities",
                         explanation: "Provider enrolment requires a configured GitHub App and has not run on this device.",

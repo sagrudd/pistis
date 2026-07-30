@@ -731,7 +731,8 @@ private func makeClient(
       accessTokenEndpoint: endpoint("https://github.com/login/oauth/access_token"),
       authenticatedUserEndpoint: endpoint("https://api.github.com/user"),
       apiVersion: "2022-11-28",
-      appConfigurationDigest: Data(repeating: 0x55, count: 32)
+      appConfigurationDigest:
+        GitHubEnrolmentConfiguration.reviewedAppConfigurationDigest
     ),
     transport: transport
   )

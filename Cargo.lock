@@ -828,7 +828,9 @@ dependencies = [
  "pistis-canonical",
  "pistis-crypto",
  "pistis-domain",
+ "pistis-protocol",
  "pistis-qr",
+ "serde_json",
 ]
 
 [[package]]
@@ -931,8 +933,14 @@ name = "pistis-protocol"
 version = "0.1.0"
 dependencies = [
  "getrandom 0.3.4",
+ "p256",
+ "pistis-canonical",
+ "pistis-cose",
+ "pistis-crypto",
  "pistis-domain",
+ "serde_json",
  "subtle",
+ "url",
 ]
 
 [[package]]
@@ -944,6 +952,7 @@ dependencies = [
  "pistis-cose",
  "pistis-crypto",
  "qrcode",
+ "serde_json",
 ]
 
 [[package]]
@@ -1494,6 +1503,9 @@ checksum = "1ffae5123b2d3fc086436f8834ae3ab053a283cfac8fe0a0b8eaae044768a4c4"
 [[package]]
 name = "xtask"
 version = "0.0.0"
+dependencies = [
+ "sha2",
+]
 
 [[package]]
 name = "yoke"

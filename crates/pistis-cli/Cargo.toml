@@ -14,9 +14,13 @@ pistis-canonical.workspace = true
 pistis-crypto.workspace = true
 pistis-domain.workspace = true
 pistis-qr.workspace = true
+pistis-protocol.workspace = true
 
 [lints]
 workspace = true
+
+[dev-dependencies]
+serde_json.workspace = true
 
 [[bin]]
 name = "pistis"

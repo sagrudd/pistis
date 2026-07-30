@@ -3,6 +3,8 @@
 - Status: Accepted
 - Date: 2026-07-28
 - Accepted: 2026-07-29
+- Amended: 2026-07-30 — accepted two-purpose authority bundle and ADR 0025
+  first-device binding
 - Decision owners: Pistis protocol and mobile security, Prosopikon authority,
   Monas transport, and security review
 - Tracking issue: [#318](https://github.com/sagrudd/pistis/issues/318)
@@ -94,7 +96,7 @@ Prosopikon stores `SHA-256(exact invitation bytes)`, not the secret. Expiry is
 an exclusive authority-clock bound. The invitation is installation- and
 audience-specific and may be consumed only once.
 
-The authority descriptor is a closed deterministic-CBOR map:
+Each authority descriptor is a closed deterministic-CBOR map:
 
 | Key | Field | Type and constraint |
 | --- | --- | --- |
@@ -104,11 +106,23 @@ The authority descriptor is a closed deterministic-CBOR map:
 | 3 | `authority_public_key` | canonical 33-byte compressed SEC1 P-256 point |
 | 4 | `algorithm` | integer, exactly `-7` |
 
-`authority_descriptor_digest` is SHA-256 of the exact canonical descriptor
-bytes. The response key is authenticated only when its exact descriptor
-matches this invitation commitment. HTTPS, DNS, a QR scanned from an
-untrusted login page, or a previously unseen key cannot replace that
-commitment.
+The invitation commits `authority_descriptor_digest` to SHA-256 of this exact
+closed deterministic-CBOR bundle:
+
+```text
+{
+  0: 1,
+  1: "pistis.first-device-authority-bundle.v1",
+  2: bstr .cbor exact initial-invitation descriptor,
+  3: bstr .cbor exact mobile-receipt descriptor
+}
+```
+
+The descriptors' derived key identifiers must differ. The initial-invitation
+key verifies only the ADR 0028 presentation; the mobile-receipt key verifies
+only the receipt. There is no one-key compatibility fallback. HTTPS, DNS, a
+QR scanned from an untrusted login page, or a previously unseen key cannot
+replace either committed key.
 
 ### Strict request transport
 
@@ -133,12 +147,15 @@ device registration. A failed transaction does not make the correlation
 reusable for a different request; an exact retry is governed solely by the
 idempotency result described below.
 
-`device_registration_cose` is the exact untagged COSE Sign1 envelope from ADR
-0018 containing the ADR 0019 `pistis.device-registration.v1` payload. Its
-`invitation_digest` is SHA-256 of the exact decoded invitation bytes. The
-device key identifier must equal the ADR 0018 key identifier derived from the
-canonical compressed public key. Re-encoding either envelope or payload before
-signature or digest verification is prohibited.
+For the first-device flow, accepted later ADR 0027 specifically supersedes the
+earlier ADR 0019 payload reference in this section. The transport-compatible
+field name `device_registration_cose` carries the exact untagged ADR 0018 COSE
+Sign1 envelope over the unchanged canonical ADR 0025
+`pistis.enrolment-binding.v1` payload. Its presentation commits the exact
+invitation and authority bundle. The device key identifier must equal the ADR
+0018 identifier derived from the canonical compressed public key. Re-encoding
+either envelope or payload before signature or digest verification is
+prohibited.
 
 ### Signed mobile enrolment receipt
 
@@ -169,10 +186,10 @@ evidence receipt in place. Purpose is
 | 18 | `device_key_algorithm` | integer, exactly `-7` |
 | 19 | `key_assurance` | exact ADR 0019 assurance text |
 | 20 | `registration_envelope_digest` | SHA-256 of exact registration COSE bytes |
-| 21 | `policy_generation` | unsigned integer |
-| 22 | `revocation_generation` | unsigned integer |
+| 21 | `policy_generation` | unsigned integer, greater than zero |
+| 22 | `revocation_generation` | unsigned integer, greater than zero |
 | 23 | `active` | boolean, exactly `true` on issuance |
-| 24 | `last_confirmed_at_ms` | authority-clock time, not before key 2 |
+| 24 | `last_confirmed_at_ms` | authority-clock time in [key 2, key 3), not later than verification time |
 | 25 | `allowed_https_hosts` | 1..16 canonical lower-case ASCII DNS names |
 
 The authority signs this exact canonical payload using the strict ADR 0018
@@ -192,7 +209,7 @@ Success is one JSON object with exactly:
 
 ```text
 version                         integer, exactly 1
-authority_descriptor            base64url of exact descriptor bytes
+authority_bundle                base64url of exact bundle bytes
 device_registration_cose        base64url of exact request envelope bytes
 mobile_enrolment_receipt_cose   base64url of exact authority-signed receipt
 ```
@@ -204,18 +221,21 @@ bearer, browser cookie, private key, or mutable provider display value.
 iOS must verify, in order and before any Keychain mutation:
 
 1. exact response shape, bounds, and canonical base64url;
-2. descriptor digest against the pending invitation commitment;
-3. descriptor key identifier against its canonical public key;
-4. receipt COSE `kid`, ES256 signature, purpose, canonical payload, and time;
+2. bundle digest against the pending invitation and presentation commitments;
+3. both descriptor key identifiers against their canonical public keys and
+   their distinct purpose roles;
+4. receipt COSE `kid`, ES256 signature under only the mobile-receipt key,
+   purpose, canonical payload, and time;
 5. installation, audience, authority, user, external-identity, device, key,
    assurance, generation, active-state, and host fields;
 6. the receipt registration digest against the exact returned/requested
    registration envelope; and
-7. the registration signature and every registration field against the
-   locally generated device key and pending invitation.
+7. the registration signature and every ADR 0025 binding field against the
+   locally generated device key and pending presentation.
 
-Only one atomic `installAuthenticated` Keychain operation may follow all
-checks. Failure preserves the earlier Keychain state.
+Only one create-once `installAuthenticated` Keychain operation may follow all
+checks. An exact replay is idempotent; a distinct existing record is never
+replaced. Failure preserves the earlier Keychain state.
 
 ### Atomicity, retry, and privacy
 

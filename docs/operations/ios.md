@@ -45,9 +45,12 @@ For the accepted v0.1 design, an operator must:
 The dependency-injected iOS provider client and coordinator implement the
 bounded GitHub wire flow through local numeric-subject retrieval. They do not
 persist a device code, access token, refresh token, provider response, or
-authenticated trust record. The compiled application deliberately does not
-contain the three configuration keys above and does not wire the coordinator
-to the Identities screen.
+authenticated trust record. The development application contains the three
+reviewed public configuration keys and wires the coordinator to the
+Identities screen. It labels the successful result as identity verification,
+not authority enrolment. The exact canonical public configuration record is
+``fixtures/github-app-configuration-v1.json`` and its SHA-256 is compiled as
+``PistisGitHubAppConfigurationDigest``.
 
 Local `/user` validation proves what the phone observed over its GitHub TLS
 connection. It does not, by itself, give Prosopikon an authority-verifiable
@@ -232,7 +235,7 @@ signature interoperability. It does not assert TestFlight distribution, QR
 authentication, a browser route, CLI approval, cancellation behaviour, a
 second prompt, or biometry-set invalidation; those are separate MVP gates.
 Its SHA-256 digest is
-`2c2523a88bc49ce94f0f4aa62235d44684f374f78fd80344ec5a3f95d8509349`.
+`b8802b44f02ba0321803b76f3a12fe7d6c684ae696c476f24a418f575f1d9f71`.
 The authoritative Jenkins Expedition retains the exact observation and
 verification result as a dossier artifact; see the PR acceptance record for
 the Expedition identifier.

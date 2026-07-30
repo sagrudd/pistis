@@ -89,12 +89,20 @@ distribution, or licensing must trace their acceptance to that decision.
 - [x] Define and validate the GitHub App registration contract
 - [x] Implement the bounded ADR 0025 iOS provider client and coordinator
 - [ ] Add the persistent installation-local Device Flow throttle
-- [ ] Verify the reviewed GitHub App configuration digest
+- [x] Verify the reviewed GitHub App configuration digest
 - [x] Retrieve and validate the stable numeric GitHub user ID
+- [x] Review and accept ADR 0027's installation-local provider
+      verifier and authority-owned one-use operation
+- [x] Review and accept ADR 0028's protected canonical-producer pipe
+      and distinct first-device QR
+- [x] Implement the accepted protected first-device presentation and
+      cross-platform scanner contract
 - [ ] Issue the one-use authority-verifiable provider capability without
       forwarding or trusting a GitHub bearer token
 - [ ] Commit the invitation, provider binding, device, and receipt atomically
 - [ ] Add Device Flow and authority-transaction integration tests
+- [x] Freeze the two-purpose invitation/receipt descriptor bundle, then verify
+      the receipt and atomically install iOS Keychain trust
 
 ---
 
@@ -519,7 +527,7 @@ satisfy MVP acceptance.
 - [x] Expose the strict Rust verifier for signed production responses
 - [x] Accept the authenticated mobile enrolment exchange contract (ADR 0023)
 - [ ] Implement the bounded Monas exchange and Prosopikon enrolment transaction
-- [ ] Verify the signed trust bundle before atomic iOS Keychain installation
+- [x] Verify the signed trust bundle before atomic iOS Keychain installation
 - [ ] Share exact Rust/Swift enrolment fixtures and hostile cases
 - [ ] Implement minimum-permission GitHub device-flow enrolment
 - [ ] Freeze and implement the authenticated mobile receipt exchange (#318)
@@ -544,12 +552,19 @@ presentation; approval and denial use Face ID, the Secure Enclave COSE signer,
 boundary for authority-owned enrolled keys and persisted challenge facts; it
 returns only credential-free verified facts for the Prosopikon transaction.
 The bounded iOS Device Flow client now reaches a locally validated numeric
-GitHub subject without retaining provider credentials. The trusted issuer for
-ADR 0025's one-use provider capability, reviewed configuration digest,
-Prosopikon authority transaction, and signed receipt still need to supply the
-authenticated enrolment output. End-user enrolment/history/revocation UX plus
-physical qualification also remain. The detached version-1 QR fixture remains
-reference-only.
+GitHub subject without retaining provider credentials. Proposed ADR 0027 moves
+the authoritative provider exchange to an installation-local verifier and
+keeps the one-use operation in Prosopikon, but it is not accepted. The proposal
+now also requires a closed, attended enrolment-only Monas startup profile
+because the normal runtime correctly rejects a fresh principal with no trusted
+device. The reviewed configuration digest, authority transaction, signed
+receipt, and fail-closed transition into normal login still need to supply the
+authenticated enrolment output. Proposed ADR 0028 now defines a pipe-only
+canonical producer and a distinct, sensitive version-3 first-device QR, but it
+is not accepted or implemented; copying the bearer or placing it in a URL
+remains prohibited. End-user
+enrolment/history/revocation UX plus physical qualification also remain. The
+detached version-1 QR fixture remains reference-only.
 
 Issue #318 and accepted ADR 0023 define the remaining trust bootstrap. No
 endpoint or Keychain installation may be represented as production enrolment

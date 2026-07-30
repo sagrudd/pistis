@@ -189,7 +189,8 @@ final class PlatformPolicyTests: XCTestCase {
             ),
             authenticatedUserEndpoint: try XCTUnwrap(URL(string: "https://api.github.com/user")),
             apiVersion: "2022-11-28",
-            appConfigurationDigest: Data(repeating: 0x55, count: 32)
+            appConfigurationDigest:
+                GitHubEnrolmentConfiguration.reviewedAppConfigurationDigest
         )
         XCTAssertEqual(
             configuration.clientID,
@@ -213,13 +214,31 @@ final class PlatformPolicyTests: XCTestCase {
                         URL(string: "https://api.github.com/user")
                     ),
                     apiVersion: "2022-11-28",
-                    appConfigurationDigest: Data(repeating: 0x55, count: 32)
+                    appConfigurationDigest:
+                        GitHubEnrolmentConfiguration.reviewedAppConfigurationDigest
                 )
             )
         }
         XCTAssertThrowsError(
             try GitHubEnrolmentConfiguration(
                 clientID: "Iv23lievAttackerClient",
+                deviceCodeEndpoint: XCTUnwrap(
+                    URL(string: "https://github.com/login/device/code")
+                ),
+                accessTokenEndpoint: XCTUnwrap(
+                    URL(string: "https://github.com/login/oauth/access_token")
+                ),
+                authenticatedUserEndpoint: XCTUnwrap(
+                    URL(string: "https://api.github.com/user")
+                ),
+                apiVersion: "2022-11-28",
+                appConfigurationDigest:
+                    GitHubEnrolmentConfiguration.reviewedAppConfigurationDigest
+            )
+        )
+        XCTAssertThrowsError(
+            try GitHubEnrolmentConfiguration(
+                clientID: GitHubEnrolmentConfiguration.reviewedClientID,
                 deviceCodeEndpoint: XCTUnwrap(
                     URL(string: "https://github.com/login/device/code")
                 ),
@@ -255,9 +274,9 @@ final class PlatformPolicyTests: XCTestCase {
         )
     }
 
-    func testGitHubEnrolmentRemainsDisabledWithoutAuthorityPorts() {
+    func testGitHubDeviceFlowIsReadyWithoutClaimingAuthorityEnrolment() {
         let readiness = GitHubEnrolmentReadiness.current()
-        XCTAssertFalse(readiness.state.mayStart)
+        XCTAssertTrue(readiness.state.mayStart)
         XCTAssertFalse(readiness.configurationLabel.localizedCaseInsensitiveContains("secret"))
         XCTAssertFalse(readiness.identityRule.contains("@"))
     }
@@ -396,6 +415,93 @@ final class PlatformPolicyTests: XCTestCase {
         )
     }
 
+    func testFirstDeviceInstallIsCreateOnceOrExactReplay() throws {
+        let first = try enrollmentOutput(marker: 1)
+        let different = try enrollmentOutput(marker: 2)
+        XCTAssertEqual(
+            try InstallationTrustKeychain.firstInstallDisposition(
+                existing: nil,
+                proposed: first
+            ),
+            .create
+        )
+        XCTAssertEqual(
+            try InstallationTrustKeychain.firstInstallDisposition(
+                existing: first,
+                proposed: first
+            ),
+            .idempotent
+        )
+        XCTAssertThrowsError(
+            try InstallationTrustKeychain.firstInstallDisposition(
+                existing: first,
+                proposed: different
+            )
+        ) { error in
+            XCTAssertEqual(error as? PlatformFailure, .invalidConfiguration)
+        }
+    }
+
+    func testUnenrolledKeyCleanupRetainsRetriesAndNeverDeletesActiveKey() {
+        XCTAssertTrue(
+            UnenrolledKeyLifecycle.shouldDiscard(
+                after: .cancelled,
+                hasStoredEnrollment: false
+            )
+        )
+        XCTAssertTrue(
+            UnenrolledKeyLifecycle.shouldDiscard(
+                after: .expired,
+                hasStoredEnrollment: false
+            )
+        )
+        XCTAssertFalse(
+            UnenrolledKeyLifecycle.shouldDiscard(
+                after: .pending,
+                hasStoredEnrollment: false
+            )
+        )
+        XCTAssertFalse(
+            UnenrolledKeyLifecycle.shouldDiscard(
+                after: .transientFailure,
+                hasStoredEnrollment: false
+            )
+        )
+        XCTAssertFalse(
+            UnenrolledKeyLifecycle.shouldDiscard(
+                after: .consumed,
+                hasStoredEnrollment: false
+            )
+        )
+        XCTAssertFalse(
+            UnenrolledKeyLifecycle.shouldDiscard(
+                after: .cancelled,
+                hasStoredEnrollment: true
+            )
+        )
+    }
+
+    func testVerifiedAccountRequiresSeparateExplicitConfirmation() throws {
+        let approval = VerifiedProviderApproval(
+            subject: 123_456_789,
+            login: "sagrudd",
+            policyGeneration: 1,
+            authorityChallenge: Data(repeating: 0x44, count: 32),
+            challengeExpiry: 1_900_000_000_000
+        )
+        var gate = AttendedEnrolmentGate()
+        gate.recordProviderVerification(approval)
+        XCTAssertEqual(
+            gate.state,
+            .awaitingExplicitConfirmation(approval)
+        )
+        XCTAssertEqual(
+            try gate.takeForExplicitConfirmation(),
+            approval
+        )
+        XCTAssertEqual(gate.state, .confirming(approval))
+    }
+
     @MainActor
     func testCoordinatorFailsClosedWithoutAuthenticatedEnrolment() async {
         let coordinator = ProductionCeremonyCoordinator(
@@ -452,6 +558,38 @@ final class PlatformPolicyTests: XCTestCase {
         }
         XCTAssertFalse(authorized)
     }
+}
+
+private func enrollmentOutput(marker: UInt8)
+    throws -> AuthenticatedEnrollmentOutput
+{
+    let trust = try InstallationTrustRecord(
+        installationID: Data(repeating: marker, count: 16),
+        displayName: "Mnemosyne \(marker)",
+        audience: "pistis.example.test",
+        userID: Data(repeating: marker &+ 1, count: 16),
+        externalIdentityID: Data(repeating: marker &+ 2, count: 16),
+        fingerprint: Data(repeating: marker &+ 3, count: 32),
+        installationKeyID: Data(repeating: marker &+ 4, count: 32),
+        installationPublicKey:
+            Data([0x02]) + Data(repeating: marker &+ 5, count: 32),
+        authorityKeyID: Data(repeating: marker &+ 6, count: 32),
+        authorityReceipt: Data([marker]),
+        policyGeneration: 1,
+        revocationGeneration: 1,
+        expiresAt: Date(timeIntervalSince1970: 1_900_000_000),
+        active: true
+    )
+    return try AuthenticatedEnrollmentOutput(
+        trust: trust,
+        responseContext: DeviceResponseContext(
+            deviceID: Data(repeating: marker &+ 7, count: 16),
+            deviceKeyID: Data(repeating: marker &+ 8, count: 32),
+            userID: trust.userID,
+            externalIdentityID: trust.externalIdentityID
+        ),
+        allowedHosts: ["pistis.example.test"]
+    )
 }
 
 private actor EmptyTrustStore: InstallationTrustStoring {

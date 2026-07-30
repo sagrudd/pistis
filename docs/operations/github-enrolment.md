@@ -29,6 +29,12 @@ required by ADR 0025. A changed owner, slug, client-ID fingerprint, endpoint,
 permission, event, webhook, installation, or token-expiration setting disables
 enrolment until review passes again.
 
+The development iOS build commits the exact public registration fields in
+``fixtures/github-app-configuration-v1.json`` and embeds that file's SHA-256.
+Recompute the digest from the exact bytes and review the registration before
+changing either value. This digest is a configuration commitment, not a
+credential.
+
 ## Exact provider boundary
 
 The implementation may contact only the exact endpoints in ADR 0025:

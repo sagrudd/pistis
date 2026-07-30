@@ -7,6 +7,34 @@ a Changelog and releases follow Semantic Versioning.
 
 ### Added
 
+- Add the accepted version-3 first-device presentation verifier, protected
+  pipe-only terminal QR presenter, shared Rust/Swift fixtures, iOS scanner,
+  fixed-origin server-driven Device Flow transport, and canonical
+  Secure-Enclave enrolment binding.
+- Reject regular-file standard input at the first-device presenter so the
+  sensitive authority frame can arrive only through an actual FIFO.
+- Commit distinct initial-invitation and mobile-receipt authority keys in one
+  canonical bundle; verify the exact device registration and receipt before a
+  create-once iOS Keychain install.
+- Require the user to review the immutable GitHub login and numeric subject
+  before a separate Face ID confirmation, with fail-closed orphan Secure
+  Enclave key cleanup and retry/recovery retention.
+- Bind the reviewed GitHub App configuration fixture, Info.plist digest, and
+  Swift runtime digest with a deterministic regression test.
+- Correct the proposed first-device decisions so pending provider operations
+  remain non-terminal and anonymous pipes are not misrepresented as a
+  peer-authentication mechanism.
+- Require a distinct 32-byte CSPRNG mobile polling capability whose durable
+  authority state contains only the digest.
+- Keep first-device replay authority singular: presentation IDs are
+  correlation-only, while the invitation and durable provider operation own
+  one-use state.
+- A proposed installation-local GitHub Device Flow verifier that keeps provider
+  tokens outside mobile and authority boundaries while preserving Prosopikon
+  as the sole durable enrolment state machine.
+- A proposed pipe-only, alternate-screen first-device QR presentation that
+  binds the canonical invitation, authority descriptor, intended identity,
+  and exact Monas HTTPS origin without manual bearer transport.
 - Repository governance, planning, automation, and quality-gate bootstrap.
 - Strongly typed protocol identifiers with canonical textual forms.
 - Strict deterministic-CBOR serialization, parsing, and golden fixtures.
@@ -45,6 +73,10 @@ a Changelog and releases follow Semantic Versioning.
 - A closed additive v2 exact-action descriptor, challenge, and response schema
   with downgrade/substitution rejection and an agent-controlled single-use
   revalidation and direct-execution boundary.
+- A development-evaluation iOS GitHub Device Flow screen using the reviewed
+  organisation App configuration, explicit foreground resume, stable numeric
+  identity display, transient credential clearing, and an honest boundary
+  before Prosopikon authority enrolment.
 - Owner-only local-agent SQLite and Unix-socket foundations with bounded
   canonical framing, restart-safe single-use ceremony transitions, and a
   non-exportable installation-signing provider contract.
@@ -70,6 +102,12 @@ a Changelog and releases follow Semantic Versioning.
 - Replace the incomplete generic challenge diagnostic schema with closed
   authentication challenge and response diagnostic schemas. These JSON views
   remain non-normative and are never signed or accepted on protocol boundaries.
+
+### Fixed
+
+- Correct the operator-guide SHA-256 for the retained physical-iPhone
+  interoperability record and enforce the documentation-to-fixture binding in
+  a deterministic regression test.
 
 ### Security
 

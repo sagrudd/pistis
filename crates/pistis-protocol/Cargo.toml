@@ -8,8 +8,16 @@ description = "Protocol state and challenge lifecycle primitives for Pistis"
 
 [dependencies]
 getrandom.workspace = true
+pistis-canonical.workspace = true
+pistis-cose.workspace = true
+pistis-crypto.workspace = true
 pistis-domain.workspace = true
 subtle.workspace = true
+url.workspace = true
 
 [lints]
 workspace = true
+
+[dev-dependencies]
+p256.workspace = true
+serde_json.workspace = true

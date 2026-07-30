@@ -98,7 +98,18 @@ actor InstallationTrustKeychain: InstallationTrustStoring {
         return output
     }
 
+    /// Whether the create-once slot is occupied, including by expired trust.
+    func hasStoredEnrollment() throws -> Bool {
+        try load() != nil
+    }
+
     func installAuthenticated(_ output: AuthenticatedEnrollmentOutput) throws {
+        if try Self.firstInstallDisposition(
+            existing: load(),
+            proposed: output
+        ) == .idempotent {
+            return
+        }
         let data = try JSONEncoder().encode(output)
         guard data.count <= 16_384 else { throw PlatformFailure.invalidConfiguration }
         #if canImport(Security)
@@ -107,19 +118,30 @@ actor InstallationTrustKeychain: InstallationTrustStoring {
             kSecValueData as String: data,
             kSecAttrAccessible as String: kSecAttrAccessibleWhenUnlockedThisDeviceOnly,
         ]
-        let status = SecItemUpdate(query as CFDictionary, attributes as CFDictionary)
-        if status == errSecItemNotFound {
-            var insertion = query
-            attributes.forEach { insertion[$0.key] = $0.value }
-            guard SecItemAdd(insertion as CFDictionary, nil) == errSecSuccess else {
-                throw PlatformFailure.invalidConfiguration
-            }
-        } else if status != errSecSuccess {
+        var insertion = query
+        attributes.forEach { insertion[$0.key] = $0.value }
+        guard SecItemAdd(insertion as CFDictionary, nil) == errSecSuccess else {
             throw PlatformFailure.invalidConfiguration
         }
         #else
         throw PlatformFailure.invalidConfiguration
         #endif
+    }
+
+    enum FirstInstallDisposition: Equatable {
+        case create
+        case idempotent
+    }
+
+    static func firstInstallDisposition(
+        existing: AuthenticatedEnrollmentOutput?,
+        proposed: AuthenticatedEnrollmentOutput
+    ) throws -> FirstInstallDisposition {
+        guard let existing else { return .create }
+        guard existing == proposed else {
+            throw PlatformFailure.invalidConfiguration
+        }
+        return .idempotent
     }
 
     func revoke(installationID: Data) throws {

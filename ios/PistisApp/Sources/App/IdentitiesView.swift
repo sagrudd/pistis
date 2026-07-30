@@ -2,7 +2,6 @@ import SwiftUI
 
 struct IdentitiesView: View {
     let identities: [IdentitySummary]
-    @State private var githubReadiness = GitHubEnrolmentReadiness.current()
 
     var body: some View {
         ScrollView {
@@ -24,34 +23,21 @@ struct IdentitiesView: View {
                 MnPanel {
                     VStack(alignment: .leading, spacing: MnSpacing.x3) {
                         MnStatusLabel(
-                            text: "GitHub enrolment unavailable",
+                            text: "Protected first-device enrolment",
                             kind: .warning
                         )
-                        Text(githubReadiness.configurationLabel)
-                            .font(.headline)
-                        if case let .unavailable(reason) = githubReadiness.state {
-                            Text(reason)
-                                .font(.body)
-                        }
                         Label(
-                            githubReadiness.identityRule,
+                            "GitHub numeric account ID is the stable identity.",
                             systemImage: "person.text.rectangle"
                         )
                         Label(
-                            githubReadiness.credentialRule,
+                            "Provider credentials stay behind the authority boundary.",
                             systemImage: "lock.shield"
                         )
                         Text(
-                            "An email address or mutable GitHub login is not accepted as the stable provider identity."
+                            "Start with the plus button and scan the signed presentation created by the CLI. The phone never sends provider credentials to Pistis, Monas or Prosopikon."
                         )
                         .font(.footnote)
-                        Button("Enrol with GitHub") {}
-                            .buttonStyle(.borderedProminent)
-                            .tint(MnColor.action)
-                            .disabled(true)
-                            .accessibilityHint(
-                                "Requires the reviewed Device Flow and Prosopikon enrolment ports"
-                            )
                     }
                 }
 
@@ -92,20 +78,23 @@ struct IdentitiesView: View {
         .navigationDestination(for: IdentitySummary.self) { identity in
             IdentityDetailView(identity: identity)
         }
+        .navigationDestination(for: FirstDeviceEnrolmentRoute.self) { _ in
+            FirstDeviceEnrolmentView()
+        }
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
-                Button {
-                } label: {
-                    Label("Enrolment not configured", systemImage: "plus")
+                NavigationLink(value: FirstDeviceEnrolmentRoute()) {
+                    Label("Enrol first device", systemImage: "plus")
                         .frame(minWidth: MnMetrics.minimumTarget, minHeight: MnMetrics.minimumTarget)
                 }
-                .disabled(true)
-                .accessibilityHint("Requires a configured GitHub App")
+                .accessibilityHint("Scans a protected CLI enrolment presentation")
             }
         }
         .mnScreenBackground()
     }
 }
+
+private struct FirstDeviceEnrolmentRoute: Hashable {}
 
 private struct IdentityDetailView: View {
     let identity: IdentitySummary

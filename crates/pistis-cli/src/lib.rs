@@ -9,6 +9,7 @@
 
 mod ceremony;
 mod command;
+mod enrolment_present;
 mod execution;
 mod local_agent;
 mod terminal_io;
@@ -18,6 +19,9 @@ pub use ceremony::{
     DirectStatus, PendingCeremony, ResponsePath, run, run_with_runtime,
 };
 pub use command::{AuthCommand, OutputProfile, ParseError, parse};
+pub use enrolment_present::{
+    EnrolmentPresentationError, EnrolmentPresentationOptions, present_first_device,
+};
 pub use execution::{
     ActionExecutor, ActionInspector, ApprovalAuthority, ExecutionError, ExecutionGrant,
     execute_approved,

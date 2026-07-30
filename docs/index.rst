@@ -78,6 +78,8 @@ Architecture and operations
    adr/0024-linux-hardware-signing-providers
    adr/0025-github-app-device-flow-v0-1
    adr/0026-mvp-deployment-and-product-profile
+   adr/0027-local-provider-verifier
+   adr/0028-protected-first-invitation-cli-qr
    protocol/README
    protocol/domain-model
    protocol/action-approval

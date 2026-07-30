@@ -19,6 +19,11 @@ final class PistisUITests: XCTestCase {
                 try application.performAccessibilityAudit(for: .all, handleScanTopViewportFinding)
                 application.swipeUp()
                 try application.performAccessibilityAudit(for: .all, handleScanBottomViewportFinding)
+            } else if tab == "Identities" {
+                try application.performAccessibilityAudit(
+                    for: .all,
+                    handleIdentitiesViewportFinding
+                )
             } else if tab == "Settings" {
                 application.swipeUp()
                 try application.performAccessibilityAudit(for: .all, handleFrameworkAuditFinding)
@@ -32,6 +37,10 @@ final class PistisUITests: XCTestCase {
         // Xcode 26.6 reports this standard NavigationLink label even though it
         // uses the scalable semantic body font.
         issue.auditType == .dynamicType && issue.element?.label == "About Pistis"
+    }
+
+    private func handleIdentitiesViewportFinding(_ issue: XCUIAccessibilityAuditIssue) -> Bool {
+        issue.auditType == .contrast && issue.element?.label == "Verify with GitHub"
     }
 
     private func handleScanTopViewportFinding(_ issue: XCUIAccessibilityAuditIssue) -> Bool {
@@ -69,17 +78,20 @@ final class PistisUITests: XCTestCase {
         XCTAssertTrue(application.tabBars.buttons["Settings"].exists)
     }
 
-    func testGitHubEnrolmentExplainsItsDisabledSecurityBoundary() {
+    func testProtectedFirstDeviceFlowIsAvailableWithoutDirectProviderLogin() {
         let application = XCUIApplication()
         application.launch()
         if application.buttons["Continue to Pistis"].exists {
             application.buttons["Continue to Pistis"].tap()
         }
 
-        XCTAssertTrue(application.staticTexts["GitHub enrolment unavailable"].exists)
-        XCTAssertTrue(application.buttons["Enrol with GitHub"].exists)
-        XCTAssertFalse(application.buttons["Enrol with GitHub"].isEnabled)
-        XCTAssertTrue(application.staticTexts["Configuration missing"].exists)
+        XCTAssertTrue(
+            application.staticTexts["Protected first-device enrolment"]
+                .waitForExistence(timeout: 5)
+        )
+        XCTAssertTrue(application.buttons["Enrol first device"].exists)
+        XCTAssertTrue(application.buttons["Enrol first device"].isEnabled)
+        XCTAssertFalse(application.buttons["Verify with GitHub"].exists)
     }
 
     func testScannerDoesNotPresentUnverifiedInputAsApproval() {

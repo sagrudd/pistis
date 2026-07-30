@@ -5,12 +5,17 @@
 
 #![forbid(unsafe_code)]
 
+mod enrolment_frame;
 mod frame;
 mod matrix;
 mod production_frame;
 mod response_input;
 mod terminal_render;
 
+pub use enrolment_frame::{
+    EnrolmentTransfer, EnrolmentTransferRef, decode_enrolment, encode_enrolment,
+    encode_enrolment_frame,
+};
 pub use frame::{
     MAX_PAYLOAD_BYTES, MAX_TRANSFER_TEXT_BYTES, QrError, SIGNATURE_BYTES, TransferKind,
     TransferRef, decode, encode,

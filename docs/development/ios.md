@@ -198,36 +198,27 @@ rerun the full ceremony rather than interpreting readiness as acceptance.
 
 ## GitHub enrolment boundary
 
-The Identities screen exposes a development-evaluation GitHub Device Flow.
-The dependency-injected native adapter implements the ADR 0025
-provider boundary through numeric-subject retrieval: exact endpoints and public
-client ID, redirect/cookie/cache refusal, strict duplicate-aware JSON parsing,
-bounded monotonic polling, `authorization_pending`, five-second `slow_down`,
-bounded transient retries, expiry, cancellation/background handling, one-use
-`/user`, and transient token clearing. Its deterministic tests use no public
-network or credential.
+The Identities screen exposes only the accepted server-driven first-device
+surface. It scans and verifies the ADR 0028 version-3 presentation before
+network use, creates the Face-ID-protected Secure Enclave key, and calls only
+the fixed begin/status/cancel/confirm paths beneath the signed HTTPS origin.
+The phone opens GitHub solely to let the user enter the displayed code. It
+never calls GitHub token or user APIs and has no representation for an adapter
+handle, provider token, email address, or caller-supplied subject.
 
-The view presents the one-time code, opens GitHub, resumes polling only after
-an explicit user action, and displays the verified numeric subject. Its result
-is not enrolment. The public client, API revision, and digest of
-``fixtures/github-app-configuration-v1.json`` are compiled into the
-application bundle. More importantly, the GitHub TLS response is observed
-inside the not-yet-enrolled phone. Signing its numeric subject with the
-proposed device key would prove possession of that key, but would not prove to
-Prosopikon that GitHub issued the subject. ADR 0025 refers to a one-use verified
-provider/authority capability; no trusted token-free issuer port for that
-capability exists yet. Do not promote a phone assertion, display login, email,
-or raw GitHub bearer token into that missing proof.
+Begin returns the public prompt plus a one-use 32-byte polling capability.
+Only verified status returns the canonical numeric subject, policy generation,
+fresh 32-byte authority challenge and exclusive challenge expiry. iOS binds
+those exact values, the invitation/principal/tenant/installation tuple, App
+configuration digest, and Secure Enclave key in the canonical ADR 0025 COSE.
+Provider success alone is not enrolment.
 
-ADR 0025 accepts direct-mobile Device Flow and rejects a broker for v0.1.
-Proposed ADR 0027 would supersede that transport by placing one constrained
-provider-verifier adapter inside the customer installation while keeping
-Prosopikon as the sole durable state machine. Until that decision and its
-configuration commitment, throttle, signed binding, atomic transaction, and
-receipt exchange are accepted, implemented, and reviewed, this screen must
-remain visibly labelled as an identity-verification evaluation and must not
-claim authority enrolment. The coordinator performs no Keychain mutation and
-exposes only an `awaitingConfirmation` result for future authority integration.
+Final receipt verification remains fail-closed while the cross-project
+descriptor bundle is reviewed. The presentation currently commits an
+initial-invitation key, whereas the receipt must use the distinct
+mobile-enrolment-receipt key required by authority purpose separation. The app
+must not install Keychain trust until both committed descriptors and their
+roles are unambiguous and the returned receipt verifies under the receipt key.
 
 ## Design maintenance
 

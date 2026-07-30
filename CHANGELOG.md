@@ -7,6 +7,10 @@ a Changelog and releases follow Semantic Versioning.
 
 ### Added
 
+- Add the accepted version-3 first-device presentation verifier, protected
+  pipe-only terminal QR presenter, shared Rust/Swift fixtures, iOS scanner,
+  fixed-origin server-driven Device Flow transport, and canonical
+  Secure-Enclave enrolment binding.
 - Bind the reviewed GitHub App configuration fixture, Info.plist digest, and
   Swift runtime digest with a deterministic regression test.
 - Correct the proposed first-device decisions so pending provider operations

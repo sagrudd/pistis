@@ -71,6 +71,7 @@ impl AuthenticationBackend for SocketAuthenticationBackend {
             AuthCommand::Exec { command, .. } => AgentRequest::BeginAction {
                 arguments: command.clone(),
             },
+            AuthCommand::EnrolmentPresent { .. } => return Err(CeremonyError::Unavailable),
         };
         match self.call(&request)? {
             AgentResponse::Pending(pending) => Ok(PendingCeremony {

@@ -271,6 +271,7 @@ fn run_pending(
         | AuthCommand::Exec {
             profile, inverted, ..
         } => (*profile, *inverted),
+        AuthCommand::EnrolmentPresent { .. } => return CliExit::Usage,
     };
     let explanation = format!(
         "Purpose: {}\nInstallation: {}\nFingerprint: {}\nExpires: {}\n",

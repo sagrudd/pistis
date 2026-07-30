@@ -1,11 +1,17 @@
 # ADR 0027: Installation-local GitHub provider verifier
 
-- Status: Proposed
+- Status: Accepted
 - Date: 2026-07-29
+- Accepted: 2026-07-30
+- Acceptance note: The project owner accepted the installation-local
+  verifier, single authority-owned operation, and attended two-phase startup
+  design during the bare-earth demonstration review. Prosopikon, Monas,
+  mobile, privacy, fixture, and exact-revision implementation review remain
+  mandatory.
 - Decision owners: Pistis security and mobile, Prosopikon authority, Monas
   transport, and deployment
 - Related issue: PIS-E22-I318
-- Would supersede: the direct-mobile GitHub request, polling, token, and
+- Supersedes: the direct-mobile GitHub request, polling, token, and
   `/user` transport sections of ADR 0025 only
 
 ## Context
@@ -29,7 +35,7 @@ callback URL, client secret, webhook, App installation, repository permission,
 or push service. It does require a narrow local provider-verifier boundary and
 changes ADR 0025's token location.
 
-## Proposed decision
+## Decision
 
 For enrolment, one installation-local Pistis provider-verifier adapter shall
 own the exact GitHub Device Flow request, polling, token handling, and `/user`
@@ -46,9 +52,10 @@ provider bindings, devices, generations, one-use state, receipts, and audit.
 The adapter may call only authority methods that create, complete, deny, or
 expire one provider-verification operation.
 
-This proposal activates nothing. ADR 0025 remains normative until this ADR is
-accepted, its shared contract and fixtures are reviewed, and the affected
-implementation gates pass.
+Acceptance authorizes implementation but does not activate a deployment. The
+shared contract, authority transaction, Monas route isolation, mobile
+verification, and retained evidence gates below must all pass before
+production enrolment is enabled.
 
 ### One authority-owned operation
 

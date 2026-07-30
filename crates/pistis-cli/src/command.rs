@@ -35,6 +35,13 @@ pub enum AuthCommand {
         /// Domain-separated digest of the exact argument vector.
         command_digest: [u8; 32],
     },
+    /// Present one authenticated first-device invitation received on stdin.
+    EnrolmentPresent {
+        /// Requested QR presentation.
+        profile: OutputProfile,
+        /// Prefer light modules on a dark terminal background.
+        inverted: bool,
+    },
 }
 
 /// A command-line syntax failure.
@@ -53,7 +60,9 @@ pub enum ParseError {
 impl fmt::Display for ParseError {
     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
         formatter.write_str(match self {
-            Self::Usage => "usage: pistis auth <login|exec> [--ascii|--unicode] [--invert]",
+            Self::Usage => {
+                "usage: pistis auth <login|exec> ... | pistis enrolment present --stdin ..."
+            }
             Self::InvalidOption => "invalid or contradictory authentication option",
             Self::MissingAction => "execution requires an exact command after --",
             Self::ActionTooLarge => "execution command exceeds its canonical size bound",
@@ -78,6 +87,18 @@ where
     S: Into<String>,
 {
     let arguments: Vec<String> = arguments.into_iter().map(Into::into).collect();
+    if arguments.first().map(String::as_str) == Some("enrolment")
+        && arguments.get(1).map(String::as_str) == Some("present")
+    {
+        if arguments.get(2).map(String::as_str) != Some("--stdin") {
+            return Err(ParseError::InvalidOption);
+        }
+        let (profile, inverted, consumed) = options(&arguments[3..], false)?;
+        if consumed != arguments.len() - 3 {
+            return Err(ParseError::InvalidOption);
+        }
+        return Ok(AuthCommand::EnrolmentPresent { profile, inverted });
+    }
     if arguments.first().map(String::as_str) != Some("auth") {
         return Err(ParseError::Usage);
     }
@@ -173,7 +194,7 @@ mod tests {
         let reordered = parse(["auth", "exec", "--", "tool", "b", "a"]).unwrap();
         let digest = |command: &AuthCommand| match command {
             AuthCommand::Exec { command_digest, .. } => *command_digest,
-            AuthCommand::Login { .. } => unreachable!(),
+            AuthCommand::Login { .. } | AuthCommand::EnrolmentPresent { .. } => unreachable!(),
         };
         assert_ne!(digest(&first), digest(&joined));
         assert_ne!(digest(&first), digest(&reordered));
@@ -193,6 +214,25 @@ mod tests {
         assert_eq!(
             parse(vec!["auth".into(), "exec".into(), "--".into(), oversized]),
             Err(ParseError::ActionTooLarge)
+        );
+    }
+
+    #[test]
+    fn enrolment_present_requires_explicit_stdin_and_accepts_display_options() {
+        assert_eq!(
+            parse(["enrolment", "present", "--stdin", "--ascii", "--invert"]).unwrap(),
+            AuthCommand::EnrolmentPresent {
+                profile: OutputProfile::Ascii,
+                inverted: true
+            }
+        );
+        assert_eq!(
+            parse(["enrolment", "present"]),
+            Err(ParseError::InvalidOption)
+        );
+        assert_eq!(
+            parse(["enrolment", "present", "--stdin", "secret"]),
+            Err(ParseError::InvalidOption)
         );
     }
 }

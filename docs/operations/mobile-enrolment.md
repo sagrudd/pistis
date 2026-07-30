@@ -15,16 +15,16 @@ review and the evidence gates in that ADR.
    Confirm that its key identifier is derived from that key and record the
    descriptor digest through the approved administrator channel.
 3. Issue a short-lived, installation- and audience-specific invitation for the
-   intended immutable Prosopikon principal. Until proposed ADR 0028 is accepted
-   and implemented, stop here: no supported first-device presentation exists.
-   The proposed flow pipes the canonical producer directly into a Pistis
+   intended immutable Prosopikon principal. Accepted ADR 0028 pipes the
+   canonical producer directly into a Pistis
    alternate-screen QR presenter and permits scanning only from the app's
    explicit enrolment surface. Never place the invitation in argv, an
    environment value, file, URL, clipboard, ticket, log, or retained
    screenshot.
 4. Have the user complete the foreground GitHub App Device Flow. The phone
-   polls only within ADR 0025's interval and expiry bounds and clears its
-   transient device code, user code, and provider token on every terminal path.
+   calls only the signed-origin begin/status/cancel/confirm routes. The
+   installation-local adapter owns GitHub polling and clears its transient
+   device code, user code, and provider token on every terminal path.
    A successful provider poll is not enrolment: the signed device registration
    and Prosopikon transaction must also complete.
 5. Confirm only the coarse enrolment outcome and generated audit correlation.
@@ -35,6 +35,12 @@ The app must show an installation as trusted only after verifying the
 invitation's authority-descriptor commitment, authority signature, exact
 registration digest, complete binding, generations, times, audience, and
 allowed hosts, followed by one atomic Keychain update.
+
+The current implementation reaches verified provider status and constructs
+the canonical device-signed binding. Final receipt verification and Keychain
+mutation remain disabled pending a reviewed two-key descriptor bundle:
+ADR 0028 currently commits the initial-invitation key, while ADR 0023 requires
+the distinct mobile-receipt key. Never reuse one key for both purposes.
 
 ## Rotation
 

@@ -1,0 +1,139 @@
+use p256::ecdsa::signature::Signer as _;
+use p256::ecdsa::{Signature, SigningKey};
+use pistis_canonical::{Value, from_slice, to_vec};
+use pistis_cose::{encode, signing_input};
+use pistis_crypto::{PublicKey, derive_key_id, sha256};
+use pistis_protocol::{FirstDevicePresentationError, verify_first_device_presentation};
+use std::collections::BTreeMap;
+
+const FIXTURE: &str =
+    include_str!("../../../fixtures/protocol-v3/first-device/presentation-positive.json");
+const APP_DIGEST: [u8; 32] = [
+    0xbf, 0x79, 0x68, 0x03, 0x0a, 0xbd, 0xf7, 0xd3, 0xda, 0xbb, 0x38, 0x9f, 0x32, 0xcd, 0x4c, 0x53,
+    0x10, 0xc1, 0xec, 0x4c, 0x9c, 0x62, 0x5d, 0x38, 0xd1, 0x3b, 0xe6, 0xef, 0xae, 0x23, 0x06, 0x63,
+];
+const NOW: u64 = 1_700_000_060_000;
+
+fn fixture() -> Vec<u8> {
+    let mut secret = [0; 32];
+    secret[31] = 1;
+    let signing = SigningKey::from_bytes((&secret).into()).unwrap();
+    let compressed = signing.verifying_key().to_encoded_point(true);
+    let public = PublicKey::from_sec1_bytes(compressed.as_bytes()).unwrap();
+    let key_id = derive_key_id(&public);
+    let descriptor = to_vec(&Value::Map(BTreeMap::from([
+        (0, Value::Unsigned(1)),
+        (1, Value::Text("pistis.authority-key-descriptor.v1".into())),
+        (2, Value::Bytes(key_id.into_bytes().to_vec())),
+        (3, Value::Bytes(compressed.as_bytes().to_vec())),
+        (4, Value::Negative(-7)),
+    ])))
+    .unwrap();
+    let descriptor_digest = sha256(&descriptor).into_bytes();
+    let invitation = to_vec(&Value::Map(BTreeMap::from([
+        (0, Value::Unsigned(1)),
+        (
+            1,
+            Value::Text("pistis.mobile-enrolment-invitation.v1".into()),
+        ),
+        (2, Value::Unsigned(1_700_000_000_000)),
+        (3, Value::Unsigned(1_700_000_300_000)),
+        (4, Value::Bytes(vec![0x11; 16])),
+        (5, Value::Bytes(vec![0x55; 32])),
+        (6, Value::Bytes(vec![0x22; 16])),
+        (7, Value::Text("prosopikon:pistis:enrolment".into())),
+        (8, Value::Bytes(descriptor_digest.to_vec())),
+    ])))
+    .unwrap();
+    let payload = to_vec(&Value::Map(BTreeMap::from([
+        (0, Value::Unsigned(1)),
+        (1, Value::Text("pistis.first-device-presentation.v1".into())),
+        (2, Value::Bytes(vec![0x33; 16])),
+        (3, Value::Unsigned(1_700_000_000_000)),
+        (4, Value::Unsigned(1_700_000_300_000)),
+        (5, Value::Bytes(invitation)),
+        (6, Value::Bytes(vec![0x44; 16])),
+        (7, Value::Bytes(vec![0x66; 16])),
+        (8, Value::Bytes(vec![0x77; 16])),
+        (9, Value::Bytes(vec![0x22; 16])),
+        (10, Value::Text("Mnemosyne evaluation".into())),
+        (11, Value::Text("prosopikon:pistis:enrolment".into())),
+        (12, Value::Text("https://pistis.example.test:8443".into())),
+        (13, Value::Bytes(APP_DIGEST.to_vec())),
+        (14, Value::Bytes(descriptor_digest.to_vec())),
+    ])))
+    .unwrap();
+    let input = signing_input(&payload, key_id).unwrap();
+    let signature: Signature = signing.sign(&input);
+    let signature = signature.normalize_s().unwrap_or(signature);
+    let cose = encode(&payload, key_id, &signature.to_bytes()).unwrap();
+    to_vec(&Value::Map(BTreeMap::from([
+        (0, Value::Unsigned(3)),
+        (1, Value::Unsigned(3)),
+        (2, Value::Bytes(cose)),
+        (3, Value::Bytes(descriptor)),
+    ])))
+    .unwrap()
+}
+
+#[test]
+fn verifies_the_exact_closed_fixture() {
+    let frame = fixture();
+    let document: serde_json::Value = serde_json::from_str(FIXTURE).unwrap();
+    assert_eq!(hex(&frame), document["frame_hex"].as_str().unwrap());
+    let verified = verify_first_device_presentation(&frame, APP_DIGEST, NOW).unwrap();
+    assert_eq!(verified.presentation_id, [0x33; 16]);
+    assert_eq!(verified.invitation.invitation_id, [0x11; 16]);
+    assert_eq!(verified.invitation.installation_id, [0x22; 16]);
+    assert_eq!(verified.installation_name, "Mnemosyne evaluation");
+    assert_eq!(verified.https_origin, "https://pistis.example.test:8443");
+}
+
+#[test]
+fn rejects_kind_downgrade_configuration_substitution_and_expiry() {
+    let frame = fixture();
+    let Value::Map(mut outer) = from_slice(&frame).unwrap() else {
+        unreachable!()
+    };
+    outer.insert(1, Value::Unsigned(2));
+    assert_eq!(
+        verify_first_device_presentation(&to_vec(&Value::Map(outer)).unwrap(), APP_DIGEST, NOW),
+        Err(FirstDevicePresentationError::InvalidFrame)
+    );
+    assert_eq!(
+        verify_first_device_presentation(&frame, [0; 32], NOW),
+        Err(FirstDevicePresentationError::ConfigurationMismatch)
+    );
+    assert_eq!(
+        verify_first_device_presentation(&frame, APP_DIGEST, 1_700_000_300_000),
+        Err(FirstDevicePresentationError::Expired)
+    );
+}
+
+#[test]
+fn every_binary_truncation_fails() {
+    let frame = fixture();
+    for length in 0..frame.len() {
+        assert!(
+            verify_first_device_presentation(&frame[..length], APP_DIGEST, NOW).is_err(),
+            "truncation {length}"
+        );
+    }
+}
+
+#[test]
+#[ignore = "fixture exporter"]
+fn export_fixture_hex() {
+    eprintln!("{}", hex(&fixture()));
+}
+
+fn hex(bytes: &[u8]) -> String {
+    use std::fmt::Write as _;
+    bytes.iter().fold(
+        String::with_capacity(bytes.len() * 2),
+        |mut output, byte| {
+            write!(output, "{byte:02x}").expect("writing to a String cannot fail");
+            output
+        },
+    )
+}

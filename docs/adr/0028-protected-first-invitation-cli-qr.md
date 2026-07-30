@@ -1,7 +1,13 @@
 # ADR 0028: Protected CLI-to-phone first-invitation QR
 
-- Status: Proposed
+- Status: Accepted
 - Date: 2026-07-30
+- Accepted: 2026-07-30
+- Acceptance note: The project owner accepted the protected pipe, distinct
+  version-3/kind-3 QR, explicit mobile enrolment surface, and attended
+  terminal trust-channel design during the bare-earth demonstration review.
+  Prosopikon producer, Monas transport, mobile, security, fixture, and
+  exact-revision implementation review remain mandatory.
 - Decision owners: Pistis CLI, protocol, QR, iOS and Android, Prosopikon
   authority, Monas transport, and security
 - Tracking issue: [#318](https://github.com/sagrudd/pistis/issues/318)
@@ -22,7 +28,7 @@ an installation-signed authentication challenge. A first device has no
 installed authority or installation trust, so reusing that kind or offering
 “trust this QR” would be a downgrade.
 
-## Proposed decision
+## Decision
 
 The MVP shall use one attended, single-symbol QR rendered by a Pistis CLI
 presenter. Prosopikon produces a canonical, purpose-signed presentation
@@ -97,8 +103,8 @@ operation for the same invitation.
 
 ### Producer and protected pipe
 
-After the dependent decisions are accepted and implemented, the attended
-administrator uses one pipeline:
+After the dependent implementations pass review, the attended administrator
+uses one pipeline:
 
 ```text
 prosopikon issue-pistis-enrolment-presentation ... --output-fd 1 |
@@ -195,8 +201,9 @@ or device code, provider response, or token.
   and
 - exact-revision Jenkins evidence with no sensitive QR artifact.
 
-This proposal activates no producer, CLI command, QR kind, scanner route,
-provider request, invitation, or authority state.
+Acceptance permits those components to be implemented. It does not activate a
+producer, scanner route, provider request, invitation, or authority state in a
+deployed environment.
 
 ## Consequences
 

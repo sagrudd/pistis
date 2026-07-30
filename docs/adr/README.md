@@ -52,13 +52,12 @@ remain unchanged.
 records the owner-approved MVP identity, customer deployment, product-session,
 mobile, recovery, privacy, distribution, licensing, and deferred-work profile.
 
-[ADR 0027](0027-local-provider-verifier.md) is **Proposed**. It defines the
+[ADR 0027](0027-local-provider-verifier.md) is **Accepted**. It defines the
 installation-local GitHub Device Flow verifier needed to turn a phone-assisted
 provider ceremony into Prosopikon-owned authority evidence without forwarding
-a bearer or trusting mobile JSON. ADR 0025 remains normative until specialist
-and project-owner acceptance.
+a bearer or trusting mobile JSON.
 
-[ADR 0028](0028-protected-first-invitation-cli-qr.md) is **Proposed**. It
+[ADR 0028](0028-protected-first-invitation-cli-qr.md) is **Accepted**. It
 defines the protected pipe and distinct version-3 first-device QR needed to
 move one canonical invitation from an attended administrator CLI to the
 foreground phone without argv, environment, file, URL, or broker transport.

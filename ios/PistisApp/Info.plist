@@ -43,6 +43,8 @@
 	<string>Pistis scans authentication and approval challenges. Camera frames are not retained.</string>
 	<key>NSFaceIDUsageDescription</key>
 	<string>Pistis uses Face ID to verify you before each device signature.</string>
+	<key>NSLocalNetworkUsageDescription</key>
+	<string>Pistis connects to the local Mnemosyne installation you explicitly scan to enrol this device.</string>
 	<key>UILaunchScreen</key>
 	<dict/>
 </dict>

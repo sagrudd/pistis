@@ -1,0 +1,35 @@
+{
+  "base": "presentation-positive.json",
+  "cases": [
+    {
+      "name": "wrong-version",
+      "mutation": {"byte_offset": 2, "replacement_hex": "02"},
+      "expected": "invalid_frame"
+    },
+    {
+      "name": "wrong-kind",
+      "mutation": {"byte_offset": 4, "replacement_hex": "02"},
+      "expected": "invalid_frame"
+    },
+    {
+      "name": "signature-substitution",
+      "mutation": {"byte_offset": 566, "replacement_hex": "8e"},
+      "expected": "invalid_signature"
+    },
+    {
+      "name": "one-byte-truncation",
+      "truncate_bytes": 1,
+      "expected": "invalid_frame"
+    },
+    {
+      "name": "configuration-substitution",
+      "expected_app_configuration_digest_hex": "0000000000000000000000000000000000000000000000000000000000000000",
+      "expected": "configuration_mismatch"
+    },
+    {
+      "name": "exclusive-expiry",
+      "now_ms": 1700000300000,
+      "expected": "expired"
+    }
+  ]
+}

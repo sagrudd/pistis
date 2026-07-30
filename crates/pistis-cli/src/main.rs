@@ -1,8 +1,18 @@
-use pistis_cli::{CliExit, SocketAuthenticationBackend, TerminalIo, parse, run};
-use std::{
-    io::{self, IsTerminal},
-    path::PathBuf,
+use pistis_cli::{
+    AuthCommand, CliExit, EnrolmentPresentationOptions, SocketAuthenticationBackend, TerminalIo,
+    parse, present_first_device, run,
 };
+use std::{
+    fs::File,
+    io::{self, BufReader, IsTerminal},
+    path::PathBuf,
+    time::{SystemTime, UNIX_EPOCH},
+};
+
+const REVIEWED_GITHUB_APP_DIGEST: [u8; 32] = [
+    0xbf, 0x79, 0x68, 0x03, 0x0a, 0xbd, 0xf7, 0xd3, 0xda, 0xbb, 0x38, 0x9f, 0x32, 0xcd, 0x4c, 0x53,
+    0x10, 0xc1, 0xec, 0x4c, 0x9c, 0x62, 0x5d, 0x38, 0xd1, 0x3b, 0xe6, 0xef, 0xae, 0x23, 0x06, 0x63,
+];
 
 fn main() {
     let exit = match parse(std::env::args().skip(1)) {
@@ -16,7 +26,10 @@ fn main() {
 }
 
 fn run_command(command: &pistis_cli::AuthCommand) -> CliExit {
-    if matches!(command, pistis_cli::AuthCommand::Exec { .. }) {
+    if let AuthCommand::EnrolmentPresent { profile, inverted } = command {
+        return run_enrolment_present(*profile, *inverted);
+    }
+    if matches!(command, AuthCommand::Exec { .. }) {
         eprintln!("pistis: supervised command execution is unavailable");
         return CliExit::Unavailable;
     }
@@ -43,6 +56,46 @@ fn run_command(command: &pistis_cli::AuthCommand) -> CliExit {
         eprintln!("pistis: authentication did not complete ({exit:?})");
     }
     exit
+}
+
+fn run_enrolment_present(profile: pistis_cli::OutputProfile, inverted: bool) -> CliExit {
+    let stdin = io::stdin();
+    let mut stdout = io::stdout();
+    let Ok(terminal) = File::open("/dev/tty") else {
+        eprintln!("pistis: attended enrolment terminal is unavailable");
+        return CliExit::Unavailable;
+    };
+    let Ok(elapsed) = SystemTime::now().duration_since(UNIX_EPOCH) else {
+        eprintln!("pistis: first-device presentation rejected");
+        return CliExit::Rejected;
+    };
+    let Ok(now_ms) = u64::try_from(elapsed.as_millis()) else {
+        eprintln!("pistis: first-device presentation rejected");
+        return CliExit::Rejected;
+    };
+    let mut acknowledgement = BufReader::new(terminal);
+    let output_is_terminal = stdout.is_terminal();
+    if present_first_device(
+        stdin.lock(),
+        &mut stdout,
+        &mut acknowledgement,
+        EnrolmentPresentationOptions {
+            input_is_pipe: !stdin.is_terminal(),
+            output_is_terminal,
+            profile,
+            inverted,
+            columns: terminal_columns(),
+            expected_app_configuration_digest: REVIEWED_GITHUB_APP_DIGEST,
+            now_ms,
+        },
+    )
+    .is_ok()
+    {
+        CliExit::Success
+    } else {
+        eprintln!("pistis: first-device presentation rejected");
+        CliExit::Rejected
+    }
 }
 
 fn socket_path() -> Option<PathBuf> {

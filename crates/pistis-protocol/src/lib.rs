@@ -3,6 +3,12 @@
 //! Challenge state is deliberately kept independent of transports. A challenge
 //! can be consumed exactly once, and only before its expiry.
 
+mod first_device;
+
+pub use first_device::{
+    AuthorityDescriptor, FirstDevicePresentation, FirstDevicePresentationError,
+    MAX_FIRST_DEVICE_FRAME_BYTES, MobileEnrolmentInvitation, verify_first_device_presentation,
+};
 pub use pistis_domain::ChallengeId;
 use std::{
     collections::HashMap,

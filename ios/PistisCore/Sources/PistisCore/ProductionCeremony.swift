@@ -475,10 +475,10 @@ private enum CeremonyCBOR {
     }
 }
 
-private struct CeremonyCBORReader {
+struct CeremonyCBORReader {
     private let data: Data
     private var offset = 0
-    init(_ data: Data) { self.data = data }
+    init(_ data: Data) { self.data = Data(data) }
     var isAtEnd: Bool { offset == data.count }
 
     mutating func requireMap(count: Int) throws {
@@ -487,6 +487,12 @@ private struct CeremonyCBORReader {
     }
     mutating func requireUnsigned(_ expected: UInt64) throws {
         guard try unsigned() == expected else { throw ProductionCeremonyError.invalidChallenge }
+    }
+    mutating func requireNegative(_ expected: Int64) throws {
+        let (major, value) = try header()
+        guard major == 1, value <= Int64.max,
+              -1 - Int64(value) == expected
+        else { throw ProductionCeremonyError.invalidChallenge }
     }
     mutating func unsigned() throws -> UInt64 {
         let (major, value) = try header()
@@ -509,7 +515,7 @@ private struct CeremonyCBORReader {
             throw ProductionCeremonyError.invalidChallenge
         }
         defer { offset += count }
-        return data[offset ..< offset + count]
+        return data.subdata(in: offset ..< offset + count)
     }
     mutating func text(maximum: Int) throws -> String {
         let (major, count) = try header()

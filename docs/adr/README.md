@@ -77,3 +77,7 @@ local-forget path for records that cannot authorize.
 signed distinction between the fixed enrolment ceremony audience and the
 closed set of product-session audiences. Implementation requires specialist
 review and exact cross-project conformance evidence.
+
+[ADR 0032](0032-retire-incompatible-local-trust.md) accepts a fail-closed
+mobile migration that exposes an older non-authorising trust record and permits
+truthfully labelled local retirement before re-enrolment.

@@ -81,6 +81,7 @@ Architecture and operations
    adr/0027-local-provider-verifier
    adr/0028-protected-first-invitation-cli-qr
    adr/0029-qr-bound-app-scoped-host-trust
+   adr/0030-authority-backed-account-and-installation-removal
    protocol/README
    protocol/domain-model
    protocol/action-approval

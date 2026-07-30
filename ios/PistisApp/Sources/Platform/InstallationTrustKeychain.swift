@@ -166,6 +166,32 @@ actor InstallationTrustKeychain: InstallationTrustStoring {
         guard current.trust.installationID == installationID else {
             throw PlatformFailure.invalidConfiguration
         }
+        try deleteStoredEnrollment()
+    }
+
+    /// Forget local material only when it cannot authorize. This does not
+    /// represent or perform authority-side revocation.
+    func forgetExpired(installationID: Data, now: Date = Date()) throws {
+        guard let current = try load(),
+              current.trust.installationID == installationID,
+              Self.allowsLocalForget(
+                  active: current.trust.active,
+                  expiresAt: current.trust.expiresAt,
+                  now: now
+              )
+        else { throw PlatformFailure.invalidConfiguration }
+        try deleteStoredEnrollment()
+    }
+
+    static func allowsLocalForget(
+        active: Bool,
+        expiresAt: Date,
+        now: Date
+    ) -> Bool {
+        !active || now >= expiresAt
+    }
+
+    private func deleteStoredEnrollment() throws {
         #if canImport(Security)
         let status = SecItemDelete(baseQuery() as CFDictionary)
         guard status == errSecSuccess || status == errSecItemNotFound else {

@@ -35,6 +35,7 @@ final class EnrollmentProjectionTests: XCTestCase {
             "0404 0404 0404 0404 0404 0404 0404 0404"
         )
         XCTAssertEqual(projection.installations[0].status, "Trusted")
+        XCTAssertFalse(projection.installations[0].allowsLocalForget)
         XCTAssertEqual(projection.history.count, 1)
         XCTAssertEqual(projection.history[0].action, "Device enrolled")
         XCTAssertEqual(projection.history[0].decision, "Verified")
@@ -67,7 +68,53 @@ final class EnrollmentProjectionTests: XCTestCase {
 
         XCTAssertEqual(projection.identities[0].status, "Expired")
         XCTAssertEqual(projection.installations[0].status, "Expired")
+        XCTAssertTrue(projection.installations[0].allowsLocalForget)
         XCTAssertEqual(projection.history[0].decision, "Verified")
+    }
+
+    func testRetainedHistorySurvivesWithoutAnEnrollmentRecord() {
+        let event = HistoryEvent(
+            id: UUID(),
+            action: "Local installation record forgotten",
+            installation: "Laboratory Jenkins",
+            occurredAt: "30 Jul 2026",
+            decision: "Completed locally",
+            signature: "No authority action requested",
+            transfer: "No server state changed",
+            verification: "Expired trust and local device key removed"
+        )
+
+        let projection = EnrollmentProjection(retainedHistory: [event])
+
+        XCTAssertTrue(projection.identities.isEmpty)
+        XCTAssertTrue(projection.installations.isEmpty)
+        XCTAssertEqual(projection.history, [event])
+    }
+
+    func testLocalForgetPolicyNeverAllowsCurrentActiveTrust() {
+        let now = Date(timeIntervalSince1970: 1_000)
+
+        XCTAssertFalse(
+            InstallationTrustKeychain.allowsLocalForget(
+                active: true,
+                expiresAt: Date(timeIntervalSince1970: 1_001),
+                now: now
+            )
+        )
+        XCTAssertTrue(
+            InstallationTrustKeychain.allowsLocalForget(
+                active: true,
+                expiresAt: now,
+                now: now
+            )
+        )
+        XCTAssertTrue(
+            InstallationTrustKeychain.allowsLocalForget(
+                active: false,
+                expiresAt: Date(timeIntervalSince1970: 1_001),
+                now: now
+            )
+        )
     }
 
     private func fixtureEnrollment(

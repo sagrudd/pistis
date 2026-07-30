@@ -139,6 +139,12 @@ final class SecureEnclaveSigner: @unchecked Sendable {
     /// The caller must first prove that no enrolment is stored. Recovery or
     /// replacement of an enrolled key is a different reviewed lifecycle.
     func discardUnenrolledKey() throws {
+        try deleteLocalKey()
+    }
+
+    /// Delete this exact namespaced local key after a separately reviewed
+    /// lifecycle operation has proved it can no longer authorize.
+    func deleteLocalKey() throws {
         guard SecureEnclaveSigner.secureEnclaveIsAvailable else {
             throw PlatformFailure.secureHardwareUnavailable
         }

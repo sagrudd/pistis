@@ -27,6 +27,7 @@ final class EnrollmentProjectionTests: XCTestCase {
         XCTAssertEqual(projection.identities[0].displayName, "GitHub account")
         XCTAssertEqual(projection.identities[0].stableSubject, "Identity 0303030303030303")
         XCTAssertEqual(projection.identities[0].status, "Enrolled")
+        XCTAssertFalse(projection.identities[0].allowsLocalForget)
         XCTAssertEqual(projection.installations.count, 1)
         XCTAssertEqual(projection.installations[0].name, "Laboratory Jenkins")
         XCTAssertEqual(projection.installations[0].localAlias, "pistis.example.test")
@@ -67,6 +68,7 @@ final class EnrollmentProjectionTests: XCTestCase {
         )
 
         XCTAssertEqual(projection.identities[0].status, "Expired")
+        XCTAssertTrue(projection.identities[0].allowsLocalForget)
         XCTAssertEqual(projection.installations[0].status, "Expired")
         XCTAssertTrue(projection.installations[0].allowsLocalForget)
         XCTAssertEqual(projection.history[0].decision, "Verified")
@@ -115,6 +117,34 @@ final class EnrollmentProjectionTests: XCTestCase {
                 now: now
             )
         )
+    }
+
+    func testLocalForgetRemovesTrustBeforeTheDeviceKey() async throws {
+        var steps: [String] = []
+
+        let keyRemoved = try await LocalForgetTransaction.run(
+            removeTrust: { steps.append("trust") },
+            removeKey: { steps.append("key") }
+        )
+
+        XCTAssertTrue(keyRemoved)
+        XCTAssertEqual(steps, ["trust", "key"])
+    }
+
+    func testDeviceKeyFailureCannotRetainExpiredTrust() async throws {
+        enum ExpectedFailure: Error { case keyUnavailable }
+        var steps: [String] = []
+
+        let keyRemoved = try await LocalForgetTransaction.run(
+            removeTrust: { steps.append("trust") },
+            removeKey: {
+                steps.append("key")
+                throw ExpectedFailure.keyUnavailable
+            }
+        )
+
+        XCTAssertFalse(keyRemoved)
+        XCTAssertEqual(steps, ["trust", "key"])
     }
 
     private func fixtureEnrollment(

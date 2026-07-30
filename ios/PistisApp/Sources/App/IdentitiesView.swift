@@ -3,6 +3,7 @@ import SwiftUI
 struct IdentitiesView: View {
     let identities: [IdentitySummary]
     let loadFailure: Bool
+    let forgetExpired: (UUID) async throws -> Void
 
     var body: some View {
         ScrollView {
@@ -83,7 +84,10 @@ struct IdentitiesView: View {
         }
         .navigationTitle("Identities")
         .navigationDestination(for: IdentitySummary.self) { identity in
-            IdentityDetailView(identity: identity)
+            IdentityDetailView(
+                identity: identity,
+                forgetExpired: forgetExpired
+            )
         }
         .navigationDestination(for: FirstDeviceEnrolmentRoute.self) { _ in
             FirstDeviceEnrolmentView()
@@ -105,6 +109,7 @@ private struct FirstDeviceEnrolmentRoute: Hashable {}
 
 private struct IdentityDetailView: View {
     let identity: IdentitySummary
+    let forgetExpired: (UUID) async throws -> Void
 
     var body: some View {
         ScrollView {
@@ -122,6 +127,22 @@ private struct IdentityDetailView: View {
                 Text("Provider display names may change. Pistis binds the stable provider identity shown above.")
                     .font(.footnote)
                     .foregroundStyle(MnColor.textPrimary)
+                if identity.allowsLocalForget {
+                    MnPanel {
+                        VStack(alignment: .leading, spacing: MnSpacing.x3) {
+                            MnStatusLabel(text: "Local deletion only", kind: .warning)
+                            Text(
+                                "This expired provider account cannot authorise. Forgetting it removes this phone’s cached identity, trust and device key; it does not delete authority audit history or change server state."
+                            )
+                            DestructiveConfirmationSlider(
+                                label: "Slide to forget this expired account",
+                                confirmationLabel: "Confirm forget local account"
+                            ) {
+                                try await forgetExpired(identity.id)
+                            }
+                        }
+                    }
+                }
             }
             .padding(MnMetrics.screenGutter)
         }

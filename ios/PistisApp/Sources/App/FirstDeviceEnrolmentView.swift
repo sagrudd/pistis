@@ -215,7 +215,7 @@ private final class FirstDeviceEnrolmentFlow: ObservableObject {
         do {
             guard try await !InstallationTrustKeychain.shared
                 .hasStoredEnrollment()
-            else { throw PlatformFailure.invalidConfiguration }
+            else { throw PlatformFailure.existingEnrolmentMustBeRemoved }
             let signer = try SecureEnclaveSigner(
                 namespace: presentation.installationID.hexadecimal,
                 authenticationReason: "Create this Pistis device identity"

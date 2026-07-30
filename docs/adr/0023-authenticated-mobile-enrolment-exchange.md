@@ -5,6 +5,7 @@
 - Accepted: 2026-07-29
 - Amended: 2026-07-30 — accepted two-purpose authority bundle and ADR 0025
   first-device binding
+- Amended: 2026-07-30 — accepted a 365-day installation-trust refresh bound
 - Decision owners: Pistis protocol and mobile security, Prosopikon authority,
   Monas transport, and security review
 - Tracking issue: [#318](https://github.com/sagrudd/pistis/issues/318)
@@ -200,8 +201,26 @@ signed only in its lower-case ASCII A-label form. Entries are unique and
 ascending by encoded byte order.
 
 The receipt expiry is the installation-trust refresh bound, not device
-revocation expiry. Current policy and revocation generations still have to be
-checked by the authority for every online ceremony.
+revocation expiry. On initial enrolment, key 24 equals key 2 and key 3 equals
+key 24 plus exactly 31,536,000,000 milliseconds (365 periods of 24 hours).
+This is an elapsed-time bound, not a calendar-year calculation. Checked
+arithmetic is mandatory and an unrepresentable bound fails closed.
+
+Invitation expiry, provider-operation expiry, authority-challenge expiry, and
+authorization-capability expiry remain independent short-lived bounds. Every
+one of them must be current when the authority commits an enrolment; none may
+be copied into key 3. Current device state, exact account and installation
+binding, policy generation, and revocation generation still have to be checked
+by the authority for every online ceremony.
+
+Refreshing trust is a new authenticated authority transaction. It advances key
+24 and sets key 3 to the new confirmation time plus the same exact bound. It
+must not broaden hosts, roles, account bindings, or device authority as an
+incidental effect. Previously signed receipts and stored idempotent responses
+are immutable: an exact replay returns the original bytes and original expiry.
+Implementations must never rewrite existing evidence to apply a newer lifetime
+rule. An installation holding an expired receipt must re-enrol or complete the
+future refresh ceremony before it can authorize a new operation.
 
 ### Strict success response
 

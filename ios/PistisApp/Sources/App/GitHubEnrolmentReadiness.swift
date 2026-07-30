@@ -35,9 +35,9 @@ struct GitHubEnrolmentConfiguration: Equatable, Sendable {
             authenticatedUserEndpoint.absoluteString
                 == "https://api.github.com/user",
             apiVersionBytes.count == 10,
-            apiVersionBytes.enumerated().allSatisfy { index, byte in
+            apiVersionBytes.enumerated().allSatisfy({ index, byte in
                 [4, 7].contains(index) ? byte == 0x2d : (0x30...0x39).contains(byte)
-            },
+            }),
             appConfigurationDigest == Self.reviewedAppConfigurationDigest
         else {
             throw PlatformFailure.invalidConfiguration

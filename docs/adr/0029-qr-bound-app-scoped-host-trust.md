@@ -1,7 +1,13 @@
 # ADR 0029: QR-bound app-scoped host trust
 
-- Status: Proposed
+- Status: Accepted
 - Date: 2026-07-30
+- Accepted: 2026-07-30
+- Acceptance note: The project owner accepted the version-4 signed TLS
+  public-key commitment, three-word attended comparison, exact-origin
+  app-scoped iOS and Android trust, fail-closed rotation, and removal of the
+  manual root-certificate/Settings ceremony. Cross-project implementation and
+  specialist review evidence remain mandatory.
 - Decision owners: Pistis protocol, cryptography, iOS, Android, Prosopikon,
   Monas, security, privacy, accessibility, and operations
 - Tracking issue: [#331](https://github.com/sagrudd/pistis/issues/331)
@@ -221,9 +227,10 @@ or private key.
 
 ### Required implementation and tests
 
-No protocol implementation begins until this ADR receives project-owner and
-specialist protocol, cryptography, mobile, Prosopikon, Monas, accessibility,
-privacy, and operations acceptance.
+No protocol implementation begins until this ADR receives project-owner
+acceptance and its implementation plan receives specialist protocol,
+cryptography, mobile, Prosopikon, Monas, accessibility, privacy, and
+operations review.
 
 Acceptance then requires:
 

@@ -19,8 +19,8 @@
 - Owner review note: On 2026-07-30 the project owner rejected the manual
   platform-certificate trust process as an MVP and production onboarding
   contract. The requirement in "Mobile verification and network use" item 4
-  is withdrawn from implementation pending disposition of proposed ADR 0029.
-  No development-CA Settings ceremony may be claimed as MVP acceptance.
+  is superseded by accepted ADR 0029. No development-CA Settings ceremony may
+  be claimed as MVP acceptance.
 
 ## Context
 

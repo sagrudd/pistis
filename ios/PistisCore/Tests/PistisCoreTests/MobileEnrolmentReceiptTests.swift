@@ -41,7 +41,7 @@ func receiptRequiresPurposeSeparatedKeyAndExactDeviceBinding() throws {
         keyID: keyID(receiptKey.publicKey.compressedRepresentation),
         key: receiptKey
     )
-    let verified = try MobileEnrolmentReceiptV1.verify(
+    let verified = try MobileEnrolmentReceiptV2.verify(
         returnedAuthorityBundle: presentation.authorityBundle,
         returnedRegistrationCOSE: registration,
         receiptCOSE: receipt,
@@ -52,6 +52,10 @@ func receiptRequiresPurposeSeparatedKeyAndExactDeviceBinding() throws {
     #expect(verified.installationID == presentation.installationID)
     #expect(verified.deviceKeyID == deviceKeyID)
     #expect(verified.allowedHTTPSHosts == ["pistis.example.test"])
+    #expect(
+        verified.authorisedProductAudiences
+            == ["dasobjectstore", "jenkins", "propylaion"]
+    )
 
     let wrongPurposeReceipt = try signed(
         validReceiptPayload,
@@ -59,7 +63,7 @@ func receiptRequiresPurposeSeparatedKeyAndExactDeviceBinding() throws {
         key: deviceKey
     )
     #expect(throws: (any Error).self) {
-        try MobileEnrolmentReceiptV1.verify(
+        try MobileEnrolmentReceiptV2.verify(
             returnedAuthorityBundle: presentation.authorityBundle,
             returnedRegistrationCOSE: registration,
             receiptCOSE: wrongPurposeReceipt,
@@ -72,7 +76,7 @@ func receiptRequiresPurposeSeparatedKeyAndExactDeviceBinding() throws {
     var changedRegistration = registration
     changedRegistration[changedRegistration.count - 1] ^= 1
     #expect(throws: (any Error).self) {
-        try MobileEnrolmentReceiptV1.verify(
+        try MobileEnrolmentReceiptV2.verify(
             returnedAuthorityBundle: presentation.authorityBundle,
             returnedRegistrationCOSE: changedRegistration,
             receiptCOSE: receipt,
@@ -145,7 +149,7 @@ func receiptRequiresPurposeSeparatedKeyAndExactDeviceBinding() throws {
             key: receiptKey
         )
         #expect(throws: (any Error).self) {
-            try MobileEnrolmentReceiptV1.verify(
+            try MobileEnrolmentReceiptV2.verify(
                 returnedAuthorityBundle: presentation.authorityBundle,
                 returnedRegistrationCOSE: registration,
                 receiptCOSE: invalidReceipt,
@@ -170,12 +174,12 @@ private func receiptPayload(
     revocationGeneration: UInt64 = 1,
     confirmedAtMilliseconds: UInt64 = 1_700_000_090_000
 ) -> Data {
-    var result = Data([0xb8, 0x1a])
+    var result = Data([0xb8, 0x1b])
     func field(_ key: UInt64, _ value: Data) {
         result.append(ReceiptCBOR.unsigned(key)); result.append(value)
     }
-    field(0, ReceiptCBOR.unsigned(1))
-    field(1, ReceiptCBOR.text("pistis.mobile-enrolment-receipt.v1"))
+    field(0, ReceiptCBOR.unsigned(2))
+    field(1, ReceiptCBOR.text("pistis.mobile-enrolment-receipt.v2"))
     field(2, ReceiptCBOR.unsigned(1_700_000_090_000))
     field(3, ReceiptCBOR.unsigned(1_700_000_290_000))
     field(4, ReceiptCBOR.bytes(Data(repeating: 0x71, count: 16)))
@@ -200,6 +204,13 @@ private func receiptPayload(
     field(23, Data([0xf5]))
     field(24, ReceiptCBOR.unsigned(confirmedAtMilliseconds))
     field(25, Data([0x81]) + ReceiptCBOR.text("pistis.example.test"))
+    field(
+        26,
+        Data([0x83])
+            + ReceiptCBOR.text("dasobjectstore")
+            + ReceiptCBOR.text("jenkins")
+            + ReceiptCBOR.text("propylaion")
+    )
     return result
 }
 

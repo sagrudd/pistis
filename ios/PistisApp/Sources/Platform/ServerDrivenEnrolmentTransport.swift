@@ -241,7 +241,7 @@ struct ServerDrivenEnrolmentTransport: Sendable {
             )
         else { throw PlatformFailure.productionEnvelopeUnavailable }
         do {
-            return try MobileEnrolmentReceiptV1.verify(
+            return try MobileEnrolmentReceiptV2.verify(
                 returnedAuthorityBundle: bundle,
                 returnedRegistrationCOSE: returnedRegistration,
                 receiptCOSE: receipt,

@@ -408,6 +408,7 @@ private final class FirstDeviceEnrolmentFlow: ObservableObject {
                 installationID: receipt.installationID,
                 displayName: receipt.installationName,
                 audience: receipt.audience,
+                authorisedProductAudiences: receipt.authorisedProductAudiences,
                 userID: receipt.userID,
                 externalIdentityID: receipt.externalIdentityID,
                 fingerprint: receipt.fingerprint,

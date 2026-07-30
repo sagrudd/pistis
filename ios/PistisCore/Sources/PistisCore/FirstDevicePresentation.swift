@@ -21,7 +21,10 @@ public struct VerifiedFirstDevicePresentation: Equatable, Sendable {
     public let invitationID: Data
     public let installationID: Data
     public let installationName: String
+    /// Fixed purpose audience of the enrolment ceremony.
     public let audience: String
+    /// Closed authority-signed product audiences permitted after enrolment.
+    public let authorisedProductAudiences: [String]
     public let httpsOrigin: URL
     public let appConfigurationDigest: Data
     /// SHA-256 of the server leaf certificate's exact DER SubjectPublicKeyInfo.
@@ -93,10 +96,10 @@ public enum FirstDevicePresentationV4 {
         }
 
         var payload = CeremonyCBORReader(cose.payload)
-        try payload.requireMap(count: 17)
-        try payload.requireUnsigned(0); try payload.requireUnsigned(2)
+        try payload.requireMap(count: 18)
+        try payload.requireUnsigned(0); try payload.requireUnsigned(3)
         try payload.requireUnsigned(1)
-        try payload.requireText("pistis.first-device-presentation.v2")
+        try payload.requireText("pistis.first-device-presentation.v3")
         try payload.requireUnsigned(2); let presentationID = try payload.bytes(count: 16)
         try payload.requireUnsigned(3); let issued = try payload.unsigned()
         try payload.requireUnsigned(4); let expires = try payload.unsigned()
@@ -114,6 +117,11 @@ public enum FirstDevicePresentationV4 {
         try payload.requireUnsigned(15); let tlsSPKISHA256 = try payload.bytes(count: 32)
         try payload.requireUnsigned(16)
         try payload.requireUnsigned(HostTrustWordsV1.version)
+        try payload.requireUnsigned(17)
+        let authorisedProductAudiences = try payload.textArray(
+            maximumCount: 3,
+            maximumText: 128
+        )
         guard payload.isAtEnd,
               !presentationID.allSatisfy({ $0 == 0 }),
               !authorityID.allSatisfy({ $0 == 0 }),
@@ -126,11 +134,13 @@ public enum FirstDevicePresentationV4 {
                       in: .whitespacesAndNewlines
                   ),
               !audience.isEmpty
+                  && canonicalProductAudiences(authorisedProductAudiences)
         else { throw FirstDevicePresentationError.malformed }
 
         let actualDescriptorDigest = Data(SHA256.hash(data: bundleBytes))
         guard invitation.installationID == installationID,
               invitation.audience == audience,
+              invitation.authorisedProductAudiences == authorisedProductAudiences,
               invitation.descriptorDigest == actualDescriptorDigest,
               descriptorDigest == actualDescriptorDigest
         else { throw FirstDevicePresentationError.invalidAuthority }
@@ -160,6 +170,7 @@ public enum FirstDevicePresentationV4 {
             installationID: installationID,
             installationName: installationName,
             audience: audience,
+            authorisedProductAudiences: authorisedProductAudiences,
             httpsOrigin: origin,
             appConfigurationDigest: appDigest,
             tlsSPKISHA256: tlsSPKISHA256,
@@ -256,14 +267,15 @@ public enum FirstDevicePresentationV4 {
             expires: UInt64,
             installationID: Data,
             audience: String,
-            descriptorDigest: Data
+            descriptorDigest: Data,
+            authorisedProductAudiences: [String]
         )
     {
         var reader = CeremonyCBORReader(bytes)
-        try reader.requireMap(count: 9)
-        try reader.requireUnsigned(0); try reader.requireUnsigned(1)
+        try reader.requireMap(count: 10)
+        try reader.requireUnsigned(0); try reader.requireUnsigned(2)
         try reader.requireUnsigned(1)
-        try reader.requireText("pistis.mobile-enrolment-invitation.v1")
+        try reader.requireText("pistis.mobile-enrolment-invitation.v2")
         try reader.requireUnsigned(2); let issued = try reader.unsigned()
         try reader.requireUnsigned(3); let expires = try reader.unsigned()
         try reader.requireUnsigned(4); let id = try reader.bytes(count: 16)
@@ -271,14 +283,40 @@ public enum FirstDevicePresentationV4 {
         try reader.requireUnsigned(6); let installationID = try reader.bytes(count: 16)
         try reader.requireUnsigned(7); let audience = try reader.text(maximum: 128)
         try reader.requireUnsigned(8); let digest = try reader.bytes(count: 32)
+        try reader.requireUnsigned(9)
+        let authorisedProductAudiences = try reader.textArray(
+            maximumCount: 3,
+            maximumText: 128
+        )
         guard reader.isAtEnd, issued < expires,
               !id.allSatisfy({ $0 == 0 }),
               !installationID.allSatisfy({ $0 == 0 }),
-              !audience.isEmpty
+              !audience.isEmpty,
+              canonicalProductAudiences(authorisedProductAudiences)
         else {
             throw FirstDevicePresentationError.malformed
         }
-        return (id, expires, installationID, audience, digest)
+        return (
+            id,
+            expires,
+            installationID,
+            audience,
+            digest,
+            authorisedProductAudiences
+        )
+    }
+
+    private static func canonicalProductAudiences(_ audiences: [String]) -> Bool {
+        let supported = Set(["dasobjectstore", "jenkins", "propylaion"])
+        return !audiences.isEmpty
+            && Set(audiences).count == audiences.count
+            && audiences == audiences.sorted()
+            && audiences.allSatisfy {
+                supported.contains($0)
+                    && !$0.isEmpty
+                    && $0.utf8.count <= 128
+                    && $0.unicodeScalars.allSatisfy(\.isASCII)
+            }
     }
 
     private static func canonicalOrigin(_ text: String) throws -> URL {

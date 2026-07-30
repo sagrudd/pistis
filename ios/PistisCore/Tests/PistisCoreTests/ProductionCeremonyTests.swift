@@ -19,7 +19,6 @@ final class ProductionCeremonyTests: XCTestCase {
         let verified = try await ProductionChallengeVerifier.verify(
             qrText: material.qr,
             trustRepository: trust,
-            expectedAudience: "jenkins.mnemosyne.test",
             expectedExternalIdentityID: Data(repeating: 0x44, count: 16),
             now: Date(timeIntervalSince1970: 1_700_000_001)
         )
@@ -29,13 +28,50 @@ final class ProductionCeremonyTests: XCTestCase {
         XCTAssertEqual(verified.exactPayload, material.payload)
     }
 
+    func testEveryAuthorityAuthorisedProductAudienceIsAccepted() async throws {
+        for audience in ["dasobjectstore", "jenkins", "propylaion"] {
+            let material = try Fixture(
+                key: P256.Signing.PrivateKey(),
+                productAudience: audience,
+                authorisedProductAudiences: [
+                    "dasobjectstore", "jenkins", "propylaion",
+                ]
+            )
+            let verified = try await ProductionChallengeVerifier.verify(
+                qrText: material.qr,
+                trustRepository: FixedTrust(record: material.trust),
+                expectedExternalIdentityID: Data(repeating: 0x44, count: 16),
+                now: Date(timeIntervalSince1970: 1_700_000_001)
+            )
+            XCTAssertEqual(verified.audience, audience)
+        }
+    }
+
+    func testProductAudienceNotAuthorisedAtEnrolmentFailsClosed() async throws {
+        let material = try Fixture(
+            key: P256.Signing.PrivateKey(),
+            productAudience: "propylaion",
+            authorisedProductAudiences: ["jenkins"]
+        )
+        do {
+            _ = try await ProductionChallengeVerifier.verify(
+                qrText: material.qr,
+                trustRepository: FixedTrust(record: material.trust),
+                expectedExternalIdentityID: Data(repeating: 0x44, count: 16),
+                now: Date(timeIntervalSince1970: 1_700_000_001)
+            )
+            XCTFail("an unenrolled product audience must never authenticate")
+        } catch {
+            XCTAssertEqual(error as? ProductionCeremonyError, .wrongAudience)
+        }
+    }
+
     func testUnknownInstallationFailsClosedInsteadOfTrustingScannedKey() async throws {
         let material = try Fixture(key: P256.Signing.PrivateKey())
         do {
             _ = try await ProductionChallengeVerifier.verify(
                 qrText: material.qr,
                 trustRepository: FixedTrust(record: nil),
-                expectedAudience: "jenkins.mnemosyne.test",
                 expectedExternalIdentityID: Data(repeating: 0x44, count: 16),
                 now: Date(timeIntervalSince1970: 1_700_000_001)
             )
@@ -52,6 +88,7 @@ final class ProductionCeremonyTests: XCTestCase {
             installationID: material.trust.installationID,
             displayName: material.trust.displayName,
             audience: material.trust.audience,
+            authorisedProductAudiences: material.trust.authorisedProductAudiences,
             userID: material.trust.userID,
             externalIdentityID: material.trust.externalIdentityID,
             fingerprint: material.trust.fingerprint,
@@ -68,7 +105,6 @@ final class ProductionCeremonyTests: XCTestCase {
             _ = try await ProductionChallengeVerifier.verify(
                 qrText: material.qr,
                 trustRepository: FixedTrust(record: substituted),
-                expectedAudience: "jenkins.mnemosyne.test",
                 expectedExternalIdentityID: Data(repeating: 0x44, count: 16),
                 now: Date(timeIntervalSince1970: 1_700_000_001)
             )
@@ -83,7 +119,6 @@ final class ProductionCeremonyTests: XCTestCase {
         let challenge = try await ProductionChallengeVerifier.verify(
             qrText: material.qr,
             trustRepository: FixedTrust(record: material.trust),
-            expectedAudience: "jenkins.mnemosyne.test",
             expectedExternalIdentityID: Data(repeating: 0x44, count: 16),
             now: Date(timeIntervalSince1970: 1_700_000_001)
         )
@@ -155,7 +190,6 @@ final class ProductionCeremonyTests: XCTestCase {
                 _ = try await ProductionChallengeVerifier.verify(
                     qrText: material.qr,
                     trustRepository: FixedTrust(record: material.trust),
-                    expectedAudience: "jenkins.mnemosyne.test",
                     expectedExternalIdentityID: Data(repeating: 0x44, count: 16),
                     now: Date(timeIntervalSince1970: 1_700_000_001)
                 )
@@ -182,7 +216,9 @@ private struct Fixture {
 
     init(
         key: P256.Signing.PrivateKey,
-        endpoint: String = "https://jenkins.mnemosyne.test/auth/pistis"
+        endpoint: String = "https://jenkins.mnemosyne.test/auth/pistis",
+        productAudience: String = "jenkins",
+        authorisedProductAudiences: Set<String> = ["jenkins"]
     ) throws {
         let installationID = Data(repeating: 0x11, count: 16)
         let keyID = Data(repeating: 0x22, count: 32)
@@ -191,7 +227,8 @@ private struct Fixture {
             installationID: installationID,
             keyID: keyID,
             fingerprint: fingerprint,
-            endpoint: endpoint
+            endpoint: endpoint,
+            productAudience: productAudience
         )
         let structure = try CoseSign1.signatureStructure(keyID: keyID, payload: payload)
         let signature = Self.lowS(try key.signature(for: structure).rawRepresentation)
@@ -200,7 +237,8 @@ private struct Fixture {
         trust = try InstallationTrustRecord(
             installationID: installationID,
             displayName: "Mnemosyne Jenkins",
-            audience: "jenkins.mnemosyne.test",
+            audience: "prosopikon:pistis:enrolment",
+            authorisedProductAudiences: authorisedProductAudiences,
             userID: Data(repeating: 0x88, count: 16),
             externalIdentityID: Data(repeating: 0x44, count: 16),
             fingerprint: fingerprint,
@@ -219,7 +257,8 @@ private struct Fixture {
         installationID: Data,
         keyID: Data,
         fingerprint: Data,
-        endpoint: String
+        endpoint: String,
+        productAudience: String
     ) -> Data {
         var output = Data([0xb1])
         output += uint(0) + uint(1)
@@ -233,7 +272,7 @@ private struct Fixture {
         output += uint(8) + bytes(Data(repeating: 0x88, count: 16))
         output += uint(9) + bytes(Data(repeating: 0x44, count: 16))
         output += uint(10) + text("authenticate-session")
-        output += uint(11) + text("jenkins.mnemosyne.test")
+        output += uint(11) + text(productAudience)
         output += uint(12) + text("Mnemosyne Jenkins")
         output += uint(13) + text("stephen")
         output += uint(14) + bytes(Data(repeating: 0x99, count: 32))

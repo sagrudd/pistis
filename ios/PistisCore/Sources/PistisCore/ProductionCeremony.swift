@@ -36,7 +36,10 @@ public enum AuthenticationDecision: String, Sendable {
 public struct InstallationTrustRecord: Codable, Equatable, Sendable {
     public let installationID: Data
     public let displayName: String
+    /// Fixed purpose audience of the enrolment ceremony.
     public let audience: String
+    /// Closed authority-signed product audiences permitted for authentication.
+    public let authorisedProductAudiences: Set<String>
     public let userID: Data
     public let externalIdentityID: Data
     public let fingerprint: Data
@@ -53,6 +56,7 @@ public struct InstallationTrustRecord: Codable, Equatable, Sendable {
         installationID: Data,
         displayName: String,
         audience: String,
+        authorisedProductAudiences: Set<String>,
         userID: Data,
         externalIdentityID: Data,
         fingerprint: Data,
@@ -74,13 +78,19 @@ public struct InstallationTrustRecord: Codable, Equatable, Sendable {
               authorityKeyID.count == 32,
               !authorityReceipt.isEmpty,
               Self.bounded(displayName, maximum: 128),
-              Self.bounded(audience, maximum: 128)
+              Self.bounded(audience, maximum: 128),
+              !authorisedProductAudiences.isEmpty,
+              authorisedProductAudiences.count <= 3,
+              authorisedProductAudiences.allSatisfy({
+                  ["dasobjectstore", "jenkins", "propylaion"].contains($0)
+              })
         else {
             throw ProductionCeremonyError.inactiveInstallation
         }
         self.installationID = installationID
         self.displayName = displayName
         self.audience = audience
+        self.authorisedProductAudiences = authorisedProductAudiences
         self.userID = userID
         self.externalIdentityID = externalIdentityID
         self.fingerprint = fingerprint
@@ -98,6 +108,7 @@ public struct InstallationTrustRecord: Codable, Equatable, Sendable {
         case installationID
         case displayName
         case audience
+        case authorisedProductAudiences
         case userID
         case externalIdentityID
         case fingerprint
@@ -125,6 +136,10 @@ public struct InstallationTrustRecord: Codable, Equatable, Sendable {
             installationID: container.decode(Data.self, forKey: .installationID),
             displayName: container.decode(String.self, forKey: .displayName),
             audience: container.decode(String.self, forKey: .audience),
+            authorisedProductAudiences: container.decode(
+                Set<String>.self,
+                forKey: .authorisedProductAudiences
+            ),
             userID: container.decode(Data.self, forKey: .userID),
             externalIdentityID: container.decode(Data.self, forKey: .externalIdentityID),
             fingerprint: container.decode(Data.self, forKey: .fingerprint),
@@ -276,7 +291,6 @@ public enum ProductionChallengeVerifier {
     public static func verify(
         qrText: String,
         trustRepository: any InstallationTrustReading,
-        expectedAudience: String,
         expectedExternalIdentityID: Data,
         now: Date
     ) async throws -> VerifiedAuthenticationChallenge {
@@ -293,7 +307,7 @@ public enum ProductionChallengeVerifier {
               trust.installationKeyID == cose.keyID,
               trust.fingerprint == challenge.installationFingerprint
         else { throw ProductionCeremonyError.keyMismatch }
-        guard trust.audience == expectedAudience, challenge.audience == expectedAudience else {
+        guard trust.authorisedProductAudiences.contains(challenge.audience) else {
             throw ProductionCeremonyError.wrongAudience
         }
         guard trust.userID == challenge.userID,

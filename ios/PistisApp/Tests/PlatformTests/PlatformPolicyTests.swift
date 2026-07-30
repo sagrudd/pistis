@@ -385,7 +385,8 @@ final class PlatformPolicyTests: XCTestCase {
         let trust = try InstallationTrustRecord(
             installationID: Data(repeating: 1, count: 16),
             displayName: "Mnemosyne Jenkins",
-            audience: "jenkins.mnemosyne.test",
+            audience: "prosopikon:pistis:enrolment",
+            authorisedProductAudiences: ["jenkins"],
             userID: Data(repeating: 2, count: 16),
             externalIdentityID: Data(repeating: 3, count: 16),
             fingerprint: Data(repeating: 4, count: 32),
@@ -617,7 +618,8 @@ private func enrollmentOutput(marker: UInt8)
     let trust = try InstallationTrustRecord(
         installationID: Data(repeating: marker, count: 16),
         displayName: "Mnemosyne \(marker)",
-        audience: "pistis.example.test",
+        audience: "prosopikon:pistis:enrolment",
+        authorisedProductAudiences: ["propylaion"],
         userID: Data(repeating: marker &+ 1, count: 16),
         externalIdentityID: Data(repeating: marker &+ 2, count: 16),
         fingerprint: Data(repeating: marker &+ 3, count: 32),

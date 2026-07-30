@@ -35,7 +35,6 @@ final class ProductionCeremonyCoordinator: ObservableObject {
             let verified = try await ProductionChallengeVerifier.verify(
                 qrText: qrText,
                 trustRepository: trustStore,
-                expectedAudience: enrollment.trust.audience,
                 expectedExternalIdentityID: enrollment.trust.externalIdentityID,
                 now: now()
             )

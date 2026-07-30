@@ -7,6 +7,10 @@ a Changelog and releases follow Semantic Versioning.
 
 ### Added
 
+- Retain the exact first-device operation identifier and Secure Enclave key
+  across ambiguous begin-response failures, enabling Prosopikon's
+  byte-identical idempotent replay instead of generating a divergent retry.
+
 - Accept and implement QR-bound, app-scoped iOS host trust from ADR 0029,
   withdrawing the manual root-certificate/Settings ceremony from MVP
   acceptance. Version-4 presentations bind the exact origin and DER-SPKI

@@ -481,6 +481,50 @@ final class PlatformPolicyTests: XCTestCase {
         )
     }
 
+    func testBeginRetryReusesExactOperationUntilAcceptedOrReset() throws {
+        let first = Data(repeating: 0x41, count: 16)
+        let divergent = Data(repeating: 0x42, count: 16)
+        var generated = 0
+        var state = EnrolmentBeginRetryState()
+
+        XCTAssertEqual(
+            try state.operationID {
+                generated += 1
+                return first
+            },
+            first
+        )
+        XCTAssertEqual(
+            try state.operationID {
+                generated += 1
+                return divergent
+            },
+            first
+        )
+        XCTAssertEqual(generated, 1)
+
+        state.markAccepted()
+        XCTAssertEqual(
+            try state.operationID {
+                generated += 1
+                return divergent
+            },
+            divergent
+        )
+        state.reset()
+        XCTAssertNil(state.retainedOperationID)
+    }
+
+    func testBeginRetryRejectsInvalidGeneratedOperation() {
+        var state = EnrolmentBeginRetryState()
+        XCTAssertThrowsError(
+            try state.operationID { Data(repeating: 0, count: 16) }
+        ) { error in
+            XCTAssertEqual(error as? PlatformFailure, .invalidConfiguration)
+        }
+        XCTAssertNil(state.retainedOperationID)
+    }
+
     func testVerifiedAccountRequiresSeparateExplicitConfirmation() throws {
         let approval = VerifiedProviderApproval(
             subject: 123_456_789,

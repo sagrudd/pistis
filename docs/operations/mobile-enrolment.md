@@ -89,6 +89,13 @@ explicitly terminated. It samples receipt-verification time only after the
 authority response arrives: sampling before Face ID and the network exchange
 would incorrectly reject a valid receipt committed during the request.
 
+The same rule applies at begin: once the device key and random operation
+identifier have been selected, an ambiguous host-response failure retains
+both in memory. One explicit retry sends the byte-identical begin request so
+Prosopikon can return its existing pending operation. Cancel or a terminal
+outcome clears the retained attempt; retry never invents a second operation
+for an invitation that may already be durably begun.
+
 Cancel, denial, expiry, or begin failure deletes only the exact namespaced
 Secure Enclave key when no enrolment record exists. Pending and transient
 failures retain it for retry. A consumed operation retains it for receipt

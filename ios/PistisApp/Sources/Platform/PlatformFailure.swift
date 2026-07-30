@@ -24,6 +24,7 @@ enum PlatformFailure: Error, Equatable, Sendable {
     case qrPayloadUnsupported
     case operationCancelled
     case productionEnvelopeUnavailable
+    case enrolmentBeginRetryRequired
     case enrolmentRequired
 }
 
@@ -42,6 +43,8 @@ extension PlatformFailure {
             "Scanning stopped before a code was captured."
         case .enrolmentRequired:
             "Enrol this installation through the authenticated system-browser flow before scanning."
+        case .enrolmentBeginRetryRequired:
+            "The host did not return a verifiable enrolment response. This exact attempt was retained; retry once or cancel and scan a fresh invitation."
         default:
             "Pistis could not complete this operation safely. Please try again."
         }

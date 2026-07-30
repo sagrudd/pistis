@@ -2,6 +2,7 @@ import SwiftUI
 
 struct InstallationsView: View {
     let installations: [InstallationSummary]
+    let loadFailure: Bool
 
     var body: some View {
         List(installations) { installation in
@@ -41,7 +42,14 @@ struct InstallationsView: View {
                 .background(MnColor.canvas)
         }
         .overlay {
-            if installations.isEmpty {
+            if loadFailure {
+                MnEmptyState(
+                    title: "Installation record unavailable",
+                    explanation: "Pistis could not safely read the protected enrolment record. Unlock this device and try again.",
+                    actionTitle: nil
+                )
+                .padding(MnMetrics.screenGutter)
+            } else if installations.isEmpty {
                 MnEmptyState(
                     title: "No paired installations",
                     explanation: "A verified pairing will record the installation and fingerprint here.",

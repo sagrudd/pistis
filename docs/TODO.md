@@ -89,10 +89,14 @@ distribution, or licensing must trace their acceptance to that decision.
 - [x] Define and validate the GitHub App registration contract
 - [x] Implement the bounded ADR 0025 iOS provider client and coordinator
 - [ ] Add the persistent installation-local Device Flow throttle
-- [ ] Verify the reviewed GitHub App configuration digest
+- [x] Verify the reviewed GitHub App configuration digest
 - [x] Retrieve and validate the stable numeric GitHub user ID
 - [ ] Review and accept or reject ADR 0027's installation-local provider
       verifier and authority-owned one-use operation
+- [ ] Review and accept or reject ADR 0028's protected canonical-producer pipe
+      and distinct first-device QR
+- [ ] Implement the accepted protected first-device presentation and
+      cross-platform scanner contract
 - [ ] Issue the one-use authority-verifiable provider capability without
       forwarding or trusting a GitHub bearer token
 - [ ] Commit the invitation, provider binding, device, and receipt atomically

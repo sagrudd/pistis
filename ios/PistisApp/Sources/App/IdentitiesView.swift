@@ -128,15 +128,22 @@ private struct IdentityDetailView: View {
                     .font(.footnote)
                     .foregroundStyle(MnColor.textPrimary)
                 if identity.allowsLocalForget {
+                    let isIncompatible = identity.status == "Re-enrolment required"
                     MnPanel {
                         VStack(alignment: .leading, spacing: MnSpacing.x3) {
                             MnStatusLabel(text: "Local deletion only", kind: .warning)
                             Text(
-                                "This expired provider account cannot authorise. Forgetting it removes this phone’s cached identity, trust and device key; it does not delete authority audit history or change server state."
+                                isIncompatible
+                                    ? "This older provider enrolment cannot authorise in the current app. Removing it deletes the phone’s local identity, trust and device key so you can re-enrol; authority-side revocation remains separate."
+                                    : "This expired provider account cannot authorise. Forgetting it removes this phone’s cached identity, trust and device key; it does not delete authority audit history or change server state."
                             )
                             DestructiveConfirmationSlider(
-                                label: "Slide to forget this expired account",
-                                confirmationLabel: "Confirm forget local account"
+                                label: isIncompatible
+                                    ? "Slide to remove incompatible account"
+                                    : "Slide to forget this expired account",
+                                confirmationLabel: isIncompatible
+                                    ? "Confirm local account removal"
+                                    : "Confirm forget local account"
                             ) {
                                 try await forgetExpired(identity.id)
                             }

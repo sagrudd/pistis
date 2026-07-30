@@ -77,6 +77,15 @@ the app labels that time unavailable instead of deriving or inventing it.
 Local history is diagnostic context only; Prosopikon remains the authoritative
 audit source.
 
+A record created before ADR 0031 has no authority-signed product-audience set
+and cannot authorise in the current app. Pistis displays that exact preceding
+profile as ``Re-enrolment required`` rather than hiding it or inferring
+permissions. Use ``Slide to remove incompatible enrolment`` to delete only the
+phone's local trust and Secure Enclave key, then revoke the old credential at
+the authority or use a fresh authority before issuing a schema-v11
+presentation. Local removal does not revoke authority state or existing server
+sessions.
+
 An expired or inactive installation detail offers a destructive
 ``Slide to forget this expired installation`` control. Its coupled provider
 identity detail independently offers ``Slide to forget this expired account``.

@@ -78,42 +78,66 @@ struct RootTabView: View {
 
     private func forgetExpired(_ installationID: UUID) async throws {
         let identifier = installationID.data
-        guard let stored = try await InstallationTrustKeychain.shared
-            .enrollmentInventoryRecord(),
-              stored.trust.installationID == identifier,
-              InstallationTrustKeychain.allowsLocalForget(
-                  active: stored.trust.active,
-                  expiresAt: stored.trust.expiresAt,
-                  now: Date()
-              )
+        guard let inventory = try await InstallationTrustKeychain.shared
+            .enrollmentInventoryRecord()
         else { throw PlatformFailure.invalidConfiguration }
-
-        try await forgetStoredEnrollment(
-            stored,
-            historyAction: "Local installation record forgotten",
-            authenticationReason: "Forget this expired Pistis installation",
-            verification: "Expired trust and local device key removed"
-        )
+        switch inventory {
+        case let .current(stored):
+            guard stored.trust.installationID == identifier,
+                  InstallationTrustKeychain.allowsLocalForget(
+                      active: stored.trust.active,
+                      expiresAt: stored.trust.expiresAt,
+                      now: Date()
+                  )
+            else { throw PlatformFailure.invalidConfiguration }
+            try await forgetStoredEnrollment(
+                stored,
+                historyAction: "Local installation record forgotten",
+                authenticationReason: "Forget this expired Pistis installation",
+                verification: "Expired trust and local device key removed"
+            )
+        case let .legacy(stored):
+            guard stored.trust.installationID == identifier else {
+                throw PlatformFailure.invalidConfiguration
+            }
+            try await forgetLegacyEnrollment(
+                stored,
+                historyAction: "Incompatible installation enrolment removed",
+                authenticationReason: "Remove this incompatible Pistis enrolment"
+            )
+        }
     }
 
     private func forgetExpiredIdentity(_ externalIdentityID: UUID) async throws {
         let identifier = externalIdentityID.data
-        guard let stored = try await InstallationTrustKeychain.shared
-            .enrollmentInventoryRecord(),
-              stored.trust.externalIdentityID == identifier,
-              InstallationTrustKeychain.allowsLocalForget(
-                  active: stored.trust.active,
-                  expiresAt: stored.trust.expiresAt,
-                  now: Date()
-              )
+        guard let inventory = try await InstallationTrustKeychain.shared
+            .enrollmentInventoryRecord()
         else { throw PlatformFailure.invalidConfiguration }
-
-        try await forgetStoredEnrollment(
-            stored,
-            historyAction: "Local provider account forgotten",
-            authenticationReason: "Forget this expired Pistis provider account",
-            verification: "Expired identity, trust and local device key removed"
-        )
+        switch inventory {
+        case let .current(stored):
+            guard stored.trust.externalIdentityID == identifier,
+                  InstallationTrustKeychain.allowsLocalForget(
+                      active: stored.trust.active,
+                      expiresAt: stored.trust.expiresAt,
+                      now: Date()
+                  )
+            else { throw PlatformFailure.invalidConfiguration }
+            try await forgetStoredEnrollment(
+                stored,
+                historyAction: "Local provider account forgotten",
+                authenticationReason: "Forget this expired Pistis provider account",
+                verification: "Expired identity, trust and local device key removed"
+            )
+        case let .legacy(stored):
+            guard stored.trust.externalIdentityID == identifier else {
+                throw PlatformFailure.invalidConfiguration
+            }
+            try await forgetLegacyEnrollment(
+                stored,
+                historyAction: "Incompatible provider enrolment removed",
+                authenticationReason: "Remove this incompatible Pistis account"
+            )
+        }
     }
 
     private func forgetStoredEnrollment(
@@ -158,6 +182,43 @@ struct RootTabView: View {
                 verification: keyRemoved
                     ? verification
                     : "Expired trust removed; local key cleanup required"
+            )
+        )
+        await enrollment.refresh()
+    }
+
+    private func forgetLegacyEnrollment(
+        _ stored: LegacyAuthenticatedEnrollmentOutput,
+        historyAction: String,
+        authenticationReason: String
+    ) async throws {
+        let keyRemoved = try await LocalForgetTransaction.run(
+            removeTrust: {
+                try await InstallationTrustKeychain.shared.forgetIncompatible(
+                    installationID: stored.trust.installationID,
+                    externalIdentityID: stored.trust.externalIdentityID
+                )
+            },
+            removeKey: {
+                let signer = try SecureEnclaveSigner(
+                    namespace: hexadecimal(stored.trust.installationID),
+                    authenticationReason: authenticationReason
+                )
+                try signer.deleteLocalKey()
+            }
+        )
+        try? LocalHistoryRepository.shared.record(
+            HistoryEvent(
+                id: UUID(),
+                action: historyAction,
+                installation: stored.trust.displayName,
+                occurredAt: Date().formatted(date: .abbreviated, time: .standard),
+                decision: "Completed locally",
+                signature: "No authority action requested",
+                transfer: "Authority-side revocation still required",
+                verification: keyRemoved
+                    ? "Incompatible trust and local device key removed"
+                    : "Incompatible trust removed; local key cleanup required"
             )
         )
         await enrollment.refresh()

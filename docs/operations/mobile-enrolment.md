@@ -21,8 +21,11 @@ review and the evidence gates in that ADR.
    SubjectPublicKeyInfo and supply that reviewed 32-byte digest to the
    Prosopikon presentation producer. Do not hash the complete certificate, a
    PEM rendering, a raw EC point, or a textual fingerprint.
-4. Issue a short-lived, installation- and audience-specific invitation for the
-   intended immutable Prosopikon principal. Accepted ADR 0028 pipes the
+4. Issue a short-lived, installation-specific invitation for the intended
+   immutable Prosopikon principal and explicitly select the closed product
+   audiences the installation may authenticate: `propylaion`, `jenkins`, and/or
+   `dasobjectstore`. Do not confuse these permissions with the fixed
+   `prosopikon:pistis:enrolment` ceremony audience. Accepted ADR 0028 pipes the
    canonical producer directly into a Pistis
    alternate-screen QR presenter and permits scanning only from the app's
    explicit enrolment surface. Never place the invitation in argv, an
@@ -49,7 +52,10 @@ review and the evidence gates in that ADR.
 The app must show an installation as trusted only after verifying the
 invitation's authority-descriptor commitment, authority signature, exact
 registration digest, complete binding, generations, times, audience, and
-allowed hosts, followed by one atomic Keychain update.
+allowed hosts and product-audience set, followed by one atomic Keychain update.
+At login it verifies that the signed challenge audience is a member of that
+stored set. A product not authorised during enrolment fails closed even when
+the installation key, host, identity, and signature are otherwise valid.
 
 After that update, the iOS Identities and Installations screens project the
 verified Keychain record immediately and whenever the app becomes active.

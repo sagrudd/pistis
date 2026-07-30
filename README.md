@@ -88,6 +88,11 @@ the phone requires three independently displayed comparison words before it
 creates an app-scoped pinned session. Operators do not install a root
 certificate or change iOS Certificate Trust Settings. See the
 [`mobile enrolment runbook`](docs/operations/mobile-enrolment.md).
+Accepted [`ADR 0031`](docs/adr/0031-enrolment-and-product-audience-separation.md)
+also binds the closed set of product audiences authorised by the administrator
+at enrolment. A single installation may consequently approve the distinct
+`propylaion`, `jenkins`, and `dasobjectstore` routes without confusing any of
+them with the fixed enrolment-ceremony audience.
 
 ## Security
 

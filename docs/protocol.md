@@ -135,6 +135,14 @@ administrator-issued, single-use invitation. The authority-signed mobile
 receipt binds the exact device-registration COSE envelope and every
 installation-trust field that iOS may store.
 
+Accepted [ADR 0031](adr/0031-enrolment-and-product-audience-separation.md)
+separates the fixed `prosopikon:pistis:enrolment` ceremony audience from the
+closed, administrator-authorised product-audience set. First-device invitation
+version 2, presentation version 3, and mobile-enrolment receipt version 2 bind
+that set end to end. Authentication accepts only a product audience present in
+the stored signed set; it never derives permission from an endpoint, display
+name, scanned challenge, or product configuration.
+
 Direct-local and response-QR submission enter the same verification path.
 Polling exposes only a coarse lifecycle state and cannot verify, consume, or
 authenticate. Completion verifies the signature and every stored binding

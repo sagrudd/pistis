@@ -11,8 +11,7 @@ const FRAME_FIELDS: &[u64] = &[0, 1, 2, 3];
 const BUNDLE_FIELDS: &[u64] = &[0, 1, 2, 3];
 const DESCRIPTOR_FIELDS: &[u64] = &[0, 1, 2, 3, 4];
 const INVITATION_FIELDS: &[u64] = &[0, 1, 2, 3, 4, 5, 6, 7, 8, 9];
-const PRESENTATION_FIELDS: &[u64] =
-    &[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17];
+const PRESENTATION_FIELDS: &[u64] = &[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17];
 const PRODUCT_AUDIENCES: &[&str] = &["dasobjectstore", "jenkins", "propylaion"];
 /// Maximum binary outer-frame bytes accepted from the protected pipe.
 pub const MAX_FIRST_DEVICE_FRAME_BYTES: usize = 1_792;

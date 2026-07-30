@@ -3,11 +3,15 @@ import SwiftUI
 struct InstallationsView: View {
     let installations: [InstallationSummary]
     let loadFailure: Bool
+    let forgetExpired: (UUID) async throws -> Void
 
     var body: some View {
         List(installations) { installation in
             NavigationLink {
-                InstallationDetailView(installation: installation)
+                InstallationDetailView(
+                    installation: installation,
+                    forgetExpired: forgetExpired
+                )
             } label: {
                 VStack(alignment: .leading, spacing: MnSpacing.x2) {
                     Text(installation.name)
@@ -64,6 +68,7 @@ struct InstallationsView: View {
 
 private struct InstallationDetailView: View {
     let installation: InstallationSummary
+    let forgetExpired: (UUID) async throws -> Void
 
     var body: some View {
         ScrollView {
@@ -90,6 +95,22 @@ private struct InstallationDetailView: View {
                         VStack(alignment: .leading, spacing: MnSpacing.x2) {
                             MnStatusLabel(text: "Trust material requires review", kind: .warning)
                             Text("Do not approve requests until you have compared the new fingerprint with the installation.")
+                        }
+                    }
+                }
+                if installation.allowsLocalForget {
+                    MnPanel {
+                        VStack(alignment: .leading, spacing: MnSpacing.x3) {
+                            MnStatusLabel(text: "Local deletion only", kind: .warning)
+                            Text(
+                                "This expired record cannot authorize. Forgetting it removes this phone’s cached trust and device key; it does not delete authority audit history or change server state."
+                            )
+                            DestructiveConfirmationSlider(
+                                label: "Slide to forget this expired installation",
+                                confirmationLabel: "Confirm forget local record"
+                            ) {
+                                try await forgetExpired(installation.id)
+                            }
                         }
                     }
                 }

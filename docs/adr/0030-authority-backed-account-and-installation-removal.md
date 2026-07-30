@@ -1,11 +1,13 @@
 # ADR 0030: Authority-backed account and installation removal
 
-- Status: Proposed
+- Status: Accepted
 - Date: 2026-07-30
+- Accepted: 2026-07-30
 - Decision owners: Pistis mobile security, Prosopikon authority, Monas
   transport, and product owner
 - Tracking issue: [#344](https://github.com/sagrudd/pistis/issues/344)
-- Implementation: prohibited until accepted
+- Implementation: permitted in dependency-ordered slices with the required
+  cross-project review and evidence
 
 ## Context
 
@@ -125,4 +127,3 @@ Authority audit evidence is never deleted by either operation.
 - UI and accessibility tests prove the destructive slider, affected-scope
   summary, non-gesture alternative, and truthful partial-failure states.
 - Audit and logs pass redaction tests.
-

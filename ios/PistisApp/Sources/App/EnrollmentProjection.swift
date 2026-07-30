@@ -21,7 +21,11 @@ struct EnrollmentProjection: Equatable {
         self.history = history
     }
 
-    init(enrollment: AuthenticatedEnrollmentOutput, now: Date = Date()) {
+    init(
+        enrollment: AuthenticatedEnrollmentOutput,
+        retainedHistory: [HistoryEvent] = [],
+        now: Date = Date()
+    ) {
         let trust = enrollment.trust
         let isCurrent = trust.active && now < trust.expiresAt
         let externalIdentityID = Self.uuid(trust.externalIdentityID)
@@ -45,21 +49,27 @@ struct EnrollmentProjection: Equatable {
                 localAlias: host,
                 fingerprint: Self.fingerprint(trust.fingerprint),
                 status: isCurrent ? "Trusted" : "Expired",
-                lastUsed: "Not used yet"
+                lastUsed: "Not used yet",
+                allowsLocalForget: !isCurrent
             ),
         ]
-        history = [
-            HistoryEvent(
-                id: Self.uuid(enrollment.responseContext.deviceID),
-                action: "Device enrolled",
-                installation: trust.displayName,
-                occurredAt: "Exact time not retained locally",
-                decision: "Verified",
-                signature: "Secure Enclave registration verified",
-                transfer: "Authority receipt installed locally",
-                verification: "Authority receipt verified"
-            ),
-        ]
+        let enrolmentEvent = HistoryEvent(
+            id: Self.uuid(enrollment.responseContext.deviceID),
+            action: "Device enrolled",
+            installation: trust.displayName,
+            occurredAt: "Exact time not retained locally",
+            decision: "Verified",
+            signature: "Secure Enclave registration verified",
+            transfer: "Authority receipt installed locally",
+            verification: "Authority receipt verified"
+        )
+        history = Self.mergeHistory(retainedHistory + [enrolmentEvent])
+    }
+
+    init(retainedHistory: [HistoryEvent]) {
+        identities = []
+        installations = []
+        history = Self.mergeHistory(retainedHistory)
     }
 
     private static func uuid(_ data: Data) -> UUID {
@@ -88,6 +98,11 @@ struct EnrollmentProjection: Equatable {
             String(hex.dropFirst($0).prefix(4))
         }.joined(separator: " ")
     }
+
+    private static func mergeHistory(_ events: [HistoryEvent]) -> [HistoryEvent] {
+        var seen = Set<UUID>()
+        return events.reversed().filter { seen.insert($0.id).inserted }
+    }
 }
 
 @MainActor
@@ -100,23 +115,41 @@ final class EnrollmentProjectionStore: ObservableObject {
 
     @Published private(set) var state: State = .loading
     private let loadEnrollment: () async throws -> AuthenticatedEnrollmentOutput?
+    private let loadHistory: () async throws -> [HistoryEvent]
+    private let recordHistory: (HistoryEvent) async throws -> Void
 
-    init(loadEnrollment: @escaping () async throws -> AuthenticatedEnrollmentOutput?) {
+    init(
+        loadEnrollment: @escaping () async throws -> AuthenticatedEnrollmentOutput?,
+        loadHistory: @escaping () async throws -> [HistoryEvent] = { [] },
+        recordHistory: @escaping (HistoryEvent) async throws -> Void = { _ in }
+    ) {
         self.loadEnrollment = loadEnrollment
+        self.loadHistory = loadHistory
+        self.recordHistory = recordHistory
     }
 
     convenience init() {
         self.init {
             try await InstallationTrustKeychain.shared.enrollmentInventoryRecord()
+        } loadHistory: {
+            try LocalHistoryRepository.shared.records()
+        } recordHistory: {
+            try LocalHistoryRepository.shared.record($0)
         }
     }
 
     func refresh() async {
         do {
             let stored = try await loadEnrollment()
+            if let stored,
+               let event = EnrollmentProjection(enrollment: stored).history.first
+            {
+                try await recordHistory(event)
+            }
+            let history = try await loadHistory()
             let projection = stored.map {
-                EnrollmentProjection(enrollment: $0)
-            } ?? .empty
+                EnrollmentProjection(enrollment: $0, retainedHistory: history)
+            } ?? EnrollmentProjection(retainedHistory: history)
             state = .loaded(projection)
         } catch {
             state = .failed

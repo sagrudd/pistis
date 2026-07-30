@@ -71,6 +71,15 @@ the app labels that time unavailable instead of deriving or inventing it.
 Local history is diagnostic context only; Prosopikon remains the authoritative
 audit source.
 
+An expired or inactive installation detail offers a destructive
+``Slide to forget this expired installation`` control and an accessible
+confirmation alternative. The action first verifies that the record cannot
+authorize, retains minimized diagnostic history, and deletes the exact
+namespaced Secure Enclave key and Keychain trust record. It does not contact
+the authority, revoke server state, or delete authority audit evidence.
+Current active trust never offers this local-only action; leaving an active
+installation requires the authority-backed ADR 0030 transaction.
+
 The app verifies the exact returned bundle and byte-identical registration,
 independently verifies the canonical ADR 0025 registration under the Secure
 Enclave device key, verifies the receipt only under the committed

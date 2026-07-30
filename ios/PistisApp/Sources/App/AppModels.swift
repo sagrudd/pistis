@@ -15,6 +15,7 @@ struct InstallationSummary: Identifiable, Hashable {
     let fingerprint: String
     let status: String
     let lastUsed: String
+    let allowsLocalForget: Bool
 }
 
 struct ApprovalRequest: Identifiable, Hashable {
@@ -30,7 +31,7 @@ struct ApprovalRequest: Identifiable, Hashable {
     let trustState: String
 }
 
-struct HistoryEvent: Identifiable, Hashable {
+struct HistoryEvent: Identifiable, Hashable, Codable {
     let id: UUID
     let action: String
     let installation: String
@@ -66,7 +67,8 @@ enum DemonstrationData {
             localAlias: "Primary laboratory",
             fingerprint: "7A31 9C42 0F88 1B6D",
             status: "Trusted",
-            lastUsed: "Today, 14:21"
+            lastUsed: "Today, 14:21",
+            allowsLocalForget: false
         ),
         InstallationSummary(
             id: UUID(),
@@ -74,7 +76,8 @@ enum DemonstrationData {
             localAlias: "Analysis desk",
             fingerprint: "E810 6AF2 93C4 772A",
             status: "Needs review",
-            lastUsed: "18 July 2026"
+            lastUsed: "18 July 2026",
+            allowsLocalForget: false
         ),
     ]
 

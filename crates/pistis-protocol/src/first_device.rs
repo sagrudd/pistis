@@ -7,6 +7,7 @@ use std::{error::Error, fmt};
 use url::Url;
 
 const FRAME_FIELDS: &[u64] = &[0, 1, 2, 3];
+const BUNDLE_FIELDS: &[u64] = &[0, 1, 2, 3];
 const DESCRIPTOR_FIELDS: &[u64] = &[0, 1, 2, 3, 4];
 const INVITATION_FIELDS: &[u64] = &[0, 1, 2, 3, 4, 5, 6, 7, 8];
 const PRESENTATION_FIELDS: &[u64] = &[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14];
@@ -21,6 +22,17 @@ pub struct AuthorityDescriptor {
     pub key_id: [u8; 32],
     /// Canonical compressed SEC1 P-256 public key.
     pub public_key: [u8; 33],
+}
+
+/// Purpose-separated trust bootstrap committed by the invitation.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct FirstDeviceAuthorityBundle {
+    /// Key permitted to authenticate the attended presentation.
+    pub initial_invitation: AuthorityDescriptor,
+    /// Distinct key permitted to authenticate the final enrolment receipt.
+    pub mobile_receipt: AuthorityDescriptor,
+    /// Exact canonical bundle bytes committed by the invitation.
+    pub exact_bytes: Vec<u8>,
 }
 
 /// Exact accepted ADR 0023 invitation facts.
@@ -63,8 +75,8 @@ pub struct FirstDevicePresentation {
     pub app_configuration_digest: [u8; 32],
     /// Parsed invitation with its secret deliberately omitted from this API.
     pub invitation: MobileEnrolmentInvitation,
-    /// Authenticated authority descriptor.
-    pub authority_descriptor: AuthorityDescriptor,
+    /// Authenticated, purpose-separated authority descriptors.
+    pub authority_bundle: FirstDeviceAuthorityBundle,
     /// Exact invitation bytes to submit only to the fixed begin route.
     pub exact_invitation: Vec<u8>,
 }
@@ -129,35 +141,25 @@ pub fn verify_first_device_presentation(
         2_048,
         FirstDevicePresentationError::InvalidFrame,
     )?;
-    let descriptor_bytes = take_bytes(
+    let bundle_bytes = take_bytes(
         outer.remove(&3),
-        256,
+        512,
         FirstDevicePresentationError::InvalidFrame,
     )?;
 
-    let descriptor = decode_descriptor(&descriptor_bytes)?;
-    let public_key = PublicKey::from_sec1_bytes(&descriptor.public_key)
+    let bundle = decode_bundle(bundle_bytes)?;
+    let public_key = PublicKey::from_sec1_bytes(&bundle.initial_invitation.public_key)
         .map_err(|_| FirstDevicePresentationError::InvalidAuthority)?;
-    if derive_key_id(&public_key).into_bytes() != descriptor.key_id {
-        return Err(FirstDevicePresentationError::InvalidAuthority);
-    }
     let envelope = verify_sign1(&cose, &public_key)
         .map_err(|_| FirstDevicePresentationError::InvalidSignature)?;
-    let presentation =
-        decode_presentation_payload(envelope.payload(), descriptor, &descriptor_bytes)?;
-    validate_presentation(
-        &presentation,
-        &descriptor_bytes,
-        expected_app_configuration_digest,
-        now_ms,
-    )?;
+    let presentation = decode_presentation_payload(envelope.payload(), bundle)?;
+    validate_presentation(&presentation, expected_app_configuration_digest, now_ms)?;
     Ok(presentation)
 }
 
 fn decode_presentation_payload(
     bytes: &[u8],
-    descriptor: AuthorityDescriptor,
-    descriptor_bytes: &[u8],
+    authority_bundle: FirstDeviceAuthorityBundle,
 ) -> Result<FirstDevicePresentation, FirstDevicePresentationError> {
     let mut payload = exact_map(
         bytes,
@@ -227,7 +229,7 @@ fn decode_presentation_payload(
         payload.remove(&14),
         FirstDevicePresentationError::InvalidPresentation,
     )?;
-    let actual_descriptor_digest = sha256(descriptor_bytes).into_bytes();
+    let actual_descriptor_digest = sha256(&authority_bundle.exact_bytes).into_bytes();
     if invitation.installation_id != installation_id || invitation.audience != audience {
         return Err(FirstDevicePresentationError::InvalidPresentation);
     }
@@ -245,14 +247,13 @@ fn decode_presentation_payload(
         https_origin,
         app_configuration_digest,
         invitation,
-        authority_descriptor: descriptor,
+        authority_bundle,
         exact_invitation,
     })
 }
 
 fn validate_presentation(
     presentation: &FirstDevicePresentation,
-    descriptor_bytes: &[u8],
     expected_app_configuration_digest: [u8; 32],
     now_ms: u64,
 ) -> Result<(), FirstDevicePresentationError> {
@@ -263,7 +264,8 @@ fn validate_presentation(
     {
         return Err(FirstDevicePresentationError::Expired);
     }
-    if presentation.invitation.authority_descriptor_digest != sha256(descriptor_bytes).into_bytes()
+    if presentation.invitation.authority_descriptor_digest
+        != sha256(&presentation.authority_bundle.exact_bytes).into_bytes()
     {
         return Err(FirstDevicePresentationError::InvalidAuthority);
     }
@@ -271,6 +273,53 @@ fn validate_presentation(
         return Err(FirstDevicePresentationError::ConfigurationMismatch);
     }
     Ok(())
+}
+
+fn decode_bundle(
+    exact_bytes: Vec<u8>,
+) -> Result<FirstDeviceAuthorityBundle, FirstDevicePresentationError> {
+    let mut fields = exact_map(
+        &exact_bytes,
+        BUNDLE_FIELDS,
+        FirstDevicePresentationError::InvalidAuthority,
+    )?;
+    require_unsigned(
+        fields.get(&0),
+        1,
+        FirstDevicePresentationError::InvalidAuthority,
+    )?;
+    require_text_exact(
+        fields.get(&1),
+        "pistis.first-device-authority-bundle.v1",
+        FirstDevicePresentationError::InvalidAuthority,
+    )?;
+    let initial_bytes = take_bytes(
+        fields.remove(&2),
+        256,
+        FirstDevicePresentationError::InvalidAuthority,
+    )?;
+    let receipt_bytes = take_bytes(
+        fields.remove(&3),
+        256,
+        FirstDevicePresentationError::InvalidAuthority,
+    )?;
+    let initial_invitation = decode_descriptor(&initial_bytes)?;
+    let mobile_receipt = decode_descriptor(&receipt_bytes)?;
+    let initial_key = PublicKey::from_sec1_bytes(&initial_invitation.public_key)
+        .map_err(|_| FirstDevicePresentationError::InvalidAuthority)?;
+    let receipt_key = PublicKey::from_sec1_bytes(&mobile_receipt.public_key)
+        .map_err(|_| FirstDevicePresentationError::InvalidAuthority)?;
+    if derive_key_id(&initial_key).into_bytes() != initial_invitation.key_id
+        || derive_key_id(&receipt_key).into_bytes() != mobile_receipt.key_id
+        || initial_invitation.key_id == mobile_receipt.key_id
+    {
+        return Err(FirstDevicePresentationError::InvalidAuthority);
+    }
+    Ok(FirstDeviceAuthorityBundle {
+        initial_invitation,
+        mobile_receipt,
+        exact_bytes,
+    })
 }
 
 fn decode_descriptor(bytes: &[u8]) -> Result<AuthorityDescriptor, FirstDevicePresentationError> {

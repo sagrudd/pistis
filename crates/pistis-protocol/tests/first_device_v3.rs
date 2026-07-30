@@ -3,6 +3,7 @@ use p256::ecdsa::{Signature, SigningKey};
 use pistis_canonical::{Value, from_slice, to_vec};
 use pistis_cose::{encode, signing_input};
 use pistis_crypto::{PublicKey, derive_key_id, sha256};
+use pistis_domain::KeyId;
 use pistis_protocol::{FirstDevicePresentationError, verify_first_device_presentation};
 use std::collections::BTreeMap;
 
@@ -15,21 +16,21 @@ const APP_DIGEST: [u8; 32] = [
 const NOW: u64 = 1_700_000_060_000;
 
 fn fixture() -> Vec<u8> {
-    let mut secret = [0; 32];
-    secret[31] = 1;
-    let signing = SigningKey::from_bytes((&secret).into()).unwrap();
-    let compressed = signing.verifying_key().to_encoded_point(true);
-    let public = PublicKey::from_sec1_bytes(compressed.as_bytes()).unwrap();
-    let key_id = derive_key_id(&public);
-    let descriptor = to_vec(&Value::Map(BTreeMap::from([
+    let signing = signing_key(1);
+    let receipt_signing = signing_key(2);
+    let (initial_descriptor, key_id) = descriptor(&signing);
+    let (receipt_descriptor, _) = descriptor(&receipt_signing);
+    let bundle = to_vec(&Value::Map(BTreeMap::from([
         (0, Value::Unsigned(1)),
-        (1, Value::Text("pistis.authority-key-descriptor.v1".into())),
-        (2, Value::Bytes(key_id.into_bytes().to_vec())),
-        (3, Value::Bytes(compressed.as_bytes().to_vec())),
-        (4, Value::Negative(-7)),
+        (
+            1,
+            Value::Text("pistis.first-device-authority-bundle.v1".into()),
+        ),
+        (2, Value::Bytes(initial_descriptor)),
+        (3, Value::Bytes(receipt_descriptor)),
     ])))
     .unwrap();
-    let descriptor_digest = sha256(&descriptor).into_bytes();
+    let descriptor_digest = sha256(&bundle).into_bytes();
     let invitation = to_vec(&Value::Map(BTreeMap::from([
         (0, Value::Unsigned(1)),
         (
@@ -71,9 +72,30 @@ fn fixture() -> Vec<u8> {
         (0, Value::Unsigned(3)),
         (1, Value::Unsigned(3)),
         (2, Value::Bytes(cose)),
-        (3, Value::Bytes(descriptor)),
+        (3, Value::Bytes(bundle)),
     ])))
     .unwrap()
+}
+
+fn signing_key(scalar: u8) -> SigningKey {
+    let mut secret = [0; 32];
+    secret[31] = scalar;
+    SigningKey::from_bytes((&secret).into()).unwrap()
+}
+
+fn descriptor(signing: &SigningKey) -> (Vec<u8>, KeyId) {
+    let compressed = signing.verifying_key().to_encoded_point(true);
+    let public = PublicKey::from_sec1_bytes(compressed.as_bytes()).unwrap();
+    let key_id = derive_key_id(&public);
+    let bytes = to_vec(&Value::Map(BTreeMap::from([
+        (0, Value::Unsigned(1)),
+        (1, Value::Text("pistis.authority-key-descriptor.v1".into())),
+        (2, Value::Bytes(key_id.into_bytes().to_vec())),
+        (3, Value::Bytes(compressed.as_bytes().to_vec())),
+        (4, Value::Negative(-7)),
+    ])))
+    .unwrap();
+    (bytes, key_id)
 }
 
 #[test]
@@ -85,6 +107,10 @@ fn verifies_the_exact_closed_fixture() {
     assert_eq!(verified.presentation_id, [0x33; 16]);
     assert_eq!(verified.invitation.invitation_id, [0x11; 16]);
     assert_eq!(verified.invitation.installation_id, [0x22; 16]);
+    assert_ne!(
+        verified.authority_bundle.initial_invitation.key_id,
+        verified.authority_bundle.mobile_receipt.key_id
+    );
     assert_eq!(verified.installation_name, "Mnemosyne evaluation");
     assert_eq!(verified.https_origin, "https://pistis.example.test:8443");
 }

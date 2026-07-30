@@ -24,7 +24,7 @@ fn exact_fixture_round_trips_and_authentication_rejects_it() {
     assert_eq!(transfer, document["qr_text"].as_str().unwrap());
     let decoded = decode_enrolment(&transfer).unwrap();
     assert!(!decoded.presentation_cose.is_empty());
-    assert!(!decoded.authority_descriptor.is_empty());
+    assert!(!decoded.authority_bundle.is_empty());
     assert_eq!(
         decode_production(&transfer, TransferKind::Challenge),
         Err(QrError::InvalidFrame)

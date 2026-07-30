@@ -12,15 +12,15 @@ use std::collections::BTreeMap;
 const VERSION: u64 = 3;
 const KIND: u64 = 3;
 const FIELDS: &[u64] = &[0, 1, 2, 3];
-const MAX_DESCRIPTOR_BYTES: usize = 256;
+const MAX_BUNDLE_BYTES: usize = 512;
 
-/// Borrowed exact signed presentation and authority descriptor.
+/// Borrowed exact signed presentation and purpose-separated authority bundle.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct EnrolmentTransferRef<'a> {
     /// Exact untagged COSE Sign1 invitation-presentation envelope.
     pub presentation_cose: &'a [u8],
-    /// Exact canonical authority descriptor bytes.
-    pub authority_descriptor: &'a [u8],
+    /// Exact canonical authority bundle bytes.
+    pub authority_bundle: &'a [u8],
 }
 
 /// Exact binary material decoded from a version-3/kind-3 transfer.
@@ -28,8 +28,8 @@ pub struct EnrolmentTransferRef<'a> {
 pub struct EnrolmentTransfer {
     /// Exact untagged COSE Sign1 invitation-presentation envelope.
     pub presentation_cose: Vec<u8>,
-    /// Exact canonical authority descriptor bytes.
-    pub authority_descriptor: Vec<u8>,
+    /// Exact canonical authority bundle bytes.
+    pub authority_bundle: Vec<u8>,
 }
 
 /// Encode one distinct first-device QR transfer.
@@ -44,16 +44,14 @@ pub struct EnrolmentTransfer {
 /// cannot fit the accepted single-symbol text bound.
 pub fn encode_enrolment(transfer: EnrolmentTransferRef<'_>) -> Result<String, QrError> {
     pistis_cose::decode(transfer.presentation_cose).map_err(|_| QrError::InvalidEnvelope)?;
-    if transfer.authority_descriptor.is_empty()
-        || transfer.authority_descriptor.len() > MAX_DESCRIPTOR_BYTES
-    {
+    if transfer.authority_bundle.is_empty() || transfer.authority_bundle.len() > MAX_BUNDLE_BYTES {
         return Err(QrError::TooLarge);
     }
     let frame = to_vec(&Value::Map(BTreeMap::from([
         (0, Value::Unsigned(VERSION)),
         (1, Value::Unsigned(KIND)),
         (2, Value::Bytes(transfer.presentation_cose.to_vec())),
-        (3, Value::Bytes(transfer.authority_descriptor.to_vec())),
+        (3, Value::Bytes(transfer.authority_bundle.to_vec())),
     ])))
     .map_err(|_| QrError::InvalidFrame)?;
     encode_frame(&frame)
@@ -77,12 +75,12 @@ pub fn encode_enrolment_frame(frame: &[u8]) -> Result<String, QrError> {
     let Some(Value::Bytes(presentation_cose)) = fields.remove(&2) else {
         return Err(QrError::InvalidFrame);
     };
-    let Some(Value::Bytes(authority_descriptor)) = fields.remove(&3) else {
+    let Some(Value::Bytes(authority_bundle)) = fields.remove(&3) else {
         return Err(QrError::InvalidFrame);
     };
     encode_enrolment(EnrolmentTransferRef {
         presentation_cose: &presentation_cose,
-        authority_descriptor: &authority_descriptor,
+        authority_bundle: &authority_bundle,
     })
 }
 
@@ -114,16 +112,16 @@ pub fn decode_enrolment(input: &str) -> Result<EnrolmentTransfer, QrError> {
     let Some(Value::Bytes(presentation_cose)) = fields.remove(&2) else {
         return Err(QrError::InvalidFrame);
     };
-    let Some(Value::Bytes(authority_descriptor)) = fields.remove(&3) else {
+    let Some(Value::Bytes(authority_bundle)) = fields.remove(&3) else {
         return Err(QrError::InvalidFrame);
     };
-    if authority_descriptor.is_empty() || authority_descriptor.len() > MAX_DESCRIPTOR_BYTES {
+    if authority_bundle.is_empty() || authority_bundle.len() > MAX_BUNDLE_BYTES {
         return Err(QrError::TooLarge);
     }
     pistis_cose::decode(&presentation_cose).map_err(|_| QrError::InvalidEnvelope)?;
     Ok(EnrolmentTransfer {
         presentation_cose,
-        authority_descriptor,
+        authority_bundle,
     })
 }
 

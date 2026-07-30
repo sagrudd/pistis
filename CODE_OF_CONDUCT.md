@@ -8,7 +8,7 @@ gender identity and expression, experience, education, socioeconomic status,
 nationality, appearance, race, caste, religion, or sexual identity and
 orientation.
 
-## Expected behavior
+## Expected behaviour
 
 Use welcoming language, respect differing viewpoints, accept constructive
 feedback, focus on what is best for the community, and show empathy.

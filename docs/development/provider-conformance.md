@@ -2,7 +2,7 @@
 
 Provider adapters are tested without public-network access. GitHub fixtures in
 `fixtures/provider/github/` are synthetic authenticated-user responses; they
-contain no live account, credential, authorization code, or bearer token.
+contain no live account, credential, authorisation code, or bearer token.
 
 ## GitHub fixture contract
 
@@ -52,13 +52,13 @@ The adapter must:
 - begin discovery at the fixed Google well-known URI;
 - reject an unexpected metadata issuer, insecure endpoint, missing JWKS URI,
   or signing algorithm outside the reviewed policy;
-- require authorization code flow, PKCE `S256`, exact callback and `state`,
+- require authorisation code flow, PKCE `S256`, exact callback and `state`,
   and a fresh one-use `nonce`;
 - verify the ID-token signature against the selected JWK before exposing
   claims;
 - accept Google's documented modern and legacy token-issuer spellings while
   canonicalizing both to `https://accounts.google.com`;
-- require the configured client ID in `aud`, enforce the authorized presenter
+- require the configured client ID in `aud`, enforce the authorised presenter
   rules for `azp`, and reject unrelated audiences or presenters;
 - reject expired tokens, implausible future `iat` values, nonce mismatch,
   nonce replay, missing or empty subjects, and unsupported claim types;
@@ -79,7 +79,7 @@ issuer spellings must also produce the same canonical identity. A different
 `sub` must produce a different identity even when email and `hd` match.
 
 Signed test tokens and keys must be generated deterministically from test-only
-key material. Never copy a real ID token, authorization response, discovery
+key material. Never copy a real ID token, authorisation response, discovery
 capture, account identifier, or production signing key into the repository.
 Production tests must not call Google, including the debugging `tokeninfo`
 endpoint.

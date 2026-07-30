@@ -16,11 +16,11 @@ confirmation instead of callback state.
 
 Google enrolment additionally depends on authenticated discovery and rotating
 public signing keys. Discovery starts at a fixed Google URI; issuer, endpoint,
-algorithm, signature, audience, authorized presenter, time, and nonce checks
+algorithm, signature, audience, authorised presenter, time, and nonce checks
 fail closed. Cached public metadata may improve availability but must not
 extend token validity or permit an unknown key indefinitely.
 
-Device/user codes, authorization codes, bearer and ID tokens, PKCE verifiers,
+Device/user codes, authorisation codes, bearer and ID tokens, PKCE verifiers,
 state, nonce, and complete provider responses cross their selected
 transient-enrolment boundary only. They must be redacted, cleared on every
 terminal path, and excluded from persistent evidence. Provider email, login,
@@ -61,12 +61,12 @@ The same decision requires minimized seven-year audit by default, encrypted
 site backups that exclude mobile private keys and transient credentials,
 two-of-three governed recovery, no third-party mobile analytics/advertising/
 cloud-crash SDK, and explicit user-exported redacted diagnostics. Legal and
-privacy review remains a production gate; it does not authorize weakening any
+privacy review remains a production gate; it does not authorise weakening any
 technical privacy boundary while that review is pending.
 
 ## Device-registry persistence boundary
 
-The local device registry is security-sensitive authorization state. It stores
+The local device registry is security-sensitive authorisation state. It stores
 canonical public verification keys, derived key identifiers, assurance claims,
 opaque external-identity references, and immutable lifecycle history. It has no
 field or supported path for a private key. Private device keys remain on the
@@ -127,7 +127,7 @@ deferred.
 ## Exact-action execution boundary
 
 Session authentication and action approval are separate authorities. A version
-1 `authenticate-session` response cannot authorize a command. Exact action
+1 `authenticate-session` response cannot authorise a command. Exact action
 approval uses the distinct version 2 purposes and closed descriptor in ADR
 0016; version or purpose substitution fails before policy evaluation.
 

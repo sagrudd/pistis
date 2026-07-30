@@ -2,7 +2,7 @@
 
 This directory is a Sphinx project rendered with the Read the Docs theme.
 Follow `development/documentation.md`; Jenkins produces the authoritative
-pre-rendered artifact, the pinned Docker image supports optional local preview,
+pre-rendered artefact, the pinned Docker image supports optional local preview,
 and Jenkins sends only successful, pre-rendered `main` HTML to GitHub Pages.
 
 - `BOOTSTRAP.md`: repository bootstrap contract.

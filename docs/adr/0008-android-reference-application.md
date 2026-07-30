@@ -8,7 +8,7 @@
 
 Pistis requires an Android implementation with the same ceremonies, evidence
 semantics, and claim discipline as the iOS reference design. Android hardware,
-biometric, browser, camera, background-execution, and distribution behavior
+biometric, browser, camera, background-execution, and distribution behaviour
 differs materially from iOS and must be represented explicitly.
 
 Milestone M11 requires a Compose application, Android Keystore signing,
@@ -51,7 +51,7 @@ not a scanner reticle, spinner, card decoration, or generic status symbol.
 Status is words-first; colour and icon are supplementary. Controls provide at
 least 48 dp touch targets, scalable text, deliberate TalkBack traversal and
 descriptions, selectable grouped fingerprints, nonvisual camera state, and
-reduced-motion behavior.
+reduced-motion behaviour.
 
 ### Architecture and dependency direction
 
@@ -129,7 +129,7 @@ decision assigns permitted actions to each tier.
 
 Android ECDSA output is strict DER. The protocol adapter must accept exactly
 two minimally encoded positive scalars in `1..<n`, reject ambiguity and
-trailing data, normalize `s` to low-S, and output fixed 64-byte `r || s`.
+trailing data, normalise `s` to low-S, and output fixed 64-byte `r || s`.
 Compressed SEC1 public keys, identifiers, signatures, and canonical payloads
 must pass shared Rust/iOS/Android fixtures.
 
@@ -189,7 +189,7 @@ keys or biometric assurance.
 Physical acceptance requires a current Pixel, current Samsung flagship or
 mid-range device, a lower-cost supported device, StrongBox and non-StrongBox
 devices, fingerprint and supported face/device credential paths, reinstall,
-and network-change behavior.
+and network-change behaviour.
 
 Jenkins runs ordinary Android builds in a digest-pinned SDK/JDK container.
 Emulator execution requires a separately reviewed KVM-enabled worker and task;
@@ -219,7 +219,7 @@ bundle or debug APK is not a Play release.
 - Material dynamic colour: rejected because it substitutes unreviewed semantic
   colours.
 - Silent StrongBox-to-TEE fallback: rejected because it overstates assurance.
-- Time-window key authorization: rejected because each Pistis signature
+- Time-window key authorisation: rejected because each Pistis signature
   requires a fresh explicit ceremony.
 - WebView OAuth or embedded client secrets: rejected because native-app OAuth
   requires an external user agent and a public client cannot protect a secret.
@@ -237,7 +237,7 @@ states, restrained provenance, and Grammateus fact separation. The security
 review required per-use CryptoObject signing, explicit StrongBox fallback,
 locally reported capability, deferred remote attestation, strict low-S ES256,
 external-browser OAuth, system-mediated Keeper participation, bounded camera
-and lifecycle behavior, and extensive negative tests. The release review
+and lifecycle behaviour, and extensive negative tests. The release review
 required pinned dependencies, modular Gradle structure, Linux and isolated
 emulator Jenkins stages, signing separation, retained evidence, device matrix,
 and honest Play blockers.

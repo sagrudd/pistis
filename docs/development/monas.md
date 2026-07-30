@@ -27,9 +27,9 @@ Implementation must retain these repository boundaries:
 - Prosopikon remains Monas's authority for local accounts, password
   verification, normal browser sessions, and immutable principals unless an
   explicit cross-project decision changes that ownership.
-- A successful Pistis verification result is input to a separately authorized
+- A successful Pistis verification result is input to a separately authorised
   Monas session-issuance operation. It is not itself a Monas cookie, role, or
-  product authorization.
+  product authorisation.
 - Pistis crates do not import Monas, Prosopikon, Axum, Yew, or product-specific
   types. A narrow Monas adapter depends on stable Pistis interfaces.
 
@@ -50,7 +50,7 @@ and tests:
 - response verification and atomic challenge consumption;
 - redacted evidence retention;
 - administration and readiness interfaces; and
-- SQLite lifecycle, backup, upgrade, and rollback behavior.
+- SQLite lifecycle, backup, upgrade, and rollback behaviour.
 
 The existing `pistis-device-registry` SQLite implementation satisfies only the
 device-registry slice. In-memory repositories and reference QR envelopes are

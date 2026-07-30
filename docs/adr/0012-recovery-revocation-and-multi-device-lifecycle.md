@@ -42,7 +42,7 @@ adapter.
 
 External providers establish the same stable external subject used at
 enrolment. They do not grant local authority, choose an administrator, recover
-a session, or authorize a replacement by themselves. Local machine root or
+a session, or authorise a replacement by themselves. Local machine root or
 console privilege is a governed emergency authority, not an identity proof.
 
 Recovery, authentication, enrolment, device management, consequential
@@ -50,7 +50,7 @@ approval, and artefact signing are distinct protocol purposes. A capability,
 response, or signature for one purpose is invalid for every other purpose.
 
 The smallest independently deliverable slice is a framework-neutral lifecycle
-contract with closed state transitions, authorization inputs, recovery plans,
+contract with closed state transitions, authorisation inputs, recovery plans,
 revocation impact sets, temporal verification classifications, and
 deterministic negative tests. It cannot issue a session, mutate a host role, or
 claim production recovery without durable host adapters.
@@ -67,14 +67,14 @@ A local policy sets explicit lower and upper device-count bounds and may impose
 platform or assurance requirements. Counting is performed against the
 authoritative binding inside the enrolment transaction. Suspended devices
 remain enrolled for limits and administration; revoked devices remain historic
-but cannot authorize or satisfy a required active-device count.
+but cannot authorise or satisfy a required active-device count.
 
 Enrolling an additional device requires fresh provider authentication plus one
 of:
 
 - approval by an active device already bound to the exact installation, local
   user, and external identity; or
-- a currently authorized administrator using a separate device-management
+- a currently authorised administrator using a separate device-management
   ceremony.
 
 Provider authentication alone is insufficient. Concurrent enrolments are
@@ -89,7 +89,7 @@ record may retain non-authoritative predecessor and reason references for audit
 and user presentation.
 
 When the old device remains available, its purpose-specific approval and fresh
-provider authentication authorize the new enrolment. The transaction activates
+provider authentication authorise the new enrolment. The transaction activates
 the new device, terminally revokes the predecessor with reason `replacement`,
 increments the binding revocation generation, invalidates affected sessions
 and pending ceremonies, and appends audit evidence.
@@ -103,9 +103,9 @@ single-use operation identifier and cannot create duplicate devices.
 ### Suspension, loss, and revocation
 
 Suspension is a reversible containment action. It blocks new authentication,
-approval, enrolment authorization, and signing immediately at its effective
+approval, enrolment authorisation, and signing immediately at its effective
 time and invalidates affected active sessions and pending ceremonies. Resume is
-an explicit authorized transition; it does not erase the suspension history
+an explicit authorised transition; it does not erase the suspension history
 and re-evaluates current binding, assurance, external-identity, and policy
 state.
 
@@ -131,7 +131,7 @@ Eventual cache notification is not a substitute for authoritative generation
 checking.
 
 Lost-device reporting is available only through an already authenticated
-session, another active bound device, an authorized administrator, or the
+session, another active bound device, an authorised administrator, or the
 governed console recovery flow. Knowledge of a username, device label,
 provider account, QR image, or device identifier is insufficient. A user may
 request immediate suspension before a reviewed terminal revocation decision.
@@ -168,9 +168,9 @@ ceremony. Fresh authentication to the exact existing external identity is
 required when that provider remains available. Provider loss follows a
 separately configured governed policy and cannot silently bind a different
 provider subject. The host transaction consumes the capability, enrols the new
-device, terminally revokes every prior device authorized for the recovered
+device, terminally revokes every prior device authorised for the recovered
 principal, invalidates sessions and pending ceremonies, increments the
-revocation and authorization generations as required, and appends conspicuous
+revocation and authorisation generations as required, and appends conspicuous
 audit evidence.
 
 Any expiry, attempt exhaustion, mismatch, denial, storage failure, audit
@@ -188,11 +188,11 @@ stable subject recorded on existing evidence.
 Local policy explicitly selects among:
 
 - continue accepting existing active device signatures without new enrolment;
-- require an authorized administrator or governed console recovery;
+- require an authorised administrator or governed console recovery;
 - suspend the binding pending review; or
 - terminally retire the binding.
 
-Changing to another provider subject is a separately authorized rebind with
+Changing to another provider subject is a separately authorised rebind with
 its own evidence and audit trail. It is never represented as recovery of the
 old identity.
 
@@ -239,7 +239,7 @@ coarse outcome, invalidation counts, and predecessor/replacement relationship.
 Audit never retains recovery capability plaintext or hash, provider credential,
 session token, cookie, private key, raw signature, nonce, full evidence
 package, or unnecessary personal profile data. Recovery audit read and export
-are separately authorized.
+are separately authorised.
 
 Operator documentation includes rehearsal, backup and restore, clock and
 trusted-time assumptions, provider-loss policy, two-person mode, aborted

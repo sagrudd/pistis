@@ -8,7 +8,7 @@ This directory contains the EPIC-8 Android source foundation:
 - deterministic JVM and Android test sources.
 
 Read [ADR 0008](../docs/adr/0008-android-reference-application.md) before
-changing security, dependencies, provider authentication, protocol behavior,
+changing security, dependencies, provider authentication, protocol behaviour,
 or product presentation.
 
 Run repository checks with the pinned wrapper:

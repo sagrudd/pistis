@@ -1,5 +1,7 @@
 //! Repository maintenance commands.
 
+mod language;
+
 use std::{
     collections::BTreeMap,
     env, fs,
@@ -12,8 +14,10 @@ const EXCEPTIONS_FILE: &str = "architecture-exceptions.txt";
 fn main() {
     let result = match env::args().nth(1).as_deref() {
         Some("architecture") => check_architecture(),
+        Some("language") => language::check(),
+        Some("language-fix") => language::fix(),
         _ => Err("usage: cargo run --locked -p xtask -- architecture\n\
-             supported commands: architecture"
+             supported commands: architecture, language, language-fix"
             .to_owned()),
     };
     if let Err(error) = result {

@@ -104,7 +104,7 @@ it must never silently substitute a new key under the old device identity.
 Camera capture and the EPIC-6 reference flow can be exercised locally. ADR
 0018 and the shared fixtures define the production COSE profile; portable
 fixture conformance is not evidence of physical Secure Enclave or Face ID
-behavior. No release may describe the detached reference envelope as the
+behaviour. No release may describe the detached reference envelope as the
 production mobile protocol.
 
 ## Production ceremony operation
@@ -237,5 +237,5 @@ second prompt, or biometry-set invalidation; those are separate MVP gates.
 Its SHA-256 digest is
 `b8802b44f02ba0321803b76f3a12fe7d6c684ae696c476f24a418f575f1d9f71`.
 The authoritative Jenkins Expedition retains the exact observation and
-verification result as a dossier artifact; see the PR acceptance record for
+verification result as a dossier artefact; see the PR acceptance record for
 the Expedition identifier.

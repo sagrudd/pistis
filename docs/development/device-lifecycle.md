@@ -3,7 +3,7 @@
 EPIC-13 governs loss, replacement, compromise, and continued interpretation of
 historic evidence. Recovery is an explicit authority-changing ceremony, not an
 exception that bypasses identity binding, device policy, revocation, audit, or
-host authorization.
+host authorisation.
 
 The current `pistis-device-registry` supports distinct device records,
 optimistic-concurrency lifecycle transitions, terminal revocation, retained
@@ -23,7 +23,7 @@ normative once merged. Development must preserve these invariants:
 - no private-key migration, backup restore, or device clone is an enrolment
   method;
 - suspension is explicit and reversible; revocation is explicit and terminal;
-- lifecycle state is re-evaluated at every current authorization boundary;
+- lifecycle state is re-evaluated at every current authorisation boundary;
 - recovery cannot silently replace a local user or external identity binding;
 - historic public verification material and lifecycle evidence are retained;
   and
@@ -32,7 +32,7 @@ normative once merged. Development must preserve these invariants:
 Installation trust in the mobile applications is separate from server-side
 device lifecycle. Re-pairing an installation fingerprint does not replace,
 resume, or recover a registered phone. Likewise, registering a new phone does
-not authorize a changed installation key.
+not authorise a changed installation key.
 
 ## Aggregate and orchestration boundary
 
@@ -46,10 +46,10 @@ or coordinate:
 - session and pending-ceremony invalidation;
 - transactional audit;
 - replacement/recovery correlation; and
-- host authorization after authentication.
+- host authorisation after authentication.
 
 Do not add cross-device policy to a broad repository utility or update several
-stores with best-effort writes. A transition that changes authorization and
+stores with best-effort writes. A transition that changes authorisation and
 its audit/session consequences needs one reviewed completion boundary or a
 fail-closed recovery protocol with explicit reconciliation.
 
@@ -64,11 +64,11 @@ record has its own key, platform and assurance claims, external-identity
 binding, enrolment evidence, lifecycle state, and last-use evidence. A friendly
 device label is mutable display metadata and never an identity key.
 
-Replacement is a new enrolment authorized by fresh authentication to the exact
+Replacement is a new enrolment authorised by fresh authentication to the exact
 existing external-provider subject plus one reviewed local-authority route:
 
 - an existing trusted device;
-- an authorized administrator using a separate device-management ceremony; or
+- an authorised administrator using a separate device-management ceremony; or
 - governed local-console recovery when the predecessor/provider path is
   unavailable and policy permits it.
 
@@ -133,12 +133,12 @@ display name, or reusable support credential.
 The command runs only with explicit local privileged authority and names the
 installation and target immutable principal. It reports a review before
 mutation, records an independent audit event, and cannot leave old recovery
-material or devices silently active. Operator notes are not authorization
+material or devices silently active. Operator notes are not authorisation
 evidence.
 
 ## Historic verification
 
-Current authorization and historic interpretation are different questions. A
+Current authorisation and historic interpretation are different questions. A
 revoked device cannot create a new valid approval. Normal retirement does not
 erase an otherwise valid earlier signature.
 
@@ -188,7 +188,7 @@ EPIC-13 evidence.
 
 A future lifecycle dossier retains exact source revisions, migration and
 lockfile hashes, deterministic concurrency/session/audit results, and redacted
-state-machine evidence. Host integration tasks must prove authorization and
+state-machine evidence. Host integration tasks must prove authorisation and
 session invalidation through real host adapters. Native release tasks retain
 physical-device reinstall, key invalidation, replacement, and lost-device
 exercise results.

@@ -5,6 +5,13 @@ Markdown is parsed through MyST, so the canonical planning, governance,
 protocol, security, and operator documents remain readable as source while
 participating in one versioned documentation tree.
 
+Maintained documentation and user-facing mobile text use British English.
+Externally fixed protocol fields, API names, code identifiers, and quoted
+third-party terminology retain their defining spelling. Run
+`cargo run --locked -p xtask -- language` before review; the deterministic
+guard ignores fenced and inline code while checking maintained prose and
+mobile display strings.
+
 ## Authoritative Jenkins build
 
 The project-owned Mnemosyne Expedition/Jenkins lane is the authoritative
@@ -15,7 +22,7 @@ documentation builder. Its reviewed task:
 - keeps doctrees outside the publication directory; and
 - retains `docs-html.tar.gz` in the Expedition dossier.
 
-Jenkins packages the reviewed artifact in the Base Camp dossier:
+Jenkins packages the reviewed artefact in the Base Camp dossier:
 
 ```sh
 expedition expedition-artifact \
@@ -60,7 +67,7 @@ docker run --rm \
 ```
 
 Open `public/index.html` locally and review navigation, code blocks, tables,
-links, and narrow-screen behavior. Never commit credentials, private material,
+links, and narrow-screen behaviour. Never commit credentials, private material,
 or generated environment details into documentation or rendered pages.
 
 ## Jenkins GitHub Pages publication
@@ -69,7 +76,7 @@ After every successful CI run, the centrally reviewed Jenkins adapter compares
 the tested revision with the current `refs/heads/main`. Pull-request, stale, and
 failed builds stop without publishing. A matching build validates
 `docs-html.tar.gz`, removes links from the extracted tree, adds `.nojekyll`, and
-updates the `gh-pages` artifact branch with the pre-rendered site.
+updates the `gh-pages` artefact branch with the pre-rendered site.
 
 The publisher uses the Jenkins secret-text credential
 `pistis-pages-publisher`. It must contain a least-privileged GitHub token with

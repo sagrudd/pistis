@@ -38,7 +38,7 @@ tooling before running the gates.
 The separate `swift-core-ci-amd64` stage runs `ios/PistisCore` in a
 digest-pinned official Swift Linux image and retains its test log. It does not
 prove native SwiftUI, iOS SDK, Secure Enclave, LocalAuthentication, camera,
-signing, archive, or TestFlight behavior. Those gates require a separately
+signing, archive, or TestFlight behaviour. Those gates require a separately
 reviewed macOS Jenkins worker with full Xcode and owner-controlled Apple
 resources.
 

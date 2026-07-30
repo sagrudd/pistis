@@ -58,7 +58,7 @@ not create a parallel password or browser-session database.
 A Pistis device identity, external provider subject, and Prosopikon principal
 are different identifiers. Store an explicit reviewed binding; never infer it
 from a mutable username or display name. Pistis success does not bypass Monas
-authorization, CSRF checks, product audience checks, or Prosopikon session
+authorisation, CSRF checks, product audience checks, or Prosopikon session
 revocation.
 
 Keep existing `/api/auth/*` routes classified as Prosopikon compatibility
@@ -73,7 +73,7 @@ verification reason. Logs and evidence exports exclude:
 
 - challenge capabilities and nonces;
 - raw responses and signatures;
-- provider authorization codes, access tokens, and credentials;
+- provider authorisation codes, access tokens, and credentials;
 - Monas/Prosopikon cookies and session tokens;
 - private keys and database encryption material; and
 - production personal data used as a test fixture.
@@ -92,5 +92,5 @@ tests, dependency locks, migration inventory, and redacted logs.
 Ordinary Pistis CI alone does not prove Monas integration. Ordinary Monas
 password-login tests do not prove Pistis integration. A debug binary, reference
 QR demonstration, container-only test, or locally started Axum process does not
-prove production packaging, service hardening, appliance behavior, or mobile
+prove production packaging, service hardening, appliance behaviour, or mobile
 interoperability.

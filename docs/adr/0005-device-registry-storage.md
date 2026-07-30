@@ -89,11 +89,11 @@ repository errors. Callers must fail closed and must not convert them into
   stale concurrent updates.
 - Bundled SQLite adds a reviewed native dependency and increases compile time,
   but avoids an undeclared host-library dependency.
-- External identity and device enrollment span two stores. Their orchestrator
+- External identity and device enrolment span two stores. Their orchestrator
   must validate the binding first and surface partial-system failures; a
   unified transaction would require a separately reviewed migration.
 - The future MySQL-compatible or Hebe adapter must preserve the repository
-  contract, transition matrix, and fail-closed hydration behavior.
+  contract, transition matrix, and fail-closed hydration behaviour.
 - Completing EPIC-5 does not complete milestone M4 or its broader exit gate.
 
 ## Alternatives considered

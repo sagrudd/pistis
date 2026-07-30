@@ -43,7 +43,7 @@ processes running under the same account.
 The semantic protocol is a closed, versioned canonical envelope supporting
 begin-login, begin-exact-action, status, response submission, and cancellation.
 Responses are limited to pending metadata, status, acknowledgement, or a typed
-failure. `dispatch_one` authorizes the peer before reading, accepts exactly one
+failure. `dispatch_one` authorises the peer before reading, accepts exactly one
 request, invokes a narrow handler, writes exactly one response, and closes the
 connection.
 

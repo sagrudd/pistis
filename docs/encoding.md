@@ -30,9 +30,9 @@ rejected.
 
 ## Text and diagnostic form
 
-No Unicode normalization is performed by the codec. Protocol field definitions
+No Unicode normalisation is performed by the codec. Protocol field definitions
 must say whether a textual value is an opaque identifier or requires
-normalization before encoding. Verifiers compare the encoded UTF-8 value and
+normalisation before encoding. Verifiers compare the encoded UTF-8 value and
 must never apply locale-sensitive case conversion.
 
 Tools may display a diagnostic JSON object whose keys are decimal field

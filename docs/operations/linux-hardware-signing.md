@@ -12,7 +12,7 @@ the ADR and the chosen provider implementation is qualified.
 | --- | --- | --- |
 | Physical host with TPM2 | Local TPM2 provider | TPM/TSS versions, device access, provisioning, restart, lockout, replacement |
 | VM with vTPM | TPM2 only after explicit approval | Snapshot, clone, rollback, migration, hypervisor trust, duplicate-key exclusion |
-| Host or VM with local/passed-through HSM | PKCS#11 provider | Module digest, device path, token/key identity, mechanism, session and restart behavior |
+| Host or VM with local/passed-through HSM | PKCS#11 provider | Module digest, device path, token/key identity, mechanism, session and restart behaviour |
 | Host using network HSM | PKCS#11 provider | Module plus network trust, availability, credential delivery, recovery |
 | Jenkins/DASObjectStore worker only | No signer | Proof that only verified Monas context is consumed |
 | Authority host with no accepted provider | Unsupported | Production authority remains disabled |
@@ -46,7 +46,7 @@ The reviewed provider command must:
 4. emit only the canonical public key, Pistis key identifier, and a redacted
    provider locator;
 5. verify a test signature locally against that public key; and
-6. produce an operator record containing no authorization value.
+6. produce an operator record containing no authorisation value.
 
 The public identity is enrolled through the accepted installation-trust
 process. A discovered replacement key is never trusted automatically.
@@ -70,7 +70,7 @@ another provider.
 
 Retain the public identity, provider configuration shape, package provenance,
 revocation record, and audit evidence. Never back up private-key material,
-PINs, authorization values, or live provider sessions.
+PINs, authorisation values, or live provider sessions.
 
 For TPM clear, HSM loss, key mismatch, untrusted VM clone/rollback,
 unrecoverable lockout, or device replacement:
@@ -88,4 +88,4 @@ The authoritative dossier pins the source revisions, lockfiles, provider
 packages/modules, public identity, host class, test commands, and redacted
 results. Hardware-gated tests run on an enrolled native authority candidate.
 Ordinary build agents remain keyless. No production private key, PIN,
-authorization value, or reusable provider credential enters Jenkins.
+authorisation value, or reusable provider credential enters Jenkins.

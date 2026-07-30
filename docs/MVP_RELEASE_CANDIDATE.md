@@ -24,14 +24,14 @@ The candidate shall let one existing Prosopikon principal:
 4. scan and explicitly approve a QR authentication challenge using Face ID;
 5. authenticate through either the Monas route or the Synoptikon/Mneion route;
 6. land on the Propylaion product home after Monas authentication and navigate
-   to an authorized Jenkins or DASObjectStore offering without knowing its
+   to an authorised Jenkins or DASObjectStore offering without knowing its
    private host or port;
 7. run an exact CLI action through a supervised, non-exportable session; and
 8. export redacted authentication evidence that an offline verifier can
    validate.
 
 Prosopikon remains the authority for immutable principals, tenants,
-entitlements, browser sessions, and host authorization. Pistis authenticates
+entitlements, browser sessions, and host authorisation. Pistis authenticates
 and records approval; it does not create a parallel account or session
 authority.
 
@@ -48,7 +48,7 @@ authority.
   authenticates, grants access, supervises products, or proxies their APIs.
 - The first required Propylaion profile contains Jenkins and DASObjectStore.
   Navigation is host-relative, reveals no private port or bearer material, and
-  each selected product re-authorizes the accepted Monas context.
+  each selected product re-authorises the accepted Monas context.
 - The Synoptikon route is implemented by the Mneion server and web deployment
   in the `mnemosyne` repository.
 - Both routes use one versioned Prosopikon--Pistis authority and transaction
@@ -118,7 +118,7 @@ proposed ADR 0024. TPM2 is the first implementation and PKCS#11 is the second.
 The configured provider and enrolled public key are fixed before the service
 listens; absence or failure never selects an ordinary-file signer or another
 provider. Ordinary Jenkins and DASObjectStore workers remain keyless.
-Environment variables and command arguments are forbidden for authorization
+Environment variables and command arguments are forbidden for authorisation
 values. Recovery is revoke, invalidate sessions, provision a new
 non-exportable key, and re-enrol; Pistis never backs up private-key material.
 

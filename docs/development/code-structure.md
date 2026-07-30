@@ -19,7 +19,7 @@ direction; it is not merely a place to accumulate implementation.
   Domain crates must not depend on web frameworks, storage engines, or CI
   providers.
 - Split a module when it gains multiple reasons to change, unrelated public
-  responsibilities, or independently testable behavior.
+  responsibilities, or independently testable behaviour.
 
 ## Source-file size
 

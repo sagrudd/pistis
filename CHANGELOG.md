@@ -94,7 +94,7 @@ a Changelog and releases follow Semantic Versioning.
 - Native macOS Keychain lookup and Security-framework ES256 signing with
   duplicate-key refusal, low-S conversion, public-key identifier derivation,
   and independent signature verification.
-- A closed local-agent request/response protocol, peer-authorization-first
+- A closed local-agent request/response protocol, peer-authorisation-first
   single-request dispatch, owner-only CLI socket backend, and fail-closed
   terminal executable with protected framed-response input.
 - Native same-user socket credential checks, bounded per-client daemon I/O,

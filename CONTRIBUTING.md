@@ -25,6 +25,7 @@ Developer Certificate of Origin sign-off (`git commit -s`) is encouraged.
 ```console
 cargo fmt --all --check
 cargo run --locked -p xtask -- architecture
+cargo run --locked -p xtask -- language
 cargo clippy --workspace --all-targets --all-features -- -D warnings
 cargo test --workspace --all-features
 cargo doc --workspace --all-features --no-deps
@@ -40,6 +41,13 @@ Keep code hierarchical and modular according to
 `docs/development/code-structure.md`. Rust files over 1,000 physical lines fail
 the architecture gate unless a reviewer accepts a concrete entry in
 `architecture-exceptions.txt`.
+
+Use British English in user-facing application text and maintained
+documentation. Keep externally fixed protocol fields, API names, code
+identifiers, and quoted third-party terminology unchanged. The language gate
+checks prose and mobile display strings deterministically; run
+`cargo run --locked -p xtask -- language-fix` to correct its supported
+spellings mechanically, then review the result.
 
 Jenkins must build documentation without Sphinx warnings and retain the
 pre-rendered site. The pinned local container described in

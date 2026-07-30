@@ -161,7 +161,7 @@ The comparison records both digests and all declared inputs.
 
 Where platform signing, timestamps, store processing, or proprietary native
 toolchains prevent byte identity, the release documents the nondeterministic
-fields and verifies reproducible unsigned payloads, normalized contents,
+fields and verifies reproducible unsigned payloads, normalised contents,
 source/settings/archive correspondence, and signature/store provenance.
 Calling such artefacts reproducible without this qualification is prohibited.
 

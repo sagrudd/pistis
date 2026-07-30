@@ -17,11 +17,11 @@ Before enabling lifecycle/recovery operations, retain evidence for:
 1. accepted ADR 0012 and explicit multi-device/recovery policy;
 2. authoritative local-user, external-identity, installation, device, key, and
    recovery-authority bindings;
-3. reviewed host administration UI/CLI with target-scoped authorization;
+3. reviewed host administration UI/CLI with target-scoped authorisation;
 4. atomic lifecycle change, audit, pending-ceremony cancellation, and required
    session invalidation;
 5. replacement enrolment creating a distinct key and device record;
-6. external-provider reauthentication and provider-loss behavior;
+6. external-provider reauthentication and provider-loss behaviour;
 7. local-console sole-administrator recovery with bounded, single-use
    authority and reviewed delay/two-person policy;
 8. retained historic keys, revocation statements, trusted-time classification,
@@ -50,7 +50,7 @@ installation list:
    correlation identifier; and
 7. inspect for attempted use after the effective transition.
 
-Suspension is reversible but blocks current authorization. Do not resume until
+Suspension is reversible but blocks current authorisation. Do not resume until
 the device has been recovered, its integrity reviewed, and current policy
 permits it. Revocation is permanent. If the wrong device was revoked, enrol a
 new device; never reverse or delete the event.
@@ -62,8 +62,8 @@ erase all earlier evidence.
 ## Replacement device
 
 Require fresh authentication to the exact existing external-provider subject
-plus the authorized local route: surviving trusted-device approval, an
-authorized administrator's separate device-management ceremony, or governed
+plus the authorised local route: surviving trusted-device approval, an
+authorised administrator's separate device-management ceremony, or governed
 local-console recovery under the configured provider-loss policy. Provider
 authentication alone grants no local recovery authority.
 
@@ -102,8 +102,8 @@ blocked. Do not issue a session manually as a workaround.
 
 ## External identity loss
 
-A deleted GitHub/Google account, provider outage, organization-policy change,
-or changed display metadata does not authorize rebinding.
+A deleted GitHub/Google account, provider outage, organisation-policy change,
+or changed display metadata does not authorise rebinding.
 
 Existing device signatures may remain interpretable according to local policy.
 New enrolment or recovery uses an accepted route and exact immutable provider
@@ -149,9 +149,9 @@ Run a complete exercise for both physical iOS and Android devices:
 
 1. enrol at least two distinct devices;
 2. authenticate with each;
-3. lose/suspend one and prove new authorization is rejected;
+3. lose/suspend one and prove new authorisation is rejected;
 4. recover/resume only the temporary-loss case;
-5. revoke a device and prove resume and new authorization remain impossible;
+5. revoke a device and prove resume and new authorisation remain impossible;
 6. enrol a replacement without key/identifier reuse;
 7. verify session and pending-ceremony consequences;
 8. verify pre-, at-, and post-revocation historic cases;

@@ -68,7 +68,7 @@ is invented until the design-language repository defines one.
 ### Architecture
 
 SwiftUI views depend on a small, deterministic domain model and reducer.
-Platform behavior sits behind narrow adapters for:
+Platform behaviour sits behind narrow adapters for:
 
 - secure key storage and public-key extraction;
 - local user verification;
@@ -105,7 +105,7 @@ implemented inside a view or camera adapter.
 
 ### Keeper-assisted GitHub authentication
 
-Pistis opens the GitHub OAuth authorization endpoint using
+Pistis opens the GitHub OAuth authorisation endpoint using
 `ASWebAuthenticationSession`, with a fresh PKCE verifier, state value, and
 exact callback URI. When GitHub requests a passkey, iOS may offer Keeper if the
 person enabled Keeper as an iOS Passwords, AutoFill, and Passkeys provider.
@@ -155,7 +155,7 @@ Tasks and milestone gates remain open until their evidence exists.
   WebAuthn isolation or exposing credentials to Pistis.
 - The Secure Enclave key remains distinct from provider authentication and is
   used only for Pistis signatures.
-- Portable domain behavior can be tested before Apple infrastructure exists.
+- Portable domain behaviour can be tested before Apple infrastructure exists.
 - Signing, TestFlight, native UI validation, and final QR interoperability
   cannot be marked complete on a Command-Line-Tools-only host.
 

@@ -276,7 +276,7 @@ High-level verification API returning structured verdicts, warnings and failure 
 
 #### `pistis-oidc`
 
-OIDC discovery, authorization-code flow support, ID-token validation and subject extraction.
+OIDC discovery, authorisation-code flow support, ID-token validation and subject extraction.
 
 #### `pistis-github`
 
@@ -407,7 +407,7 @@ Confirm:
 - QR as mandatory fallback;
 - local-network transfer as convenience;
 - direct signed challenge response;
-- local application retains user and authorization state;
+- local application retains user and authorisation state;
 - GitHub/Google are used at enrolment;
 - device key is subsequently sufficient for routine login until revoked.
 
@@ -802,11 +802,11 @@ Define a provider adapter interface that yields:
 
 ### M3.2 GitHub enrolment
 
-Implement a standards-compliant GitHub authorization flow suitable for the mobile app.
+Implement a standards-compliant GitHub authorisation flow suitable for the mobile app.
 
 Requirements:
 
-- authorization code with PKCE where supported/appropriate;
+- authorisation code with PKCE where supported/appropriate;
 - CSRF `state` validation;
 - system browser rather than embedded credential capture;
 - access-token confidentiality;
@@ -822,7 +822,7 @@ Requirements:
 Implement Google OpenID Connect:
 
 - discovery metadata;
-- authorization code with PKCE;
+- authorisation code with PKCE;
 - nonce;
 - ID-token signature validation;
 - issuer validation;
@@ -1330,7 +1330,7 @@ Integrate:
 - session listing;
 - fresh-approval/step-up hooks.
 
-### M7.4 Authorization separation
+### M7.4 Authorisation separation
 
 Ensure Pistis controls authentication only. Synoptikon continues to own:
 
@@ -1338,7 +1338,7 @@ Ensure Pistis controls authentication only. Synoptikon continues to own:
 - project roles;
 - data access;
 - compute permissions;
-- administrative authorization.
+- administrative authorisation.
 
 ### M7.5 Audit integration
 
@@ -1381,7 +1381,7 @@ Provide:
 
 - A fresh Synoptikon installation can bootstrap an administrator without creating a password.
 - A valid Pistis response creates a normal Synoptikon session.
-- Pistis identity does not bypass Synoptikon authorization.
+- Pistis identity does not bypass Synoptikon authorisation.
 - Revocation takes effect for new authentication immediately.
 - Login events appear in the central auditor with correlation identifiers.
 - Disabling Pistis cannot accidentally expose an unauthenticated administrator route.
@@ -1728,7 +1728,7 @@ Implement evidence structures capable of carrying multiple independent signature
 
 - Any byte change to a signed artefact is detected.
 - Evidence can be verified offline.
-- The verifier differentiates cryptographic validity from scientific correctness and organizational authorization.
+- The verifier differentiates cryptographic validity from scientific correctness and organisational authorisation.
 - Login signatures cannot satisfy report-approval claims.
 - Visible metadata shown to the signer is cryptographically bound to the signature.
 - Historic evidence remains verifiable after normal device retirement.
@@ -1946,7 +1946,7 @@ Handle:
 
 - deleted GitHub account;
 - inaccessible Google account;
-- organization policy change;
+- organisation policy change;
 - provider outage;
 - changed display metadata.
 
@@ -2657,7 +2657,7 @@ The implementation plan assumes established platform capabilities:
 - Apple’s LocalAuthentication framework provides the system interface for Face ID and Touch ID-gated operations.
 - Apple’s Security/CryptoKit APIs provide device-protected cryptographic-key operations, subject to the selected key type and platform capabilities.
 - Android Keystore supports application-scoped cryptographic keys and reports hardware-backed characteristics.
-- Android BiometricPrompt provides a system biometric authentication dialog and can bind authentication to cryptographic operations.
+- Android BiometricPrompt provides a system biometric authentication dialogue and can bind authentication to cryptographic operations.
 - OpenID Connect supplies a verifiable identity layer over OAuth 2.0; Google provides an OpenID Connect implementation.
 - Rust’s `openidconnect` crate provides strongly typed OpenID Connect interfaces.
 - Rust mDNS/DNS-SD crates exist, but the project must evaluate pure-Rust versus operating-system-native discovery stacks.

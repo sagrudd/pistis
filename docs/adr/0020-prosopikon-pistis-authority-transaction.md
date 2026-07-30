@@ -98,7 +98,7 @@ complete envelope returns its recorded outcome and must not issue another
 session. A non-identical response for the same consumed challenge is rejected.
 
 Host session invalidation on logout, expiry, binding/device/key revocation,
-recovery, and relevant authorization or policy-generation change remains a
+recovery, and relevant authorisation or policy-generation change remains a
 Prosopikon responsibility. A Pistis approval grants authentication only; it
 does not grant a Monas role, DASObjectStore permission, operating-system
 privilege, or project capability.
@@ -127,7 +127,7 @@ binding, provider, session, or secret.
 Jenkins/Expedition is the acceptance authority for this composition. Its
 four-repository dossier pins exact Pistis, Prosopikon, Monas, and
 DASObjectStore commits and lockfile hashes; records the task/container digest,
-commands, tests, results, artifacts, and caveats; and contains no real user,
+commands, tests, results, artefacts, and caveats; and contains no real user,
 provider, cookie, private key, or deployment credential. It must prove positive
 completion, replay, denial, expiry, malformed input, substitution, revocation,
 rollback, idempotency, cookie/CSRF, and DASObjectStore-boundary cases.
@@ -159,7 +159,7 @@ and a non-sensitive host smoke test before GitHub authentication is enabled.
 - Reuse the Pistis in-memory service session map: rejected; it creates a
   second authority and has no durable atomic completion.
 - Issue a Monas cookie directly from a Pistis verifier: rejected; Pistis has no
-  host authorization, session, or cookie authority.
+  host authorisation, session, or cookie authority.
 - Let DASObjectStore verify Pistis responses: rejected; it bypasses the Monas
   host context and duplicates identity/session policy at a product boundary.
 - Implement distinct Monas and Synoptikon completion semantics: rejected;

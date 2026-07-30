@@ -67,7 +67,7 @@ padding, checksum, canonical CBOR, exact fields, version, kind, payload bound,
 and signature width before returning bytes. Challenge and response kinds are
 not interchangeable. The maximum transfer text is 2,331 bytes, matching a
 single version-40 QR symbol at error-correction level M. V1 does not fragment,
-compress, normalize, or downgrade a transfer.
+compress, normalise, or downgrade a transfer.
 
 Rendering uses a reviewed QR implementation in byte mode with error correction
 M. The transport crate exposes a deterministic module matrix and text frame;
@@ -151,7 +151,7 @@ Terminal states reject subsequent submission and completion. A new ceremony
 uses a new challenge, nonce, browser capability, and session capability, so a
 photographed old response cannot authenticate a new session.
 
-### Failure disclosure and operational behavior
+### Failure disclosure and operational behaviour
 
 Public outcomes are deliberately coarse: malformed or oversized input,
 expiry, wrong binding, unknown or inactive device, verification rejection,
@@ -168,7 +168,7 @@ and local-network policy.
 - EPIC-6 obtains deterministic visual transport and an offline, testable
   browser/device reference ceremony without introducing an HTTP framework.
 - Challenge and response substitution, corruption, replay, and concurrent
-  completion have explicit fail-closed behavior.
+  completion have explicit fail-closed behaviour.
 - The reference service demonstrates session rotation and audit binding, but
   its in-memory state is not production durability.
 - Both direct-local and response-QR paths share verification semantics.
@@ -184,7 +184,7 @@ and local-network policy.
 - Put a URL-only bearer secret in the QR: rejected because a photograph would
   become sufficient to authenticate.
 - Use a generic JSON payload: rejected because signed protocol bytes are
-  deterministic CBOR and JSON normalization is ambiguous.
+  deterministic CBOR and JSON normalisation is ambiguous.
 - Permit fragmentation or compression: rejected because they expand parser and
   denial-of-service risk in v1.
 - Add Axum now: rejected because endpoint semantics can be tested without

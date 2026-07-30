@@ -15,7 +15,7 @@ Every device registration records:
 - whether the application generated the device key;
 - whether hardware-backed key storage is `verified`, `reported`, `unavailable`,
   or `unknown`;
-- whether biometric or device-credential authorization was required;
+- whether biometric or device-credential authorisation was required;
 - whether platform attestation was verified, unavailable, or not requested;
 - whether a device-integrity signal was verified, unavailable, or not
   requested; and
@@ -31,7 +31,7 @@ email-verification state, and hosted-domain claims remain descriptive or
 policy inputs and cannot independently establish the account identity.
 
 Google authentication evidence records successful local verification of the
-ID-token signature, issuer, audience, authorized presenter where applicable,
+ID-token signature, issuer, audience, authorised presenter where applicable,
 expiry, issued-at time, and one-use nonce. It identifies the discovery and
 verifier policy versions used, but never retains the ID token or other bearer
 credentials. A missing or failed check cannot be represented as positive
@@ -40,7 +40,7 @@ assurance.
 ## Per-signature claims
 
 An authentication or approval response records the registered key identifier,
-device registration, authorization mechanism, observed hardware and integrity
+device registration, authorisation mechanism, observed hardware and integrity
 state, signing time, challenge identifier, purpose, user, and installation.
 Absence of a signal is represented as `unknown` or `unavailable`; it is not
 silently upgraded to a positive claim.
@@ -57,7 +57,7 @@ signing may require different assurance. A verifier:
 5. retains the evaluated claims and policy result as evidence.
 
 Historic evidence preserves the assurance observed at signing time. Later
-revocation changes current authorization but does not rewrite a previously
+revocation changes current authorisation but does not rewrite a previously
 valid historic record.
 
 ## Registry representation

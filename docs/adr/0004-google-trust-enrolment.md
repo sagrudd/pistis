@@ -21,7 +21,7 @@ identities.
 
 ## Decision
 
-Google enrolment uses the system browser and authorization-code flow with:
+Google enrolment uses the system browser and authorisation-code flow with:
 
 - a platform-specific installed-application OAuth client registration;
 - a fresh PKCE verifier and the `S256` challenge method;
@@ -46,7 +46,7 @@ Before using any claim, the adapter:
 2. accepts only Google's documented modern or legacy `iss` spelling;
 3. requires the configured client ID in `aud`;
 4. validates `azp` when present and requires it when multiple audiences make
-   the authorized presenter significant;
+   the authorised presenter significant;
 5. validates `exp` and `iat` against the captured verification time and a
    small, explicitly configured clock tolerance;
 6. requires an exact, one-use match for the request's `nonce`; and
@@ -61,10 +61,10 @@ Both documented issuer spellings canonicalize to the durable authority
 `https://accounts.google.com`. The identity key is that canonical authority
 plus the exact `sub`. Email, `email_verified`, name, picture, locale, and `hd`
 are optional metadata. The `hd` claim may satisfy a separate administrator
-policy only after token validation; the authorization request's `hd` parameter
+policy only after token validation; the authorisation request's `hd` parameter
 is merely a user-interface hint.
 
-The authorization code, ID token, access token, PKCE verifier, `state`,
+The authorisation code, ID token, access token, PKCE verifier, `state`,
 `nonce`, and complete provider response are transient. They are redacted from
 diagnostics, cleared on every terminal path, and never stored in the durable
 binding.
@@ -86,7 +86,7 @@ binding.
 
 - Use email as the identity key: rejected because email is mutable and may be
   reassigned.
-- Use `hd` as the identity key: rejected because it describes organization
+- Use `hd` as the identity key: rejected because it describes organisation
   membership rather than a Google account.
 - Trust decoded JWT claims without signature validation: rejected because an
   attacker could substitute every identity claim.

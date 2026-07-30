@@ -95,7 +95,7 @@ after sanitisation and cannot be interpolated into the QR output.
 
 ASCII QR is a presentation of the canonical EPIC-6 frame, not a new protocol
 encoding. Rendering changes therefore cannot alter signed bytes, checksums,
-fragment ordering, or verifier behavior.
+fragment ordering, or verifier behaviour.
 
 ## Credential and session boundary
 

@@ -14,7 +14,7 @@ challenge as action approval would permit consent substitution.
 
 Hashing only an argument vector is also insufficient. Path lookup can select a
 different executable, a binary can change after approval, working directory and
-environment can change behavior, and separately opened resources create
+environment can change behaviour, and separately opened resources create
 time-of-check/time-of-use gaps.
 
 ## Decision

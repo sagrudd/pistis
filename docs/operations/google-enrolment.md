@@ -14,7 +14,7 @@ In Google Auth Platform:
 
 1. configure user-facing branding, an operator-controlled homepage and privacy
    policy, support contacts, and the intended audience;
-2. add only the users or organization audience needed for that environment;
+2. add only the users or organisation audience needed for that environment;
 3. request only `openid`, plus `profile` or `email` when the deployment has a
    documented need for those display snapshots; and
 4. create a separate installed-application client for every supported platform
@@ -35,8 +35,8 @@ identity validation fails.
 
 ## Enrolment request
 
-Open Google's authorization endpoint in the system browser, never an embedded
-credential-capture view. Use authorization code flow, PKCE `S256`, and fresh
+Open Google's authorisation endpoint in the system browser, never an embedded
+credential-capture view. Use authorisation code flow, PKCE `S256`, and fresh
 independent `state` and `nonce` values. The redirect URI must exactly match the
 platform registration.
 
@@ -47,7 +47,7 @@ The scope starts with `openid`. Add:
 
 Do not request other Google API scopes, offline access, or a refresh token.
 The `hd` request parameter may help account selection but cannot enforce an
-organization boundary. If organization policy matters, validate the signed
+organisation boundary. If organisation policy matters, validate the signed
 ID-token `hd` claim separately after authentication.
 
 Before confirmation, show the user the validated account metadata and the
@@ -85,7 +85,7 @@ Persist only:
 - protocol and verifier versions needed to assess the evidence.
 
 Email and `hd` are metadata, not the identity key. Never persist the
-authorization code, ID token, access token, refresh token, PKCE verifier,
+authorisation code, ID token, access token, refresh token, PKCE verifier,
 `state`, `nonce`, browser data, or complete discovery/token response. Redact
 tokens and callback query strings from logs. Clear transient material after
 success, cancellation, timeout, or error.
@@ -107,7 +107,7 @@ validated and the binding commits atomically.
 | Returned account is unexpected | Let the user cancel or explicitly restart account selection. |
 | Durable commit fails | Create no visible binding and clear all transient credentials. |
 
-Retries never reuse an authorization code, PKCE material, `state`, or `nonce`.
+Retries never reuse an authorisation code, PKCE material, `state`, or `nonce`.
 
 ## Reauthentication and incidents
 
@@ -117,7 +117,7 @@ revalidation, and policy-required metadata refresh. Do not contact Google for
 routine local challenge signing or verification.
 
 If transient credentials may have leaked, revoke the application's Google
-authorization where applicable, clear pending attempts, inspect redacted audit
+authorisation where applicable, clear pending attempts, inspect redacted audit
 events, and start a fresh enrolment. Unexpected issuer, subject substitution,
 nonce replay, signing-key anomalies, or redirect interception are
 security-sensitive and follow `SECURITY.md`.

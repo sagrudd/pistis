@@ -8,7 +8,7 @@
 
 Synoptikon must support passwordless administrator bootstrap and ordinary
 authentication using Pistis. Synoptikon already owns local users, roles,
-authorization, sessions, configuration, database migrations, and central
+authorisation, sessions, configuration, database migrations, and central
 audit. Pistis owns signed challenge semantics, device and external-identity
 bindings, verification policy, and authentication evidence.
 
@@ -30,7 +30,7 @@ Pistis provides a framework-neutral `pistis-synoptikon` contract. It depends
 only on inward Pistis domain crates and contains no Axum, Yew, Hebe,
 Synoptikon, database, cookie, or central-auditor types. Synoptikon implements
 the host ports and owns HTTP, presentation, persistence, migrations, normal
-session issuance, authorization, and audit projection.
+session issuance, authorisation, and audit projection.
 
 Any Synoptikon source dependency on Pistis must be pinned to a reviewed remote
 revision and recorded in Synoptikon's internal dependency catalogue and branch
@@ -52,19 +52,19 @@ session. Production readiness requires all of:
 - a server-side opaque session delivered only in a `Secure`, `HttpOnly`,
   appropriately `SameSite` cookie; and
 - tested session invalidation for logout, expiry, relevant revocation,
-  recovery, and authorization-version change.
+  recovery, and authorisation-version change.
 
 Missing evidence produces a typed blocked or rejected outcome and no session.
 The in-memory reference service, detached reference envelope, UI presence,
 debug mobile build, or local `KeyInfo` report cannot satisfy this gate.
 
-### Authentication and authorization
+### Authentication and authorisation
 
 A successful Pistis ceremony authenticates exactly one existing local user for
 the declared `authenticate-session` purpose. It grants no role, tenant,
 project, data, compute, or administrative permission. Synoptikon resolves
-current authorization server-side for every request or against an explicitly
-invalidatable authorization generation.
+current authorisation server-side for every request or against an explicitly
+invalidatable authorisation generation.
 
 Bootstrap role assignment is a separate, audited Synoptikon policy mutation.
 Consequential approvals and step-up actions use separate purposes and
@@ -119,7 +119,7 @@ defence applies to every state-changing authenticated endpoint.
 ### Device administration
 
 Device listing, assurance, suspension, terminal revocation, replacement
-enrolment, failures, and verification-bundle export are authorization-protected
+enrolment, failures, and verification-bundle export are authorisation-protected
 Synoptikon administration operations over the Pistis registry contract.
 Suspension and revocation remain distinct. Revocation is monotonic, blocks new
 authentication at its effective time, and invalidates affected active sessions
@@ -137,12 +137,12 @@ classification where policy requires them.
 Normal audit does not retain raw login capabilities, nonce, QR frame,
 canonical response, signature, provider credential, session token, cookie,
 private key, bootstrap capability, password, full IP address, or full
-user-agent string. Audit read/export has separate authorization, purpose,
+user-agent string. Audit read/export has separate authorisation, purpose,
 retention, and redaction controls.
 
 ## Consequences
 
-- Pistis authentication cannot bypass Synoptikon authorization.
+- Pistis authentication cannot bypass Synoptikon authorisation.
 - Synoptikon retains one session authority rather than importing the reference
   service's session map.
 - UI and transport work can be developed against typed unavailable states
@@ -170,5 +170,5 @@ Architecture review identified Synoptikon's authentication route, normal
 session issuer, central auditor, Hebe configuration and three-backend migration
 authorities, Yew login surface, package-version rules, dependency catalogue,
 and GB10 gate. Security review supplied the bootstrap, binding, completion,
-cookie, authorization, revocation, recovery, audit-minimization, and negative
+cookie, authorisation, revocation, recovery, audit-minimization, and negative
 test requirements captured above.

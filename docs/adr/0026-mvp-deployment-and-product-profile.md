@@ -23,8 +23,8 @@ the detailed protocol decisions on which it depends.
 The v0.1 provider registration is the organisation-owned GitHub App
 `Mnemosyne Pistis`, owner `MnemosyneBiosciences`, App ID `4413299`, slug
 `mnemosyne-pistis`, and public Client ID `Iv23lievHWZTGyot0BXa`. Device Flow
-and expiring user authorization tokens are enabled. Installation-time user
-authorization, webhooks, subscribed events, and explicit account,
+and expiring user authorisation tokens are enabled. Installation-time user
+authorisation, webhooks, subscribed events, and explicit account,
 organisation, and repository permissions are disabled. GitHub's implicit
 Metadata read permission is the only registration permission. The App may be
 used by any GitHub account, but Pistis enrolment remains invitation-only.
@@ -90,7 +90,7 @@ Routine authentication challenges expire after two minutes, exact-action
 approvals after 60 seconds, and enrolment/bootstrap invitations after ten
 minutes. All are non-renewable and use monotonic local expiry in addition to
 authority time checks. Browser sessions have a 15-minute idle and eight-hour
-absolute lifetime. CLI credentials authorize exactly one operation and expire
+absolute lifetime. CLI credentials authorise exactly one operation and expire
 unused after five minutes. A job already started under recorded authority may
 finish according to product policy; the credential cannot start another job.
 
@@ -128,10 +128,10 @@ Users can revoke the current device and erase its local state. A lost device is
 revoked through another administrator device or governed recovery; authority
 sessions terminate and the revocation generation advances without cooperation
 from the phone. Suspected provider compromise additionally requires GitHub
-authorization revocation. Immutable minimized audit remains.
+authorisation revocation. Immutable minimized audit remains.
 
 British English is the initial language. VoiceOver/TalkBack labels, dynamic
-type/font scaling, contrast, reduced-motion behavior, and non-colour-only
+type/font scaling, contrast, reduced-motion behaviour, and non-colour-only
 states are release requirements.
 
 ### Recovery, evidence, and privacy
@@ -145,7 +145,7 @@ Audit retains immutable opaque identifiers, decisions, timestamps, result
 codes, and necessary digests. It excludes provider tokens, QR contents,
 biometric material, full action/content bodies, email, and login. The default
 retention period is seven years. A signed policy change may alter retention;
-authorized deletion leaves an immutable tombstone.
+authorised deletion leaves an immutable tombstone.
 
 Mobile applications use no third-party analytics, advertising, telemetry, or
 cloud crash-reporting SDK. Diagnostics are local, redacted, and exported only

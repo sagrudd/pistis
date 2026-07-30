@@ -99,7 +99,7 @@ them with the fixed enrolment-ceremony audience.
 Do not report vulnerabilities in public issues. Follow
 [`SECURITY.md`](SECURITY.md) to use GitHub private vulnerability reporting.
 
-## License
+## Licence
 
 Pistis Core and the public protocol implementation in this repository are
 licensed under the [Mozilla Public License 2.0](LICENSE). Mnemosyne names,

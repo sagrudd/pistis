@@ -29,7 +29,7 @@ one.
 
 ## Camera and accessible fallback
 
-Do not make color, animation, or camera access the only source of instructions
+Do not make colour, animation, or camera access the only source of instructions
 or state. Display a text heading, installation name and fingerprint, username,
 action, absolute expiry, and a concise status message with sufficient contrast.
 Keep controls keyboard accessible and expose status changes to assistive
@@ -41,7 +41,7 @@ is denied or no camera is available, preserve the challenge and offer the exact
 scanner workflow. The text is sensitive correlation material: avoid clipboard
 history where the platform permits, do not include it in screenshots or
 support tickets, and clear it after the ceremony. Never ask an operator to
-manually edit, normalize, pad, shorten, or split a frame.
+manually edit, normalise, pad, shorten, or split a frame.
 
 If a response QR cannot be captured, retry camera permission or begin a fresh
 ceremony using an approved local-transfer adapter. There is no shortened
@@ -102,6 +102,6 @@ accept a second, independently mutable audience assertion.
 The verifier returns credential-free facts only. A signed `approved` result may
 be offered to the Prosopikon-owned atomic completion transaction; a signed
 `denied` result is terminal and must never create a session. Neither result
-authorizes a caller to bypass Prosopikon challenge consumption, generation
+authorises a caller to bypass Prosopikon challenge consumption, generation
 rechecks, session issuance, or audit persistence. Never construct “verified”
 facts from HTTP fields, QR contents, scanned keys, or a detached v1 signature.

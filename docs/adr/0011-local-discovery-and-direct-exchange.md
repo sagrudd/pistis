@@ -29,7 +29,7 @@ browse arbitrary mDNS services, so a browser-only design is not viable.
 
 ### Security and dependency boundary
 
-Discovery is never authentication, authorization, installation trust, or proof
+Discovery is never authentication, authorisation, installation trust, or proof
 of proximity. It returns untrusted endpoint candidates only. The exact signed
 challenge, enrolled device response, authoritative stored bindings, revocation
 policy, and atomic host completion remain unchanged whether transport is direct
@@ -199,12 +199,12 @@ The mDNS implementation choice is accepted only after a time-boxed comparison
 of maintained pure-Rust and operating-system-native options against:
 
 - supported operating systems and address families;
-- interface-change, sleep/wake, TTL, withdrawal, and duplicate-name behavior;
+- interface-change, sleep/wake, TTL, withdrawal, and duplicate-name behaviour;
 - bounded parsing and memory use;
-- dependency, unsafe-code, advisory, license, maintenance, and provenance
+- dependency, unsafe-code, advisory, licence, maintenance, and provenance
   review;
 - deterministic test injection without public network services; and
-- packaging and service-manager behavior.
+- packaging and service-manager behaviour.
 
 Selecting a crate is not itself completion of issue 137. The evaluation report,
 dependency review, and negative prototype evidence are retained before the
@@ -239,7 +239,7 @@ The host browse adapter is scoped to the exact service type and a foreground
 deadline of at most 30 seconds. It accepts only the closed TXT schema, random
 instance/hostname relationship, nonzero port, eligible local addresses, and
 nonzero interface indices. It retains address and interface scope as untrusted
-candidate data; only the installation-signed endpoint binding can authorize a
+candidate data; only the installation-signed endpoint binding can authorise a
 connection. Since the selected library does not expose the received record
 TTL, candidate eligibility is capped by the browse deadline and never extends
 the ceremony or signed binding expiry.

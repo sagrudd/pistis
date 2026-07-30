@@ -26,7 +26,7 @@ opaque payloads. `KeyId` contains the complete 256-bit domain-separated
 SHA-256 digest defined by `pistis-crypto`, preserving the suite's 128-bit
 collision-security target. Parsers reject a missing or incorrect prefix,
 uppercase hexadecimal, whitespace, separators, and payloads of the wrong
-length. There is no permissive or normalising parser. This fail-closed behavior
+length. There is no permissive or normalising parser. This fail-closed behaviour
 prevents identifier classes from being substituted at stringly typed
 boundaries and ensures each accepted string has one representation.
 

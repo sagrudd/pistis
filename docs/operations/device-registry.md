@@ -47,7 +47,7 @@ different security statements. Missing or unrecognized data cannot become
 New registrations begin active. An active device may record use, be suspended,
 or be revoked.
 
-A suspension blocks current authorization without destroying the registration
+A suspension blocks current authorisation without destroying the registration
 or its history. Only an explicit resume operation may make a suspended device
 active again. Resumption is not an enrolment and must not change the device's
 key, owner, assurance, or enrolment evidence.
@@ -111,7 +111,7 @@ After initial creation, migration, restore, or upgrade, verify that:
 - the expected database and migration versions are reported;
 - active, suspended, and revoked device counts match the operational record;
 - a representative record retains the expected key identifier and assurance;
-- suspended and revoked devices are rejected for current authorization;
+- suspended and revoked devices are rejected for current authorisation;
 - historic records and lifecycle events remain readable; and
 - no private-key or provider bearer-token material is present.
 

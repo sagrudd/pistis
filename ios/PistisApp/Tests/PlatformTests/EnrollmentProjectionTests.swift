@@ -154,7 +154,8 @@ final class EnrollmentProjectionTests: XCTestCase {
             trust: InstallationTrustRecord(
                 installationID: Data(repeating: 0x01, count: 16),
                 displayName: "Laboratory Jenkins",
-                audience: "jenkins",
+                audience: "prosopikon:pistis:enrolment",
+                authorisedProductAudiences: ["jenkins"],
                 userID: Data(repeating: 0x02, count: 16),
                 externalIdentityID: Data(repeating: 0x03, count: 16),
                 fingerprint: Data(repeating: 0x04, count: 32),

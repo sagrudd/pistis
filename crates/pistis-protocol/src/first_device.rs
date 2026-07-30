@@ -10,8 +10,10 @@ use url::Url;
 const FRAME_FIELDS: &[u64] = &[0, 1, 2, 3];
 const BUNDLE_FIELDS: &[u64] = &[0, 1, 2, 3];
 const DESCRIPTOR_FIELDS: &[u64] = &[0, 1, 2, 3, 4];
-const INVITATION_FIELDS: &[u64] = &[0, 1, 2, 3, 4, 5, 6, 7, 8];
-const PRESENTATION_FIELDS: &[u64] = &[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16];
+const INVITATION_FIELDS: &[u64] = &[0, 1, 2, 3, 4, 5, 6, 7, 8, 9];
+const PRESENTATION_FIELDS: &[u64] =
+    &[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17];
+const PRODUCT_AUDIENCES: &[&str] = &["dasobjectstore", "jenkins", "propylaion"];
 /// Maximum binary outer-frame bytes accepted from the protected pipe.
 pub const MAX_FIRST_DEVICE_FRAME_BYTES: usize = 1_792;
 const MAX_INVITATION_BYTES: usize = 512;
@@ -47,8 +49,10 @@ pub struct MobileEnrolmentInvitation {
     pub invitation_id: [u8; 16],
     /// Installation selected by the administrator.
     pub installation_id: [u8; 16],
-    /// Exact product audience.
+    /// Fixed audience of the enrolment ceremony.
     pub audience: String,
+    /// Closed authority-signed product audiences permitted after enrolment.
+    pub authorised_product_audiences: Vec<String>,
     /// Descriptor commitment supplied through the attended channel.
     pub authority_descriptor_digest: [u8; 32],
 }
@@ -70,6 +74,8 @@ pub struct FirstDevicePresentation {
     pub principal_id: [u8; 16],
     /// Human-readable installation name.
     pub installation_name: String,
+    /// Closed authority-signed product audiences permitted after enrolment.
+    pub authorised_product_audiences: Vec<String>,
     /// Exact canonical HTTPS origin for the enrolment-only Monas process.
     pub https_origin: String,
     /// Reviewed GitHub App configuration digest.
@@ -173,12 +179,12 @@ fn decode_presentation_payload(
     )?;
     require_unsigned(
         payload.get(&0),
-        2,
+        3,
         FirstDevicePresentationError::InvalidPresentation,
     )?;
     require_text_exact(
         payload.get(&1),
-        "pistis.first-device-presentation.v2",
+        "pistis.first-device-presentation.v3",
         FirstDevicePresentationError::InvalidPresentation,
     )?;
     let presentation_id = fixed_bytes(
@@ -226,8 +232,15 @@ fn decode_presentation_payload(
         FirstDevicePresentationError::InvalidPresentation,
     )?;
     let host = decode_host_binding(&mut payload)?;
+    let authorised_product_audiences = product_audiences(
+        payload.remove(&17),
+        FirstDevicePresentationError::InvalidPresentation,
+    )?;
     let actual_descriptor_digest = sha256(&authority_bundle.exact_bytes).into_bytes();
-    if invitation.installation_id != installation_id || invitation.audience != audience {
+    if invitation.installation_id != installation_id
+        || invitation.audience != audience
+        || invitation.authorised_product_audiences != authorised_product_audiences
+    {
         return Err(FirstDevicePresentationError::InvalidPresentation);
     }
     if host.descriptor_digest != actual_descriptor_digest {
@@ -249,6 +262,7 @@ fn decode_presentation_payload(
         tenant_id,
         principal_id,
         installation_name,
+        authorised_product_audiences,
         https_origin: host.https_origin,
         app_configuration_digest: host.app_configuration_digest,
         tls_spki_sha256: host.tls_spki_sha256,
@@ -408,12 +422,12 @@ fn decode_invitation(
     )?;
     require_unsigned(
         fields.get(&0),
-        1,
+        2,
         FirstDevicePresentationError::InvalidInvitation,
     )?;
     require_text_exact(
         fields.get(&1),
-        "pistis.mobile-enrolment-invitation.v1",
+        "pistis.mobile-enrolment-invitation.v2",
         FirstDevicePresentationError::InvalidInvitation,
     )?;
     let issued_at_ms = unsigned(
@@ -445,6 +459,10 @@ fn decode_invitation(
         fields.remove(&8),
         FirstDevicePresentationError::InvalidInvitation,
     )?;
+    let authorised_product_audiences = product_audiences(
+        fields.remove(&9),
+        FirstDevicePresentationError::InvalidInvitation,
+    )?;
     if issued_at_ms >= expires_at_ms {
         return Err(FirstDevicePresentationError::InvalidInvitation);
     }
@@ -454,8 +472,38 @@ fn decode_invitation(
         invitation_id,
         installation_id,
         audience,
+        authorised_product_audiences,
         authority_descriptor_digest,
     })
+}
+
+fn product_audiences(
+    value: Option<Value>,
+    error: FirstDevicePresentationError,
+) -> Result<Vec<String>, FirstDevicePresentationError> {
+    let Value::Array(values) = value.ok_or(error)? else {
+        return Err(error);
+    };
+    if values.is_empty() || values.len() > PRODUCT_AUDIENCES.len() {
+        return Err(error);
+    }
+    let audiences: Vec<String> = values
+        .into_iter()
+        .map(|value| match value {
+            Value::Text(text)
+                if text.len() <= 128
+                    && text.is_ascii()
+                    && PRODUCT_AUDIENCES.contains(&text.as_str()) =>
+            {
+                Ok(text)
+            }
+            _ => Err(error),
+        })
+        .collect::<Result<_, _>>()?;
+    if audiences.windows(2).any(|pair| pair[0] >= pair[1]) {
+        return Err(error);
+    }
+    Ok(audiences)
 }
 
 fn exact_map(

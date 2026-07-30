@@ -38,10 +38,10 @@ fn fixture() -> Vec<u8> {
     .unwrap();
     let descriptor_digest = sha256(&bundle).into_bytes();
     let invitation = to_vec(&Value::Map(BTreeMap::from([
-        (0, Value::Unsigned(1)),
+        (0, Value::Unsigned(2)),
         (
             1,
-            Value::Text("pistis.mobile-enrolment-invitation.v1".into()),
+            Value::Text("pistis.mobile-enrolment-invitation.v2".into()),
         ),
         (2, Value::Unsigned(1_700_000_000_000)),
         (3, Value::Unsigned(1_700_000_300_000)),
@@ -50,11 +50,19 @@ fn fixture() -> Vec<u8> {
         (6, Value::Bytes(vec![0x22; 16])),
         (7, Value::Text("prosopikon:pistis:enrolment".into())),
         (8, Value::Bytes(descriptor_digest.to_vec())),
+        (
+            9,
+            Value::Array(vec![
+                Value::Text("dasobjectstore".into()),
+                Value::Text("jenkins".into()),
+                Value::Text("propylaion".into()),
+            ]),
+        ),
     ])))
     .unwrap();
     let payload = to_vec(&Value::Map(BTreeMap::from([
-        (0, Value::Unsigned(2)),
-        (1, Value::Text("pistis.first-device-presentation.v2".into())),
+        (0, Value::Unsigned(3)),
+        (1, Value::Text("pistis.first-device-presentation.v3".into())),
         (2, Value::Bytes(vec![0x33; 16])),
         (3, Value::Unsigned(1_700_000_000_000)),
         (4, Value::Unsigned(1_700_000_300_000)),
@@ -70,6 +78,14 @@ fn fixture() -> Vec<u8> {
         (14, Value::Bytes(descriptor_digest.to_vec())),
         (15, Value::Bytes(TLS_SPKI_DIGEST.to_vec())),
         (16, Value::Unsigned(1)),
+        (
+            17,
+            Value::Array(vec![
+                Value::Text("dasobjectstore".into()),
+                Value::Text("jenkins".into()),
+                Value::Text("propylaion".into()),
+            ]),
+        ),
     ])))
     .unwrap();
     let input = signing_input(&payload, key_id).unwrap();
@@ -120,6 +136,10 @@ fn verifies_the_exact_closed_fixture() {
         verified.authority_bundle.mobile_receipt.key_id
     );
     assert_eq!(verified.installation_name, "Mnemosyne evaluation");
+    assert_eq!(
+        verified.authorised_product_audiences,
+        ["dasobjectstore", "jenkins", "propylaion"]
+    );
     assert_eq!(verified.https_origin, "https://pistis.example.test:8443");
     assert_eq!(verified.tls_spki_sha256, TLS_SPKI_DIGEST);
     assert_eq!(

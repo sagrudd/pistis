@@ -6,7 +6,10 @@ import Foundation
 public struct VerifiedMobileEnrolmentReceipt: Sendable {
     public let installationID: Data
     public let installationName: String
+    /// Fixed purpose audience of the enrolment ceremony.
     public let audience: String
+    /// Closed authority-signed product audiences permitted after enrolment.
+    public let authorisedProductAudiences: Set<String>
     public let installationKeyID: Data
     public let installationPublicKey: Data
     public let authorityKeyID: Data
@@ -23,7 +26,7 @@ public struct VerifiedMobileEnrolmentReceipt: Sendable {
 }
 
 /// Strict verifier for the accepted purpose-separated authority receipt.
-public enum MobileEnrolmentReceiptV1 {
+public enum MobileEnrolmentReceiptV2 {
     /// Verify both the device registration and purpose-separated authority
     /// receipt before returning storage-ready facts.
     public static func verify(
@@ -155,10 +158,10 @@ public enum MobileEnrolmentReceiptV1 {
         now: Date
     ) throws -> VerifiedMobileEnrolmentReceipt {
         var reader = CeremonyCBORReader(payload)
-        try reader.requireMap(count: 26)
-        try reader.requireUnsigned(0); try reader.requireUnsigned(1)
+        try reader.requireMap(count: 27)
+        try reader.requireUnsigned(0); try reader.requireUnsigned(2)
         try reader.requireUnsigned(1)
-        try reader.requireText("pistis.mobile-enrolment-receipt.v1")
+        try reader.requireText("pistis.mobile-enrolment-receipt.v2")
         try reader.requireUnsigned(2); let issued = try reader.unsigned()
         try reader.requireUnsigned(3); let expires = try reader.unsigned()
         try reader.requireUnsigned(4); let evidenceID = try reader.bytes(count: 16)
@@ -186,6 +189,11 @@ public enum MobileEnrolmentReceiptV1 {
         try reader.requireUnsigned(24); let confirmed = try reader.unsigned()
         try reader.requireUnsigned(25)
         let hosts = try reader.textArray(maximumCount: 16, maximumText: 253)
+        try reader.requireUnsigned(26)
+        let productAudiences = try reader.textArray(
+            maximumCount: 3,
+            maximumText: 128
+        )
 
         let nowMilliseconds = UInt64(now.timeIntervalSince1970 * 1_000)
         let installationFingerprint = Data(
@@ -205,6 +213,7 @@ public enum MobileEnrolmentReceiptV1 {
               installationID == binding.presentation.installationID,
               name == binding.presentation.installationName,
               audience == binding.presentation.audience,
+              productAudiences == binding.presentation.authorisedProductAudiences,
               installationKeyID == installationDerivedID,
               fingerprint == installationFingerprint,
               authorityKeyID == expectedAuthorityKeyID,
@@ -216,6 +225,7 @@ public enum MobileEnrolmentReceiptV1 {
               policy > 0, revocation > 0,
               policy == binding.policyGeneration,
               canonicalHosts(hosts),
+              canonicalProductAudiences(productAudiences),
               let originHost = binding.presentation.httpsOrigin.host,
               hosts.contains(originHost)
         else { throw MobileEnrolmentError.wrongBinding }
@@ -223,6 +233,7 @@ public enum MobileEnrolmentReceiptV1 {
             installationID: installationID,
             installationName: name,
             audience: audience,
+            authorisedProductAudiences: Set(productAudiences),
             installationKeyID: installationKeyID,
             installationPublicKey: installationPublicKey,
             authorityKeyID: authorityKeyID,
@@ -278,6 +289,19 @@ public enum MobileEnrolmentReceiptV1 {
                         }
                 }
         }
+    }
+
+    private static func canonicalProductAudiences(_ audiences: [String]) -> Bool {
+        let supported = Set(["dasobjectstore", "jenkins", "propylaion"])
+        return !audiences.isEmpty
+            && Set(audiences).count == audiences.count
+            && audiences == audiences.sorted()
+            && audiences.allSatisfy {
+                supported.contains($0)
+                    && !$0.isEmpty
+                    && $0.utf8.count <= 128
+                    && $0.unicodeScalars.allSatisfy(\.isASCII)
+            }
     }
 
     private static func validP256PublicKey(_ bytes: Data) -> Bool {

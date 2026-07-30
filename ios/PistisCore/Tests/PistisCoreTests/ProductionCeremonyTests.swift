@@ -19,7 +19,6 @@ final class ProductionCeremonyTests: XCTestCase {
         let verified = try await ProductionChallengeVerifier.verify(
             qrText: material.qr,
             trustRepository: trust,
-            expectedAudience: "jenkins.mnemosyne.test",
             expectedExternalIdentityID: Data(repeating: 0x44, count: 16),
             now: Date(timeIntervalSince1970: 1_700_000_001)
         )
@@ -35,7 +34,6 @@ final class ProductionCeremonyTests: XCTestCase {
             _ = try await ProductionChallengeVerifier.verify(
                 qrText: material.qr,
                 trustRepository: FixedTrust(record: nil),
-                expectedAudience: "jenkins.mnemosyne.test",
                 expectedExternalIdentityID: Data(repeating: 0x44, count: 16),
                 now: Date(timeIntervalSince1970: 1_700_000_001)
             )
@@ -52,6 +50,7 @@ final class ProductionCeremonyTests: XCTestCase {
             installationID: material.trust.installationID,
             displayName: material.trust.displayName,
             audience: material.trust.audience,
+            authorisedProductAudiences: material.trust.authorisedProductAudiences,
             userID: material.trust.userID,
             externalIdentityID: material.trust.externalIdentityID,
             fingerprint: material.trust.fingerprint,
@@ -68,7 +67,6 @@ final class ProductionCeremonyTests: XCTestCase {
             _ = try await ProductionChallengeVerifier.verify(
                 qrText: material.qr,
                 trustRepository: FixedTrust(record: substituted),
-                expectedAudience: "jenkins.mnemosyne.test",
                 expectedExternalIdentityID: Data(repeating: 0x44, count: 16),
                 now: Date(timeIntervalSince1970: 1_700_000_001)
             )
@@ -83,7 +81,6 @@ final class ProductionCeremonyTests: XCTestCase {
         let challenge = try await ProductionChallengeVerifier.verify(
             qrText: material.qr,
             trustRepository: FixedTrust(record: material.trust),
-            expectedAudience: "jenkins.mnemosyne.test",
             expectedExternalIdentityID: Data(repeating: 0x44, count: 16),
             now: Date(timeIntervalSince1970: 1_700_000_001)
         )
@@ -155,7 +152,6 @@ final class ProductionCeremonyTests: XCTestCase {
                 _ = try await ProductionChallengeVerifier.verify(
                     qrText: material.qr,
                     trustRepository: FixedTrust(record: material.trust),
-                    expectedAudience: "jenkins.mnemosyne.test",
                     expectedExternalIdentityID: Data(repeating: 0x44, count: 16),
                     now: Date(timeIntervalSince1970: 1_700_000_001)
                 )
@@ -200,7 +196,8 @@ private struct Fixture {
         trust = try InstallationTrustRecord(
             installationID: installationID,
             displayName: "Mnemosyne Jenkins",
-            audience: "jenkins.mnemosyne.test",
+            audience: "prosopikon:pistis:enrolment",
+            authorisedProductAudiences: ["jenkins"],
             userID: Data(repeating: 0x88, count: 16),
             externalIdentityID: Data(repeating: 0x44, count: 16),
             fingerprint: fingerprint,
@@ -233,7 +230,7 @@ private struct Fixture {
         output += uint(8) + bytes(Data(repeating: 0x88, count: 16))
         output += uint(9) + bytes(Data(repeating: 0x44, count: 16))
         output += uint(10) + text("authenticate-session")
-        output += uint(11) + text("jenkins.mnemosyne.test")
+        output += uint(11) + text("jenkins")
         output += uint(12) + text("Mnemosyne Jenkins")
         output += uint(13) + text("stephen")
         output += uint(14) + bytes(Data(repeating: 0x99, count: 32))

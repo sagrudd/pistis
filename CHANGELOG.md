@@ -11,6 +11,8 @@ a Changelog and releases follow Semantic Versioning.
   pipe-only terminal QR presenter, shared Rust/Swift fixtures, iOS scanner,
   fixed-origin server-driven Device Flow transport, and canonical
   Secure-Enclave enrolment binding.
+- Reject regular-file standard input at the first-device presenter so the
+  sensitive authority frame can arrive only through an actual FIFO.
 - Commit distinct initial-invitation and mobile-receipt authority keys in one
   canonical bundle; verify the exact device registration and receipt before a
   create-once iOS Keychain install.

@@ -5,6 +5,7 @@ use pistis_cli::{
 use std::{
     fs::File,
     io::{self, BufReader, IsTerminal},
+    os::unix::fs::FileTypeExt,
     path::PathBuf,
     time::{SystemTime, UNIX_EPOCH},
 };
@@ -80,7 +81,7 @@ fn run_enrolment_present(profile: pistis_cli::OutputProfile, inverted: bool) -> 
         &mut stdout,
         &mut acknowledgement,
         EnrolmentPresentationOptions {
-            input_is_pipe: !stdin.is_terminal(),
+            input_is_pipe: protected_stdin_is_pipe(),
             output_is_terminal,
             profile,
             inverted,
@@ -96,6 +97,14 @@ fn run_enrolment_present(profile: pistis_cli::OutputProfile, inverted: bool) -> 
         eprintln!("pistis: first-device presentation rejected");
         CliExit::Rejected
     }
+}
+
+fn protected_stdin_is_pipe() -> bool {
+    descriptor_path_is_fifo("/dev/fd/0")
+}
+
+fn descriptor_path_is_fifo(path: &str) -> bool {
+    std::fs::metadata(path).is_ok_and(|metadata| metadata.file_type().is_fifo())
 }
 
 fn socket_path() -> Option<PathBuf> {
@@ -123,4 +132,14 @@ fn locale_is_utf8() -> bool {
             value.contains("utf-8") || value.contains("utf8")
         })
     })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::descriptor_path_is_fifo;
+
+    #[test]
+    fn regular_descriptor_cannot_impersonate_protected_pipe() {
+        assert!(!descriptor_path_is_fifo("/dev/null"));
+    }
 }

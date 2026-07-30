@@ -160,6 +160,7 @@ private final class FirstDeviceEnrolmentFlow: ObservableObject {
     private var devicePublicKey: Data?
     private var deviceKeyID: Data?
     private var pendingRegistration: Data?
+    private var beginRetry = EnrolmentBeginRetryState()
     private var approvalGate = AttendedEnrolmentGate()
 
     func handleScan(_ result: Result<ScannedQRPayload, PlatformFailure>) {
@@ -210,6 +211,7 @@ private final class FirstDeviceEnrolmentFlow: ObservableObject {
         }
         busy = true
         defer { busy = false }
+        var retainExactAttempt = false
         do {
             guard try await !InstallationTrustKeychain.shared
                 .hasStoredEnrollment()
@@ -223,9 +225,15 @@ private final class FirstDeviceEnrolmentFlow: ObservableObject {
                 data: Data("pistis:key-id:v1\0".utf8)
                     + publicKey.compressedSEC1
             ))
-            let operationID = try secureRandom(count: 16)
+            let operationID = try beginRetry.operationID {
+                try secureRandom(count: 16)
+            }
             devicePublicKey = publicKey.compressedSEC1
             deviceKeyID = keyID
+            // From this point the authority may durably accept the request
+            // even if the response is lost or rejected locally. Preserve the
+            // exact operation ID and device key for an idempotent retry.
+            retainExactAttempt = true
             let handle = try await transport.begin(
                 operationID: operationID,
                 deviceKeyID: keyID,
@@ -233,12 +241,17 @@ private final class FirstDeviceEnrolmentFlow: ObservableObject {
                 keyAssurance: "secure-enclave-biometry-current-set"
             )
             self.handle = handle
+            beginRetry.markAccepted()
             prompt = handle.prompt
             status = "Open GitHub and approve the displayed code"
             failure = nil
         } catch {
-            await discardUnenrolledKey(after: .beginFailure)
-            fail(error)
+            if retainExactAttempt {
+                fail(PlatformFailure.enrolmentBeginRetryRequired)
+            } else {
+                await discardUnenrolledKey(after: .beginFailure)
+                fail(error)
+            }
         }
     }
 
@@ -341,6 +354,7 @@ private final class FirstDeviceEnrolmentFlow: ObservableObject {
         enrolmentComplete = false
         hostTrustConfirmed = false
         pendingRegistration = nil
+        beginRetry.reset()
         approvalGate = AttendedEnrolmentGate()
         failure = nil
         status = "Ready to scan"
@@ -464,6 +478,32 @@ struct VerifiedProviderApproval: Equatable {
     let policyGeneration: UInt64
     let authorityChallenge: Data
     let challengeExpiry: UInt64
+}
+
+struct EnrolmentBeginRetryState {
+    private(set) var retainedOperationID: Data?
+
+    mutating func operationID(
+        generate: () throws -> Data
+    ) throws -> Data {
+        if let retainedOperationID {
+            return retainedOperationID
+        }
+        let generated = try generate()
+        guard generated.count == 16,
+              !generated.allSatisfy({ $0 == 0 })
+        else { throw PlatformFailure.invalidConfiguration }
+        retainedOperationID = generated
+        return generated
+    }
+
+    mutating func markAccepted() {
+        retainedOperationID = nil
+    }
+
+    mutating func reset() {
+        retainedOperationID = nil
+    }
 }
 
 struct AttendedEnrolmentGate {

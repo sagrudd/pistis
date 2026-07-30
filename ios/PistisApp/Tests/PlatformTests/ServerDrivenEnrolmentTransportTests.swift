@@ -106,7 +106,9 @@ final class ServerDrivenEnrolmentTransportTests: XCTestCase {
                 handle,
                 deviceRegistrationCOSE: Data([0x84]),
                 binding: binding,
-                now: Date(timeIntervalSince1970: 1_700_000_100)
+                verificationTime: {
+                    Date(timeIntervalSince1970: 1_700_000_100)
+                }
             )
             XCTFail("unsigned response unexpectedly installed trust facts")
         } catch {
@@ -115,6 +117,19 @@ final class ServerDrivenEnrolmentTransportTests: XCTestCase {
                 .productionEnvelopeUnavailable
             )
         }
+        let bodies = EnrolmentURLProtocol.recordedBodies()
+        let confirmation = try XCTUnwrap(
+            JSONSerialization.jsonObject(with: try XCTUnwrap(bodies.last))
+                as? [String: Any]
+        )
+        XCTAssertEqual(Set(confirmation.keys), [
+            "version", "provider_verification_id", "polling_capability",
+            "invitation", "device_registration_cose",
+        ])
+        XCTAssertEqual(
+            confirmation["invitation"] as? String,
+            base64URL(presentation.exactInvitation)
+        )
     }
 
     func testRedirectAndUnknownStatusFailClosed() async throws {
@@ -185,6 +200,13 @@ private func hex(_ text: String) throws -> Data {
         index = end
     }
     return output
+}
+
+private func base64URL(_ data: Data) -> String {
+    data.base64EncodedString()
+        .replacingOccurrences(of: "+", with: "-")
+        .replacingOccurrences(of: "/", with: "_")
+        .replacingOccurrences(of: "=", with: "")
 }
 
 private final class EnrolmentURLProtocol: URLProtocol, @unchecked Sendable {

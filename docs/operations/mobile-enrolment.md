@@ -38,6 +38,8 @@ review and the evidence gates in that ADR.
    calls only the signed-origin begin/status/cancel/confirm routes. The
    installation-local adapter owns GitHub polling and clears its transient
    device code, user code, and provider token on every terminal path.
+   Final confirmation repeats the exact invitation already authenticated at
+   begin; the polling capability never substitutes for that binding.
    A successful provider poll is not enrolment: the signed device registration
    and Prosopikon transaction must also complete.
 7. Confirm only the coarse enrolment outcome and generated audit correlation.
@@ -80,6 +82,12 @@ If the exchange fails, use only the coarse correlation identifier to inspect
 minimized authority audit records. An exact retry is safe only with the same
 invitation and byte-identical registration envelope. A changed device key or
 registration requires a fresh invitation.
+
+The iOS flow retains that exact randomized registration envelope in memory
+until the verified authority receipt is installed or the attempt is
+explicitly terminated. It samples receipt-verification time only after the
+authority response arrives: sampling before Face ID and the network exchange
+would incorrectly reject a valid receipt committed during the request.
 
 Cancel, denial, expiry, or begin failure deletes only the exact namespaced
 Secure Enclave key when no enrolment record exists. Pending and transient

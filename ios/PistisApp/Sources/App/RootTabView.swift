@@ -9,7 +9,8 @@ struct RootTabView: View {
             NavigationStack {
                 IdentitiesView(
                     identities: projection.identities,
-                    loadFailure: enrollment.state == .failed
+                    loadFailure: enrollment.state == .failed,
+                    forgetExpired: forgetExpiredIdentity
                 )
             }
             .tabItem {
@@ -87,27 +88,76 @@ struct RootTabView: View {
               )
         else { throw PlatformFailure.invalidConfiguration }
 
+        try await forgetStoredEnrollment(
+            stored,
+            historyAction: "Local installation record forgotten",
+            authenticationReason: "Forget this expired Pistis installation",
+            verification: "Expired trust and local device key removed"
+        )
+    }
+
+    private func forgetExpiredIdentity(_ externalIdentityID: UUID) async throws {
+        let identifier = externalIdentityID.data
+        guard let stored = try await InstallationTrustKeychain.shared
+            .enrollmentInventoryRecord(),
+              stored.trust.externalIdentityID == identifier,
+              InstallationTrustKeychain.allowsLocalForget(
+                  active: stored.trust.active,
+                  expiresAt: stored.trust.expiresAt,
+                  now: Date()
+              )
+        else { throw PlatformFailure.invalidConfiguration }
+
+        try await forgetStoredEnrollment(
+            stored,
+            historyAction: "Local provider account forgotten",
+            authenticationReason: "Forget this expired Pistis provider account",
+            verification: "Expired identity, trust and local device key removed"
+        )
+    }
+
+    private func forgetStoredEnrollment(
+        _ stored: AuthenticatedEnrollmentOutput,
+        historyAction: String,
+        authenticationReason: String,
+        verification: String
+    ) async throws {
         if let event = EnrollmentProjection(enrollment: stored).history.first {
-            try LocalHistoryRepository.shared.record(event)
+            // Local history is diagnostic context, not authorisation state.
+            // A stale history encoding must never keep expired credentials.
+            try? LocalHistoryRepository.shared.record(event)
         }
-        let signer = try SecureEnclaveSigner(
-            namespace: hexadecimal(identifier),
-            authenticationReason: "Forget this expired Pistis installation"
+
+        // Remove the expired authorisation record before optional key cleanup.
+        // Without this record an orphaned, already-expired key cannot
+        // authorise. This prevents an invalidated Enclave key from trapping
+        // expired identity data on the phone.
+        let keyRemoved = try await LocalForgetTransaction.run(
+            removeTrust: {
+                try await InstallationTrustKeychain.shared.forgetExpired(
+                    installationID: stored.trust.installationID
+                )
+            },
+            removeKey: {
+                let signer = try SecureEnclaveSigner(
+                    namespace: hexadecimal(stored.trust.installationID),
+                    authenticationReason: authenticationReason
+                )
+                try signer.deleteLocalKey()
+            }
         )
-        try signer.deleteLocalKey()
-        try await InstallationTrustKeychain.shared.forgetExpired(
-            installationID: identifier
-        )
-        try LocalHistoryRepository.shared.record(
+        try? LocalHistoryRepository.shared.record(
             HistoryEvent(
                 id: UUID(),
-                action: "Local installation record forgotten",
+                action: historyAction,
                 installation: stored.trust.displayName,
                 occurredAt: Date().formatted(date: .abbreviated, time: .standard),
                 decision: "Completed locally",
                 signature: "No authority action requested",
                 transfer: "No server state changed",
-                verification: "Expired trust and local device key removed"
+                verification: keyRemoved
+                    ? verification
+                    : "Expired trust removed; local key cleanup required"
             )
         )
         await enrollment.refresh()
@@ -115,6 +165,23 @@ struct RootTabView: View {
 
     private func hexadecimal(_ data: Data) -> String {
         data.map { String(format: "%02x", $0) }.joined()
+    }
+}
+
+/// Orders local credential removal so optional key cleanup cannot retain trust.
+@MainActor
+enum LocalForgetTransaction {
+    static func run(
+        removeTrust: () async throws -> Void,
+        removeKey: () throws -> Void
+    ) async throws -> Bool {
+        try await removeTrust()
+        do {
+            try removeKey()
+            return true
+        } catch {
+            return false
+        }
     }
 }
 

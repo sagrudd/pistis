@@ -72,13 +72,23 @@ Local history is diagnostic context only; Prosopikon remains the authoritative
 audit source.
 
 An expired or inactive installation detail offers a destructive
-``Slide to forget this expired installation`` control and an accessible
-confirmation alternative. The action first verifies that the record cannot
-authorize, retains minimized diagnostic history, and deletes the exact
-namespaced Secure Enclave key and Keychain trust record. It does not contact
-the authority, revoke server state, or delete authority audit evidence.
-Current active trust never offers this local-only action; leaving an active
-installation requires the authority-backed ADR 0030 transaction.
+``Slide to forget this expired installation`` control. Its coupled provider
+identity detail independently offers ``Slide to forget this expired account``.
+Both have accessible confirmation alternatives and execute the same exact
+local-record transaction: re-check the immutable installation or external
+identity identifier, prove that the record cannot authorise, retain minimised
+diagnostic history, and delete the exact namespaced Secure Enclave key and
+Keychain trust record. Neither action contacts the authority, revokes server
+state, or deletes authority audit evidence. Current active trust never offers
+either local-only action; leaving an active installation or removing an active
+provider account requires the authority-backed ADR 0030 transaction.
+
+The expired Keychain authorisation record is removed before Secure Enclave key
+cleanup. An invalidated key must not trap expired identity data on the phone.
+If exact key deletion then fails, the absent trust record still prevents
+authorisation and local history reports ``key cleanup required``. Corrupt or
+unavailable diagnostic history likewise cannot block credential cleanup;
+Prosopikon remains the authoritative audit source.
 
 The app verifies the exact returned bundle and byte-identical registration,
 independently verifies the canonical ADR 0025 registration under the Secure

@@ -131,6 +131,13 @@ final class PlatformPolicyTests: XCTestCase {
                 "key"
             )
         )
+        XCTAssertEqual(
+            PlatformFailure.existingEnrolmentMustBeRemoved.safeUserMessage,
+            "An existing Pistis identity already occupies this device. Remove or revoke it before beginning a new enrolment."
+        )
+        XCTAssertTrue(
+            PlatformFailure.userVerificationLockedOut.safeUserMessage.contains("Face ID")
+        )
     }
 
     func testPasswordlessReadinessRequiresEveryIndependentGate() {

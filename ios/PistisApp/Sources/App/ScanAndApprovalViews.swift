@@ -15,31 +15,40 @@ struct ScanView: View {
                     orientation: "Point the camera at a Pistis QR code. Captured frames are not saved."
                 )
 
-                ZStack {
-                    RoundedRectangle(cornerRadius: MnRadius.large)
-                        .fill(MnColor.textPrimary)
-                        .aspectRatio(1, contentMode: .fit)
-                    if scanning {
-                        QRScannerCameraView(onResult: handleScan)
-                            .clipShape(RoundedRectangle(cornerRadius: MnRadius.large))
-                            .aspectRatio(1, contentMode: .fill)
-                        Image(systemName: "viewfinder")
-                            .resizable()
-                            .scaledToFit()
-                            .frame(width: 160, height: 160)
-                            .foregroundStyle(MnColor.onBrand)
-                            .accessibilityHidden(true)
-                    } else {
-                        Image(systemName: "qrcode.viewfinder")
-                            .resizable()
-                            .scaledToFit()
-                            .frame(width: 112, height: 112)
-                            .foregroundStyle(MnColor.onBrand)
-                            .accessibilityHidden(true)
+                Button {
+                    scanning ? stopScanning() : startScanning()
+                } label: {
+                    ZStack {
+                        RoundedRectangle(cornerRadius: MnRadius.large)
+                            .fill(MnColor.textPrimary)
+                            .aspectRatio(1, contentMode: .fit)
+                        if scanning {
+                            QRScannerCameraView(onResult: handleScan)
+                                .clipShape(RoundedRectangle(cornerRadius: MnRadius.large))
+                                .aspectRatio(1, contentMode: .fill)
+                            Image(systemName: "viewfinder")
+                                .resizable()
+                                .scaledToFit()
+                                .frame(width: 160, height: 160)
+                                .foregroundStyle(MnColor.onBrand)
+                                .accessibilityHidden(true)
+                        } else {
+                            Image(systemName: "qrcode.viewfinder")
+                                .resizable()
+                                .scaledToFit()
+                                .frame(width: 112, height: 112)
+                                .foregroundStyle(MnColor.onBrand)
+                                .accessibilityHidden(true)
+                        }
                     }
                 }
-                .accessibilityElement(children: .ignore)
-                .accessibilityLabel(scanning ? "Camera scanning for a Pistis QR code" : "QR scanner stopped")
+                .buttonStyle(.plain)
+                .accessibilityLabel(
+                    scanning
+                        ? "Stop scanning for a Pistis QR code"
+                        : "Start scanning for a Pistis QR code"
+                )
+                .accessibilityHint("Activates the camera without scrolling")
 
                 MnPanel {
                     VStack(alignment: .leading, spacing: MnSpacing.x2) {

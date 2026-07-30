@@ -61,3 +61,9 @@ a bearer or trusting mobile JSON.
 defines the protected pipe and distinct version-3 first-device QR needed to
 move one canonical invitation from an attended administrator CLI to the
 foreground phone without argv, environment, file, URL, or broker transport.
+
+[ADR 0029](0029-qr-bound-app-scoped-host-trust.md) is **Accepted**. It replaces
+ADR 0028's manual platform-trust prerequisite with a signed TLS public-key
+commitment, three-word attended comparison, and connection-scoped native
+trust. Cross-project protocol and native implementation remains subject to
+specialist review and exact-revision evidence.

@@ -16,6 +16,11 @@
 - Tracking issue: [#318](https://github.com/sagrudd/pistis/issues/318)
 - Depends on: accepted Pistis ADRs 0018, 0021, and 0023; acceptance of ADR
   0027; and acceptance of Prosopikon ADRs 0002 and 0003
+- Owner review note: On 2026-07-30 the project owner rejected the manual
+  platform-certificate trust process as an MVP and production onboarding
+  contract. The requirement in "Mobile verification and network use" item 4
+  is superseded by accepted ADR 0029. No development-CA Settings ceremony may
+  be claimed as MVP acceptance.
 
 ## Context
 

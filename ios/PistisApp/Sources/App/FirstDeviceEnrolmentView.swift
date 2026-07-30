@@ -67,9 +67,19 @@ struct FirstDeviceEnrolmentView: View {
                                     value: String(subject)
                                 )
                                 Text(
-                                    "Provider verification is complete. Trust is not installed until the reviewed receipt-key bundle and authority receipt verifier are available."
+                                    flow.enrolmentComplete
+                                        ? "The purpose-separated authority receipt and exact device binding were verified before installation trust was stored."
+                                        : "Check this immutable GitHub identity before allowing Face ID to create the device registration."
                                 )
                                 .font(.footnote)
+                                if !flow.enrolmentComplete {
+                                    Button("Confirm account and enrol with Face ID") {
+                                        Task { await flow.confirmVerifiedAccount() }
+                                    }
+                                    .buttonStyle(.borderedProminent)
+                                    .tint(MnColor.action)
+                                    .disabled(flow.busy)
+                                }
                             } else {
                                 Button("Begin secure enrolment") {
                                     Task { await flow.begin() }
@@ -99,12 +109,16 @@ private final class FirstDeviceEnrolmentFlow: ObservableObject {
     @Published private(set) var prompt: GitHubDeviceAuthorizationPrompt?
     @Published private(set) var verifiedSubject: UInt64?
     @Published private(set) var displayLogin: String?
+    @Published private(set) var enrolmentComplete = false
     @Published private(set) var status = "Ready to scan"
     @Published private(set) var failure: PlatformFailure?
     @Published private(set) var busy = false
 
     private var transport: ServerDrivenEnrolmentTransport?
     private var handle: ProviderVerificationHandle?
+    private var devicePublicKey: Data?
+    private var deviceKeyID: Data?
+    private var approvalGate = AttendedEnrolmentGate()
 
     func handleScan(_ result: Result<ScannedQRPayload, PlatformFailure>) {
         guard presentation == nil else { return }
@@ -130,6 +144,9 @@ private final class FirstDeviceEnrolmentFlow: ObservableObject {
         busy = true
         defer { busy = false }
         do {
+            guard try await !InstallationTrustKeychain.shared
+                .hasStoredEnrollment()
+            else { throw PlatformFailure.invalidConfiguration }
             let signer = try SecureEnclaveSigner(
                 namespace: presentation.installationID.hexadecimal,
                 authenticationReason: "Create this Pistis device identity"
@@ -140,6 +157,8 @@ private final class FirstDeviceEnrolmentFlow: ObservableObject {
                     + publicKey.compressedSEC1
             ))
             let operationID = try secureRandom(count: 16)
+            devicePublicKey = publicKey.compressedSEC1
+            deviceKeyID = keyID
             let handle = try await transport.begin(
                 operationID: operationID,
                 deviceKeyID: keyID,
@@ -151,6 +170,7 @@ private final class FirstDeviceEnrolmentFlow: ObservableObject {
             status = "Open GitHub and approve the displayed code"
             failure = nil
         } catch {
+            await discardUnenrolledKey(after: .beginFailure)
             fail(error)
         }
     }
@@ -169,21 +189,74 @@ private final class FirstDeviceEnrolmentFlow: ObservableObject {
             switch try await transport.status(handle) {
             case let .pending(pollAfter):
                 status = "GitHub approval is pending; retry in \(pollAfter / 1_000) seconds"
-            case let .verified(subject, login, _, _, _):
+            case let .verified(
+                subject,
+                login,
+                policyGeneration,
+                authorityChallenge,
+                challengeExpiry
+            ):
+                let approval = VerifiedProviderApproval(
+                    subject: subject,
+                    login: login,
+                    policyGeneration: policyGeneration,
+                    authorityChallenge: authorityChallenge,
+                    challengeExpiry: challengeExpiry
+                )
+                approvalGate.recordProviderVerification(approval)
                 verifiedSubject = subject
                 displayLogin = login
                 prompt = nil
-                status = "GitHub identity verified; receipt binding is pending"
+                status = "Review the verified GitHub account before enrolling"
             case .denied:
                 status = "GitHub denied this request"
+                await discardUnenrolledKey(after: .denied)
             case .cancelled:
                 status = "Enrolment was cancelled"
+                await discardUnenrolledKey(after: .cancelled)
             case .expired:
                 status = "The enrolment request expired"
+                await discardUnenrolledKey(after: .expired)
             case .consumed:
-                status = "This enrolment request was already consumed"
+                status = "Enrolment was consumed; retain this key and recover the receipt"
             }
         } catch {
+            fail(error)
+        }
+    }
+
+    func confirmVerifiedAccount() async {
+        guard !busy else { return }
+        busy = true
+        defer { busy = false }
+        var mayRetry = true
+        do {
+            let approval = try approvalGate.takeForExplicitConfirmation()
+            let now = Date()
+            let nowMilliseconds = UInt64(now.timeIntervalSince1970 * 1_000)
+            guard nowMilliseconds < approval.challengeExpiry else {
+                mayRetry = false
+                approvalGate.reset()
+                await discardUnenrolledKey(after: .expired)
+                throw PlatformFailure.invalidConfiguration
+            }
+            try await completeEnrolment(
+                subject: approval.subject,
+                policyGeneration: approval.policyGeneration,
+                authorityChallenge: approval.authorityChallenge,
+                challengeExpiry: approval.challengeExpiry,
+                now: now
+            )
+            approvalGate.markInstalled()
+            enrolmentComplete = true
+            status = "Device enrolled and authority receipt verified"
+        } catch {
+            if mayRetry {
+                approvalGate.restoreAfterFailedConfirmation()
+            } else {
+                verifiedSubject = nil
+                displayLogin = nil
+            }
             fail(error)
         }
     }
@@ -192,14 +265,102 @@ private final class FirstDeviceEnrolmentFlow: ObservableObject {
         if let transport, let handle {
             try? await transport.cancel(handle)
         }
+        await discardUnenrolledKey(after: .cancelled)
         presentation = nil
         transport = nil
         self.handle = nil
         prompt = nil
         verifiedSubject = nil
         displayLogin = nil
+        enrolmentComplete = false
+        approvalGate = AttendedEnrolmentGate()
         failure = nil
         status = "Ready to scan"
+    }
+
+    private func completeEnrolment(
+        subject: UInt64,
+        policyGeneration: UInt64,
+        authorityChallenge: Data,
+        challengeExpiry: UInt64,
+        now: Date
+    ) async throws {
+        guard let presentation, let transport, let handle,
+              let devicePublicKey, let deviceKeyID
+        else { throw PlatformFailure.invalidConfiguration }
+        let binding = try EnrolmentBindingInput(
+            operationID: handle.operationID,
+            presentation: presentation,
+            numericSubject: subject,
+            devicePublicKey: devicePublicKey,
+            deviceKeyID: deviceKeyID,
+            policyGeneration: policyGeneration,
+            authorityChallenge: authorityChallenge,
+            authorityChallengeExpiresAtMilliseconds: challengeExpiry
+        )
+        let signer = try SecureEnclaveSigner(
+            namespace: presentation.installationID.hexadecimal,
+            authenticationReason: "Bind this device to the Pistis authority"
+        )
+        let envelope = try SecureEnclaveProductionEnvelope(
+            signer: signer,
+            deviceKeyID: deviceKeyID
+        )
+        let registration = try await envelope.produceEnvelope(
+            canonicalPayload: EnrolmentBindingV1.payload(binding)
+        )
+        let receipt = try await transport.confirm(
+            handle,
+            deviceRegistrationCOSE: registration,
+            binding: binding,
+            now: now
+        )
+        let output = try AuthenticatedEnrollmentOutput(
+            trust: InstallationTrustRecord(
+                installationID: receipt.installationID,
+                displayName: receipt.installationName,
+                audience: receipt.audience,
+                userID: receipt.userID,
+                externalIdentityID: receipt.externalIdentityID,
+                fingerprint: receipt.fingerprint,
+                installationKeyID: receipt.installationKeyID,
+                installationPublicKey: receipt.installationPublicKey,
+                authorityKeyID: receipt.authorityKeyID,
+                authorityReceipt: receipt.exactReceiptCOSE,
+                policyGeneration: receipt.policyGeneration,
+                revocationGeneration: receipt.revocationGeneration,
+                expiresAt: receipt.expiresAt,
+                active: true
+            ),
+            responseContext: DeviceResponseContext(
+                deviceID: receipt.deviceID,
+                deviceKeyID: receipt.deviceKeyID,
+                userID: receipt.userID,
+                externalIdentityID: receipt.externalIdentityID
+            ),
+            allowedHosts: receipt.allowedHTTPSHosts
+        )
+        try await InstallationTrustKeychain.shared.installAuthenticated(output)
+    }
+
+    private func discardUnenrolledKey(
+        after outcome: IncompleteEnrolmentKeyOutcome
+    ) async {
+        let hasStoredEnrollment = (try? await InstallationTrustKeychain.shared
+            .hasStoredEnrollment()) == true
+        guard UnenrolledKeyLifecycle.shouldDiscard(
+            after: outcome,
+            hasStoredEnrollment: hasStoredEnrollment
+        ),
+              let presentation,
+              let signer = try? SecureEnclaveSigner(
+                  namespace: presentation.installationID.hexadecimal,
+                  authenticationReason: "Discard incomplete Pistis enrolment"
+              )
+        else { return }
+        try? signer.discardUnenrolledKey()
+        devicePublicKey = nil
+        deviceKeyID = nil
     }
 
     private func secureRandom(count: Int) throws -> Data {
@@ -218,6 +379,55 @@ private final class FirstDeviceEnrolmentFlow: ObservableObject {
         let safe = (error as? PlatformFailure) ?? .productionEnvelopeUnavailable
         failure = safe
         status = safe.safeUserMessage
+    }
+}
+
+struct VerifiedProviderApproval: Equatable {
+    let subject: UInt64
+    let login: String?
+    let policyGeneration: UInt64
+    let authorityChallenge: Data
+    let challengeExpiry: UInt64
+}
+
+struct AttendedEnrolmentGate {
+    enum State: Equatable {
+        case awaitingProvider
+        case awaitingExplicitConfirmation(VerifiedProviderApproval)
+        case confirming(VerifiedProviderApproval)
+        case installed
+    }
+
+    private(set) var state: State = .awaitingProvider
+
+    mutating func recordProviderVerification(
+        _ approval: VerifiedProviderApproval
+    ) {
+        state = .awaitingExplicitConfirmation(approval)
+    }
+
+    mutating func takeForExplicitConfirmation() throws
+        -> VerifiedProviderApproval
+    {
+        guard case let .awaitingExplicitConfirmation(approval) = state else {
+            throw PlatformFailure.invalidConfiguration
+        }
+        state = .confirming(approval)
+        return approval
+    }
+
+    mutating func markInstalled() {
+        guard case .confirming = state else { return }
+        state = .installed
+    }
+
+    mutating func restoreAfterFailedConfirmation() {
+        guard case let .confirming(approval) = state else { return }
+        state = .awaitingExplicitConfirmation(approval)
+    }
+
+    mutating func reset() {
+        state = .awaitingProvider
     }
 }
 

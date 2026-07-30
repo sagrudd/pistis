@@ -8,6 +8,9 @@
   terminal trust-channel design during the bare-earth demonstration review.
   Prosopikon producer, Monas transport, mobile, security, fixture, and
   exact-revision implementation review remain mandatory.
+- Amendment note: On 2026-07-30 the project owner accepted the exact
+  two-purpose authority bundle described below. It is a protocol amendment,
+  not a one-key compatibility mode.
 - Decision owners: Pistis CLI, protocol, QR, iOS and Android, Prosopikon
   authority, Monas transport, and security
 - Tracking issue: [#318](https://github.com/sagrudd/pistis/issues/318)
@@ -53,7 +56,7 @@ Define a distinct deterministic-CBOR outer frame:
   0: 3,                         / transport version /
   1: 3,                         / first-device presentation kind /
   2: bstr .cbor presentation,   / exact untagged COSE Sign1 bytes /
-  3: bstr .cbor descriptor      / exact authority descriptor bytes /
+  3: bstr .cbor authority-bundle / exact two-purpose bundle bytes /
 }
 ```
 
@@ -92,9 +95,22 @@ and an optional non-default port. It has no user information, path, query,
 fragment, wildcard, trailing dot, IP literal, percent encoding, or Unicode
 spelling. Enrolment paths are fixed by protocol and never supplied by the QR.
 
-Outer field 3 is the exact ADR-0023 authority descriptor. Its digest equals
-invitation key 8 and presentation key 14. Its derived key ID equals the COSE
-`kid`, and its public key verifies the signature. The presentation ID is
+Outer field 3 is the exact ADR-0023 authority bundle:
+
+```text
+{
+  0: 1,
+  1: "pistis.first-device-authority-bundle.v1",
+  2: bstr .cbor exact initial-invitation descriptor,
+  3: bstr .cbor exact mobile-receipt descriptor
+}
+```
+
+Its digest equals invitation key 8 and presentation key 14. The two
+descriptor key identifiers are valid and distinct. The presentation COSE
+`kid` is exactly the initial-invitation key and only that key verifies the
+presentation. A later mobile receipt must use exactly the separately
+committed mobile-receipt key. The presentation ID is
 unique correlation, not an independently consumed capability. Prosopikon
 stores only presentation and invitation digests, not another invitation
 secret. The canonical invitation and durable provider operation remain the

@@ -60,8 +60,18 @@ struct ServerDrivenEnrolmentTransport: Sendable {
         devicePublicKey: Data,
         keyAssurance: String
     ) async throws -> ProviderVerificationHandle {
-        guard operationID.count == 16, deviceKeyID.count == 32,
+        let parsedDeviceKey = try? P256.Signing.PublicKey(
+            compressedRepresentation: devicePublicKey
+        )
+        let derivedKeyID = Data(SHA256.hash(
+            data: Data("pistis:key-id:v1\0".utf8) + devicePublicKey
+        ))
+        guard operationID.count == 16,
+              !operationID.allSatisfy({ $0 == 0 }),
+              deviceKeyID.count == 32,
               devicePublicKey.count == 33,
+              parsedDeviceKey?.compressedRepresentation == devicePublicKey,
+              deviceKeyID == derivedKeyID,
               keyAssurance == "secure-enclave-biometry-current-set"
         else { throw PlatformFailure.invalidConfiguration }
         let body = try encode([
@@ -89,6 +99,8 @@ struct ServerDrivenEnrolmentTransport: Sendable {
               number(object["version"]) == 1,
               let verificationID = bytes(object["provider_verification_id"], count: 16),
               let capability = bytes(object["polling_capability"], count: 32),
+              !verificationID.allSatisfy({ $0 == 0 }),
+              !capability.allSatisfy({ $0 == 0 }),
               let userCode = text(object["user_code"], maximum: 9),
               validUserCode(userCode),
               text(object["verification_uri"], maximum: 31)
@@ -140,7 +152,9 @@ struct ServerDrivenEnrolmentTransport: Sendable {
                 let subject = canonicalSubject(subjectText),
                 let display = optionalText(object["display_login"], maximum: 128),
                 let policyGeneration = number(object["policy_generation"]),
+                policyGeneration > 0,
                 let challenge = bytes(object["authority_challenge"], count: 32),
+                !challenge.allSatisfy({ $0 == 0 }),
                 let challengeExpires = number(
                     object["authority_challenge_expires_at_ms"]
                 ),
@@ -180,14 +194,14 @@ struct ServerDrivenEnrolmentTransport: Sendable {
         else { throw PlatformFailure.productionEnvelopeUnavailable }
     }
 
-    /// Submit the exact signed binding and return the untrusted response.
-    ///
-    /// No caller may persist this value until the reviewed purpose-separated
-    /// receipt descriptor bundle and receipt verifier are implemented.
+    /// Submit and verify the exact signed binding and purpose-separated
+    /// authority receipt before returning storage-ready public facts.
     func confirm(
         _ handle: ProviderVerificationHandle,
-        deviceRegistrationCOSE: Data
-    ) async throws -> Data {
+        deviceRegistrationCOSE: Data,
+        binding: EnrolmentBindingInput,
+        now: Date
+    ) async throws -> VerifiedMobileEnrolmentReceipt {
         guard !deviceRegistrationCOSE.isEmpty,
               deviceRegistrationCOSE.count <= 2_048
         else { throw PlatformFailure.invalidConfiguration }
@@ -199,11 +213,41 @@ struct ServerDrivenEnrolmentTransport: Sendable {
             "polling_capability": base64URL(handle.pollingCapability),
             "device_registration_cose": base64URL(deviceRegistrationCOSE),
         ])
-        return try await rawRequest(
+        let response = try await request(
             path: Self.confirmPath,
             body: body,
             maximumResponseBytes: 16_384
         )
+        guard Set(response.keys) == [
+            "version", "authority_bundle", "device_registration_cose",
+            "mobile_enrolment_receipt_cose",
+        ],
+            number(response["version"]) == 1,
+            let bundle = variableBytes(
+                response["authority_bundle"],
+                maximum: 512
+            ),
+            let returnedRegistration = variableBytes(
+                response["device_registration_cose"],
+                maximum: 2_048
+            ),
+            let receipt = variableBytes(
+                response["mobile_enrolment_receipt_cose"],
+                maximum: 8_192
+            )
+        else { throw PlatformFailure.productionEnvelopeUnavailable }
+        do {
+            return try MobileEnrolmentReceiptV1.verify(
+                returnedAuthorityBundle: bundle,
+                returnedRegistrationCOSE: returnedRegistration,
+                receiptCOSE: receipt,
+                expectedRegistrationCOSE: deviceRegistrationCOSE,
+                binding: binding,
+                now: now
+            )
+        } catch {
+            throw PlatformFailure.productionEnvelopeUnavailable
+        }
     }
 
     private func handleBody(_ handle: ProviderVerificationHandle) throws -> Data {

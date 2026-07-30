@@ -26,7 +26,12 @@ public struct VerifiedFirstDevicePresentation: Equatable, Sendable {
     public let appConfigurationDigest: Data
     /// SHA-256 of the exact binary version-3 outer frame.
     public let presentationDigest: Data
-    public let authorityDescriptor: Data
+    /// Exact canonical purpose-separated authority bundle.
+    public let authorityBundle: Data
+    /// Exact descriptor permitted to sign the attended presentation.
+    public let initialInvitationDescriptor: Data
+    /// Exact descriptor permitted to sign the final authority receipt.
+    public let mobileReceiptDescriptor: Data
     /// Sensitive exact invitation; submit only to the fixed begin route.
     public let exactInvitation: Data
 }
@@ -52,10 +57,11 @@ public enum FirstDevicePresentationV3 {
         try outer.requireUnsigned(2)
         let coseBytes = try outer.byteString(maximum: 2_048)
         try outer.requireUnsigned(3)
-        let descriptorBytes = try outer.byteString(maximum: 256)
+        let bundleBytes = try outer.byteString(maximum: 512)
         guard outer.isAtEnd else { throw FirstDevicePresentationError.malformed }
 
-        let descriptor = try decodeDescriptor(descriptorBytes)
+        let bundle = try decodeBundle(bundleBytes)
+        let descriptor = bundle.initial
         let actualKeyID = Data(SHA256.hash(
             data: Data("pistis:key-id:v1\0".utf8) + descriptor.publicKey
         ))
@@ -101,9 +107,21 @@ public enum FirstDevicePresentationV3 {
         try payload.requireUnsigned(12); let originText = try payload.text(maximum: 255)
         try payload.requireUnsigned(13); let appDigest = try payload.bytes(count: 32)
         try payload.requireUnsigned(14); let descriptorDigest = try payload.bytes(count: 32)
-        guard payload.isAtEnd else { throw FirstDevicePresentationError.malformed }
+        guard payload.isAtEnd,
+              !presentationID.allSatisfy({ $0 == 0 }),
+              !authorityID.allSatisfy({ $0 == 0 }),
+              !tenantID.allSatisfy({ $0 == 0 }),
+              !principalID.allSatisfy({ $0 == 0 }),
+              !installationID.allSatisfy({ $0 == 0 }),
+              !installationName.isEmpty,
+              installationName
+                  == installationName.trimmingCharacters(
+                      in: .whitespacesAndNewlines
+                  ),
+              !audience.isEmpty
+        else { throw FirstDevicePresentationError.malformed }
 
-        let actualDescriptorDigest = Data(SHA256.hash(data: descriptorBytes))
+        let actualDescriptorDigest = Data(SHA256.hash(data: bundleBytes))
         guard invitation.installationID == installationID,
               invitation.audience == audience,
               invitation.descriptorDigest == actualDescriptorDigest,
@@ -131,7 +149,9 @@ public enum FirstDevicePresentationV3 {
             httpsOrigin: origin,
             appConfigurationDigest: appDigest,
             presentationDigest: Data(SHA256.hash(data: frame)),
-            authorityDescriptor: descriptorBytes,
+            authorityBundle: bundleBytes,
+            initialInvitationDescriptor: bundle.initialBytes,
+            mobileReceiptDescriptor: bundle.receiptBytes,
             exactInvitation: invitationBytes
         )
     }
@@ -180,6 +200,40 @@ public enum FirstDevicePresentationV3 {
         return (keyID, publicKey)
     }
 
+    private static func decodeBundle(_ bytes: Data) throws
+        -> (
+            initial: (keyID: Data, publicKey: Data),
+            receipt: (keyID: Data, publicKey: Data),
+            initialBytes: Data,
+            receiptBytes: Data
+        )
+    {
+        var reader = CeremonyCBORReader(bytes)
+        try reader.requireMap(count: 4)
+        try reader.requireUnsigned(0); try reader.requireUnsigned(1)
+        try reader.requireUnsigned(1)
+        try reader.requireText("pistis.first-device-authority-bundle.v1")
+        try reader.requireUnsigned(2)
+        let initialBytes = try reader.byteString(maximum: 256)
+        try reader.requireUnsigned(3)
+        let receiptBytes = try reader.byteString(maximum: 256)
+        guard reader.isAtEnd else {
+            throw FirstDevicePresentationError.invalidAuthority
+        }
+        let initial = try decodeDescriptor(initialBytes)
+        let receipt = try decodeDescriptor(receiptBytes)
+        let initialID = Data(SHA256.hash(
+            data: Data("pistis:key-id:v1\0".utf8) + initial.publicKey
+        ))
+        let receiptID = Data(SHA256.hash(
+            data: Data("pistis:key-id:v1\0".utf8) + receipt.publicKey
+        ))
+        guard initial.keyID == initialID, receipt.keyID == receiptID,
+              initial.keyID != receipt.keyID
+        else { throw FirstDevicePresentationError.invalidAuthority }
+        return (initial, receipt, initialBytes, receiptBytes)
+    }
+
     private static func decodeInvitation(_ bytes: Data) throws
         -> (
             id: Data,
@@ -201,7 +255,11 @@ public enum FirstDevicePresentationV3 {
         try reader.requireUnsigned(6); let installationID = try reader.bytes(count: 16)
         try reader.requireUnsigned(7); let audience = try reader.text(maximum: 128)
         try reader.requireUnsigned(8); let digest = try reader.bytes(count: 32)
-        guard reader.isAtEnd, issued < expires else {
+        guard reader.isAtEnd, issued < expires,
+              !id.allSatisfy({ $0 == 0 }),
+              !installationID.allSatisfy({ $0 == 0 }),
+              !audience.isEmpty
+        else {
             throw FirstDevicePresentationError.malformed
         }
         return (id, expires, installationID, audience, digest)

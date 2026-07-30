@@ -2,8 +2,9 @@
 
 These synthetic, secret-free test fixtures freeze accepted ADR 0028's
 deterministic-CBOR version-3/kind-3 outer frame, signed presentation,
-authority descriptor, and `PISTIS1` text. The P-256 scalar is deliberately
-public and compromised.
+two-purpose authority bundle, and `PISTIS1` text. Synthetic scalar 1 is the
+initial-invitation key and scalar 2 is the distinct mobile-receipt key; both
+are deliberately public and compromised.
 
 Rust and Swift consume `presentation-positive.json`. Negative cases are
 defined as deterministic mutations of those exact bytes so both

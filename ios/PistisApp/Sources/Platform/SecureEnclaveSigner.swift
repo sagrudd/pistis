@@ -1,5 +1,31 @@
 import Foundation
 
+enum IncompleteEnrolmentKeyOutcome: Sendable {
+    case beginFailure
+    case pending
+    case transientFailure
+    case denied
+    case cancelled
+    case expired
+    case consumed
+    case installed
+}
+
+enum UnenrolledKeyLifecycle {
+    static func shouldDiscard(
+        after outcome: IncompleteEnrolmentKeyOutcome,
+        hasStoredEnrollment: Bool
+    ) -> Bool {
+        guard !hasStoredEnrollment else { return false }
+        return switch outcome {
+        case .beginFailure, .denied, .cancelled, .expired:
+            true
+        case .pending, .transientFailure, .consumed, .installed:
+            false
+        }
+    }
+}
+
 #if canImport(LocalAuthentication) && canImport(Security)
 import LocalAuthentication
 import Security
@@ -105,6 +131,27 @@ final class SecureEnclaveSigner: @unchecked Sendable {
     /// readiness presentation. It does not create a key or grant authority.
     func hasExistingKey() throws -> Bool {
         try keyExists()
+    }
+
+    /// Delete only this namespaced Secure Enclave key after an enrolment that
+    /// never installed authority trust.
+    ///
+    /// The caller must first prove that no enrolment is stored. Recovery or
+    /// replacement of an enrolled key is a different reviewed lifecycle.
+    func discardUnenrolledKey() throws {
+        guard SecureEnclaveSigner.secureEnclaveIsAvailable else {
+            throw PlatformFailure.secureHardwareUnavailable
+        }
+        let query: [CFString: Any] = [
+            kSecClass: kSecClassKey,
+            kSecAttrKeyType: kSecAttrKeyTypeECSECPrimeRandom,
+            kSecAttrTokenID: kSecAttrTokenIDSecureEnclave,
+            kSecAttrApplicationTag: applicationTag,
+        ]
+        let status = SecItemDelete(query as CFDictionary)
+        guard status == errSecSuccess || status == errSecItemNotFound else {
+            throw PlatformFailure.signingFailed
+        }
     }
 
     private func devicePublicKey(from privateKey: SecKey) throws -> DevicePublicKey {

@@ -11,6 +11,12 @@ a Changelog and releases follow Semantic Versioning.
   pipe-only terminal QR presenter, shared Rust/Swift fixtures, iOS scanner,
   fixed-origin server-driven Device Flow transport, and canonical
   Secure-Enclave enrolment binding.
+- Commit distinct initial-invitation and mobile-receipt authority keys in one
+  canonical bundle; verify the exact device registration and receipt before a
+  create-once iOS Keychain install.
+- Require the user to review the immutable GitHub login and numeric subject
+  before a separate Face ID confirmation, with fail-closed orphan Secure
+  Enclave key cleanup and retry/recovery retention.
 - Bind the reviewed GitHub App configuration fixture, Info.plist digest, and
   Swift runtime digest with a deterministic regression test.
 - Correct the proposed first-device decisions so pending provider operations

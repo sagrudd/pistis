@@ -1,3 +1,4 @@
+import Crypto
 import Foundation
 
 public enum MobileEnrolmentError: Error, Equatable, Sendable {
@@ -25,8 +26,19 @@ public struct EnrolmentBindingInput: Sendable {
         authorityChallenge: Data,
         authorityChallengeExpiresAtMilliseconds: UInt64
     ) throws {
-        guard operationID.count == 16, numericSubject > 0,
+        let parsedDeviceKey = try? P256.Signing.PublicKey(
+            compressedRepresentation: devicePublicKey
+        )
+        let derivedKeyID = Data(SHA256.hash(
+            data: Data("pistis:key-id:v1\0".utf8) + devicePublicKey
+        ))
+        guard operationID.count == 16,
+              !operationID.allSatisfy({ $0 == 0 }),
+              numericSubject > 0,
               devicePublicKey.count == 33, deviceKeyID.count == 32,
+              parsedDeviceKey?.compressedRepresentation == devicePublicKey,
+              deviceKeyID == derivedKeyID,
+              policyGeneration > 0,
               authorityChallenge.count == 32,
               authorityChallengeExpiresAtMilliseconds
                   <= presentation.expiresAtMilliseconds

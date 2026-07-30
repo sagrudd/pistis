@@ -101,7 +101,7 @@ distribution, or licensing must trace their acceptance to that decision.
       forwarding or trusting a GitHub bearer token
 - [ ] Commit the invitation, provider binding, device, and receipt atomically
 - [ ] Add Device Flow and authority-transaction integration tests
-- [ ] Freeze the two-purpose invitation/receipt descriptor bundle, then verify
+- [x] Freeze the two-purpose invitation/receipt descriptor bundle, then verify
       the receipt and atomically install iOS Keychain trust
 
 ---
@@ -527,7 +527,7 @@ satisfy MVP acceptance.
 - [x] Expose the strict Rust verifier for signed production responses
 - [x] Accept the authenticated mobile enrolment exchange contract (ADR 0023)
 - [ ] Implement the bounded Monas exchange and Prosopikon enrolment transaction
-- [ ] Verify the signed trust bundle before atomic iOS Keychain installation
+- [x] Verify the signed trust bundle before atomic iOS Keychain installation
 - [ ] Share exact Rust/Swift enrolment fixtures and hostile cases
 - [ ] Implement minimum-permission GitHub device-flow enrolment
 - [ ] Freeze and implement the authenticated mobile receipt exchange (#318)

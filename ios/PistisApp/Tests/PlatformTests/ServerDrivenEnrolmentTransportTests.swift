@@ -1,3 +1,4 @@
+import CryptoKit
 import Foundation
 import PistisCore
 import XCTest
@@ -23,7 +24,7 @@ final class ServerDrivenEnrolmentTransportTests: XCTestCase {
         ])
         let handle = try await transport.begin(
             operationID: Data(repeating: 0x10, count: 16),
-            deviceKeyID: Data(repeating: 0x20, count: 32),
+            deviceKeyID: derivedKeyID(publicKey),
             devicePublicKey: publicKey,
             keyAssurance: "secure-enclave-biometry-current-set"
         )
@@ -53,12 +54,66 @@ final class ServerDrivenEnrolmentTransportTests: XCTestCase {
             "device_key_id", "device_public_key", "key_assurance",
             "app_configuration_digest",
         ])
+        XCTAssertEqual(
+            begin["key_assurance"] as? String,
+            "secure-enclave-biometry-current-set"
+        )
         for body in bodies {
             let text = try XCTUnwrap(String(data: body, encoding: .utf8))
             XCTAssertFalse(text.contains("access_token"))
             XCTAssertFalse(text.contains("refresh_token"))
             XCTAssertFalse(text.contains("adapter_handle"))
             XCTAssertFalse(text.contains("email"))
+        }
+    }
+
+    func testConfirmRejectsUnsignedOrWrongShapeReceiptResponse() async throws {
+        _ = EnrolmentURLProtocol.recordedBodies()
+        let configuration = URLSessionConfiguration.ephemeral
+        configuration.protocolClasses = [EnrolmentURLProtocol.self]
+        let presentation = try sharedPresentation()
+        let transport = ServerDrivenEnrolmentTransport(
+            presentation: presentation,
+            configuration: configuration
+        )
+        let publicKey = Data([
+            0x03, 0x6b, 0x17, 0xd1, 0xf2, 0xe1, 0x2c, 0x42,
+            0x47, 0xf8, 0xbc, 0xe6, 0xe5, 0x63, 0xa4, 0x40,
+            0xf2, 0x77, 0x03, 0x7d, 0x81, 0x2d, 0xeb, 0x33,
+            0xa0, 0xf4, 0xa1, 0x39, 0x45, 0xd8, 0x98, 0xc2,
+            0x96,
+        ])
+        let operationID = Data(repeating: 0x10, count: 16)
+        let deviceKeyID = derivedKeyID(publicKey)
+        let handle = try await transport.begin(
+            operationID: operationID,
+            deviceKeyID: deviceKeyID,
+            devicePublicKey: publicKey,
+            keyAssurance: "secure-enclave-biometry-current-set"
+        )
+        let binding = try EnrolmentBindingInput(
+            operationID: operationID,
+            presentation: presentation,
+            numericSubject: 123_456_789,
+            devicePublicKey: publicKey,
+            deviceKeyID: deviceKeyID,
+            policyGeneration: 7,
+            authorityChallenge: Data(repeating: 0xcc, count: 32),
+            authorityChallengeExpiresAtMilliseconds: 1_700_000_240_000
+        )
+        do {
+            _ = try await transport.confirm(
+                handle,
+                deviceRegistrationCOSE: Data([0x84]),
+                binding: binding,
+                now: Date(timeIntervalSince1970: 1_700_000_100)
+            )
+            XCTFail("unsigned response unexpectedly installed trust facts")
+        } catch {
+            XCTAssertEqual(
+                error as? PlatformFailure,
+                .productionEnvelopeUnavailable
+            )
         }
     }
 
@@ -69,11 +124,18 @@ final class ServerDrivenEnrolmentTransportTests: XCTestCase {
             presentation: try sharedPresentation(),
             configuration: configuration
         )
+        let publicKey = Data([
+            0x03, 0x6b, 0x17, 0xd1, 0xf2, 0xe1, 0x2c, 0x42,
+            0x47, 0xf8, 0xbc, 0xe6, 0xe5, 0x63, 0xa4, 0x40,
+            0xf2, 0x77, 0x03, 0x7d, 0x81, 0x2d, 0xeb, 0x33,
+            0xa0, 0xf4, 0xa1, 0x39, 0x45, 0xd8, 0x98, 0xc2,
+            0x96,
+        ])
         do {
             _ = try await transport.begin(
                 operationID: Data(repeating: 0x10, count: 16),
-                deviceKeyID: Data(repeating: 0x20, count: 32),
-                devicePublicKey: Data([0x03] + Array(repeating: 0x22, count: 32)),
+                deviceKeyID: derivedKeyID(publicKey),
+                devicePublicKey: publicKey,
                 keyAssurance: "secure-enclave-biometry-current-set"
             )
             XCTFail("redirect must fail")
@@ -81,6 +143,12 @@ final class ServerDrivenEnrolmentTransportTests: XCTestCase {
             XCTAssertEqual(error as? PlatformFailure, .productionEnvelopeUnavailable)
         }
     }
+}
+
+private func derivedKeyID(_ publicKey: Data) -> Data {
+    Data(SHA256.hash(
+        data: Data("pistis:key-id:v1\0".utf8) + publicKey
+    ))
 }
 
 private func sharedPresentation() throws -> VerifiedFirstDevicePresentation {

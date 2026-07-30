@@ -11,9 +11,10 @@ review and the evidence gates in that ADR.
    exact ADR 0025 Device Flow endpoints, HTTPS termination, installation
    signer, authority receipt signer, and current policy and revocation
    generations.
-2. Obtain the canonical authority descriptor from the configured public key.
-   Confirm that its key identifier is derived from that key and record the
-   descriptor digest through the approved administrator channel.
+2. Obtain the canonical two-purpose authority bundle. Confirm that both key
+   identifiers derive from their public keys, that the initial-invitation and
+   mobile-receipt keys differ, and record the exact bundle digest through the
+   approved administrator channel.
 3. Issue a short-lived, installation- and audience-specific invitation for the
    intended immutable Prosopikon principal. Accepted ADR 0028 pipes the
    canonical producer directly into a Pistis
@@ -36,11 +37,16 @@ invitation's authority-descriptor commitment, authority signature, exact
 registration digest, complete binding, generations, times, audience, and
 allowed hosts, followed by one atomic Keychain update.
 
-The current implementation reaches verified provider status and constructs
-the canonical device-signed binding. Final receipt verification and Keychain
-mutation remain disabled pending a reviewed two-key descriptor bundle:
-ADR 0028 currently commits the initial-invitation key, while ADR 0023 requires
-the distinct mobile-receipt key. Never reuse one key for both purposes.
+The app verifies the exact returned bundle and byte-identical registration,
+independently verifies the canonical ADR 0025 registration under the Secure
+Enclave device key, verifies the receipt only under the committed
+mobile-receipt key, and then performs one create-once Keychain installation.
+An exact replay is idempotent; a different stored enrolment is never replaced.
+
+GitHub success first renders the immutable login and numeric subject together
+with the installation context. The user must press the separate confirmation
+control before Face ID, device signing, authority confirmation, or Keychain
+installation can occur.
 
 ## Rotation
 
@@ -62,6 +68,12 @@ If the exchange fails, use only the coarse correlation identifier to inspect
 minimized authority audit records. An exact retry is safe only with the same
 invitation and byte-identical registration envelope. A changed device key or
 registration requires a fresh invitation.
+
+Cancel, denial, expiry, or begin failure deletes only the exact namespaced
+Secure Enclave key when no enrolment record exists. Pending and transient
+failures retain it for retry. A consumed operation retains it for receipt
+recovery because the authority may already have committed. Installed keys and
+keys referenced by any stored enrolment are never deleted by cleanup.
 
 Backups include the Prosopikon database, public authority material, signed
 receipts, and audit records under the normal protected backup procedure.

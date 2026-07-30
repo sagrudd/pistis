@@ -213,12 +213,12 @@ those exact values, the invitation/principal/tenant/installation tuple, App
 configuration digest, and Secure Enclave key in the canonical ADR 0025 COSE.
 Provider success alone is not enrolment.
 
-Final receipt verification remains fail-closed while the cross-project
-descriptor bundle is reviewed. The presentation currently commits an
-initial-invitation key, whereas the receipt must use the distinct
-mobile-enrolment-receipt key required by authority purpose separation. The app
-must not install Keychain trust until both committed descriptors and their
-roles are unambiguous and the returned receipt verifies under the receipt key.
+The accepted bundle commits distinct initial-invitation and mobile-receipt
+descriptors. Swift verifies the presentation only with the former and the
+receipt only with the latter, re-verifies the exact ADR 0025 device
+registration, and then creates the Keychain record once. Exact replay is
+idempotent; no code path replaces a different record. Verified GitHub facts
+are rendered before a separate explicit Face ID confirmation action.
 
 ## Design maintenance
 

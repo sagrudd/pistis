@@ -78,7 +78,7 @@ final class PistisUITests: XCTestCase {
         XCTAssertTrue(application.tabBars.buttons["Settings"].exists)
     }
 
-    func testGitHubDeviceFlowIsAvailableWithoutClaimingAuthorityEnrolment() {
+    func testProtectedFirstDeviceFlowIsAvailableWithoutDirectProviderLogin() {
         let application = XCUIApplication()
         application.launch()
         if application.buttons["Continue to Pistis"].exists {
@@ -86,14 +86,12 @@ final class PistisUITests: XCTestCase {
         }
 
         XCTAssertTrue(
-            application.staticTexts[
-                "GitHub App public client configuration verified"
-            ].exists
+            application.staticTexts["Protected first-device enrolment"]
+                .waitForExistence(timeout: 5)
         )
-        XCTAssertTrue(application.buttons["Verify with GitHub"].exists)
-        XCTAssertTrue(application.buttons["Verify with GitHub"].isEnabled)
-        XCTAssertTrue(application.buttons["Enrolment not configured"].exists)
-        XCTAssertFalse(application.buttons["Enrolment not configured"].isEnabled)
+        XCTAssertTrue(application.buttons["Enrol first device"].exists)
+        XCTAssertTrue(application.buttons["Enrol first device"].isEnabled)
+        XCTAssertFalse(application.buttons["Verify with GitHub"].exists)
     }
 
     func testScannerDoesNotPresentUnverifiedInputAsApproval() {

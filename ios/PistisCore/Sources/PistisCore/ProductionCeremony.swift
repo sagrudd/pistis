@@ -534,6 +534,11 @@ struct CeremonyCBORReader {
         }
         return try (0 ..< count).map { _ in try text(maximum: maximumText) }
     }
+    mutating func requireTrue() throws {
+        guard try byte() == 0xf5 else {
+            throw ProductionCeremonyError.invalidChallenge
+        }
+    }
     private mutating func header() throws -> (UInt8, Int) {
         let initial = try byte()
         let major = initial >> 5

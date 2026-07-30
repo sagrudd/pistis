@@ -37,10 +37,14 @@ xcodebuild -project ios/PistisApp/Pistis.xcodeproj \
   CODE_SIGNING_ALLOWED=NO build
 ```
 
-ADR 0021 forbids trust-on-first-scan. Tests may inject an enrolled record, but
-the application obtains production trust only from the authenticated
-Prosopikon enrolment transaction. Approval and denial both require fresh local
-authentication and a Secure Enclave signature; cancellation is not a denial.
+ADR 0021 forbids unauthenticated trust on first scan. ADR 0029 permits the
+distinct first-device scan because the authority signature authenticates the
+exact HTTPS origin and full TLS SPKI digest before the user confirms the
+independently displayed comparison words. Tests may inject an enrolled record,
+but the application obtains durable production trust only from the
+authenticated Prosopikon enrolment transaction. Approval and denial both
+require fresh local authentication and a Secure Enclave signature;
+cancellation is not a denial.
 
 ## Native validation
 
@@ -199,9 +203,31 @@ rerun the full ceremony rather than interpreting readiness as acceptance.
 ## GitHub enrolment boundary
 
 The Identities screen exposes only the accepted server-driven first-device
-surface. It scans and verifies the ADR 0028 version-3 presentation before
-network use, creates the Face-ID-protected Secure Enclave key, and calls only
-the fixed begin/status/cancel/confirm paths beneath the signed HTTPS origin.
+surface. It scans and verifies the ADR 0029 version-4 presentation before
+network use. The app then asks “Do you really trust this host?” and requires
+the three words displayed independently beside the CLI QR to be typed into
+three separate fields. It does not create a URL session, contact the host, or
+create the Face-ID-protected Secure Enclave key until those words match and
+the user selects **Trust this host**.
+
+The resulting ephemeral URL session accepts only the exact signed host and
+port, refuses redirects, extracts the leaf certificate's exact DER
+SubjectPublicKeyInfo, and compares its complete SHA-256 digest with the signed
+pin. It evaluates TLS server policy, hostname, and certificate validity with
+the leaf as an app-scoped anchor. A mismatch cancels the authentication
+challenge; there is no platform-trust fallback. `NSAllowsLocalNetworking`
+enables local HTTPS without enabling arbitrary loads.
+
+The words are a 33-bit human comparison checksum, not authentication
+material. The full 256-bit pin and authority signature remain mandatory. The
+app does not install a root certificate, configuration profile, global trust
+setting, or Safari trust. A different SPKI requires a new attended ceremony;
+a renewed certificate with the same SPKI remains valid while its normal TLS
+checks pass.
+
+After host confirmation, the app creates the Face-ID-protected Secure Enclave
+key and calls only the fixed begin/status/cancel/confirm paths beneath the
+signed HTTPS origin.
 The phone opens GitHub solely to let the user enter the displayed code. It
 never calls GitHub token or user APIs and has no representation for an adapter
 handle, provider token, email address, or caller-supplied subject.

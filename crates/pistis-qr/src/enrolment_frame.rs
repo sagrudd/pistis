@@ -1,4 +1,4 @@
-//! Accepted ADR 0028 version-3/kind-3 first-device QR framing.
+//! Accepted ADR 0029 version-4/kind-3 first-device QR framing.
 
 use crate::frame::{
     CHECKSUM_HEX_BYTES, MAX_TRANSFER_TEXT_BYTES, PREFIX, QrError, append_hex, checksum,
@@ -9,7 +9,7 @@ use base64::engine::general_purpose::URL_SAFE_NO_PAD;
 use pistis_canonical::{Value, from_slice_with_fields, to_vec};
 use std::collections::BTreeMap;
 
-const VERSION: u64 = 3;
+const VERSION: u64 = 4;
 const KIND: u64 = 3;
 const FIELDS: &[u64] = &[0, 1, 2, 3];
 const MAX_BUNDLE_BYTES: usize = 512;
@@ -23,7 +23,7 @@ pub struct EnrolmentTransferRef<'a> {
     pub authority_bundle: &'a [u8],
 }
 
-/// Exact binary material decoded from a version-3/kind-3 transfer.
+/// Exact binary material decoded from a version-4/kind-3 transfer.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct EnrolmentTransfer {
     /// Exact untagged COSE Sign1 invitation-presentation envelope.
@@ -84,10 +84,10 @@ pub fn encode_enrolment_frame(frame: &[u8]) -> Result<String, QrError> {
     })
 }
 
-/// Decode only a version-3/kind-3 first-device QR transfer.
+/// Decode only a version-4/kind-3 first-device QR transfer.
 ///
 /// Authentication QR decoders do not call this function and continue to
-/// reject version 3 and kind 3.
+/// reject version 4 and kind 3.
 ///
 /// # Errors
 ///

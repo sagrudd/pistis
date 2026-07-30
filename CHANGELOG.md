@@ -7,12 +7,13 @@ a Changelog and releases follow Semantic Versioning.
 
 ### Added
 
-- Propose QR-bound, app-scoped host trust in ADR 0029 and withdraw the manual
-  iOS root-certificate trust ceremony from MVP acceptance.
-- Add the accepted version-3 first-device presentation verifier, protected
-  pipe-only terminal QR presenter, shared Rust/Swift fixtures, iOS scanner,
-  fixed-origin server-driven Device Flow transport, and canonical
-  Secure-Enclave enrolment binding.
+- Accept and implement QR-bound, app-scoped iOS host trust from ADR 0029,
+  withdrawing the manual root-certificate/Settings ceremony from MVP
+  acceptance. Version-4 presentations bind the exact origin and DER-SPKI
+  SHA-256, derive three cross-language comparison words, and create an
+  ephemeral pinned transport only after explicit typed confirmation.
+- Retain the version-3 first-device presentation solely as downgrade and
+  historical evidence; new enrolment accepts only version 4.
 - Reject regular-file standard input at the first-device presenter so the
   sensitive authority frame can arrive only through an actual FIFO.
 - Commit distinct initial-invitation and mobile-receipt authority keys in one

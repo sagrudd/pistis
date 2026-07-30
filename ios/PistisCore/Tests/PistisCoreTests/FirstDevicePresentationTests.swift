@@ -6,7 +6,7 @@ import Testing
 private let fixtureURL = URL(fileURLWithPath: #filePath)
     .deletingLastPathComponent()
     .appendingPathComponent(
-        "../../../../fixtures/protocol-v3/first-device/presentation-positive.json"
+        "../../../../fixtures/protocol-v4/first-device/presentation-positive.json"
     )
     .standardizedFileURL
 
@@ -20,7 +20,7 @@ private func fixture() throws -> [String: Any] {
 @Test
 func canonicalFirstDeviceBindingIsStable() throws {
     let document = try fixture()
-    let presentation = try FirstDevicePresentationV3.verify(
+    let presentation = try FirstDevicePresentationV4.verify(
         qrText: try #require(document["qr_text"] as? String),
         expectedAppConfigurationDigest: try appDigest(document),
         now: Date(timeIntervalSince1970: 1_700_000_060)
@@ -77,7 +77,7 @@ private func appDigest(_ document: [String: Any]) throws -> Data {
     let document = try fixture()
     let qr = try #require(document["qr_text"] as? String)
     let now = try #require(document["now_ms"] as? NSNumber).uint64Value
-    let verified = try FirstDevicePresentationV3.verify(
+    let verified = try FirstDevicePresentationV4.verify(
         qrText: qr,
         expectedAppConfigurationDigest: try appDigest(document),
         now: Date(timeIntervalSince1970: Double(now) / 1_000)
@@ -87,6 +87,11 @@ private func appDigest(_ document: [String: Any]) throws -> Data {
     #expect(verified.installationName == "Mnemosyne evaluation")
     #expect(verified.audience == "prosopikon:pistis:enrolment")
     #expect(verified.httpsOrigin.absoluteString == "https://pistis.example.test:8443")
+    let tlsDigest = try hex(
+        try #require(document["tls_spki_sha256_hex"] as? String)
+    )
+    #expect(verified.tlsSPKISHA256 == tlsDigest)
+    #expect(verified.trustWords == ["crime", "tank", "rent"])
 }
 
 @Test func rejectsConfigurationExpiryCorruptionKindAndTruncation() throws {
@@ -94,24 +99,33 @@ private func appDigest(_ document: [String: Any]) throws -> Data {
     let qr = try #require(document["qr_text"] as? String)
     let digest = try appDigest(document)
     #expect(throws: FirstDevicePresentationError.wrongConfiguration) {
-        try FirstDevicePresentationV3.verify(
+        try FirstDevicePresentationV4.verify(
             qrText: qr,
             expectedAppConfigurationDigest: Data(repeating: 0, count: 32),
             now: Date(timeIntervalSince1970: 1_700_000_060)
         )
     }
     #expect(throws: FirstDevicePresentationError.expired) {
-        try FirstDevicePresentationV3.verify(
+        try FirstDevicePresentationV4.verify(
             qrText: qr,
             expectedAppConfigurationDigest: digest,
             now: Date(timeIntervalSince1970: 1_700_000_300)
         )
     }
     var frame = try hex(try #require(document["frame_hex"] as? String))
+    frame[2] = 3
+    #expect(throws: (any Error).self) {
+        try FirstDevicePresentationV4.verify(
+            qrText: transfer(frame),
+            expectedAppConfigurationDigest: digest,
+            now: Date(timeIntervalSince1970: 1_700_000_060)
+        )
+    }
+    frame[2] = 4
     frame[4] = 2
     let wrongKind = transfer(frame)
     #expect(throws: (any Error).self) {
-        try FirstDevicePresentationV3.verify(
+        try FirstDevicePresentationV4.verify(
             qrText: wrongKind,
             expectedAppConfigurationDigest: digest,
             now: Date(timeIntervalSince1970: 1_700_000_060)
@@ -120,7 +134,7 @@ private func appDigest(_ document: [String: Any]) throws -> Data {
     for length in 0 ..< qr.count {
         let end = qr.index(qr.startIndex, offsetBy: length)
         #expect(throws: (any Error).self) {
-            try FirstDevicePresentationV3.verify(
+            try FirstDevicePresentationV4.verify(
                 qrText: String(qr[..<end]),
                 expectedAppConfigurationDigest: digest,
                 now: Date(timeIntervalSince1970: 1_700_000_060)

@@ -97,6 +97,10 @@ distribution, or licensing must trace their acceptance to that decision.
       and distinct first-device QR
 - [x] Implement the accepted protected first-device presentation and
       cross-platform scanner contract
+- [x] Accept ADR 0029's QR-bound, app-scoped host-trust ceremony
+- [x] Implement the version-4 Rust/iOS verifier, comparison words, exact SPKI
+      parser, typed confirmation gate, and pinned ephemeral iOS transport
+- [ ] Implement and qualify the Prosopikon v4 producer and Android equivalent
 - [ ] Issue the one-use authority-verifiable provider capability without
       forwarding or trusting a GitHub bearer token
 - [ ] Commit the invitation, provider binding, device, and receipt atomically

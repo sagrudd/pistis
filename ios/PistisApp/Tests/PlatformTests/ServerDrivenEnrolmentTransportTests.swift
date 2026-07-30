@@ -11,7 +11,7 @@ final class ServerDrivenEnrolmentTransportTests: XCTestCase {
         let configuration = URLSessionConfiguration.ephemeral
         configuration.protocolClasses = [EnrolmentURLProtocol.self]
         let presentation = try sharedPresentation()
-        let transport = ServerDrivenEnrolmentTransport(
+        let transport = try ServerDrivenEnrolmentTransport(
             presentation: presentation,
             configuration: configuration
         )
@@ -72,7 +72,7 @@ final class ServerDrivenEnrolmentTransportTests: XCTestCase {
         let configuration = URLSessionConfiguration.ephemeral
         configuration.protocolClasses = [EnrolmentURLProtocol.self]
         let presentation = try sharedPresentation()
-        let transport = ServerDrivenEnrolmentTransport(
+        let transport = try ServerDrivenEnrolmentTransport(
             presentation: presentation,
             configuration: configuration
         )
@@ -120,7 +120,7 @@ final class ServerDrivenEnrolmentTransportTests: XCTestCase {
     func testRedirectAndUnknownStatusFailClosed() async throws {
         let configuration = URLSessionConfiguration.ephemeral
         configuration.protocolClasses = [HostileEnrolmentURLProtocol.self]
-        let transport = ServerDrivenEnrolmentTransport(
+        let transport = try ServerDrivenEnrolmentTransport(
             presentation: try sharedPresentation(),
             configuration: configuration
         )
@@ -155,13 +155,13 @@ private func sharedPresentation() throws -> VerifiedFirstDevicePresentation {
     let url = URL(fileURLWithPath: #filePath)
         .deletingLastPathComponent()
         .appendingPathComponent(
-            "../../../../fixtures/protocol-v3/first-device/presentation-positive.json"
+            "../../../../fixtures/protocol-v4/first-device/presentation-positive.json"
         )
         .standardizedFileURL
     let object = try XCTUnwrap(
         JSONSerialization.jsonObject(with: Data(contentsOf: url)) as? [String: Any]
     )
-    return try FirstDevicePresentationV3.verify(
+    return try FirstDevicePresentationV4.verify(
         qrText: try XCTUnwrap(object["qr_text"] as? String),
         expectedAppConfigurationDigest: try hex(
             try XCTUnwrap(object["app_configuration_digest_hex"] as? String)

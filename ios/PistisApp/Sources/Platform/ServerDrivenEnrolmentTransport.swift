@@ -42,14 +42,17 @@ struct ServerDrivenEnrolmentTransport: Sendable {
     init(
         presentation: VerifiedFirstDevicePresentation,
         configuration: URLSessionConfiguration = .ephemeral
-    ) {
+    ) throws {
         self.presentation = presentation
         configuration.httpShouldSetCookies = false
         configuration.urlCache = nil
         configuration.requestCachePolicy = .reloadIgnoringLocalCacheData
         session = URLSession(
             configuration: configuration,
-            delegate: RedirectRejectingSessionDelegate(),
+            delegate: try PinnedEnrolmentSessionDelegate(
+                origin: presentation.httpsOrigin,
+                expectedSPKISHA256: presentation.tlsSPKISHA256
+            ),
             delegateQueue: nil
         )
     }

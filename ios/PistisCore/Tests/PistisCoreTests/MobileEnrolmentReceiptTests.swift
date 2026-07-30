@@ -265,14 +265,14 @@ private func receiptPresentation() throws -> VerifiedFirstDevicePresentation {
     let url = URL(fileURLWithPath: #filePath)
         .deletingLastPathComponent()
         .appendingPathComponent(
-            "../../../../fixtures/protocol-v3/first-device/presentation-positive.json"
+            "../../../../fixtures/protocol-v4/first-device/presentation-positive.json"
         )
         .standardizedFileURL
     let object = try #require(
         JSONSerialization.jsonObject(with: Data(contentsOf: url))
             as? [String: Any]
     )
-    return try FirstDevicePresentationV3.verify(
+    return try FirstDevicePresentationV4.verify(
         qrText: try #require(object["qr_text"] as? String),
         expectedAppConfigurationDigest: try receiptHex(
             try #require(object["app_configuration_digest_hex"] as? String)

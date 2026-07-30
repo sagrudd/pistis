@@ -1,5 +1,6 @@
 //! Accepted ADR 0028 first-device presentation verification.
 
+use crate::{HOST_TRUST_WORDS_VERSION, HostTrustWords, derive_host_trust_words};
 use pistis_canonical::{Value, from_slice_with_fields};
 use pistis_cose::verify_sign1;
 use pistis_crypto::{PublicKey, derive_key_id, sha256};
@@ -10,9 +11,9 @@ const FRAME_FIELDS: &[u64] = &[0, 1, 2, 3];
 const BUNDLE_FIELDS: &[u64] = &[0, 1, 2, 3];
 const DESCRIPTOR_FIELDS: &[u64] = &[0, 1, 2, 3, 4];
 const INVITATION_FIELDS: &[u64] = &[0, 1, 2, 3, 4, 5, 6, 7, 8];
-const PRESENTATION_FIELDS: &[u64] = &[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14];
+const PRESENTATION_FIELDS: &[u64] = &[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16];
 /// Maximum binary outer-frame bytes accepted from the protected pipe.
-pub const MAX_FIRST_DEVICE_FRAME_BYTES: usize = 1_728;
+pub const MAX_FIRST_DEVICE_FRAME_BYTES: usize = 1_792;
 const MAX_INVITATION_BYTES: usize = 512;
 
 /// One authenticated authority-key bootstrap descriptor.
@@ -52,7 +53,7 @@ pub struct MobileEnrolmentInvitation {
     pub authority_descriptor_digest: [u8; 32],
 }
 
-/// Fully verified facts from one version-3/kind-3 presentation.
+/// Fully verified facts from one version-4/kind-3 presentation.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct FirstDevicePresentation {
     /// Correlation identifier; not a second one-use state machine.
@@ -73,6 +74,10 @@ pub struct FirstDevicePresentation {
     pub https_origin: String,
     /// Reviewed GitHub App configuration digest.
     pub app_configuration_digest: [u8; 32],
+    /// SHA-256 of the server leaf certificate's exact DER `SubjectPublicKeyInfo`.
+    pub tls_spki_sha256: [u8; 32],
+    /// Human-comparable checksum derived from the authenticated host binding.
+    pub trust_words: HostTrustWords,
     /// Parsed invitation with its secret deliberately omitted from this API.
     pub invitation: MobileEnrolmentInvitation,
     /// Authenticated, purpose-separated authority descriptors.
@@ -134,7 +139,7 @@ pub fn verify_first_device_presentation(
         FRAME_FIELDS,
         FirstDevicePresentationError::InvalidFrame,
     )?;
-    require_unsigned(outer.get(&0), 3, FirstDevicePresentationError::InvalidFrame)?;
+    require_unsigned(outer.get(&0), 4, FirstDevicePresentationError::InvalidFrame)?;
     require_unsigned(outer.get(&1), 3, FirstDevicePresentationError::InvalidFrame)?;
     let cose = take_bytes(
         outer.remove(&2),
@@ -168,12 +173,12 @@ fn decode_presentation_payload(
     )?;
     require_unsigned(
         payload.get(&0),
-        1,
+        2,
         FirstDevicePresentationError::InvalidPresentation,
     )?;
     require_text_exact(
         payload.get(&1),
-        "pistis.first-device-presentation.v1",
+        "pistis.first-device-presentation.v2",
         FirstDevicePresentationError::InvalidPresentation,
     )?;
     let presentation_id = fixed_bytes(
@@ -220,22 +225,22 @@ fn decode_presentation_payload(
         128,
         FirstDevicePresentationError::InvalidPresentation,
     )?;
-    let https_origin = canonical_https_origin(payload.remove(&12))?;
-    let app_configuration_digest = fixed_bytes(
-        payload.remove(&13),
-        FirstDevicePresentationError::InvalidPresentation,
-    )?;
-    let descriptor_digest = fixed_bytes::<32>(
-        payload.remove(&14),
-        FirstDevicePresentationError::InvalidPresentation,
-    )?;
+    let host = decode_host_binding(&mut payload)?;
     let actual_descriptor_digest = sha256(&authority_bundle.exact_bytes).into_bytes();
     if invitation.installation_id != installation_id || invitation.audience != audience {
         return Err(FirstDevicePresentationError::InvalidPresentation);
     }
-    if descriptor_digest != actual_descriptor_digest {
+    if host.descriptor_digest != actual_descriptor_digest {
         return Err(FirstDevicePresentationError::InvalidAuthority);
     }
+    let trust_words = derive_host_trust_words(
+        authority_id,
+        installation_id,
+        &host.https_origin,
+        host.tls_spki_sha256,
+        host.app_configuration_digest,
+    )
+    .map_err(|_| FirstDevicePresentationError::InvalidPresentation)?;
     Ok(FirstDevicePresentation {
         presentation_id,
         issued_at_ms,
@@ -244,11 +249,51 @@ fn decode_presentation_payload(
         tenant_id,
         principal_id,
         installation_name,
-        https_origin,
-        app_configuration_digest,
+        https_origin: host.https_origin,
+        app_configuration_digest: host.app_configuration_digest,
+        tls_spki_sha256: host.tls_spki_sha256,
+        trust_words,
         invitation,
         authority_bundle,
         exact_invitation,
+    })
+}
+
+type CanonicalFields = std::collections::BTreeMap<u64, Value>;
+
+struct HostBinding {
+    https_origin: String,
+    app_configuration_digest: [u8; 32],
+    descriptor_digest: [u8; 32],
+    tls_spki_sha256: [u8; 32],
+}
+
+fn decode_host_binding(
+    payload: &mut CanonicalFields,
+) -> Result<HostBinding, FirstDevicePresentationError> {
+    let https_origin = canonical_https_origin(payload.remove(&12))?;
+    let app_configuration_digest = fixed_bytes(
+        payload.remove(&13),
+        FirstDevicePresentationError::InvalidPresentation,
+    )?;
+    let descriptor_digest = fixed_bytes(
+        payload.remove(&14),
+        FirstDevicePresentationError::InvalidPresentation,
+    )?;
+    let tls_spki_sha256 = fixed_bytes(
+        payload.remove(&15),
+        FirstDevicePresentationError::InvalidPresentation,
+    )?;
+    require_unsigned(
+        payload.get(&16),
+        HOST_TRUST_WORDS_VERSION,
+        FirstDevicePresentationError::InvalidPresentation,
+    )?;
+    Ok(HostBinding {
+        https_origin,
+        app_configuration_digest,
+        descriptor_digest,
+        tls_spki_sha256,
     })
 }
 
@@ -417,7 +462,7 @@ fn exact_map(
     bytes: &[u8],
     fields: &[u64],
     error: FirstDevicePresentationError,
-) -> Result<std::collections::BTreeMap<u64, Value>, FirstDevicePresentationError> {
+) -> Result<CanonicalFields, FirstDevicePresentationError> {
     let values = from_slice_with_fields(bytes, fields).map_err(|_| error)?;
     (values.len() == fields.len())
         .then_some(values)

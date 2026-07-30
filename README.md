@@ -81,6 +81,14 @@ owner-only local agent until the durable authority reports approval, denial, or
 expiry. This removes any need to paste a response into an ordinary terminal;
 deployment still requires the reviewed agent and Prosopikon host adapter.
 
+First-device mobile enrolment uses the accepted
+[`ADR 0029`](docs/adr/0029-qr-bound-app-scoped-host-trust.md) ceremony. The
+protected CLI QR authenticates the exact HTTPS origin and TLS public-key pin;
+the phone requires three independently displayed comparison words before it
+creates an app-scoped pinned session. Operators do not install a root
+certificate or change iOS Certificate Trust Settings. See the
+[`mobile enrolment runbook`](docs/operations/mobile-enrolment.md).
+
 ## Security
 
 Do not report vulnerabilities in public issues. Follow

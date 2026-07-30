@@ -1,7 +1,7 @@
 import Crypto
 import Foundation
 
-/// An accepted ADR 0028 first-device presentation.
+/// An accepted ADR 0029 first-device presentation.
 public enum FirstDevicePresentationError: Error, Equatable, Sendable {
     case malformed
     case invalidAuthority
@@ -24,7 +24,11 @@ public struct VerifiedFirstDevicePresentation: Equatable, Sendable {
     public let audience: String
     public let httpsOrigin: URL
     public let appConfigurationDigest: Data
-    /// SHA-256 of the exact binary version-3 outer frame.
+    /// SHA-256 of the server leaf certificate's exact DER SubjectPublicKeyInfo.
+    public let tlsSPKISHA256: Data
+    /// Three human-comparable words derived from the authenticated host binding.
+    public let trustWords: [String]
+    /// SHA-256 of the exact binary version-4 outer frame.
     public let presentationDigest: Data
     /// Exact canonical purpose-separated authority bundle.
     public let authorityBundle: Data
@@ -36,8 +40,8 @@ public struct VerifiedFirstDevicePresentation: Equatable, Sendable {
     public let exactInvitation: Data
 }
 
-/// Accepted version-3/kind-3 QR decoder and authority verifier.
-public enum FirstDevicePresentationV3 {
+/// Accepted version-4/kind-3 QR decoder and authority verifier.
+public enum FirstDevicePresentationV4 {
     public static let maximumTextBytes = 2_331
 
     /// Verify a scanned first-device QR before any network or Keychain use.
@@ -52,7 +56,7 @@ public enum FirstDevicePresentationV3 {
         let frame = try decodeTransfer(qrText)
         var outer = CeremonyCBORReader(frame)
         try outer.requireMap(count: 4)
-        try outer.requireUnsigned(0); try outer.requireUnsigned(3)
+        try outer.requireUnsigned(0); try outer.requireUnsigned(4)
         try outer.requireUnsigned(1); try outer.requireUnsigned(3)
         try outer.requireUnsigned(2)
         let coseBytes = try outer.byteString(maximum: 2_048)
@@ -89,10 +93,10 @@ public enum FirstDevicePresentationV3 {
         }
 
         var payload = CeremonyCBORReader(cose.payload)
-        try payload.requireMap(count: 15)
-        try payload.requireUnsigned(0); try payload.requireUnsigned(1)
+        try payload.requireMap(count: 17)
+        try payload.requireUnsigned(0); try payload.requireUnsigned(2)
         try payload.requireUnsigned(1)
-        try payload.requireText("pistis.first-device-presentation.v1")
+        try payload.requireText("pistis.first-device-presentation.v2")
         try payload.requireUnsigned(2); let presentationID = try payload.bytes(count: 16)
         try payload.requireUnsigned(3); let issued = try payload.unsigned()
         try payload.requireUnsigned(4); let expires = try payload.unsigned()
@@ -107,6 +111,9 @@ public enum FirstDevicePresentationV3 {
         try payload.requireUnsigned(12); let originText = try payload.text(maximum: 255)
         try payload.requireUnsigned(13); let appDigest = try payload.bytes(count: 32)
         try payload.requireUnsigned(14); let descriptorDigest = try payload.bytes(count: 32)
+        try payload.requireUnsigned(15); let tlsSPKISHA256 = try payload.bytes(count: 32)
+        try payload.requireUnsigned(16)
+        try payload.requireUnsigned(HostTrustWordsV1.version)
         guard payload.isAtEnd,
               !presentationID.allSatisfy({ $0 == 0 }),
               !authorityID.allSatisfy({ $0 == 0 }),
@@ -135,6 +142,13 @@ public enum FirstDevicePresentationV3 {
               nowMilliseconds < expires, expires <= invitation.expires
         else { throw FirstDevicePresentationError.expired }
         let origin = try canonicalOrigin(originText)
+        let trustWords = try HostTrustWordsV1.derive(
+            authorityID: authorityID,
+            installationID: installationID,
+            httpsOrigin: originText,
+            tlsSPKISHA256: tlsSPKISHA256,
+            appConfigurationDigest: appDigest
+        )
         return VerifiedFirstDevicePresentation(
             presentationID: presentationID,
             issuedAtMilliseconds: issued,
@@ -148,6 +162,8 @@ public enum FirstDevicePresentationV3 {
             audience: audience,
             httpsOrigin: origin,
             appConfigurationDigest: appDigest,
+            tlsSPKISHA256: tlsSPKISHA256,
+            trustWords: trustWords,
             presentationDigest: Data(SHA256.hash(data: frame)),
             authorityBundle: bundleBytes,
             initialInvitationDescriptor: bundle.initialBytes,

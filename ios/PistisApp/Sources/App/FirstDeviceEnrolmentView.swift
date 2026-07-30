@@ -8,6 +8,9 @@ import PistisCore
 struct FirstDeviceEnrolmentView: View {
     @StateObject private var flow = FirstDeviceEnrolmentFlow()
     @Environment(\.openURL) private var openURL
+    @State private var trustWordOne = ""
+    @State private var trustWordTwo = ""
+    @State private var trustWordThree = ""
 
     var body: some View {
         ScrollView {
@@ -40,7 +43,33 @@ struct FirstDeviceEnrolmentView: View {
                                 label: "Authority",
                                 value: flow.presentation?.httpsOrigin.host ?? ""
                             )
-                            if let prompt = flow.prompt {
+                            if !flow.hostTrustConfirmed {
+                                Text("Do you really trust this host?")
+                                    .font(.headline)
+                                Text(
+                                    "Type the three words shown beside the QR on the host. Pistis will not contact the host until all three match."
+                                )
+                                .font(.footnote)
+                                HStack {
+                                    trustWordField("Word 1", text: $trustWordOne)
+                                    trustWordField("Word 2", text: $trustWordTwo)
+                                    trustWordField("Word 3", text: $trustWordThree)
+                                }
+                                MnEvidenceRow(
+                                    label: "Certificate key",
+                                    value: flow.presentation?.tlsSPKISHA256
+                                        .hexadecimal ?? ""
+                                )
+                                Button("Trust this host") {
+                                    flow.confirmHostTrust(words: [
+                                        trustWordOne,
+                                        trustWordTwo,
+                                        trustWordThree,
+                                    ])
+                                }
+                                .buttonStyle(.borderedProminent)
+                                .tint(MnColor.action)
+                            } else if let prompt = flow.prompt {
                                 Text(prompt.userCode)
                                     .font(.system(.title2, design: .monospaced).weight(.bold))
                                     .textSelection(.enabled)
@@ -101,6 +130,17 @@ struct FirstDeviceEnrolmentView: View {
         .navigationTitle("Enrol first device")
         .mnScreenBackground()
     }
+
+    private func trustWordField(
+        _ label: String,
+        text: Binding<String>
+    ) -> some View {
+        TextField(label, text: text)
+            .textInputAutocapitalization(.never)
+            .autocorrectionDisabled()
+            .textFieldStyle(.roundedBorder)
+            .accessibilityLabel(label)
+    }
 }
 
 @MainActor
@@ -110,6 +150,7 @@ private final class FirstDeviceEnrolmentFlow: ObservableObject {
     @Published private(set) var verifiedSubject: UInt64?
     @Published private(set) var displayLogin: String?
     @Published private(set) var enrolmentComplete = false
+    @Published private(set) var hostTrustConfirmed = false
     @Published private(set) var status = "Ready to scan"
     @Published private(set) var failure: PlatformFailure?
     @Published private(set) var busy = false
@@ -124,23 +165,48 @@ private final class FirstDeviceEnrolmentFlow: ObservableObject {
         guard presentation == nil else { return }
         do {
             let payload = try result.get()
-            let verified = try FirstDevicePresentationV3.verify(
+            let verified = try FirstDevicePresentationV4.verify(
                 qrText: payload.text,
                 expectedAppConfigurationDigest:
                     GitHubEnrolmentConfiguration.reviewedAppConfigurationDigest,
                 now: Date()
             )
             presentation = verified
-            transport = ServerDrivenEnrolmentTransport(presentation: verified)
-            status = "Signed presentation verified"
+            status = "Compare the three host verification words"
             failure = nil
         } catch {
             fail(error)
         }
     }
 
+    func confirmHostTrust(words: [String]) {
+        guard !hostTrustConfirmed, let presentation, words.count == 3 else {
+            return
+        }
+        let entered = words.map {
+            $0.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        }
+        guard entered == presentation.trustWords else {
+            failure = .invalidConfiguration
+            status = "Verification words do not match. Do not trust this host."
+            return
+        }
+        do {
+            transport = try ServerDrivenEnrolmentTransport(
+                presentation: presentation
+            )
+            hostTrustConfirmed = true
+            failure = nil
+            status = "Host trust confirmed; no network request has been sent"
+        } catch {
+            fail(error)
+        }
+    }
+
     func begin() async {
-        guard !busy, let presentation, let transport else { return }
+        guard !busy, hostTrustConfirmed, let presentation, let transport else {
+            return
+        }
         busy = true
         defer { busy = false }
         do {
@@ -273,6 +339,7 @@ private final class FirstDeviceEnrolmentFlow: ObservableObject {
         verifiedSubject = nil
         displayLogin = nil
         enrolmentComplete = false
+        hostTrustConfirmed = false
         approvalGate = AttendedEnrolmentGate()
         failure = nil
         status = "Ready to scan"

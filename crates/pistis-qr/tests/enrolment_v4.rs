@@ -3,7 +3,7 @@ use pistis_qr::{
 };
 
 const FIXTURE: &str =
-    include_str!("../../../fixtures/protocol-v3/first-device/presentation-positive.json");
+    include_str!("../../../fixtures/protocol-v4/first-device/presentation-positive.json");
 
 fn fixture() -> serde_json::Value {
     serde_json::from_str(FIXTURE).unwrap()
@@ -37,7 +37,7 @@ fn rejects_wrong_version_kind_corruption_and_every_truncation() {
     let mut frame = hex(document["frame_hex"].as_str().unwrap());
     frame[2] = 2;
     assert_eq!(encode_enrolment_frame(&frame), Err(QrError::InvalidFrame));
-    frame[2] = 3;
+    frame[2] = 4;
     frame[4] = 2;
     assert_eq!(encode_enrolment_frame(&frame), Err(QrError::InvalidFrame));
 

@@ -1,7 +1,9 @@
 # Mobile enrolment operations
 
 This runbook describes the operator obligations accepted by
-[ADR 0023](../adr/0023-authenticated-mobile-enrolment-exchange.md). The
+[ADR 0023](../adr/0023-authenticated-mobile-enrolment-exchange.md) and the
+first-host trust ceremony accepted by
+[ADR 0029](../adr/0029-qr-bound-app-scoped-host-trust.md). The
 exchange must remain disabled until its implementation passes cross-project
 review and the evidence gates in that ADR.
 
@@ -15,20 +17,30 @@ review and the evidence gates in that ADR.
    identifiers derive from their public keys, that the initial-invitation and
    mobile-receipt keys differ, and record the exact bundle digest through the
    approved administrator channel.
-3. Issue a short-lived, installation- and audience-specific invitation for the
+3. Calculate SHA-256 over the HTTPS leaf certificate's exact DER
+   SubjectPublicKeyInfo and supply that reviewed 32-byte digest to the
+   Prosopikon presentation producer. Do not hash the complete certificate, a
+   PEM rendering, a raw EC point, or a textual fingerprint.
+4. Issue a short-lived, installation- and audience-specific invitation for the
    intended immutable Prosopikon principal. Accepted ADR 0028 pipes the
    canonical producer directly into a Pistis
    alternate-screen QR presenter and permits scanning only from the app's
    explicit enrolment surface. Never place the invitation in argv, an
    environment value, file, URL, clipboard, ticket, log, or retained
    screenshot.
-4. Have the user complete the foreground GitHub App Device Flow. The phone
+5. On the phone, scan the QR, check the displayed installation and origin,
+   type the three words shown independently by the CLI, and select **Trust
+   this host**. No certificate profile, Certificate Trust Settings change,
+   browser warning, or public certificate authority is required. A mismatch
+   is a stop condition: do not retry with words supplied by the phone or the
+   network host.
+6. Have the user complete the foreground GitHub App Device Flow. The phone
    calls only the signed-origin begin/status/cancel/confirm routes. The
    installation-local adapter owns GitHub polling and clears its transient
    device code, user code, and provider token on every terminal path.
    A successful provider poll is not enrolment: the signed device registration
    and Prosopikon transaction must also complete.
-5. Confirm only the coarse enrolment outcome and generated audit correlation.
+7. Confirm only the coarse enrolment outcome and generated audit correlation.
    Do not ask for or record the invitation, device/user code, provider token,
    registration envelope, or device private key.
 
@@ -84,7 +96,9 @@ state, cookies, and device private keys.
 
 Before enabling the route, retain a Jenkins dossier pinning exact Pistis,
 Prosopikon, Monas, and DASObjectStore revisions and the shared Rust/Swift
-fixtures. Separately retain a redacted, signed physical-iPhone record for
+fixtures. Evidence must record the non-secret origin, SPKI digest, trust-word
+derivation version, and confirmation outcome, but never the invitation.
+Separately retain a redacted, signed physical-iPhone record for
 foreground Device Flow, Secure Enclave, Face ID, authority exchange,
 verification, and Keychain mutation. A test using a synthetic software key
 does not replace that device record.

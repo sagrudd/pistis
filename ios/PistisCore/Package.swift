@@ -19,7 +19,8 @@ let package = Package(
             name: "PistisCore",
             dependencies: [
                 .product(name: "Crypto", package: "swift-crypto"),
-            ]
+            ],
+            resources: [.process("Resources")]
         ),
         .testTarget(name: "PistisCoreTests", dependencies: ["PistisCore"]),
     ]

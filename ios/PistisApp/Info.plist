@@ -41,6 +41,11 @@
 	<string>Iv23lievHWZTGyot0BXa</string>
 	<key>NSCameraUsageDescription</key>
 	<string>Pistis scans authentication and approval challenges. Camera frames are not retained.</string>
+	<key>NSAppTransportSecurity</key>
+	<dict>
+		<key>NSAllowsLocalNetworking</key>
+		<true/>
+	</dict>
 	<key>NSFaceIDUsageDescription</key>
 	<string>Pistis uses Face ID to verify you before each device signature.</string>
 	<key>NSLocalNetworkUsageDescription</key>

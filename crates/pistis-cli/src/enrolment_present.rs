@@ -109,9 +109,14 @@ pub fn present_first_device<R: Read, W: Write, A: BufRead>(
     writeln!(
         screen.writer,
         "SENSITIVE FIRST-DEVICE INVITATION — do not record this screen\n\
-         Installation: {}\nOrigin: {}\nExpires (Unix ms): {}\n\
+         Installation: {}\nOrigin: {}\nVerification words: {}  {}  {}\nExpires (Unix ms): {}\n\
          On the phone, open Pistis → Enrol first device and scan this QR.\n",
-        verified.installation_name, verified.https_origin, verified.expires_at_ms
+        verified.installation_name,
+        verified.https_origin,
+        verified.trust_words.as_array()[0],
+        verified.trust_words.as_array()[1],
+        verified.trust_words.as_array()[2],
+        verified.expires_at_ms
     )
     .and_then(|()| screen.writer.write_all(rendered.text().as_bytes()))
     .and_then(|()| {

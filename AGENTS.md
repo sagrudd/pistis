@@ -14,7 +14,7 @@ features.
 - Use Rust edition 2024 and MSRV 1.90.0.
 - Use stable Rust, safe Rust by default, and workspace-managed dependencies.
 - Any `unsafe` block requires a safety comment, focused tests, and review.
-- Prefer explicit domain types, deterministic behavior, structured errors, and
+- Prefer explicit domain types, deterministic behaviour, structured errors, and
   minimal public APIs.
 - Cryptographic code must use reviewed libraries; never invent cryptography.
 - Run rustfmt and clippy with warnings denied.
@@ -27,7 +27,7 @@ features.
   concerns. Do not create broad utility modules or cyclic architectural
   dependencies.
 - Split code whenever a file or module has multiple reasons to change,
-  unrelated public responsibilities, or independently testable behavior.
+  unrelated public responsibilities, or independently testable behaviour.
 - Prefer Rust source files below 1,000 physical lines. CI rejects larger files
   unless their exact path and a concrete, reviewed rationale appear in
   `architecture-exceptions.txt`.
@@ -42,7 +42,7 @@ features.
 - Every task includes unit tests.
 - Add integration tests at component boundaries and regression tests for every
   defect.
-- Protocol behavior requires conformance fixtures and negative cases.
+- Protocol behaviour requires conformance fixtures and negative cases.
 - Security-sensitive parsers and verifiers should be fuzzed.
 - Tests must be deterministic and must not depend on public network services.
 - Run the complete relevant local gates before opening or updating a pull
@@ -61,8 +61,12 @@ features.
 ## Documentation
 
 - Document every public API and security-relevant invariant.
-- Update operator and protocol documentation with behavior changes.
+- Update operator and protocol documentation with behaviour changes.
 - Treat stale or broken documentation as a defect.
+- Use British English in user-facing application text and maintained
+  documentation. Keep externally fixed protocol fields, API names, code
+  identifiers, and quoted third-party terminology unchanged.
+- Run `cargo run --locked -p xtask -- language` before review.
 - Record architectural and protocol decisions as numbered ADRs in `docs/adr`.
 - Maintain the documentation as a Sphinx project using the Read the Docs theme.
 - Jenkins is the authoritative documentation builder. Its pinned Expedition
@@ -115,7 +119,7 @@ features.
 - Agents must never make a major version increment without explicit agreement
   from the project owner and development agents.
 - Update versions only for completed task groups, never merely for commits.
-- Releases require a clean main branch, changelog, signed tag, artifacts,
+- Releases require a clean main branch, changelog, signed tag, artefacts,
   checksums, SBOM, provenance, and passing release gates.
 
 ## Issue and pull request workflow
@@ -132,7 +136,7 @@ features.
 
 - Follow `SECURITY.md`; never disclose vulnerabilities in public issues.
 - Minimize dependencies, pin CI actions by commit, and keep lockfiles.
-- Run dependency vulnerability, license, source, and advisory checks.
+- Run dependency vulnerability, licence, source, and advisory checks.
 - Never commit secrets, credentials, production personal data, or private keys.
 - Aim for hermetic, reproducible builds and retain provenance.
 

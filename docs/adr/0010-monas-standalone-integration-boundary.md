@@ -24,7 +24,7 @@ owned by later milestones.
 The issue wording for EPIC 10 is intentionally concise, while M8 in
 `MILESTONE.md` describes a broader standalone service, embedding API, CLI,
 reference application, and packaging surface. An explicit boundary is required
-before adding security-sensitive host or command-line behavior.
+before adding security-sensitive host or command-line behaviour.
 
 ## Decision
 
@@ -77,7 +77,7 @@ The standalone profile fails closed unless reviewed evidence proves all of:
 - an opaque session delivered only through a `Secure`, `HttpOnly`,
   appropriately `SameSite` cookie and never returned through a Pistis API;
 - tested invalidation for logout, expiry, device/key/binding revocation,
-  recovery, and authorization-generation changes;
+  recovery, and authorisation-generation changes;
 - backup, restore, migration, file-permission, and corruption-recovery
   acceptance evidence; and
 - a pinned Jenkins build proving the applicable tests, documentation, package
@@ -97,7 +97,7 @@ transaction, session, and audit ports.
 
 The embedding API uses explicit request, response, purpose, and outcome types.
 It does not expose raw session tokens, cookies, private keys, database handles,
-HTTP responses, or product authorization claims. Authentication, consequential
+HTTP responses, or product authorisation claims. Authentication, consequential
 approval, and artefact signing are separate purposes with separate policies.
 Only authentication may request a browser session.
 
@@ -167,7 +167,7 @@ minimization boundary in ADR 0009 and uses independent non-secret correlation
 identifiers. Monas may project a bounded event into its operator log, but
 Pistis standalone state remains the authoritative cryptographic event record.
 Product applications receive only the verified host context needed for their
-own authorization and never receive a Pistis response, session token, cookie,
+own authorisation and never receive a Pistis response, session token, cookie,
 provider credential, or raw evidence package.
 
 ## Consequences
@@ -190,7 +190,7 @@ provider credential, or raw evidence package.
 - Embed the in-memory Pistis authentication service in Monas: rejected because
   it lacks durable atomic completion and would create a second session map.
 - Replace Prosopikon sessions with Pistis sessions: rejected because Pistis
-  authentication must not become host authorization or session authority.
+  authentication must not become host authorisation or session authority.
 - Treat the existing password CLI or HTTP routes as the Pistis demo: rejected
   because they prove a different trust and ceremony model.
 - Mark report signing and offline detached verification complete with an

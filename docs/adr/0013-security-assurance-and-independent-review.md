@@ -77,13 +77,13 @@ The review scope includes:
 
 - Rust parsers, canonicalization, signature verification, challenge lifecycle,
   policy, persistence, CLI, and resource limits;
-- Synoptikon and Monas authentication, session, authorization, audit, bootstrap,
+- Synoptikon and Monas authentication, session, authorisation, audit, bootstrap,
   recovery, and migration adapters;
 - iOS and Android key generation, biometric binding, callback handling, local
   storage, logging, backup, screenshots, deep links, intents, permissions, and
   release configuration;
 - QR and direct-local transport, hostile discovery, endpoint binding, fallback,
-  and denial-of-service behavior;
+  and denial-of-service behaviour;
 - GitHub and Google enrolment, broker boundaries, callback correlation, token
   lifetime, and provider failure;
 - detached evidence, trusted-time, revocation, historic policy, and offline
@@ -126,7 +126,7 @@ Exceptions are narrow, owned, time-bounded, justified by impact analysis, and
 recorded in the residual-risk register. Suppressing a scanner finding without
 this record fails the gate.
 
-Code hardening reviews unsafe code, panic and allocation behavior, secret
+Code hardening reviews unsafe code, panic and allocation behaviour, secret
 zeroization, logging and diagnostics, error redaction, rate and size limits,
 timeouts, file permissions, secure configuration defaults, and fail-closed
 dependency failure. Tests include logs and crash/error paths, not only success.
@@ -136,7 +136,7 @@ dependency failure. Tests include logs and crash/error paths, not only success.
 The privacy assessment inventories each collected, inferred, transmitted,
 displayed, logged, backed-up, exported, and deleted data field. For each field
 it records purpose, authority, source, recipients, storage location, retention,
-deletion behavior, user visibility, and whether it is required.
+deletion behaviour, user visibility, and whether it is required.
 
 Stable provider subjects, device and assurance metadata, authentication and
 recovery events, network classifications, mobile history, diagnostic data, and
@@ -144,7 +144,7 @@ portable evidence are reviewed explicitly. Data minimization is the default.
 Full IP addresses, user-agent strings, provider tokens, session material,
 capabilities, nonces, signatures, and raw evidence are not retained merely for
 convenience. Platform privacy declarations and store disclosures must match
-observed behavior.
+observed behaviour.
 
 ### Cryptographic review
 

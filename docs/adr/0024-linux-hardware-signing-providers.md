@@ -76,7 +76,7 @@ A nominally standalone installation may use:
 
 1. a local physical TPM2;
 2. a qualified vTPM whose snapshot, migration, cloning, rollback, and
-   hypervisor trust behavior has been accepted;
+   hypervisor trust behaviour has been accepted;
 3. a local or passed-through PKCS#11 device; or
 4. an explicitly configured network PKCS#11 HSM.
 
@@ -94,13 +94,13 @@ canonical public key and derived Pistis key identifier, and records the
 provider type plus non-secret locator required to reopen that exact key.
 
 Provisioning must not silently replace a key. An existing locator whose public
-key differs from the enrolled identity is a hard failure. Authorization
+key differs from the enrolled identity is a hard failure. Authorisation
 values, PINs, sessions, private objects, sealed contexts containing sensitive
-authorization material, and provider credentials never appear in arguments,
+authorisation material, and provider credentials never appear in arguments,
 environment variables, repository files, logs, browser responses, or Jenkins
 evidence.
 
-Provider authorization is delivered through a reviewed service credential or
+Provider authorisation is delivered through a reviewed service credential or
 hardware policy. Device-node, group, systemd, and module access is limited to
 the dedicated authority service. Provider libraries and packages are pinned
 and included in supply-chain evidence.
@@ -113,8 +113,8 @@ is revoke, invalidate affected sessions, provision a new key, and re-enrol the
 new public identity.
 
 A vTPM is not accepted merely because the guest exposes `/dev/tpmrm0`.
-Qualification must cover snapshot and clone behavior, rollback resistance,
-migration authorization, host-administrator trust, and whether two guests can
+Qualification must cover snapshot and clone behaviour, rollback resistance,
+migration authorisation, host-administrator trust, and whether two guests can
 operate the same effective key. Unresolved duplication or rollback risk
 disqualifies that vTPM for production authority.
 
@@ -133,12 +133,12 @@ All providers pass the same provider-neutral conformance suite:
 - absent, wrong, replaced, locked, timed-out, malformed, and unavailable
   provider failures;
 - concurrency, resource exhaustion, restart, and recovery;
-- redacted error, log, metric, and audit behavior; and
+- redacted error, log, metric, and audit behaviour; and
 - proof that no fallback provider is invoked.
 
 TPM2 and PKCS#11 add hardware-specific negative tests. Jenkins retains exact
 source, dependency, package, module, host, configuration-shape, and public-key
-evidence. It never receives a production private key or authorization value.
+evidence. It never receives a production private key or authorisation value.
 A hardware-gated native lane is required; portable unit tests alone do not
 qualify a provider.
 
@@ -160,14 +160,14 @@ qualify a provider.
 
 The main threats are provider substitution, software fallback, key
 duplication, VM rollback or cloning, overly broad device access, malicious
-PKCS#11 modules, authorization-value disclosure, signature malleability, and
+PKCS#11 modules, authorisation-value disclosure, signature malleability, and
 availability attacks. Static provider selection, enrolled public-key binding,
 post-signature verification, low-S enforcement, pinned modules, least
 privilege, bounded sessions, fail-closed readiness, and hardware-specific
 evidence address those threats.
 
 Public keys, key identifiers, provider type, coarse readiness, and non-secret
-hardware identity may be retained. Private keys, PINs, authorization values,
+hardware identity may be retained. Private keys, PINs, authorisation values,
 provider sessions, and sensitive sealed material are never evidence.
 
 ## Alternatives considered

@@ -67,11 +67,11 @@ the command.
 
 - Login can use the existing version 1 protocol once the local authentication
   backend and enrolled mobile clients are connected.
-- Parser, renderer, protected-input, and orchestration behavior can be tested
+- Parser, renderer, protected-input, and orchestration behaviour can be tested
   deterministically without keys or a network.
 - The CLI cannot honestly claim production login interoperability until the
   backend adapter and real iOS scan-and-sign evidence exist.
 - Exact-action approval and child-session hand-off remain fail-closed release
-  blockers rather than being approximated with unsafe behavior.
+  blockers rather than being approximated with unsafe behaviour.
 - Jenkins can retain portable contract evidence now and must add native-device
   iOS, dual-architecture CLI, and end-to-end dossiers before EPIC-16 is closed.

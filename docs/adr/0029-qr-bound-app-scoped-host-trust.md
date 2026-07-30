@@ -205,7 +205,7 @@ certificate-validity result cannot rotate the pin.
 
 Removing an installation from Pistis deletes its app-scoped trust record.
 Removing the application removes its Keychain record subject to the documented
-iOS Keychain lifecycle; reinstall and restore behavior must be tested and must
+iOS Keychain lifecycle; reinstall and restore behaviour must be tested and must
 not silently resurrect an active installation without the accepted recovery
 policy.
 

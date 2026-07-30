@@ -3,7 +3,7 @@
 GitHub is a trust anchor for enrolment, not an online dependency for routine
 Pistis authentication. ADR 0025 defines the v0.1 GitHub App Device Flow
 profile. It supersedes callback, OAuth-state, PKCE, confidential-broker, and
-authorization-code transport requirements from earlier ADRs for v0.1.
+authorisation-code transport requirements from earlier ADRs for v0.1.
 
 ## Register the GitHub App
 
@@ -11,8 +11,8 @@ Use the reviewed organisation-owned GitHub App for each environment. The v0.1
 profile requires:
 
 - Device Flow enabled;
-- user authorization-token expiration enabled;
-- no installation-time user authorization;
+- user authorisation-token expiration enabled;
+- no installation-time user authorisation;
 - no active webhook or subscribed events;
 - no explicit repository, organisation, or account permissions;
 - GitHub's unavoidable implicit Metadata read only; and
@@ -51,7 +51,7 @@ only after an explicit foreground action and fresh platform authentication.
 The app must show the account returned by the authenticated-user endpoint
 before the user confirms the invitation, installation, and device binding.
 The non-zero numeric `id` is the provider subject. Login, display name, profile
-URL, and public email are mutable snapshots and never authorize a user.
+URL, and public email are mutable snapshots and never authorise a user.
 
 ## Authority commit
 
@@ -85,11 +85,11 @@ stable.
 ## Incident response
 
 If transient credentials may have leaked, revoke the GitHub App user
-authorization, clear pending attempts, inspect redacted audit events, and begin
+authorisation, clear pending attempts, inspect redacted audit events, and begin
 a fresh invitation and Device Flow. A suspected subject, user-code, invitation,
 device-key, or App-configuration substitution is security sensitive and
 follows `SECURITY.md`.
 
-A future authorization-code or confidential-broker profile requires a distinct
+A future authorisation-code or confidential-broker profile requires a distinct
 accepted ADR and profile identifier. It must not silently replace or fall back
 from the v0.1 Device Flow profile.

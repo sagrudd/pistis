@@ -35,7 +35,7 @@ GitHub returns only to the registered HTTPS callback:
 GET /auth/github/callback
 ```
 
-Monas consumes the authorization code at that callback and retains all GitHub
+Monas consumes the authorisation code at that callback and retains all GitHub
 credentials server-side. It redirects the initiating iOS application to:
 
 ```text
@@ -45,7 +45,7 @@ pistis://oauth/callback?correlation=<opaque-one-use-value>
 The correlation is a fresh, unpredictable, single-use value. It is bound in
 server-side state to the OAuth state, the pending enrolment transaction, the
 invitation digest, and the device key identifier. It is neither a GitHub
-authorization code nor a bearer credential for any other operation. The
+authorisation code nor a bearer credential for any other operation. The
 custom-scheme callback contains no OAuth code, token, PKCE value, provider
 subject, invitation, or mutable identity data.
 
@@ -207,7 +207,7 @@ This is an elapsed-time bound, not a calendar-year calculation. Checked
 arithmetic is mandatory and an unrepresentable bound fails closed.
 
 Invitation expiry, provider-operation expiry, authority-challenge expiry, and
-authorization-capability expiry remain independent short-lived bounds. Every
+authorisation-capability expiry remain independent short-lived bounds. Every
 one of them must be current when the authority commits an enrolment; none may
 be copied into key 3. Current device state, exact account and installation
 binding, policy generation, and revocation generation still have to be checked
@@ -220,7 +220,7 @@ incidental effect. Previously signed receipts and stored idempotent responses
 are immutable: an exact replay returns the original bytes and original expiry.
 Implementations must never rewrite existing evidence to apply a newer lifetime
 rule. An installation holding an expired receipt must re-enrol or complete the
-future refresh ceremony before it can authorize a new operation.
+future refresh ceremony before it can authorise a new operation.
 
 ### Strict success response
 

@@ -108,7 +108,7 @@ Do not merge a native-platform claim without evidence for the affected gate:
   evidence for distribution work.
 
 The Linux Jenkins stage proves only the portable Swift core. It cannot prove
-SwiftUI compilation, camera behavior, Secure Enclave behavior, signing, or
+SwiftUI compilation, camera behaviour, Secure Enclave behaviour, signing, or
 TestFlight distribution.
 
 ## Current native evidence
@@ -178,7 +178,7 @@ unknown fields, and decoded trust and response-context values must pass their
 normal validating initializers again before the Keychain record is usable.
 
 `SystemBrowserEnrollmentCoordinator` retains the previously reviewed,
-fail-closed authorization-code scaffold for a possible future broker profile.
+fail-closed authorisation-code scaffold for a possible future broker profile.
 ADR 0025 excludes it from v0.1 and it must not be wired into the application.
 The v0.1 Device Flow coordinator must perform the same sole Keychain mutation
 only after the exact Prosopikon authority receipt verifies.

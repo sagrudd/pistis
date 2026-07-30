@@ -97,12 +97,12 @@ a new accepted ADR and protocol version; it must not be silently ignored.
 Apple Security produces DER-encoded ECDSA signatures and X9.63 public keys.
 The iOS adapter must strictly convert DER to the 64-byte low-S form and X9.63
 to the compressed SEC1 form before applying this profile. Conversion failure,
-Secure Enclave unavailability, changed biometric enrollment, cancellation, or
+Secure Enclave unavailability, changed biometric enrolment, cancellation, or
 authentication fallback fails closed.
 
 The portable Rust and Swift implementations must consume the same positive
-and negative byte fixtures. Unit or simulator tests prove encoding behavior,
-not Secure Enclave or Face ID behavior. Production interoperability remains
+and negative byte fixtures. Unit or simulator tests prove encoding behaviour,
+not Secure Enclave or Face ID behaviour. Production interoperability remains
 blocked until a physical Face ID device produces a signature which the Rust
 verifier accepts, and the exact-revision Jenkins dossier retains that result.
 

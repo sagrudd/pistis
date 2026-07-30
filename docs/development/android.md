@@ -57,7 +57,7 @@ biometric strength, or attestation.
 Real-device acceptance requires the M11 matrix: Pixel, Samsung, a supported
 lower-cost device, StrongBox and non-StrongBox paths, fingerprint and supported
 face/device-credential paths, reinstall, key invalidation, network change, and
-camera behavior. Record device model, OS and patch level, security level,
+camera behaviour. Record device model, OS and patch level, security level,
 authentication type, source revision, and result without collecting personal
 device data.
 
@@ -68,7 +68,7 @@ Play credentials or `/dev/kvm`. Instrumented emulator work requires a separate
 reviewed KVM-enabled Jenkins worker and approved task. Physical-device
 acceptance is retained separately.
 
-PR jobs build debug or unsigned release artifacts only. A future protected
+PR jobs build debug or unsigned release artefacts only. A future protected
 release task must bind an exact reviewed `main` or tag to isolated upload-key
 and Play credentials.
 

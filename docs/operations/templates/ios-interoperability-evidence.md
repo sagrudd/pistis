@@ -54,6 +54,6 @@ production personal data.
 ## Retention
 
 - Redacted evidence archive digest:
-- Jenkins dossier artifact:
+- Jenkins dossier artefact:
 - Owner acceptance reference:
 - Deviations or follow-up issues:

@@ -104,7 +104,7 @@ installation and endpoint binding.
 ## Secure channel and downgrade rules
 
 mDNS authenticates nothing. A matching service type, friendly name, address,
-or opaque endpoint identifier cannot authorize a connection. The direct
+or opaque endpoint identifier cannot authorise a connection. The direct
 channel must be authenticated by material already bound through the reviewed
 QR/pairing ceremony, such as an exact installation certificate or key.
 Platform or enterprise CA trust alone must not replace that binding.
@@ -161,7 +161,7 @@ real-device permission tests. Simulator discovery is not real-LAN acceptance.
 Android requires a reviewed `NsdManager` or equivalent adapter, API-level
 permission policy, lifecycle cancellation, network-change handling, and
 physical-device tests across supported vendors. Emulator networking is not
-evidence for multicast, Wi-Fi isolation, or OEM behavior.
+evidence for multicast, Wi-Fi isolation, or OEM behaviour.
 
 Both clients need words-first states for permission rationale, searching,
 multiple installations, unavailable multicast, endpoint rejection, fallback,
@@ -191,7 +191,7 @@ discover mDNS.
 ## Jenkins contract
 
 Ordinary hermetic CI can validate metadata parsing, state transitions,
-privacy-field rejection, fixtures, and fake-adapter behavior. Real multicast
+privacy-field rejection, fixtures, and fake-adapter behaviour. Real multicast
 acceptance needs a separately reviewed network test environment with controlled
 interfaces, IPv4/IPv6, packet capture/redaction policy, and explicit capability
 allowance. The current generic Pistis Jenkins task is not that environment.

@@ -68,7 +68,7 @@ invitation material are never projected into these screens.
 
 An expired or inactive record remains visible as inventory but never passes
 the active-enrolment accessor used by authentication. Inventory presentation
-and authorization therefore cannot become competing trust decisions.
+and authorisation therefore cannot become competing trust decisions.
 
 The same record contributes a minimized local ``Device enrolled`` history
 entry recording receipt verification and installation. Existing version-one

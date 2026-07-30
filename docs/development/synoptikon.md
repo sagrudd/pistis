@@ -11,7 +11,7 @@ Pistis owns canonical challenge semantics, signature and binding verification,
 device policy, and authentication evidence. Synoptikon owns:
 
 - Axum routes and Yew presentation;
-- local users, roles, tenants, projects, and authorization;
+- local users, roles, tenants, projects, and authorisation;
 - configuration and MySQL, PostgreSQL, and SQLite migrations;
 - durable ceremonies and its normal server-side sessions;
 - central audit projection; and
@@ -61,8 +61,8 @@ Use Synoptikon's existing resource-index and task-pane pattern:
 - loading, empty, stale, permission, transport, and unavailable states are
   explicit.
 
-Client-side visibility is never authorization. Every read and mutation is
-authorized by Synoptikon on the server.
+Client-side visibility is never authorisation. Every read and mutation is
+authorised by Synoptikon on the server.
 
 ## Required contract tests
 

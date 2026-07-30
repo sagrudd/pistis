@@ -86,7 +86,7 @@ prohibited.
   biometric policy and mobile signatures still protect consequential actions.
 - Owner-only permissions and bounded framing are mandatory, not deployment
   advice.
-- Durable single-use behavior can be tested across repository reopen and
+- Durable single-use behaviour can be tested across repository reopen and
   concurrent consumption.
 - Host authority issuance, audit retention, and ceremony consumption cannot
   commit as partially successful operations.
@@ -95,4 +95,4 @@ prohibited.
 - A production daemon is not enabled until its platform peer-credential and
   signing-provider tests pass.
 - Slow or incomplete clients are bounded and cannot silently disable peer
-  authorization for later requests.
+  authorisation for later requests.

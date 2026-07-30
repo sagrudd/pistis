@@ -30,7 +30,7 @@ human user. None can complete ADR 0023's authority transaction.
 
 GitHub Device Flow is available to headless and CLI software. The installation
 can therefore own the provider exchange while the user still opens GitHub on
-the phone and authorizes there. This requires no Mnemosyne-hosted broker,
+the phone and authorises there. This requires no Mnemosyne-hosted broker,
 callback URL, client secret, webhook, App installation, repository permission,
 or push service. It does require a narrow local provider-verifier boundary and
 changes ADR 0025's token location.
@@ -52,7 +52,7 @@ provider bindings, devices, generations, one-use state, receipts, and audit.
 The adapter may call only authority methods that create, complete, deny, or
 expire one provider-verification operation.
 
-Acceptance authorizes implementation but does not activate a deployment. The
+Acceptance authorises implementation but does not activate a deployment. The
 shared contract, authority transaction, Monas route isolation, mobile
 verification, and retained evidence gates below must all pass before
 production enrolment is enabled.
@@ -206,7 +206,7 @@ modes. The first invitation is issued by the attended Prosopikon CLI while
 Monas is stopped; its bearer is delivered only through the reviewed enrolment
 bootstrap input and is never written to the environment file, command line,
 logs, or evidence. Exact packaging, socket activation, restart, and cleanup
-behavior require Monas and Prosopikon review before implementation.
+behaviour require Monas and Prosopikon review before implementation.
 
 ### Audit and privacy
 
@@ -227,7 +227,7 @@ would create an oracle.
 - specialist security, Prosopikon, Monas, mobile, and privacy approval of this
   decision and its threat analysis;
 - a versioned Prosopikon schema decision for the one durable operation and its
-  restart, uniqueness, expiry, consumption, and migration behavior;
+  restart, uniqueness, expiry, consumption, and migration behaviour;
 - exact Rust/Swift/Kotlin request, response, binding, and negative fixtures;
 - deterministic tests for every GitHub response, bound, interval, retry,
   timeout, cancellation, restart, concurrency, replay, rollback, and
@@ -239,7 +239,7 @@ would create an oracle.
 - tests proving provider credentials never enter Monas transport, Prosopikon,
   SQLite, logs, evidence, crash reports, or mobile storage;
 - an attended consented GitHub canary using the reviewed development App and a
-  fresh authority, followed by authorization and installation revocation;
+  fresh authority, followed by authorisation and installation revocation;
 - retained exact-revision Jenkins evidence and physical-iPhone enrolment; and
 - a documented kill switch that disables new provider verification without
   revoking already-enrolled local devices by implication.
@@ -270,7 +270,7 @@ would create an oracle.
 - Run two Device Flows, one on the phone and one on the host: rejected because
   they can resolve different accounts and create an avoidable misbinding risk.
 - Use a GitHub App JWT or installation token: rejected because those identify
-  the App or installation, not the authorizing human.
+  the App or installation, not the authorising human.
 - Ask an administrator to enter the subject: rejected because manual entry is
   forgeable and substitution-prone.
 - Operate a shared Mnemosyne confidential broker: deferred because the MVP and

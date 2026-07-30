@@ -17,8 +17,8 @@ introduced.
 
 | Surface | Selection | Rationale |
 | --- | --- | --- |
-| iOS | Network.framework/Bonjour | Native permission and lifecycle behavior; declares the exact Bonjour service and local-network purpose. |
-| Android | `NsdManager` | Native DNS-SD/mDNS discovery, network association, callbacks, and evolving local-network permission behavior. |
+| iOS | Network.framework/Bonjour | Native permission and lifecycle behaviour; declares the exact Bonjour service and local-network purpose. |
+| Android | `NsdManager` | Native DNS-SD/mDNS discovery, network association, callbacks, and evolving local-network permission behaviour. |
 | Rust host | pinned `mdns-sd` behind a Pistis port | Safe Rust, no imposed async runtime, publication and browse support, conflict handling, and monitorable daemon lifecycle. |
 
 The Rust dependency is linked only into `pistis-discovery`, not protocol,
@@ -27,7 +27,7 @@ locked. The crate is dual MIT/Apache-2.0 licensed, declares MSRV 1.71, forbids
 unsafe code in its library, and supplies probing, announcements, goodbye
 records, conflict events, and daemon shutdown. Its transitive graph is retained
 by Jenkins dependency evidence and remains subject to the repository advisory,
-license, and source gates.
+licence, and source gates.
 
 The portable `WireAdvertisement` projection is implemented independently of
 the selected library. It emits the exact service type, random instance name,
@@ -44,7 +44,7 @@ authoritative publication lifetime and performs a graceful unregister at that
 deadline. Normal unregister sends goodbye records. If the process crashes,
 peer DNS caches can retain an opaque instance/endpoint record for the library's
 RFC-default cache TTL; that stale record has no authority and the endpoint
-ceremony rejects it after expiry. This residual availability/privacy behavior
+ceremony rejects it after expiry. This residual availability/privacy behaviour
 must be included in physical-network acceptance and must not be represented as
 a 30-second DNS cache TTL.
 
@@ -62,7 +62,7 @@ rejected because it exposes device presence and reverses the privacy model.
 Apple Bonjour provides local service publication and discovery. The app must
 declare the browsed Bonjour service and local-network usage explanation.
 Android NSD is asynchronous and based on DNS-SD over mDNS; discovery must be
-stopped when no longer required. Android permission and multicast behavior
+stopped when no longer required. Android permission and multicast behaviour
 varies by platform and SDK-extension level, so capability checks belong in the
 native adapter rather than shared protocol code.
 

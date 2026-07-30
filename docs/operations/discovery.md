@@ -8,7 +8,7 @@ local multicast or direct connectivity is unavailable.
 For the MVP, discovery runs only while the user has opened Pistis and entered
 nearby pending requests. There is no closed-app notification or cloud push
 service. Do not keep discovery running in the background to approximate
-notification behavior.
+notification behaviour.
 
 ## Enablement gates
 
@@ -23,10 +23,10 @@ Before enabling local discovery, retain evidence for:
 4. one verifier/consumption path shared by direct and QR transfer;
 5. bounded browse, resolve, connect, and completion deadlines;
 6. clean unregister, sleep/wake, background, interface-change, and shutdown
-   behavior;
+   behaviour;
 7. IPv4, IPv6, multiple-interface, conflicting-service, and client-isolation
    tests;
-8. explicit iOS and Android permission/lifecycle behavior on physical devices;
+8. explicit iOS and Android permission/lifecycle behaviour on physical devices;
 9. browser integration through the host backend rather than browser mDNS;
 10. redacted logs, metrics, diagnostics, and evidence; and
 11. Jenkins and native-device dossiers for exact release revisions.
@@ -81,7 +81,7 @@ redacted diagnostics.
 
 A resolved candidate contains an address, port, endpoint identifier, and OS
 interface index, but none is authoritative. Never connect until the exact
-installation-signed endpoint binding authorizes the candidate. Bind the socket
+installation-signed endpoint binding authorises the candidate. Bind the socket
 to the retained interface index and apply the pinned TLS public-key digest in
 the secure-transport task. Do not ask a user to choose between unverified
 same-name services.
@@ -117,10 +117,10 @@ subsequent denial, Settings changes, Wi-Fi changes, backgrounding, and device
 restart on physical hardware.
 
 On Android, confirm the reviewed API-level permissions and network-service
-discovery behavior for every supported OS/vendor tier. Test permission denial,
+discovery behaviour for every supported OS/vendor tier. Test permission denial,
 Wi-Fi changes, process/background lifecycle, device restart, power policy, and
 StrongBox/non-StrongBox devices independently; key assurance does not prove
-network behavior.
+network behaviour.
 
 Browser operators configure the Synoptikon or Monas backend to advertise and
 receive. A web page polls, uses SSE, or uses WebSocket for coarse host state;
@@ -153,7 +153,7 @@ suspected.
 
 Jenkins is authoritative for deterministic discovery and fallback tests. Real
 network acceptance additionally records the controlled topology, interfaces,
-IPv4/IPv6 behavior, multicast policy, exact worker/source revisions, and
+IPv4/IPv6 behaviour, multicast policy, exact worker/source revisions, and
 redacted packet-level observations.
 
 Container unit tests do not prove multicast operation. Emulator tests do not

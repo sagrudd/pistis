@@ -22,5 +22,5 @@ within ten working days, and coordinate disclosure after a fix is available.
 
 Pistis treats device keys, identity bindings, canonical encodings, challenge
 lifecycle, evidence, and trust policy as security boundaries. Dependencies are
-audited for advisories, licenses, and supply-chain risk. Release work will
+audited for advisories, licences, and supply-chain risk. Release work will
 target reproducible builds, SBOMs, checksums, and provenance.

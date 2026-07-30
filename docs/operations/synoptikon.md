@@ -19,7 +19,7 @@ Before enabling Pistis in Synoptikon, retain evidence for:
    unavailable to JavaScript;
 7. immediate new-authentication rejection and affected-session invalidation
    after revocation;
-8. authorization-negative tests proving Pistis grants no Synoptikon role;
+8. authorisation-negative tests proving Pistis grants no Synoptikon role;
 9. fresh-install, restart, upgrade, rollback, and audit-redaction tests; and
 10. native GB10 package acceptance for exact reviewed revisions.
 
@@ -60,7 +60,7 @@ Jenkins is authoritative. Retain:
 - framework-neutral contract logs and machine-readable results;
 - exact source revisions, container digests, dependency locks, schemas, and
   migration inventories;
-- targeted server, Yew, database, audit, authorization, session, revocation,
+- targeted server, Yew, database, audit, authorisation, session, revocation,
   and accessibility results; and
 - native GB10 host profile, package checksum, installation/upgrade result, and
   redacted service evidence.

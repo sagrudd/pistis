@@ -21,7 +21,7 @@ Before commissioning review, freeze and record:
    recovery lifecycles, and known residual risks;
 5. isolated test infrastructure, generated accounts/data, devices, network
    topology, logging/monitoring, backup, and restoration plan;
-6. penetration-test rules of engagement and system-owner authorization;
+6. penetration-test rules of engagement and system-owner authorisation;
 7. secure report/evidence exchange and named incident contacts; and
 8. finding severity, remediation, risk-acceptance, retest, and disclosure
    process.
@@ -52,7 +52,7 @@ boundary solely to clear an alert; review compatibility and retest.
 
 ## Penetration-test operation
 
-Use only the authorized isolated environment and generated identities/data.
+Use only the authorised isolated environment and generated identities/data.
 Confirm stop contacts before beginning. Monitor availability and sensitive
 logs while testing. Stop on evidence of scope escape, real-user data, third-
 party impact, uncontrolled denial of service, credential exposure, or inability
@@ -105,7 +105,7 @@ owner, deadline, compensating controls, and security-owner acceptance. A
 finding is not closed because it is difficult to reproduce, the affected
 feature is disabled without enforcement, or a generic test suite passes.
 
-Only the authorized security owner records release progression after verifying
+Only the authorised security owner records release progression after verifying
 scope, independent reviewer status, reports, retests, unresolved findings,
 privacy/cryptographic decisions, artefact traceability, and residual risk.
 
@@ -133,7 +133,7 @@ review, or rebuilding on the same suspect worker is not remediation.
 
 Review retention/deletion for provider subject/display metadata, device and
 assurance data, events, network metadata, local phone history, diagnostics,
-test data, and backups. Test deletion and export behavior without deleting
+test data, and backups. Test deletion and export behaviour without deleting
 public keys, revocation facts, or policy/trusted-time material required to
 interpret historic evidence.
 

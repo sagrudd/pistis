@@ -66,7 +66,7 @@ files, SBOM/provenance, and upload-key recovery procedure.
 
 ## Current interoperability boundary
 
-Camera and detached reference-envelope behavior may be demonstrated locally.
+Camera and detached reference-envelope behaviour may be demonstrated locally.
 Production QR authentication remains blocked until a COSE profile and shared
 Rust/iOS/Android conformance fixtures are accepted. Local discovery is not
 authority; all discovered endpoints still require reviewed transport and

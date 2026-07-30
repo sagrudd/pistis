@@ -17,7 +17,7 @@ installation as a field applications support scientist. The person must be
 able to leave those relationships from Pistis.
 
 Deleting only the phone's projection would be unsafe: the authority could
-continue to recognize the device, account, or roles while Pistis falsely
+continue to recognise the device, account, or roles while Pistis falsely
 reported their removal. Conversely, deleting durable authority audit evidence
 would prevent investigation and accountability. Mutable provider login or
 email is not a safe deletion key.
@@ -74,15 +74,15 @@ administrator policy. The UI explains that another administrator must be
 appointed first; it never silently transfers or broadens authority.
 
 Monas transports the bounded request and response without making an
-authorization decision. Provider credentials do not participate and never
+authorisation decision. Provider credentials do not participate and never
 cross this boundary.
 
 ### Local completion, failure, and forgetting
 
-Pistis deletes the affected local authorization material only after verifying
+Pistis deletes the affected local authorisation material only after verifying
 the authority receipt under the already trusted authority key. If local
 cleanup then fails, the item is shown as **revoked — cleanup required** and
-cannot authorize. It is never shown as active.
+cannot authorise. It is never shown as active.
 
 An offline, timed-out, refused, or malformed authority response leaves local
 material intact and shows the exact binding as **removal not completed**.
@@ -107,7 +107,7 @@ Authority audit evidence is never deleted by either operation.
   removal; no implementation may infer account identity from the current
   version-one generic display.
 - The expired evaluation-v5 installation may use the local-forget path, because
-  it cannot authorize, without pretending that its authority history was
+  it cannot authorise, without pretending that its authority history was
   erased.
 - Removing one account from several independent customer authorities may be
   partially complete and must remain visibly reconcilable.

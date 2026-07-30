@@ -78,7 +78,7 @@ version. The retained log must show:
 3. database initialization and schema-version verification;
 4. service startup plus health and readiness checks;
 5. an authentication and offline-evidence verification smoke test; and
-6. removal behavior, including which operator data is deliberately retained.
+6. removal behaviour, including which operator data is deliberately retained.
 
 The upgrade exercise starts from the immediately preceding candidate with
 representative enrolled devices, trust bindings, policies, challenges, and
@@ -98,7 +98,7 @@ snapshot procedure.
 iOS and Android candidates must implement the approved application designs and
 pass the shared protocol conformance suite. Portable-core tests on Linux and
 source compilation are useful CI evidence, but they do not prove native
-framework behavior, device security, release signing, or store acceptance.
+framework behaviour, device security, release signing, or store acceptance.
 
 Signing keys, App Store Connect credentials, Play Console credentials, and
 recovery material belong in owner-controlled credential stores. They must not

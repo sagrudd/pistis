@@ -225,7 +225,7 @@ Documentation SHALL be maintained as a Sphinx project using the Read the Docs
 theme. A pinned Docker container SHALL support local rendering. The Mnemosyne
 Jenkins CI SHALL build the same documentation with warnings treated as errors,
 retain the pre-rendered HTML, and publish successful current-`main` output to
-the `gh-pages` static artifact branch. GitHub-hosted CI and Pages build
+the `gh-pages` static artefact branch. GitHub-hosted CI and Pages build
 automation SHALL NOT be used.
 
 ---

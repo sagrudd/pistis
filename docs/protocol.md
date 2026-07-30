@@ -75,7 +75,7 @@ The challenge shall contain `challenge_id`, `nonce`, `expires_at_ms`, `user_id`,
 `requested_action`, `audience`, and a human-readable `display_context_digest`.
 It is installation-signed. `audience` names the installation endpoint that may
 accept the response. The requested action must unambiguously mean session
-authentication and must not authorize an approval or artefact signature.
+authentication and must not authorise an approval or artefact signature.
 
 The EPIC-6 v1 reference schema additionally binds `issued_at_ms`,
 `installation_id`, `key_id`, `external_identity_id`, installation name,
@@ -127,7 +127,7 @@ and retained physical-device evidence.
 
 The accepted authenticated mobile bootstrap is specified by
 [ADR 0023](adr/0023-authenticated-mobile-enrolment-exchange.md). ADR 0025
-supersedes its callback, OAuth-state, PKCE, broker, and authorization-code
+supersedes its callback, OAuth-state, PKCE, broker, and authorisation-code
 transport for v0.1 while retaining the invitation-bound authority bootstrap
 and atomic Prosopikon transaction. An authority key returned only by an
 enrolment response is not trusted: it must match the digest committed by the
@@ -264,7 +264,7 @@ A producer may emit only a version it fully implements. A verifier selects one
 explicit supported version before parsing and signature verification. There is
 no downgrade fallback after verification failure.
 
-## Failure behavior
+## Failure behaviour
 
 Randomness, clock, synchronisation, parsing and state-store failures fail
 closed. Logs and user-facing errors must not expose nonce values. Challenge

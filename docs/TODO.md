@@ -411,7 +411,7 @@ and Jenkins has no retained device/dual-architecture acceptance dossier. ADR
 without changing v1 login. ADR 0017 and `pistis-agent` add owner-only durable
 storage, socket framing, non-export signing interfaces, closed semantic
 dispatch, and a tested CLI socket client. The native Security-framework signing
-operation, native same-user peer authorization, bounded daemon lifecycle, and
+operation, native same-user peer authorisation, bounded daemon lifecycle, and
 single-authority semantic handler are implemented. The agent no longer creates
 or stores sessions: its mutation-free coordinator delegates the final
 challenge-consumption, Prosopikon-session, and audit transaction to the
@@ -465,7 +465,7 @@ Completion here does not close deferred `v1.0` work above.
 
 The immutable completion record is retained in GitHub issues #207 and #221.
 It identifies the exact integrated `main` revision, authoritative Expedition,
-stage outcomes, and retained artifact count. EPIC-16 remains open for its
+stage outcomes, and retained artefact count. EPIC-16 remains open for its
 documented production gaps; EPIC-17 landing the reviewed foundation does not
 waive those acceptance criteria.
 
@@ -506,7 +506,7 @@ retention is recorded with the EPIC-18 pull-request acceptance evidence.
 - [ ] Mount the shared Prosopikon Pistis UI
 - [ ] Implement the Monas SQLite authority adapter
 - [ ] Deliver enrolment, login, logout, and device-revocation routes
-- [ ] Preserve Monas authorization and CSRF boundaries
+- [ ] Preserve Monas authorisation and CSRF boundaries
 - [ ] Exercise restart, concurrency, backup, restore, and corruption paths
 - [ ] Retain exact-revision cross-repository Jenkins evidence
 
@@ -594,7 +594,7 @@ pre-mutation negative tests pass cross-project review.
 - [ ] Deliver and qualify the PKCS#11 provider
 - [ ] Provision a non-exportable installation key in exactly one configured
   provider
-- [ ] Deliver provider authorization through a protected service credential
+- [ ] Deliver provider authorisation through a protected service credential
   without arguments, environment variables, or repository files
 - [ ] Keep Jenkins, DASObjectStore, and other relying workers keyless
 - [ ] Document rotation, recovery, upgrade, rollback, and diagnostics
@@ -618,7 +618,7 @@ pre-mutation negative tests pass cross-project review.
 - [ ] Keep presence, access, readiness, and progression as independent states
 - [ ] Admit only host-relative product routes without exposing private hosts,
   ports, credentials, or bearer material
-- [ ] Require Jenkins and DASObjectStore to re-authorize the accepted Monas
+- [ ] Require Jenkins and DASObjectStore to re-authorise the accepted Monas
   context at their own boundaries
 - [ ] Preserve the other offering plus sign-out and support during one-product
   or Propylaion degradation
@@ -630,7 +630,7 @@ pre-mutation negative tests pass cross-project review.
 This is a release-blocking usability gate, not a transfer of authority.
 Propylaion projects and explains authoritative facts; Monas remains the public
 host, Prosopikon remains the principal/session authority, and each target
-product remains responsible for authorization.
+product remains responsible for authorisation.
 
 ## EPIC 25 — MVP security and release candidate
 

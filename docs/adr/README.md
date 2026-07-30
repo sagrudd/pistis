@@ -34,7 +34,7 @@ installation-trust receipt. Product activation remains blocked until
 cross-project implementation review and evidence pass.
 
 ADR 0025 supersedes ADR 0023's callback, OAuth-state, PKCE, broker, and
-authorization-code transport requirements for v0.1. ADR 0023's authority-key
+authorisation-code transport requirements for v0.1. ADR 0023's authority-key
 bootstrap, signed binding, atomic commit, receipt, reconciliation, and audit
 transaction remain normative.
 
@@ -71,7 +71,7 @@ specialist review and exact-revision evidence.
 [ADR 0030](0030-authority-backed-account-and-installation-removal.md) accepts
 authority-backed account and installation departure, exact multi-account
 targeting, accessible destructive confirmation, and a truthfully labelled
-local-forget path for records that cannot authorize.
+local-forget path for records that cannot authorise.
 
 [ADR 0031](0031-enrolment-and-product-audience-separation.md) accepts a
 signed distinction between the fixed enrolment ceremony audience and the

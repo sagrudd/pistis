@@ -5,14 +5,14 @@
 This model covers enrolment, authentication, approval, revocation, portable
 evidence, local discovery, QR transfer, and offline verification. Protected
 assets are device private keys, stable identity bindings, single-use
-challenges, authorization decisions, signed artefacts, audit evidence, and
+challenges, authorisation decisions, signed artefacts, audit evidence, and
 installation policy.
 
 ## Actors and trust boundaries
 
 Trusted decisions remain inside the Pistis verifier and its durable store.
 Mobile secure key stores protect private keys but do not decide local
-authorization. GitHub and Google authenticate external subjects; their mutable
+authorisation. GitHub and Google authenticate external subjects; their mutable
 display attributes are untrusted metadata. Browsers, QR displays, local
 networks, mDNS, and notification transports carry untrusted bytes.
 
@@ -37,11 +37,11 @@ participant is an explicit adversary rather than an implicit trusted actor.
 | Mutable GitHub username | Key identities by numeric provider subject, never login name | Historic display names may become stale |
 | Google email reuse/domain confusion | Key by issuer and subject; validate issuer, audience, nonce and hosted-domain policy | Provider account recovery remains trusted |
 | Installer assigns wrong identity | Require an interactive, freshly authenticated enrolment statement and local confirmation | Malicious local administrator can deny service |
-| Stolen unlocked phone | Require per-signature biometric/device authorization and permit rapid revocation | An already-unlocked compromised OS may sign |
+| Stolen unlocked phone | Require per-signature biometric/device authorisation and permit rapid revocation | An already-unlocked compromised OS may sign |
 | Changed biometric enrolment | Record platform state where available; re-enrol or downgrade on change | Signals vary by platform |
-| Device backup/restore | Use non-exportable keys; restoration without the key requires re-enrolment | Platform backup behavior must be tested |
+| Device backup/restore | Use non-exportable keys; restoration without the key requires re-enrolment | Platform backup behaviour must be tested |
 | Key loss or user departure | Recovery and revocation are audited, policy-controlled ceremonies | Availability depends on recovery custodians |
-| Revocation after historic signature | Evaluate current authorization separately from historic validity and retain signing-time state | Recipients need current revocation data for current trust |
+| Revocation after historic signature | Evaluate current authorisation separately from historic validity and retain signing-time state | Recipients need current revocation data for current trust |
 | Clock manipulation | Use server-issued times, bounded skew and monotonic challenge state | Fully offline freshness has inherent limits |
 | Protocol downgrade | Sign version and algorithm; reject unsupported versions and algorithms | Future transitions require explicit policy |
 | Canonicalisation ambiguity | Deterministic CBOR; strict decoder re-encodes and byte-compares | Decoder defects remain review targets |
@@ -52,7 +52,7 @@ participant is an explicit adversary rather than an implicit trusted actor.
 | Approval fatigue | Clear device display, rate limits, cancellation and denial evidence | Social engineering cannot be eliminated |
 | Denial of service | Bounded parsing, expiry, quotas and idempotent denial/cancellation | Availability is not guaranteed against privileged attackers |
 | Evidence-store tampering | Signed objects, append-only audit semantics, digests and portable verification | Deletion requires external retention or replication |
-| Unknown critical field | Reject unknown critical fields and unsupported object versions | Non-critical extension semantics must stay non-authorizing |
+| Unknown critical field | Reject unknown critical fields and unsupported object versions | Non-critical extension semantics must stay non-authorising |
 | Revoked or replaced key | Resolve key status for the relevant time and purpose | Offline verifiers may have stale status |
 
 ## Security invariants
@@ -64,7 +64,7 @@ participant is an explicit adversary rather than an implicit trusted actor.
 - Parser failure, missing context, unknown critical data, and unavailable
   required assurance fail closed.
 - Logs and diagnostic JSON never become signature inputs.
-- QR checksums never become authentication or authorization inputs.
+- QR checksums never become authentication or authorisation inputs.
 - Polling observes redacted state and cannot consume a challenge or establish a
   session.
 - Session rotation, challenge consumption, terminal completion and immutable

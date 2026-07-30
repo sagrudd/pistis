@@ -11,14 +11,14 @@ during routine local authentication. A GitHub login is mutable, OAuth bearer
 tokens are powerful transient credentials, and a native mobile application
 cannot keep a client secret confidential.
 
-GitHub supports authorization-code PKCE with the `S256` challenge method.
+GitHub supports authorisation-code PKCE with the `S256` challenge method.
 GitHub's published OAuth App token-exchange documentation nevertheless lists a
 client secret as required. That provider constraint must not cause Pistis to
 embed a shared secret in a public application binary.
 
 ## Decision
 
-GitHub enrolment uses the system browser and authorization-code flow with:
+GitHub enrolment uses the system browser and authorisation-code flow with:
 
 - a fresh, high-entropy PKCE verifier and `S256` challenge;
 - a fresh, high-entropy `state` value bound to one local enrolment attempt;

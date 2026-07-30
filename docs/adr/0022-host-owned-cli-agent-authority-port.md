@@ -54,7 +54,7 @@ QR endpoint hints remain metadata, never authority.
 Prosopikon owns the reference, signed challenge, expiry, response fingerprint,
 terminal state, idempotency, session/action issuance and audit. Monas owns
 browser pre-authentication, Origin/CSRF checks, its HttpOnly cookie and product
-authorization. The agent owns only its protected listener and presentation.
+authorisation. The agent owns only its protected listener and presentation.
 The CLI owns no durable state.
 
 Restart reopens the same Prosopikon rows. It cannot reconstruct pending state
@@ -108,7 +108,7 @@ Before acceptance and activation, retain:
 - concurrent and substituted-response rejection;
 - direct-local and framed input convergence on one durable row;
 - absence of bearer, cookie, private key and raw response in CLI output;
-- Monas session and DASObjectStore authorization only after completion;
+- Monas session and DASObjectStore authorisation only after completion;
 - cancellation and restart without resurrection; and
 - physical iOS scan, signing and response-return evidence.
 

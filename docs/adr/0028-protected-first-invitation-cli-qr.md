@@ -142,20 +142,20 @@ The final spelling is implementation-owned, but the boundary is normative:
 - Pistis rejects trailing messages, verifies every canonical, signature,
   identity, origin, and time constraint, then renders;
 - neither process uses a temporary file, shell variable, clipboard, log, crash
-  report, evidence artifact, or subprocess; and
+  report, evidence artefact, or subprocess; and
 - broken pipe, signal, terminal loss, expiry, or verification failure yields
   only a coarse error and no automatic replacement invitation.
 
 The producer requires the governed local administrator authority and verifies
-the owner, mode, lifecycle, and authorization of the exact authority database
+the owner, mode, lifecycle, and authorisation of the exact authority database
 before issuance. An anonymous pipe does not expose portable peer credentials,
 so neither process may claim that the pipe authenticates its peer. Pistis
 authenticates the producer output by verifying the purpose-bound COSE
 signature and committed authority descriptor; its pipe checks provide
 confidentiality hygiene and message framing, not caller identity. Unrelated
-shell access is not enrolment authorization.
+shell access is not enrolment authorisation.
 
-### Terminal behavior
+### Terminal behaviour
 
 The presenter uses the alternate screen, hides the cursor, and renders the QR,
 a prominent sensitive-invitation label, verified installation and origin,
@@ -189,7 +189,7 @@ never to redirects, alternate hosts, browser, analytics, or crash reporting.
 
 The later provider ceremony follows ADR 0027: the installation-local adapter
 owns GitHub Device Flow; the phone receives only the user code, fixed GitHub
-verification URI, expiry, and polling capability. The user authorizes GitHub
+verification URI, expiry, and polling capability. The user authorises GitHub
 on the phone, confirms the immutable numeric account, and signs the binding.
 No GitHub token enters the phone or QR.
 
@@ -220,7 +220,7 @@ or device code, provider response, or token.
   exact replay tests;
 - physical iPhone and Android scan, Device Flow, confirmation, and enrolment;
   and
-- exact-revision Jenkins evidence with no sensitive QR artifact.
+- exact-revision Jenkins evidence with no sensitive QR artefact.
 
 Acceptance permits those components to be implemented. It does not activate a
 producer, scanner route, provider request, invitation, or authority state in a

@@ -3,7 +3,7 @@
 This directory contains the EPIC-7 iOS source foundation:
 
 - `PistisCore` is a platform-neutral Swift package containing deterministic
-  identity, trust, approval, enrolment, and local-history behavior.
+  identity, trust, approval, enrolment, and local-history behaviour.
 - `PistisApp` is the native SwiftUI application, design system, Apple-platform
   adapters, privacy metadata, unit tests, and UI tests.
 

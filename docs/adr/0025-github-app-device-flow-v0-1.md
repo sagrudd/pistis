@@ -14,17 +14,17 @@ proposed Linux-signer decisions now occupy ADRs 0023 and 0024.
 ## Context
 
 The approved v0.1 MVP requires a Mnemosyne Biosciences GitHub App device-flow
-ceremony. ADR 0003 accepts GitHub authorization-code PKCE through a
+ceremony. ADR 0003 accepts GitHub authorisation-code PKCE through a
 confidential broker; ADRs 0007 and 0008 consequently specify a brokered
 system-browser transport. That is incompatible with the approved no-broker
 v0.1 deployment shape and cannot be changed by implication.
 
 ADR 0023 later accepted the authority-owned invitation, binding, receipt, and
-audit transaction together with an authorization-code callback transport.
+audit transaction together with an authorisation-code callback transport.
 The project owner's subsequent GitHub App decision selected Device Flow and no
 broker for v0.1. This ADR therefore preserves ADR 0023's authority transaction
 and signed enrolment-result invariants while superseding only its callback,
-OAuth-state, PKCE, broker, and authorization-code transport requirements.
+OAuth-state, PKCE, broker, and authorisation-code transport requirements.
 
 GitHub Apps support the OAuth 2.0 Device Authorization Grant using their public
 client ID. It removes the client-secret exchange broker, but provides neither
@@ -48,7 +48,7 @@ ADR 0025 supersedes only the cited GitHub transport sections of ADRs 0003,
 0007, 0008, and 0023 for v0.1. ADR 0023's invitation-bound authority-key
 bootstrap, signed device binding, atomic Prosopikon commit, receipt,
 reconciliation, and audit requirements remain normative. Google, a future
-GitHub authorization-code PKCE/broker profile, stable-subject semantics,
+GitHub authorisation-code PKCE/broker profile, stable-subject semantics,
 authority ownership, and device-assurance policies are not superseded.
 
 Official GitHub contracts used by this profile are [GitHub App user access
@@ -66,7 +66,7 @@ must never authenticate a caller. No client secret, private key, webhook
 secret, access token, refresh token or client-ID value is committed by this
 ADR or embedded in an unreviewed build.
 
-The exact registration manifest is: all repository, organization and account
+The exact registration manifest is: all repository, organisation and account
 permissions **No access**; no subscribed events; no webhook URL or active
 webhook; installation neither required nor requested; Device Flow enabled; and
 GitHub's mandatory implicit Metadata read permission only. User access-token
@@ -85,7 +85,7 @@ revision and profile version. The configuration record has no secret values.
 Changing any committed field disables new enrolment until a new review,
 physical evidence and Jenkins dossier bind the replacement digest.
 
-The profile requests no OAuth scope expansion, no repository, organization,
+The profile requests no OAuth scope expansion, no repository, organisation,
 write or email access, and calls only `/user`. GitHub App user-token expiry
 **is enabled** for this profile; Pistis never refreshes or retains either token
 shape.
@@ -193,7 +193,7 @@ bodies or redirect locations.
    zeroes and parser-rounded values are rejected. Its canonical subject is that
    exact shortest decimal ASCII lexeme. Rust, iOS and Android share these
    `u64` boundary fixtures. `login`, `name`, `email` and `html_url` are optional,
-   bounded display values and cannot affect identity or authorization.
+   bounded display values and cannot affect identity or authorisation.
 
 The implementation must parse duplicate JSON members as an error, bound every
 string before allocation, reject control characters in display values, and
@@ -324,7 +324,7 @@ file and reject byte changes; they must not regenerate a semantically similar
 encoding.
 
 Prosopikon-only `device_id`, storage challenge digest, binding/revocation/
-installation/device generations, receipt fields, authorization variants and
+installation/device generations, receipt fields, authorisation variants and
 row projections are intentionally absent from these shared signed bytes. The
 authority derives `device_id` and every post-state generation only after its
 transactional reread. Expected pre-state generations, policy and revocation
@@ -380,7 +380,7 @@ Every caller-controlled mutation fact is either a field of the signed binding
 and complete commit preimage (operation, invitation, tenant, principal,
 installation, provider subject, public key, assurance, purpose, policy,
 configuration and authority challenge) or is rejected as non-authoritative.
-Device identity, pre-state snapshots, storage generations, authorization
+Device identity, pre-state snapshots, storage generations, authorisation
 decision and receipt values are exclusively authority-derived. A production
 platform may produce a nondeterministic ECDSA signature; it must verify the
 exact shared `Sig_structure` and enforce the same low-S ES256 representation,
@@ -416,7 +416,7 @@ required after approved registration and before production enablement. It uses
 a dedicated non-production App/profile and test principal, stores only config
 and event digests plus minimized receipt/audit correlations, confirms no
 token/capability appears in retained diagnostics, and is disabled after review.
-It is evidence of the provider contract, not authorization to enrol production
+It is evidence of the provider contract, not authorisation to enrol production
 users.
 
 Production enablement additionally requires an owner-attested record outside
@@ -431,11 +431,11 @@ an attacker from initiating a convincing GitHub flow, only the invitation,
 key-proof and confirmation/authority controls from committing it here.
 
 Rollback disables local enrolment and Device Flow for the reviewed App/profile
-and cancels pending local attempts. Revoking a GitHub authorization prevents
+and cancels pending local attempts. Revoking a GitHub authorisation prevents
 future provider use but **does not revoke an existing local device, principal
 binding or session**. Those require the explicit Prosopikon/ADR-0012 device,
 binding and session-revocation transactions. Suspected capability exposure
-requires both GitHub-side authorization revocation and the separate local
+requires both GitHub-side authorisation revocation and the separate local
 authority decision.
 
 A future confidential-broker plus PKCE profile must be separately proposed
@@ -452,7 +452,7 @@ described above; the platform-key proof, fresh biometric confirmation, bounded
 polling, token non-retention, and single Prosopikon authority transaction are
 mandatory compensating controls.
 
-This decision record does not activate a client ID or authorize an
+This decision record does not activate a client ID or authorise an
 implementation or production deployment. Issue PIS-E22-I252 remains the
 implementation and enablement gate, including the configuration commitment,
 physical-device evidence, canary, attack exercise, and production attestation
@@ -476,5 +476,5 @@ required by this ADR.
   public mobile client cannot protect them.
 - Treat a user code or successful poll as enrolment: rejected because either
   can be phished, substituted or detached from invitation and key proof.
-- Revoke a local device when GitHub authorization is revoked: rejected because
+- Revoke a local device when GitHub authorisation is revoked: rejected because
   it bypasses Prosopikon's durable device/binding/session authority.

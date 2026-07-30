@@ -12,7 +12,7 @@ protocol tests, parser/verifier fuzz targets, mobile source tests, and
 fail-closed architectural contracts. There is no completed independent review,
 penetration-test report, cryptographic-review report, privacy assessment,
 remediation report, residual-risk register, retained live fuzz campaign, or
-release-artifact mobile assessment. EPIC-14 remains open.
+release-artefact mobile assessment. EPIC-14 remains open.
 
 ## Normative boundary
 
@@ -119,7 +119,7 @@ iOS review includes:
 - URL callback and universal-link handling;
 - camera/local-network permissions;
 - clipboard, screenshots, logs, crash data, backup, app groups, and storage;
-- entitlements, privacy manifest, ATS/network behavior, and release signing;
+- entitlements, privacy manifest, ATS/network behaviour, and release signing;
 - jailbreak policy and honest assurance reporting; and
 - real-device reinstall, biometric change, backgrounding, and lockout.
 
@@ -133,10 +133,10 @@ Android review includes:
 - external-browser OAuth and WebView absence;
 - network security configuration and discovery binding;
 - rooted-device policy and honest assurance reporting; and
-- signed release bundle/APK behavior on supported physical devices.
+- signed release bundle/APK behaviour on supported physical devices.
 
 Simulator/emulator tests and source lint do not prove hardware key protection,
-platform UI behavior, release signing, jailbreak/root response, backup
+platform UI behaviour, release signing, jailbreak/root response, backup
 exclusion, or binary hardening. Review the exact candidate artefact and map its
 digest to reviewed source.
 
@@ -146,14 +146,14 @@ Independent penetration testing requires a written rules-of-engagement
 agreement naming:
 
 - exact revisions, builds, endpoints, apps, protocol versions, and exclusions;
-- isolated accounts/devices/data and authorized test infrastructure;
+- isolated accounts/devices/data and authorised test infrastructure;
 - allowed techniques, hours, rate/concurrency, social-engineering policy, and
   denial-of-service exclusions;
 - stop conditions, emergency contacts, evidence encryption/retention, and
   coordinated disclosure;
 - severity methodology, report format, remediation expectations, and retest;
   and
-- explicit authorization from every affected system owner.
+- explicit authorisation from every affected system owner.
 
 Scope covers the Rust service/CLI, Synoptikon and Monas adapters, provider
 broker boundary, iOS, Android, QR, local discovery, recovery, evidence, and
@@ -169,7 +169,7 @@ A qualified reviewer examines algorithms and parameter choices, canonical
 encoding, domain separation, nonce/challenge generation, key identifiers,
 ECDSA/COSE encoding and low-S policy, signature/verifier status rules, temporal
 and revocation semantics, recovery purpose separation, trust-bundle/evidence
-semantics, cross-language fixtures, and error behavior.
+semantics, cross-language fixtures, and error behaviour.
 
 Passing known-answer or conformance tests is evidence for the review, not the
 review itself. Any change to signed bytes, schema, domain tag, algorithm,
@@ -184,11 +184,11 @@ events, server network metadata, local phone history, diagnostic/crash data,
 support evidence, and CI fixtures.
 
 For each field record purpose, authority, collection source, storage locations,
-recipients, retention/deletion, backup behavior, export, access controls, and
+recipients, retention/deletion, backup behaviour, export, access controls, and
 whether it is required or optional. Deletion must preserve legally or
 scientifically necessary verification material without retaining unnecessary
 profile or bearer data. Privacy review includes mobile declarations and actual
-broker/host behavior, not only application manifests.
+broker/host behaviour, not only application manifests.
 
 ## Findings and release gate
 

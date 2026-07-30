@@ -1,11 +1,13 @@
 # ADR 0031: Separate enrolment and product audiences
 
-- Status: Proposed
+- Status: Accepted
 - Date: 2026-07-30
+- Accepted: 2026-07-30
 - Decision owners: Pistis mobile security, Prosopikon authority, Monas
   transport, and product owner
 - Tracking issue: [#349](https://github.com/sagrudd/pistis/issues/349)
-- Implementation: blocked pending acceptance and specialist review
+- Implementation: permitted in dependency order with specialist review and
+  exact cross-project conformance evidence
 
 ## Context
 
@@ -117,4 +119,3 @@ revealing keys, raw payloads, or attacker-controlled text.
 - A physical iPhone scans a real Monas QR, shows verified request facts,
   approves with Face ID, and completes the intended browser session.
 - The Scan target's tap and accessibility activation both start the camera.
-

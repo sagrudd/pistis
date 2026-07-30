@@ -203,7 +203,7 @@ struct ServerDrivenEnrolmentTransport: Sendable {
         _ handle: ProviderVerificationHandle,
         deviceRegistrationCOSE: Data,
         binding: EnrolmentBindingInput,
-        now: Date
+        verificationTime: @Sendable () -> Date = Date.init
     ) async throws -> VerifiedMobileEnrolmentReceipt {
         guard !deviceRegistrationCOSE.isEmpty,
               deviceRegistrationCOSE.count <= 2_048
@@ -214,6 +214,7 @@ struct ServerDrivenEnrolmentTransport: Sendable {
                 handle.providerVerificationID
             ),
             "polling_capability": base64URL(handle.pollingCapability),
+            "invitation": base64URL(presentation.exactInvitation),
             "device_registration_cose": base64URL(deviceRegistrationCOSE),
         ])
         let response = try await request(
@@ -246,7 +247,10 @@ struct ServerDrivenEnrolmentTransport: Sendable {
                 receiptCOSE: receipt,
                 expectedRegistrationCOSE: deviceRegistrationCOSE,
                 binding: binding,
-                now: now
+                // The receipt is created by the authority while the request is
+                // in flight. Sampling before the request would reject every
+                // honest receipt whose commit follows that stale timestamp.
+                now: verificationTime()
             )
         } catch {
             throw PlatformFailure.productionEnvelopeUnavailable

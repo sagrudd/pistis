@@ -159,6 +159,7 @@ private final class FirstDeviceEnrolmentFlow: ObservableObject {
     private var handle: ProviderVerificationHandle?
     private var devicePublicKey: Data?
     private var deviceKeyID: Data?
+    private var pendingRegistration: Data?
     private var approvalGate = AttendedEnrolmentGate()
 
     func handleScan(_ result: Result<ScannedQRPayload, PlatformFailure>) {
@@ -310,8 +311,7 @@ private final class FirstDeviceEnrolmentFlow: ObservableObject {
                 subject: approval.subject,
                 policyGeneration: approval.policyGeneration,
                 authorityChallenge: approval.authorityChallenge,
-                challengeExpiry: approval.challengeExpiry,
-                now: now
+                challengeExpiry: approval.challengeExpiry
             )
             approvalGate.markInstalled()
             enrolmentComplete = true
@@ -340,6 +340,7 @@ private final class FirstDeviceEnrolmentFlow: ObservableObject {
         displayLogin = nil
         enrolmentComplete = false
         hostTrustConfirmed = false
+        pendingRegistration = nil
         approvalGate = AttendedEnrolmentGate()
         failure = nil
         status = "Ready to scan"
@@ -349,8 +350,7 @@ private final class FirstDeviceEnrolmentFlow: ObservableObject {
         subject: UInt64,
         policyGeneration: UInt64,
         authorityChallenge: Data,
-        challengeExpiry: UInt64,
-        now: Date
+        challengeExpiry: UInt64
     ) async throws {
         guard let presentation, let transport, let handle,
               let devicePublicKey, let deviceKeyID
@@ -373,14 +373,21 @@ private final class FirstDeviceEnrolmentFlow: ObservableObject {
             signer: signer,
             deviceKeyID: deviceKeyID
         )
-        let registration = try await envelope.produceEnvelope(
-            canonicalPayload: EnrolmentBindingV1.payload(binding)
-        )
+        let registration: Data
+        if let pendingRegistration {
+            registration = pendingRegistration
+        } else {
+            registration = try await envelope.produceEnvelope(
+                canonicalPayload: EnrolmentBindingV1.payload(binding)
+            )
+            // Exact authority replay is intentionally idempotent; retain the
+            // exact randomized ECDSA envelope until its receipt is installed.
+            self.pendingRegistration = registration
+        }
         let receipt = try await transport.confirm(
             handle,
             deviceRegistrationCOSE: registration,
-            binding: binding,
-            now: now
+            binding: binding
         )
         let output = try AuthenticatedEnrollmentOutput(
             trust: InstallationTrustRecord(
@@ -408,6 +415,7 @@ private final class FirstDeviceEnrolmentFlow: ObservableObject {
             allowedHosts: receipt.allowedHTTPSHosts
         )
         try await InstallationTrustKeychain.shared.installAuthenticated(output)
+        pendingRegistration = nil
     }
 
     private func discardUnenrolledKey(
@@ -428,6 +436,7 @@ private final class FirstDeviceEnrolmentFlow: ObservableObject {
         try? signer.discardUnenrolledKey()
         devicePublicKey = nil
         deviceKeyID = nil
+        pendingRegistration = nil
     }
 
     private func secureRandom(count: Int) throws -> Data {

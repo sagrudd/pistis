@@ -2,9 +2,10 @@ use pistis_cli::{
     AuthCommand, CliExit, EnrolmentPresentationOptions, SocketAuthenticationBackend, TerminalIo,
     parse, present_first_device, run,
 };
+use pistis_protocol::MAX_FIRST_DEVICE_FRAME_BYTES;
 use std::{
     fs::File,
-    io::{self, BufReader, IsTerminal},
+    io::{self, BufReader, Cursor, IsTerminal, Read},
     os::unix::fs::FileTypeExt,
     path::PathBuf,
     time::{SystemTime, UNIX_EPOCH},
@@ -62,30 +63,31 @@ fn run_command(command: &pistis_cli::AuthCommand) -> CliExit {
 fn run_enrolment_present(profile: pistis_cli::OutputProfile, inverted: bool) -> CliExit {
     let stdin = io::stdin();
     let mut stdout = io::stdout();
+    if !protected_stdin_is_pipe() {
+        eprintln!("pistis: first-device presentation rejected");
+        return CliExit::Rejected;
+    }
+    let Some((frame, now_ms)) = read_frame_then_timestamp(stdin.lock(), system_time_millis) else {
+        eprintln!("pistis: first-device presentation rejected");
+        return CliExit::Rejected;
+    };
     let Ok(terminal) = File::open("/dev/tty") else {
         eprintln!("pistis: attended enrolment terminal is unavailable");
         return CliExit::Unavailable;
     };
-    let Ok(elapsed) = SystemTime::now().duration_since(UNIX_EPOCH) else {
-        eprintln!("pistis: first-device presentation rejected");
-        return CliExit::Rejected;
-    };
-    let Ok(now_ms) = u64::try_from(elapsed.as_millis()) else {
-        eprintln!("pistis: first-device presentation rejected");
-        return CliExit::Rejected;
-    };
     let mut acknowledgement = BufReader::new(terminal);
     let output_is_terminal = stdout.is_terminal();
     if present_first_device(
-        stdin.lock(),
+        Cursor::new(frame),
         &mut stdout,
         &mut acknowledgement,
         EnrolmentPresentationOptions {
-            input_is_pipe: protected_stdin_is_pipe(),
+            input_is_pipe: true,
             output_is_terminal,
             profile,
             inverted,
             columns: terminal_columns(),
+            rows: terminal_rows(),
             expected_app_configuration_digest: REVIEWED_GITHUB_APP_DIGEST,
             now_ms,
         },
@@ -97,6 +99,24 @@ fn run_enrolment_present(profile: pistis_cli::OutputProfile, inverted: bool) -> 
         eprintln!("pistis: first-device presentation rejected");
         CliExit::Rejected
     }
+}
+
+fn read_frame_then_timestamp(
+    reader: impl Read,
+    timestamp: impl FnOnce() -> Option<u64>,
+) -> Option<(Vec<u8>, u64)> {
+    let mut bounded = reader.take((MAX_FIRST_DEVICE_FRAME_BYTES + 1) as u64);
+    let mut frame = Vec::new();
+    bounded.read_to_end(&mut frame).ok()?;
+    if frame.is_empty() || frame.len() > MAX_FIRST_DEVICE_FRAME_BYTES {
+        return None;
+    }
+    Some((frame, timestamp()?))
+}
+
+fn system_time_millis() -> Option<u64> {
+    let elapsed = SystemTime::now().duration_since(UNIX_EPOCH).ok()?;
+    u64::try_from(elapsed.as_millis()).ok()
 }
 
 fn protected_stdin_is_pipe() -> bool {
@@ -125,6 +145,14 @@ fn terminal_columns() -> usize {
         .unwrap_or(80)
 }
 
+fn terminal_rows() -> usize {
+    std::env::var("LINES")
+        .ok()
+        .and_then(|value| value.parse().ok())
+        .filter(|rows| (10..=1_000).contains(rows))
+        .unwrap_or(24)
+}
+
 fn locale_is_utf8() -> bool {
     ["LC_ALL", "LC_CTYPE", "LANG"].into_iter().any(|name| {
         std::env::var(name).is_ok_and(|value| {
@@ -136,10 +164,59 @@ fn locale_is_utf8() -> bool {
 
 #[cfg(test)]
 mod tests {
-    use super::descriptor_path_is_fifo;
+    use super::{MAX_FIRST_DEVICE_FRAME_BYTES, descriptor_path_is_fifo, read_frame_then_timestamp};
+    use std::{
+        cell::Cell,
+        io::{Cursor, Read},
+        rc::Rc,
+    };
+
+    struct CompletionReader {
+        inner: Cursor<Vec<u8>>,
+        complete: Rc<Cell<bool>>,
+    }
+
+    impl Read for CompletionReader {
+        fn read(&mut self, buffer: &mut [u8]) -> std::io::Result<usize> {
+            let count = self.inner.read(buffer)?;
+            if count == 0 {
+                self.complete.set(true);
+            }
+            Ok(count)
+        }
+    }
 
     #[test]
     fn regular_descriptor_cannot_impersonate_protected_pipe() {
         assert!(!descriptor_path_is_fifo("/dev/null"));
+    }
+
+    #[test]
+    fn enrolment_clock_is_sampled_only_after_the_complete_pipe_frame() {
+        let complete = Rc::new(Cell::new(false));
+        let reader = CompletionReader {
+            inner: Cursor::new(vec![7_u8; 32]),
+            complete: Rc::clone(&complete),
+        };
+        let (_, timestamp) = read_frame_then_timestamp(reader, || {
+            assert!(complete.get());
+            Some(1_800_000_000_000)
+        })
+        .unwrap();
+        assert_eq!(timestamp, 1_800_000_000_000);
+    }
+
+    #[test]
+    fn oversized_pipe_frame_is_rejected_before_clock_sampling() {
+        let sampled = Cell::new(false);
+        let result = read_frame_then_timestamp(
+            Cursor::new(vec![0_u8; MAX_FIRST_DEVICE_FRAME_BYTES + 1]),
+            || {
+                sampled.set(true);
+                Some(1)
+            },
+        );
+        assert!(result.is_none());
+        assert!(!sampled.get());
     }
 }

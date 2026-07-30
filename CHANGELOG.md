@@ -22,6 +22,10 @@ a Changelog and releases follow Semantic Versioning.
 - Require the user to review the immutable GitHub login and numeric subject
   before a separate Face ID confirmation, with fail-closed orphan Secure
   Enclave key cleanup and retry/recovery retention.
+- Verify authority receipt time only after the confirmation response arrives,
+  and retain the exact randomized device-registration envelope across
+  transient in-app retries so a committed response can be replayed
+  byte-identically.
 - Bind the reviewed GitHub App configuration fixture, Info.plist digest, and
   Swift runtime digest with a deterministic regression test.
 - Correct the proposed first-device decisions so pending provider operations
@@ -108,6 +112,10 @@ a Changelog and releases follow Semantic Versioning.
 
 ### Fixed
 
+- Bind iOS final first-device confirmation to the exact invitation required by
+  the durable Prosopikon transaction.
+- Sample the attended first-device clock only after the protected pipe frame is
+  complete, and reject terminal heights that would scroll finder patterns away.
 - Correct the operator-guide SHA-256 for the retained physical-iPhone
   interoperability record and enforce the documentation-to-fixture binding in
   a deterministic regression test.

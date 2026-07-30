@@ -32,6 +32,7 @@ fn options(
         profile,
         inverted: false,
         columns: 400,
+        rows: 200,
         expected_app_configuration_digest: APP_DIGEST,
         now_ms: 1_700_000_060_000,
     }
@@ -105,4 +106,21 @@ fn rejects_interactive_input_nonterminal_output_trailing_data_and_bad_acknowledg
             .unwrap()
             .ends_with("\u{1b}[?25h\u{1b}[?1049l")
     );
+}
+
+#[test]
+fn rejects_a_terminal_that_would_scroll_the_complete_qr() {
+    let mut output = Vec::new();
+    let mut undersized = options(true, true, OutputProfile::Unicode);
+    undersized.rows = 39;
+    assert_eq!(
+        present_first_device(
+            Cursor::new(frame()),
+            &mut output,
+            &mut Cursor::new(b"\n"),
+            undersized,
+        ),
+        Err(EnrolmentPresentationError::Presentation)
+    );
+    assert!(output.is_empty());
 }

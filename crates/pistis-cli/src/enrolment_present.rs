@@ -42,6 +42,8 @@ pub struct EnrolmentPresentationOptions {
     pub inverted: bool,
     /// Current terminal width.
     pub columns: usize,
+    /// Current terminal height.
+    pub rows: usize,
     /// Reviewed GitHub App configuration digest.
     pub expected_app_configuration_digest: [u8; 32],
     /// Current Unix epoch milliseconds.
@@ -105,6 +107,13 @@ pub fn present_first_device<R: Read, W: Write, A: BufRead>(
         },
     )
     .map_err(|_| EnrolmentPresentationError::Presentation)?;
+    if rendered
+        .rows()
+        .checked_add(9)
+        .is_none_or(|required| required > options.rows)
+    {
+        return Err(EnrolmentPresentationError::Presentation);
+    }
     let screen = AlternateScreen::enter(output)?;
     writeln!(
         screen.writer,

@@ -67,3 +67,8 @@ ADR 0028's manual platform-trust prerequisite with a signed TLS public-key
 commitment, three-word attended comparison, and connection-scoped native
 trust. Cross-project protocol and native implementation remains subject to
 specialist review and exact-revision evidence.
+
+[ADR 0030](0030-authority-backed-account-and-installation-removal.md) proposes
+authority-backed account and installation departure, exact multi-account
+targeting, accessible destructive confirmation, and a truthfully labelled
+local-forget path for records that cannot authorize.

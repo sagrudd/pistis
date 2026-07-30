@@ -72,3 +72,8 @@ specialist review and exact-revision evidence.
 authority-backed account and installation departure, exact multi-account
 targeting, accessible destructive confirmation, and a truthfully labelled
 local-forget path for records that cannot authorize.
+
+[ADR 0031](0031-enrolment-and-product-audience-separation.md) proposes a
+signed distinction between the fixed enrolment ceremony audience and the
+closed set of product-session audiences. Implementation remains blocked
+pending acceptance and specialist review.

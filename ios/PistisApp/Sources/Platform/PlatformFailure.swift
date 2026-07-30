@@ -26,6 +26,7 @@ enum PlatformFailure: Error, Equatable, Sendable {
     case productionEnvelopeUnavailable
     case enrolmentBeginRetryRequired
     case enrolmentRequired
+    case existingEnrolmentMustBeRemoved
 }
 
 extension PlatformFailure {
@@ -45,6 +46,22 @@ extension PlatformFailure {
             "Enrol this installation through the authenticated system-browser flow before scanning."
         case .enrolmentBeginRetryRequired:
             "The host did not return a verifiable enrolment response. This exact attempt was retained; retry once or cancel and scan a fresh invitation."
+        case .existingEnrolmentMustBeRemoved:
+            "An existing Pistis identity already occupies this device. Remove or revoke it before beginning a new enrolment."
+        case .secureHardwareUnavailable:
+            "Secure Enclave is unavailable on this device."
+        case .keyCreationFailed:
+            "Pistis could not create the protected device key."
+        case .keyInvalidated:
+            "The protected device key is no longer valid. Remove the expired identity before enrolling again."
+        case .userVerificationNotEnrolled:
+            "Face ID is not enrolled. Configure Face ID in Settings, then try again."
+        case .userVerificationLockedOut:
+            "Face ID is locked. Unlock it in Settings or with the device passcode, then try again."
+        case .userVerificationCancelled:
+            "Face ID was cancelled before the protected key operation completed."
+        case .userVerificationUnavailable:
+            "Face ID is unavailable for this protected key operation."
         default:
             "Pistis could not complete this operation safely. Please try again."
         }

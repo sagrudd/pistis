@@ -39,7 +39,8 @@ struct EnrollmentProjection: Equatable {
                 provider: "GitHub",
                 displayName: "GitHub account",
                 stableSubject: stableSubject,
-                status: isCurrent ? "Enrolled" : "Expired"
+                status: isCurrent ? "Enrolled" : "Expired",
+                allowsLocalForget: !isCurrent
             ),
         ]
         installations = [

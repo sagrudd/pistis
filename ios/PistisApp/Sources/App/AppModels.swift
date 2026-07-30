@@ -6,6 +6,7 @@ struct IdentitySummary: Identifiable, Hashable {
     let displayName: String
     let stableSubject: String
     let status: String
+    let allowsLocalForget: Bool
 }
 
 struct InstallationSummary: Identifiable, Hashable {
@@ -49,14 +50,16 @@ enum DemonstrationData {
             provider: "GitHub",
             displayName: "stephen",
             stableSubject: "Provider user 184203",
-            status: "Enrolled"
+            status: "Enrolled",
+            allowsLocalForget: false
         ),
         IdentitySummary(
             id: UUID(),
             provider: "Google",
             displayName: "Research account",
             stableSubject: "Subject …72f1",
-            status: "Enrolled"
+            status: "Enrolled",
+            allowsLocalForget: false
         ),
     ]
 

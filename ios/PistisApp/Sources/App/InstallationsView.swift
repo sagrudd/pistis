@@ -103,7 +103,7 @@ private struct InstallationDetailView: View {
                         VStack(alignment: .leading, spacing: MnSpacing.x3) {
                             MnStatusLabel(text: "Local deletion only", kind: .warning)
                             Text(
-                                "This expired record cannot authorize. Forgetting it removes this phone’s cached trust and device key; it does not delete authority audit history or change server state."
+                                "This expired record cannot authorise. Forgetting it removes this phone’s cached trust and device key; it does not delete authority audit history or change server state."
                             )
                             DestructiveConfirmationSlider(
                                 label: "Slide to forget this expired installation",

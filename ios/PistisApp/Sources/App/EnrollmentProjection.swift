@@ -67,6 +67,70 @@ struct EnrollmentProjection: Equatable {
         history = Self.mergeHistory(retainedHistory + [enrolmentEvent])
     }
 
+    init(
+        legacyEnrollment: LegacyAuthenticatedEnrollmentOutput,
+        retainedHistory: [HistoryEvent] = []
+    ) {
+        let trust = legacyEnrollment.trust
+        let externalIdentityID = Self.uuid(trust.externalIdentityID)
+        let installationID = Self.uuid(trust.installationID)
+        let stableSubject = "Identity \(Self.shortIdentifier(trust.externalIdentityID))"
+        let host = legacyEnrollment.allowedHosts.sorted().first ?? trust.audience
+
+        identities = [
+            IdentitySummary(
+                id: externalIdentityID,
+                provider: "GitHub",
+                displayName: "GitHub account",
+                stableSubject: stableSubject,
+                status: "Re-enrolment required",
+                allowsLocalForget: true
+            ),
+        ]
+        installations = [
+            InstallationSummary(
+                id: installationID,
+                name: trust.displayName,
+                localAlias: host,
+                fingerprint: Self.fingerprint(trust.fingerprint),
+                status: "Re-enrolment required",
+                lastUsed: "Unavailable",
+                allowsLocalForget: true
+            ),
+        ]
+        let event = HistoryEvent(
+            id: Self.uuid(legacyEnrollment.responseContext.deviceID),
+            action: "Legacy enrolment detected",
+            installation: trust.displayName,
+            occurredAt: "Exact time not retained locally",
+            decision: "Re-enrolment required",
+            signature: "Product permissions unavailable",
+            transfer: "No request authorised",
+            verification: "Incompatible trust retained for local retirement"
+        )
+        history = Self.mergeHistory(retainedHistory + [event])
+    }
+
+    init(
+        inventory: EnrollmentInventoryRecord,
+        retainedHistory: [HistoryEvent] = [],
+        now: Date = Date()
+    ) {
+        switch inventory {
+        case let .current(enrollment):
+            self.init(
+                enrollment: enrollment,
+                retainedHistory: retainedHistory,
+                now: now
+            )
+        case let .legacy(enrollment):
+            self.init(
+                legacyEnrollment: enrollment,
+                retainedHistory: retainedHistory
+            )
+        }
+    }
+
     init(retainedHistory: [HistoryEvent]) {
         identities = []
         installations = []
@@ -115,12 +179,12 @@ final class EnrollmentProjectionStore: ObservableObject {
     }
 
     @Published private(set) var state: State = .loading
-    private let loadEnrollment: () async throws -> AuthenticatedEnrollmentOutput?
+    private let loadEnrollment: () async throws -> EnrollmentInventoryRecord?
     private let loadHistory: () async throws -> [HistoryEvent]
     private let recordHistory: (HistoryEvent) async throws -> Void
 
     init(
-        loadEnrollment: @escaping () async throws -> AuthenticatedEnrollmentOutput?,
+        loadEnrollment: @escaping () async throws -> EnrollmentInventoryRecord?,
         loadHistory: @escaping () async throws -> [HistoryEvent] = { [] },
         recordHistory: @escaping (HistoryEvent) async throws -> Void = { _ in }
     ) {
@@ -143,13 +207,13 @@ final class EnrollmentProjectionStore: ObservableObject {
         do {
             let stored = try await loadEnrollment()
             if let stored,
-               let event = EnrollmentProjection(enrollment: stored).history.first
+               let event = EnrollmentProjection(inventory: stored).history.first
             {
                 try await recordHistory(event)
             }
             let history = try await loadHistory()
             let projection = stored.map {
-                EnrollmentProjection(enrollment: $0, retainedHistory: history)
+                EnrollmentProjection(inventory: $0, retainedHistory: history)
             } ?? EnrollmentProjection(retainedHistory: history)
             state = .loaded(projection)
         } catch {

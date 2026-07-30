@@ -15,7 +15,7 @@ final class EnrollmentProjectionTests: XCTestCase {
 
     func testVerifiedEnrollmentProjectsOnlyPublicHomeScreenFacts() async throws {
         let enrollment = try fixtureEnrollment()
-        let store = EnrollmentProjectionStore { enrollment }
+        let store = EnrollmentProjectionStore { .current(enrollment) }
 
         await store.refresh()
 
@@ -72,6 +72,100 @@ final class EnrollmentProjectionTests: XCTestCase {
         XCTAssertEqual(projection.installations[0].status, "Expired")
         XCTAssertTrue(projection.installations[0].allowsLocalForget)
         XCTAssertEqual(projection.history[0].decision, "Verified")
+    }
+
+    func testLegacyEnrollmentIsVisibleButCannotAuthorise() throws {
+        let legacy = try fixtureLegacyEnrollment()
+        let encoded = try JSONEncoder().encode(legacy)
+        let inventory = try InstallationTrustKeychain.decodeInventory(encoded)
+
+        XCTAssertEqual(inventory, .legacy(legacy))
+        XCTAssertNil(
+            InstallationTrustKeychain.currentEnrollment(from: inventory)
+        )
+
+        let projection = EnrollmentProjection(inventory: inventory)
+        XCTAssertEqual(
+            projection.identities[0].status,
+            "Re-enrolment required"
+        )
+        XCTAssertTrue(projection.identities[0].allowsLocalForget)
+        XCTAssertEqual(
+            projection.installations[0].status,
+            "Re-enrolment required"
+        )
+        XCTAssertTrue(projection.installations[0].allowsLocalForget)
+        XCTAssertEqual(projection.history[0].action, "Legacy enrolment detected")
+    }
+
+    func testLegacyRemovalRequiresBothExactIdentifiers() throws {
+        let legacy = try fixtureLegacyEnrollment()
+
+        XCTAssertTrue(
+            InstallationTrustKeychain.matchesLegacyRemoval(
+                legacy,
+                installationID: legacy.trust.installationID,
+                externalIdentityID: legacy.trust.externalIdentityID
+            )
+        )
+        XCTAssertFalse(
+            InstallationTrustKeychain.matchesLegacyRemoval(
+                legacy,
+                installationID: Data(repeating: 0xff, count: 16),
+                externalIdentityID: legacy.trust.externalIdentityID
+            )
+        )
+        XCTAssertFalse(
+            InstallationTrustKeychain.matchesLegacyRemoval(
+                legacy,
+                installationID: legacy.trust.installationID,
+                externalIdentityID: Data(repeating: 0xff, count: 16)
+            )
+        )
+    }
+
+    func testMixedAndUnknownLegacyProfilesFailClosed() throws {
+        let legacyData = try JSONEncoder().encode(fixtureLegacyEnrollment())
+        var object = try XCTUnwrap(
+            JSONSerialization.jsonObject(with: legacyData) as? [String: Any]
+        )
+        var trust = try XCTUnwrap(object["trust"] as? [String: Any])
+        trust["authorisedProductAudiences"] = ["jenkins"]
+        object["trust"] = trust
+        XCTAssertThrowsError(
+            try InstallationTrustKeychain.decodeInventory(
+                JSONSerialization.data(withJSONObject: object)
+            )
+        )
+
+        object = try XCTUnwrap(
+            JSONSerialization.jsonObject(with: legacyData) as? [String: Any]
+        )
+        object["unexpected"] = true
+        XCTAssertThrowsError(
+            try InstallationTrustKeychain.decodeInventory(
+                JSONSerialization.data(withJSONObject: object)
+            )
+        )
+    }
+
+    func testCurrentStorageProfileIsExplicitAndClosed() throws {
+        let current = try fixtureEnrollment()
+        let data = try JSONEncoder().encode(current)
+        XCTAssertEqual(
+            try InstallationTrustKeychain.decodeInventory(data),
+            .current(current)
+        )
+
+        var object = try XCTUnwrap(
+            JSONSerialization.jsonObject(with: data) as? [String: Any]
+        )
+        object["storageProfile"] = 1
+        XCTAssertThrowsError(
+            try InstallationTrustKeychain.decodeInventory(
+                JSONSerialization.data(withJSONObject: object)
+            )
+        )
     }
 
     func testRetainedHistorySurvivesWithoutAnEnrollmentRecord() {
@@ -175,6 +269,37 @@ final class EnrollmentProjectionTests: XCTestCase {
                 externalIdentityID: Data(repeating: 0x03, count: 16)
             ),
             allowedHosts: ["pistis.example.test"]
+        )
+    }
+
+    private func fixtureLegacyEnrollment() throws
+        -> LegacyAuthenticatedEnrollmentOutput
+    {
+        try LegacyAuthenticatedEnrollmentOutput(
+            trust: LegacyInstallationTrustRecord(
+                installationID: Data(repeating: 0x11, count: 16),
+                displayName: "Legacy laboratory",
+                audience: "prosopikon:pistis:enrolment",
+                userID: Data(repeating: 0x12, count: 16),
+                externalIdentityID: Data(repeating: 0x13, count: 16),
+                fingerprint: Data(repeating: 0x14, count: 32),
+                installationKeyID: Data(repeating: 0x15, count: 32),
+                installationPublicKey: Data([0x02])
+                    + Data(repeating: 0x16, count: 32),
+                authorityKeyID: Data(repeating: 0x17, count: 32),
+                authorityReceipt: Data(repeating: 0x18, count: 64),
+                policyGeneration: 1,
+                revocationGeneration: 1,
+                expiresAt: Date(timeIntervalSince1970: 2_000_000_000),
+                active: true
+            ),
+            responseContext: DeviceResponseContext(
+                deviceID: Data(repeating: 0x19, count: 16),
+                deviceKeyID: Data(repeating: 0x1a, count: 32),
+                userID: Data(repeating: 0x12, count: 16),
+                externalIdentityID: Data(repeating: 0x13, count: 16)
+            ),
+            allowedHosts: ["legacy.example.test"]
         )
     }
 }

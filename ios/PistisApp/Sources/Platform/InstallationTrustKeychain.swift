@@ -10,12 +10,180 @@ import Security
 /// Only the system-browser enrolment broker may construct and install this
 /// value. QR acquisition never reaches this API.
 struct AuthenticatedEnrollmentOutput: Codable, Equatable, Sendable {
+    let storageProfile: UInt64
     let trust: InstallationTrustRecord
     let responseContext: DeviceResponseContext
     let allowedHosts: Set<String>
 
     init(
         trust: InstallationTrustRecord,
+        responseContext: DeviceResponseContext,
+        allowedHosts: Set<String>
+    ) throws {
+        guard trust.userID == responseContext.userID,
+              trust.externalIdentityID == responseContext.externalIdentityID,
+              !allowedHosts.isEmpty,
+              allowedHosts.allSatisfy({ CanonicalHTTPSHost.parse($0) != nil })
+        else { throw PlatformFailure.invalidConfiguration }
+        storageProfile = 2
+        self.trust = trust
+        self.responseContext = responseContext
+        self.allowedHosts = allowedHosts
+    }
+
+    private enum CodingKeys: String, CodingKey, CaseIterable {
+        case storageProfile
+        case trust
+        case responseContext
+        case allowedHosts
+    }
+
+    init(from decoder: any Decoder) throws {
+        let untyped = try decoder.container(keyedBy: TrustCodingKey.self)
+        guard Set(untyped.allKeys.map(\.stringValue))
+            == Set(CodingKeys.allCases.map(\.rawValue))
+        else {
+            throw DecodingError.dataCorrupted(
+                .init(codingPath: decoder.codingPath, debugDescription: "invalid trust fields")
+            )
+        }
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        guard try container.decode(UInt64.self, forKey: .storageProfile) == 2 else {
+            throw DecodingError.dataCorrupted(
+                .init(codingPath: decoder.codingPath, debugDescription: "invalid storage profile")
+            )
+        }
+        try self.init(
+            trust: container.decode(InstallationTrustRecord.self, forKey: .trust),
+            responseContext: container.decode(
+                DeviceResponseContext.self,
+                forKey: .responseContext
+            ),
+            allowedHosts: container.decode(Set<String>.self, forKey: .allowedHosts)
+        )
+    }
+}
+
+/// The exact trust profile stored before ADR 0031 added signed product
+/// audiences. This type is inventory-only and can never authorise.
+struct LegacyInstallationTrustRecord: Codable, Equatable, Sendable {
+    let installationID: Data
+    let displayName: String
+    let audience: String
+    let userID: Data
+    let externalIdentityID: Data
+    let fingerprint: Data
+    let installationKeyID: Data
+    let installationPublicKey: Data
+    let authorityKeyID: Data
+    let authorityReceipt: Data
+    let policyGeneration: UInt64
+    let revocationGeneration: UInt64
+    let expiresAt: Date
+    let active: Bool
+
+    init(
+        installationID: Data,
+        displayName: String,
+        audience: String,
+        userID: Data,
+        externalIdentityID: Data,
+        fingerprint: Data,
+        installationKeyID: Data,
+        installationPublicKey: Data,
+        authorityKeyID: Data,
+        authorityReceipt: Data,
+        policyGeneration: UInt64,
+        revocationGeneration: UInt64,
+        expiresAt: Date,
+        active: Bool
+    ) throws {
+        guard installationID.count == 16,
+              userID.count == 16,
+              externalIdentityID.count == 16,
+              fingerprint.count == 32,
+              installationKeyID.count == 32,
+              installationPublicKey.count == 33,
+              authorityKeyID.count == 32,
+              !authorityReceipt.isEmpty,
+              Self.bounded(displayName, maximum: 128),
+              Self.bounded(audience, maximum: 128)
+        else { throw PlatformFailure.invalidConfiguration }
+        self.installationID = installationID
+        self.displayName = displayName
+        self.audience = audience
+        self.userID = userID
+        self.externalIdentityID = externalIdentityID
+        self.fingerprint = fingerprint
+        self.installationKeyID = installationKeyID
+        self.installationPublicKey = installationPublicKey
+        self.authorityKeyID = authorityKeyID
+        self.authorityReceipt = authorityReceipt
+        self.policyGeneration = policyGeneration
+        self.revocationGeneration = revocationGeneration
+        self.expiresAt = expiresAt
+        self.active = active
+    }
+
+    private enum CodingKeys: String, CodingKey, CaseIterable {
+        case installationID
+        case displayName
+        case audience
+        case userID
+        case externalIdentityID
+        case fingerprint
+        case installationKeyID
+        case installationPublicKey
+        case authorityKeyID
+        case authorityReceipt
+        case policyGeneration
+        case revocationGeneration
+        case expiresAt
+        case active
+    }
+
+    init(from decoder: any Decoder) throws {
+        let untyped = try decoder.container(keyedBy: TrustCodingKey.self)
+        guard Set(untyped.allKeys.map(\.stringValue))
+            == Set(CodingKeys.allCases.map(\.rawValue))
+        else {
+            throw DecodingError.dataCorrupted(
+                .init(codingPath: decoder.codingPath, debugDescription: "invalid legacy trust fields")
+            )
+        }
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        try self.init(
+            installationID: container.decode(Data.self, forKey: .installationID),
+            displayName: container.decode(String.self, forKey: .displayName),
+            audience: container.decode(String.self, forKey: .audience),
+            userID: container.decode(Data.self, forKey: .userID),
+            externalIdentityID: container.decode(Data.self, forKey: .externalIdentityID),
+            fingerprint: container.decode(Data.self, forKey: .fingerprint),
+            installationKeyID: container.decode(Data.self, forKey: .installationKeyID),
+            installationPublicKey: container.decode(Data.self, forKey: .installationPublicKey),
+            authorityKeyID: container.decode(Data.self, forKey: .authorityKeyID),
+            authorityReceipt: container.decode(Data.self, forKey: .authorityReceipt),
+            policyGeneration: container.decode(UInt64.self, forKey: .policyGeneration),
+            revocationGeneration: container.decode(UInt64.self, forKey: .revocationGeneration),
+            expiresAt: container.decode(Date.self, forKey: .expiresAt),
+            active: container.decode(Bool.self, forKey: .active)
+        )
+    }
+
+    private static func bounded(_ value: String, maximum: Int) -> Bool {
+        !value.isEmpty && value.utf8.count <= maximum
+            && value == value.trimmingCharacters(in: .whitespacesAndNewlines)
+            && !value.unicodeScalars.contains(where: CharacterSet.controlCharacters.contains)
+    }
+}
+
+struct LegacyAuthenticatedEnrollmentOutput: Codable, Equatable, Sendable {
+    let trust: LegacyInstallationTrustRecord
+    let responseContext: DeviceResponseContext
+    let allowedHosts: Set<String>
+
+    init(
+        trust: LegacyInstallationTrustRecord,
         responseContext: DeviceResponseContext,
         allowedHosts: Set<String>
     ) throws {
@@ -41,12 +209,12 @@ struct AuthenticatedEnrollmentOutput: Codable, Equatable, Sendable {
             == Set(CodingKeys.allCases.map(\.rawValue))
         else {
             throw DecodingError.dataCorrupted(
-                .init(codingPath: decoder.codingPath, debugDescription: "invalid trust fields")
+                .init(codingPath: decoder.codingPath, debugDescription: "invalid legacy output fields")
             )
         }
         let container = try decoder.container(keyedBy: CodingKeys.self)
         try self.init(
-            trust: container.decode(InstallationTrustRecord.self, forKey: .trust),
+            trust: container.decode(LegacyInstallationTrustRecord.self, forKey: .trust),
             responseContext: container.decode(
                 DeviceResponseContext.self,
                 forKey: .responseContext
@@ -54,6 +222,11 @@ struct AuthenticatedEnrollmentOutput: Codable, Equatable, Sendable {
             allowedHosts: container.decode(Set<String>.self, forKey: .allowedHosts)
         )
     }
+}
+
+enum EnrollmentInventoryRecord: Equatable, Sendable {
+    case current(AuthenticatedEnrollmentOutput)
+    case legacy(LegacyAuthenticatedEnrollmentOutput)
 }
 
 private struct TrustCodingKey: CodingKey {
@@ -88,14 +261,16 @@ actor InstallationTrustKeychain: InstallationTrustStoring {
     private let account = "primary"
 
     func record(installationID: Data) throws -> InstallationTrustRecord? {
-        guard let output = try load(), output.trust.installationID == installationID else {
+        guard let output = try loadCurrent(),
+              output.trust.installationID == installationID
+        else {
             return nil
         }
         return output.trust
     }
 
     func activeEnrollment() throws -> AuthenticatedEnrollmentOutput? {
-        guard let output = try load(), output.trust.active,
+        guard let output = try loadCurrent(), output.trust.active,
               Date() < output.trust.expiresAt
         else { return nil }
         return output
@@ -103,18 +278,18 @@ actor InstallationTrustKeychain: InstallationTrustStoring {
 
     /// Return the durable record for inventory presentation, including an
     /// expired or inactive record that must no longer authorize requests.
-    func enrollmentInventoryRecord() throws -> AuthenticatedEnrollmentOutput? {
-        try load()
+    func enrollmentInventoryRecord() throws -> EnrollmentInventoryRecord? {
+        try loadInventory()
     }
 
     /// Whether the create-once slot is occupied, including by expired trust.
     func hasStoredEnrollment() throws -> Bool {
-        try load() != nil
+        try loadInventory() != nil
     }
 
     func installAuthenticated(_ output: AuthenticatedEnrollmentOutput) throws {
         if try Self.firstInstallDisposition(
-            existing: load(),
+            existing: existingCurrentForInstall(),
             proposed: output
         ) == .idempotent {
             NotificationCenter.default.post(
@@ -162,8 +337,15 @@ actor InstallationTrustKeychain: InstallationTrustStoring {
     }
 
     func revoke(installationID: Data) throws {
-        guard let current = try load() else { return }
-        guard current.trust.installationID == installationID else {
+        guard let current = try loadInventory() else { return }
+        let storedID: Data
+        switch current {
+        case let .current(output):
+            storedID = output.trust.installationID
+        case let .legacy(output):
+            storedID = output.trust.installationID
+        }
+        guard storedID == installationID else {
             throw PlatformFailure.invalidConfiguration
         }
         try deleteStoredEnrollment()
@@ -172,7 +354,7 @@ actor InstallationTrustKeychain: InstallationTrustStoring {
     /// Forget local material only when it cannot authorize. This does not
     /// represent or perform authority-side revocation.
     func forgetExpired(installationID: Data, now: Date = Date()) throws {
-        guard let current = try load(),
+        guard let current = try loadCurrent(),
               current.trust.installationID == installationID,
               Self.allowsLocalForget(
                   active: current.trust.active,
@@ -181,6 +363,32 @@ actor InstallationTrustKeychain: InstallationTrustStoring {
               )
         else { throw PlatformFailure.invalidConfiguration }
         try deleteStoredEnrollment()
+    }
+
+    /// Retire the exact preceding profile. It is structurally incapable of
+    /// authorising in current software and this does not represent server
+    /// revocation.
+    func forgetIncompatible(
+        installationID: Data,
+        externalIdentityID: Data
+    ) throws {
+        guard case let .legacy(current)? = try loadInventory(),
+              Self.matchesLegacyRemoval(
+                  current,
+                  installationID: installationID,
+                  externalIdentityID: externalIdentityID
+              )
+        else { throw PlatformFailure.invalidConfiguration }
+        try deleteStoredEnrollment()
+    }
+
+    static func matchesLegacyRemoval(
+        _ current: LegacyAuthenticatedEnrollmentOutput,
+        installationID: Data,
+        externalIdentityID: Data
+    ) -> Bool {
+        current.trust.installationID == installationID
+            && current.trust.externalIdentityID == externalIdentityID
     }
 
     static func allowsLocalForget(
@@ -206,7 +414,48 @@ actor InstallationTrustKeychain: InstallationTrustStoring {
         #endif
     }
 
-    private func load() throws -> AuthenticatedEnrollmentOutput? {
+    static func decodeInventory(_ data: Data) throws -> EnrollmentInventoryRecord {
+        if let current = try? JSONDecoder().decode(
+            AuthenticatedEnrollmentOutput.self,
+            from: data
+        ) {
+            return .current(current)
+        }
+        do {
+            return .legacy(
+                try JSONDecoder().decode(
+                    LegacyAuthenticatedEnrollmentOutput.self,
+                    from: data
+                )
+            )
+        } catch {
+            throw PlatformFailure.invalidConfiguration
+        }
+    }
+
+    private func existingCurrentForInstall() throws -> AuthenticatedEnrollmentOutput? {
+        switch try loadInventory() {
+        case nil:
+            return nil
+        case let .current(output):
+            return output
+        case .legacy:
+            throw PlatformFailure.invalidConfiguration
+        }
+    }
+
+    private func loadCurrent() throws -> AuthenticatedEnrollmentOutput? {
+        Self.currentEnrollment(from: try loadInventory())
+    }
+
+    static func currentEnrollment(
+        from inventory: EnrollmentInventoryRecord?
+    ) -> AuthenticatedEnrollmentOutput? {
+        guard case let .current(output)? = inventory else { return nil }
+        return output
+    }
+
+    private func loadInventory() throws -> EnrollmentInventoryRecord? {
         #if canImport(Security)
         var query = baseQuery()
         query[kSecReturnData as String] = true
@@ -218,7 +467,7 @@ actor InstallationTrustKeychain: InstallationTrustStoring {
               data.count <= 16_384
         else { throw PlatformFailure.invalidConfiguration }
         do {
-            return try JSONDecoder().decode(AuthenticatedEnrollmentOutput.self, from: data)
+            return try Self.decodeInventory(data)
         } catch {
             throw PlatformFailure.invalidConfiguration
         }

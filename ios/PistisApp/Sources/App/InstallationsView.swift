@@ -99,15 +99,22 @@ private struct InstallationDetailView: View {
                     }
                 }
                 if installation.allowsLocalForget {
+                    let isIncompatible = installation.status == "Re-enrolment required"
                     MnPanel {
                         VStack(alignment: .leading, spacing: MnSpacing.x3) {
                             MnStatusLabel(text: "Local deletion only", kind: .warning)
                             Text(
-                                "This expired record cannot authorise. Forgetting it removes this phone’s cached trust and device key; it does not delete authority audit history or change server state."
+                                isIncompatible
+                                    ? "This older enrolment cannot authorise in the current app. Removing it deletes this phone’s local trust and device key so you can re-enrol; authority-side revocation and existing server sessions remain separate."
+                                    : "This expired record cannot authorise. Forgetting it removes this phone’s cached trust and device key; it does not delete authority audit history or change server state."
                             )
                             DestructiveConfirmationSlider(
-                                label: "Slide to forget this expired installation",
-                                confirmationLabel: "Confirm forget local record"
+                                label: isIncompatible
+                                    ? "Slide to remove incompatible enrolment"
+                                    : "Slide to forget this expired installation",
+                                confirmationLabel: isIncompatible
+                                    ? "Confirm local enrolment removal"
+                                    : "Confirm forget local record"
                             ) {
                                 try await forgetExpired(installation.id)
                             }

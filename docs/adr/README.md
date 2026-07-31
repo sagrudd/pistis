@@ -81,3 +81,8 @@ review and exact cross-project conformance evidence.
 [ADR 0032](0032-retire-incompatible-local-trust.md) accepts a fail-closed
 mobile migration that exposes an older non-authorising trust record and permits
 truthfully labelled local retirement before re-enrolment.
+
+[ADR 0033](0033-governed-infrastructure-action-approval.md) proposes a closed
+governed-infrastructure approval profile and atomic non-secret consumption
+receipt. Implementation and mobile enablement remain blocked pending Project
+Owner and specialist protocol/security acceptance.

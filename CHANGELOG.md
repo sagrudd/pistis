@@ -7,6 +7,10 @@ a Changelog and releases follow Semantic Versioning.
 
 ### Added
 
+- Add a redacted, machine-readable funding-review demonstration contract for
+  CLI first-device registration, iPhone host trust, Monas web QR login,
+  Kyberneterion exact-action workflow selection, and fail-closed negative cases.
+
 - Define the bounded end-to-end Monas demonstration contract linking a
   device-approved Pistis session to DASObjectStore evidence, Oikodome compute
   admission, and a pinned Jenkins Expedition task, including fail-closed

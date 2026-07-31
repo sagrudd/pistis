@@ -831,6 +831,7 @@ dependencies = [
  "pistis-protocol",
  "pistis-qr",
  "serde_json",
+ "sha2",
 ]
 
 [[package]]

@@ -98,6 +98,7 @@ fields are mandatory and critical:
 | 26 | `idempotency_digest` | 32-byte domain-separated SHA-256 digest |
 | 27 | `issued_at` | unsigned Unix time in milliseconds |
 | 28 | `expires_at` | unsigned Unix time in milliseconds, exclusive |
+| 29 | `authoritative_read_set_digest` | 32-byte digest defined below |
 
 Action class `1` means only `accept-oikodome-convergence-directive`. Zero and
 unknown values deny. This profile does not authorise a shell command, arbitrary
@@ -150,6 +151,30 @@ The canonical governed-context bytes are embedded unchanged in the challenge.
 display text, unsigned metadata, or individually re-encoded fields cannot
 replace the canonical context.
 
+`authoritative_read_set_digest` is SHA-256 of the exact canonical
+`pistis.governed-action-authoritative-read-set.v1` bytes materialised by the
+host. That closed internal object contains every context value resolved from
+Prosopikon, Oikodome, Thesaurophylax, policy, entitlement, and revocation
+owners, plus each owner's stable revision identifier. At completion the owner
+conditionally prepares that exact revision and returns a separate opaque
+prepare handle. Prepare handles are host-internal, non-bearer material and
+never enter the read set, challenge, receipt, browser, mobile client, logs, or
+exported evidence.
+
+Acceptance-relevant mutable facts must use one of these two authority models:
+
+1. the installation host owns an authoritative materialised projection whose
+   updates and governed acceptance participate in the same serialisable
+   transaction; or
+2. the owning authority supplies a conditional prepare fence which reserves
+   the exact revision until the host commits or aborts it under a bounded
+   two-phase protocol.
+
+A normal remote read followed by an unconditional host write is not an
+authority transaction. If any owner cannot provide one of the two models, if
+a fence expires, or if prepare, compare, commit, or abort has an ambiguous
+outcome, governed acceptance is unavailable and fails closed.
+
 ## Human display document
 
 `pistis.governed-action-display.v1` is this closed canonical map:
@@ -167,11 +192,34 @@ replace the canonical context.
 | 8 | `target_name` | text |
 | 9 | `intent_summary` | text |
 | 10 | `consequence_summary` | text |
+| 11 | `target_fingerprint` | exact fingerprint of context key 18 |
+| 12 | `target_digest_fingerprint` | exact fingerprint of context key 19 |
+| 13 | `plan_digest_fingerprint` | exact fingerprint of context key 20 |
+| 14 | `resource_set_digest_fingerprint` | exact fingerprint of context key 21 |
 
 Names are 1 through 128 UTF-8 bytes and summaries are 1 through 512 UTF-8
-bytes. Control characters are forbidden. Display text is signed and retained
-only in the protected ceremony record, but it is not authority: the canonical
-identifiers, revisions, and digests remain decisive.
+bytes. Control characters, Unicode `Bidi_Control`, Unicode
+`Default_Ignorable_Code_Point`, and noncharacters are forbidden. Text is not
+normalised or case-folded. Renderers add their own directional isolation
+outside the signed strings and must not insert, remove, or reorder signed
+content. Display text is signed and retained only in the protected ceremony
+record, but it is not authority: the canonical identifiers, revisions, and
+digests remain decisive.
+
+A display fingerprint is the first 12 lower-case hexadecimal characters of
+SHA-256 of the exact canonical identifier bytes or the exact 32-byte digest,
+rendered as `hhhh-hhhh-hhhh`. It is a human comparison aid only; all machine
+checks use the complete value. The secret-generation-set fingerprint applies
+the same rule to SHA-256 of the exact canonical array.
+
+Every display value has one deterministic source. The five identity labels
+map respectively to context keys 2, 3, 6, 7, and 10 through authority-owned
+label projections; `action_label` maps only from action class `1`;
+`target_name` maps from the immutable target projection bound by keys 18 and
+19; and fields 11 through 14 derive from context keys 18 through 21. Intent
+and consequence summaries map from the immutable operation-intent projection
+bound by key 15. A missing mapping, a projection digest mismatch, or two
+labels for one bound identifier denies.
 
 The mobile presentation must show, without truncation or hidden expansion:
 
@@ -183,6 +231,13 @@ The mobile presentation must show, without truncation or hidden expansion:
   the secret-generation set count and fingerprint;
 - the exact installation-scoped audience; and
 - issue time, exclusive expiry, and an explicit `Approve` or `Deny` choice.
+
+Identifier fingerprints use the exact hexadecimal rule above. Generations are
+displayed as unsigned base-10 ASCII with no sign, grouping, locale
+substitution, or leading zero except the value zero.
+Times are displayed both as the complete unsigned Unix-millisecond integer
+and as the corresponding fixed UTC form `YYYY-MM-DDTHH:MM:SS.mmmZ`.
+Unrepresentable UTC values deny rather than using a locale-dependent fallback.
 
 Login and generic exact-action visual treatment cannot be reused without a
 prominent governed-infrastructure identity. Unknown fields, action classes,
@@ -242,52 +297,81 @@ or secret state. Those facts come only from the stored challenge and the
 host's current authoritative re-resolution. A denial is terminal and cannot
 produce an accepted consumption receipt.
 
-Issue time must be no later than response time, user-verification time, and
-consumption time. Expiry is exclusive at every verification and commit
-boundary:
+The exact ordering is:
 
 ```text
-issued_at <= now < expires_at
+challenge.issued_at == context.issued_at
+challenge.expires_at == context.expires_at
+challenge.issued_at <= response.user_verified_at
+response.user_verified_at <= response.issued_at
+response.issued_at <= consumed_at
+consumed_at <= committed_at
+committed_at < expires_at
 expires_at - issued_at <= 300,000 milliseconds
 ```
 
-No clock skew is accepted by this profile. Adapters cannot widen the lifetime
-or add local tolerance. Unavailable or backwards-moving trusted time fails
-closed.
+Every subtraction and comparison is checked before evaluation and all values
+must be representable by the fixed UTC display. `consumed_at` is sampled after
+response verification and authoritative prepare; `committed_at` is sampled at
+the final commit boundary. No clock skew is accepted by this profile.
+Adapters cannot widen the lifetime or add local tolerance. Unavailable,
+overflowing, or backwards-moving trusted time fails closed.
+
+For challenge, response, receipt, trust projection, and chain-checkpoint COSE
+objects, `alg` and `kid` are protected headers and the unprotected map is
+empty. Challenge `kid` equals `installation_key_id`; response `kid` equals
+`device_key_id`; receipt and checkpoint `kid` equal their payload
+`authority_key_id`. Equality is byte-for-byte and is checked before signature
+verification. A missing, duplicate, unprotected, or unequal `kid` denies.
 
 Every governed context, display, challenge, response, and receipt is one
 complete canonical item within the existing 65,536-byte and 16-level nesting
 bounds. Unknown, missing, duplicate, out-of-order, ill-typed, excessive, or
 trailing data denies before signature or policy evaluation.
 
-## Atomic consumption transaction
+## Atomic consumption and authority fences
 
 The host completion port accepts the exact persisted challenge, exact signed
-response, verified device facts, and raw caller-scoped idempotency key. In one
-serialisable or equivalent authority transaction it shall:
+response, verified device facts, and raw caller-scoped idempotency key. It
+first opens or reloads one durable completion record and then:
 
-1. reload the canonical challenge/context and reject absent, malformed,
+1. reloads the canonical challenge/context and rejects absent, malformed,
    cancelled, denied, expired, consumed, or substituted state;
-2. verify challenge and response purposes, signatures, exact digest, nonce,
+2. verifies challenge and response purposes, signatures, exact digest, nonce,
    identifiers, audience, explicit approval, and current trusted time;
-3. re-resolve the exact installation, site, authority, tenant, principal,
-   role, audience, policy, effective entitlement, revocation, device/key, and
-   every secret generation from their owning authorities;
-4. compare every resolved value with the canonical governed context;
-5. recompute and compare all intent, directive, target, plan, resource-set,
-   authority-projection, and idempotency digests;
-6. consume the ceremony exactly once;
-7. create and sign the exact consumption receipt below;
-8. persist that receipt, the idempotent result, and minimised authority/Pistis
-   audit events; and
-9. commit before returning the receipt.
+3. materialises the exact installation, site, authority, tenant, principal,
+   role, audience, policy, effective entitlement, revocation, device/key,
+   Oikodome operation/directive/target/plan/resource, and every secret
+   generation from their owning authorities;
+4. compares every value and canonical projection digest with the governed
+   context and verifies `authoritative_read_set_digest`;
+5. prepares every owner revision fence and records the exact prepared fence
+   set in the completion record;
+6. follows the recoverable receipt-signing protocol below;
+7. after the exact receipt signature is durable, rechecks trusted time and
+   conditionally compares every prepared fence;
+8. in one serialisable host commit consumes the ceremony, advances the exact
+   evidence-chain head, and persists the receipt, idempotent result, minimised
+   audit events, and committed read-set digest; and
+9. commits or aborts every prepared authority participant before reporting an
+   outcome.
 
-The receipt signer is an authority-controlled provider using the accepted
-untagged COSE profile and a key identifier trusted for the closed receipt
-purpose. It has no private-key export path. Signing failure, audit failure,
-constraint failure, lock timeout, unavailable authority, drift, concurrency,
-or storage ambiguity rolls back the transaction and creates no accepted
-outcome.
+The final compare and host commit are one transaction for host-owned
+projections. External owner state may participate only through the bounded
+prepare/commit protocol: all owners must be successfully prepared before
+signing; an owner commit failure or uncertain outcome makes the completion
+ambiguous and requires manual reconciliation. The host never substitutes a
+fresh read, cached generation, best-effort validation, or an unconditional
+write. These rules include the signing-key/trust projection and Oikodome's
+immutable projections, removing a signing-provider or cross-owner
+time-of-check/time-of-use gap.
+
+The receipt signer is an authority-controlled idempotent provider using the
+accepted untagged COSE profile and a key identifier trusted for the closed
+receipt purpose. It has no private-key export path. A signed but uncommitted
+receipt is an orphan, not accepted evidence, and is never returned or exported.
+Constraint, lock, authority, drift, concurrency, audit, storage, participant,
+or signer ambiguity fails closed under the state machine below.
 
 No mutable action executes inside this transaction. After an accepted receipt
 is durably recorded, Oikodome independently revalidates current directive,
@@ -332,6 +416,11 @@ deterministic-CBOR map signed under the accepted COSE profile:
 | 25 | `previous_event_digest` | 32-byte authority evidence-chain digest |
 | 26 | `audit_ref` | bounded non-secret opaque text reference |
 | 27 | `authority_sequence` | unsigned monotonic authority sequence |
+| 28 | `authority_key_generation` | bounded immutable text identifier |
+| 29 | `trust_projection_ref` | bounded public immutable reference |
+| 30 | `trust_projection_digest` | 32-byte SHA-256 digest |
+| 31 | `authoritative_read_set_digest` | exact digest from the context |
+| 32 | `evidence_chain_scope_digest` | 32-byte digest defined below |
 
 `secret_generation_set_digest` is SHA-256 of the exact canonical array from
 the governed context. The receipt contains neither the secret references nor
@@ -345,26 +434,158 @@ or human-display document. Default debug and operational logs show only
 receipt ID, outcome, purpose, and bounded correlation.
 
 Verification requires the exact canonical receipt bytes and COSE envelope,
-the trusted authority public key/revision, the accepted governed context, and
-the authority's lifecycle/revocation policy. Metadata copied beside a receipt
+the public trust projection, the accepted governed context, and an
+authoritative commit proof defined below. Metadata copied beside a receipt
 cannot override signed fields. Unknown purposes, fields, keys, revisions,
-algorithms, non-canonical bytes, invalid signatures, chain discontinuity, or
-context mismatch deny.
+algorithms, non-canonical bytes, invalid signatures, chain discontinuity,
+missing authoritative inclusion, or context mismatch deny.
+
+The immutable public trust projection binds installation, Site Trust Domain,
+authority, audience, receipt purpose, public key or public-key digest, exact
+authority key ID and generation, activation interval, lifecycle status,
+policy generation, revocation generation, and its own revision. Its exact
+canonical bytes are retained with exported evidence. The projection reference
+and SHA-256 digest in the receipt must match those bytes.
+
+Historical verification and current readiness are separate decisions. Routine
+retirement or revocation effective strictly after `consumed_at` preserves a
+historical accepted result when the retained projection proves that the key
+was active and uncompromised at `consumed_at`. A compromise with an unknown or
+overlapping effective interval, missing destruction evidence, or uncertain
+key history makes historical validity indeterminate and fail-closed pending a
+separately reviewed adjudication. No retired, revoked, compromised, destroyed,
+or historically accepted key establishes current readiness.
+
+## Evidence-chain definition and committed inclusion
+
+The evidence-chain scope is the exact canonical map:
+
+```text
+{
+  0: 1,
+  1: "pistis.governed-action-evidence-chain-scope.v1",
+  2: installation_id,
+  3: site_trust_domain_id,
+  4: authority_id,
+  5: "oikodome"
+}
+```
+
+`evidence_chain_scope_digest` is SHA-256 of those exact bytes. Each scope has
+an independent unsigned 64-bit sequence beginning at `1`. Sequence `1` alone
+uses 32 zero bytes as `previous_event_digest`. Every later receipt uses the
+current head digest and exactly the previous sequence plus one. A sequence at
+`2^64 - 1` is exhausted and denies without wrapping, resetting, or creating a
+second genesis.
+
+The event digest is:
+
+```text
+SHA-256(
+  "pistis.governed-action-evidence-event.v1\0" ||
+  exact canonical receipt payload bytes ||
+  exact untagged COSE_Sign1 receipt bytes
+)
+```
+
+The literal domain separator is ASCII including its final NUL byte.
+Cross-scope predecessors deny. ADR 0019 and all legacy evidence chains remain
+separate domains: they are not imported, linked, renumbered, or used as a
+genesis for this profile.
+
+A receipt signature alone is not proof of commit. After the receipt event is
+committed, an authority-controlled checkpoint signer must read that exact
+committed row and sign
+`pistis.governed-action-chain-checkpoint.v1`, this closed canonical map:
+
+| Key | Field | Type and constraint |
+| ---: | --- | --- |
+| 0 | `version` | unsigned integer `1` |
+| 1 | `purpose` | exact checkpoint purpose |
+| 2 | `checkpoint_id` | 16-byte identifier |
+| 3 | `evidence_chain_scope_digest` | exact 32-byte scope digest |
+| 4 | `head_sequence` | unsigned 64-bit integer |
+| 5 | `head_event_digest` | 32-byte event digest |
+| 6 | `committed_at` | unsigned Unix time in milliseconds |
+| 7 | `authority_key_id` | 32-byte identifier |
+| 8 | `authority_key_generation` | bounded immutable text identifier |
+| 9 | `trust_projection_digest` | 32-byte SHA-256 digest |
+
+The signer interface refuses any event absent from the committed authority
+store and verifies the scope, sequence, event digest, committed time, key
+generation, and projection digest against that row before signing. Checkpoint
+eligibility additionally requires every prepared owner commit to have a
+durable successful outcome; pending, failed, or uncertain participants deny
+checkpoint signing. Its authority key ID, generation, and trust-projection
+digest must equal the committed receipt. Checkpoint signing uses a separately
+durable idempotent provider operation under the same unknown-outcome rules as
+receipt signing. No accepted evidence is released until the exact checkpoint
+signature and checkpoint record are durable. The checkpoint head for this
+export must equal the receipt sequence and event digest; later heads cannot
+stand in without a separately specified inclusion proof.
 
 ## One ceremony and zero later Pistis calls
 
 The logical Pistis interaction ends when the atomic completion transaction
-returns or reconciles the immutable accepted receipt. Transport retries used
-only to retrieve that same committed result are part of the original
-interaction and cannot create a second ceremony or authority decision.
+returns or reconciles the immutable committed evidence bundle. Transport
+retries used only to retrieve that same committed result are part of the
+original interaction and cannot create a second ceremony or authority
+decision.
 
-Oikodome persists the exact canonical context and receipt with its accepted
-directive epoch. Every subsequent evidence task or settlement shall:
+Oikodome gains an additive, receipt-only
+`verify_governed_approval_evidence_v1` port. Its input is a closed
+`GovernedApprovalEvidenceBundleV1` containing the exact canonical context or
+protected context projection defined below, receipt payload and COSE envelope,
+public trust projection, evidence-chain scope, and authoritative checkpoint.
+The port accepts only local immutable bytes and configured public trust
+anchors. It has no Pistis ceremony, completion, consumption, signing, or
+network callback and produces a non-serialisable
+`VerifiedGovernedApprovalEvidenceV1` result, never a bearer.
 
-1. load the accepted epoch, context, and receipt;
+The alternative minimum projection is
+`pistis.governed-action-context-projection.v1`, this closed canonical map:
+
+| Key | Field | Type and constraint |
+| ---: | --- | --- |
+| 0 | `version` | unsigned integer `1` |
+| 1 | `purpose` | exact projection purpose |
+| 2 | `context_ref` | bounded immutable DASObjectStore reference |
+| 3 | `governed_context_digest` | 32-byte SHA-256 digest |
+| 4 | `installation_id` | 16-byte identifier |
+| 5 | `site_trust_domain_id` | bounded opaque text identifier |
+| 6 | `audience` | exact text `oikodome` |
+| 7 | `operation_id` | bounded opaque text identifier |
+| 8 | `operation_intent_digest` | 32-byte digest |
+| 9 | `directive_id` | bounded opaque text identifier |
+| 10 | `directive_digest` | 32-byte digest |
+| 11 | `target_digest` | 32-byte digest |
+| 12 | `plan_digest` | 32-byte digest |
+| 13 | `resource_set_digest` | 32-byte digest |
+| 14 | `issued_at` | exact context issue time |
+| 15 | `expires_at` | exact context exclusive expiry |
+| 16 | `consumed_at` | exact receipt consumption time |
+| 17 | `receipt_ref` | bounded immutable reference |
+| 18 | `receipt_digest` | 32-byte digest of exact COSE receipt bytes |
+| 19 | `trust_projection_ref` | exact receipt trust reference |
+| 20 | `trust_projection_digest` | exact receipt trust digest |
+| 21 | `checkpoint_ref` | bounded immutable reference |
+| 22 | `checkpoint_digest` | 32-byte digest of exact COSE checkpoint bytes |
+| 23 | `evidence_chain_scope_digest` | exact 32-byte scope digest |
+| 24 | `authority_sequence` | exact receipt sequence |
+| 25 | `event_digest` | exact 32-byte event digest |
+
+The verifier resolves `context_ref` only through the local owner-restricted
+DASObjectStore interface, recomputes every digest, and compares every projected
+field with the resolved canonical context and receipt. It does not accept a
+projection when the referenced context is unavailable.
+
+Every subsequent evidence task or settlement shall:
+
+1. load the accepted epoch and its exact evidence bundle;
 2. verify their canonical bytes, digests, receipt signature, receipt purpose,
    installation/site/audience, operation/directive identities, historical
-   `issued_at <= consumed_at < expires_at`, and evidence-chain relationship;
+   time ordering, signing-key generation and lifecycle, exact event digest,
+   and checkpoint inclusion;
 3. verify that the settlement refers to that exact accepted epoch; and
 4. apply Oikodome's current execution/readiness and supersession policy.
 
@@ -375,29 +596,73 @@ requires manual recovery. This historical verification does not permit a
 receipt to approve another directive or prove that current mutable state is
 still ready.
 
+Oikodome stores the exact context only in owner-restricted encrypted storage.
+Where that is unavailable it stores the immutable DASObjectStore reference
+and minimum projection above. The reference is not a bearer. Missing, mutable,
+unauthorised, digest-mismatched, or unavailable context storage fails closed
+and requires manual recovery. Human display, secret references, device
+response, session material, and bearer material are excluded.
+
+This port is parallel to existing login and V2 exact-action verifiers.
+Existing frozen fixtures and behaviours are not reinterpreted, widened, or
+used as fallback.
+
 ## Idempotency, crashes, and recovery
 
 The authority store uniquely binds ceremony ID, operation ID, context digest,
-and idempotency digest. An exact retry after commit returns the byte-identical
-stored receipt and does not reverify the mobile response, invoke the signer,
-append another audit event, consume another ceremony, or create another
-authority sequence. A different request under any of those identifiers is a
-conflict and denies.
+and idempotency digest. Before invoking the receipt signer, it durably stores
+one `pending_signature` record containing the exact canonical unsigned receipt
+payload bytes, receipt ID, reserved sequence, predecessor digest, chain scope,
+authority key ID and generation, trust projection, read-set digest, and a
+unique provider operation ID bound to the payload digest. It also stores the
+exact protected-header bytes, empty unprotected map, external AAD, and
+Sig_structure bytes supplied to the provider. Those values are never
+regenerated after the first durable write.
 
-The commit occurs before the response is exposed. A crash before commit leaves
-no accepted receipt and the ceremony may be retried only if every original
-byte, authoritative generation, decision, and freshness check still passes. A
-crash after commit is reconciled through an authenticated exact-receipt lookup
-using the original host idempotency material. Lookup returns only the matching
-non-secret receipt; neutral not-found, unauthorised, mismatched, and unavailable
-outcomes do not reveal another operation.
+The signer operation is idempotent for exactly `(provider_operation_id,
+payload_digest)` and returns either the byte-identical prior signature or one
+new signature. A different payload under that operation ID is a terminal
+provider error. After a signature is obtained, the host durably records the
+exact COSE bytes as `signed_pending_commit`, then performs the final time and
+owner-fence comparison and atomic host commit. A failed final comparison does
+not make the orphan signature accepted; the record is retained for diagnosis,
+the ceremony cannot authorise changed state, and a new operation intent and
+ceremony are required.
 
-If commit status, evidence-chain head, receipt signature, authority sequence,
-or store integrity cannot be established, the system stops. It preserves all
-non-secret diagnostic artefacts and requires a documented, separately
-authorised manual recovery. It does not delete ambiguous records, manufacture
-a receipt, reset one-use state, reuse the human response, roll back a sequence,
-select cached generations, or fall back to generic version 2 approval.
+Recovery reloads the exact pending bytes and provider operation ID and queries
+only that idempotent operation. It accepts only the exact signature already
+bound to those bytes. Provider `not-found` is retryable only when the provider
+authoritatively proves that signing never occurred, and even then only through
+a documented manual recovery which resubmits the byte-identical operation.
+There is no automatic resign path. `unknown`, timeout, lost response,
+contradictory status, or inability to prove absence transitions the record to
+`ambiguous`; the host does not resign, allocate another ID or sequence, change
+the predecessor, reuse the response in a new record, or release evidence.
+Recovery is manual and fail-closed.
+
+After the receipt commit, checkpoint creation has its own durable pending
+payload, provider operation ID, exact-result recovery, and
+`unknown => ambiguous` rule. An exact retry after both commits returns the
+byte-identical stored evidence bundle and does not reverify the mobile
+response, invoke either signer, append another audit event, consume another
+ceremony, or advance another sequence. If the receipt is committed but its
+checkpoint is pending or ambiguous, the acceptance remains internal and
+unusable until the exact checkpoint operation is reconciled; no second
+ceremony can repair or replace it.
+
+A crash before the receipt commit leaves no accepted receipt. A crash after
+that commit is reconciled through authenticated exact-result lookup using the
+original host idempotency material. Lookup returns only the matching
+non-secret committed bundle; neutral not-found, unauthorised, mismatched, and
+unavailable outcomes reveal no other operation.
+
+If participant commit status, evidence-chain head, signature, sequence,
+checkpoint inclusion, or store integrity cannot be established, the system
+stops. It preserves all non-secret diagnostic artefacts and requires a
+documented, separately authorised manual recovery. It does not delete
+ambiguous records, manufacture evidence, reset one-use state, reuse the human
+response, roll back a sequence, select cached generations, or fall back to
+generic version 2 approval.
 
 ## Compatibility and migration
 
@@ -467,19 +732,37 @@ and data-subject policy remain independently governed.
 ## Validation required after acceptance
 
 - Shared Rust, iOS, and Android fixtures must publish exact positive canonical
-  context, display, challenge, response, receipt payload, and COSE bytes.
+  context, display, challenge, response, receipt, trust projection and
+  checkpoint payload and COSE bytes, plus chain scope and event digests.
 - Negative fixtures must mutate every identifier, digest, generation, action,
   purpose, field, type, width, order, decision, time, nonce, audience, and
   signature independently and require denial.
-- Transaction tests must inject failure before and after every re-resolution,
-  consume, signature, receipt, idempotency, audit, sequence, and commit stage.
+- Transaction tests must inject failure before and after every owner prepare,
+  fence comparison, re-resolution, receipt-signing request/result persistence,
+  consume, receipt, idempotency, audit, sequence, participant commit, host
+  commit, checkpoint lookup/signing/result persistence, and release stage.
 - Restart and concurrency tests must prove exactly one receipt, audit event,
-  consumption, and sequence advancement; exact retry returns identical bytes.
+  consumption, sequence advancement, event and checkpoint; exact retry returns
+  identical bytes. Signer tests must cover exact-result recovery, proven
+  never-signed retry, payload conflict, unknown outcome, orphan signature, and
+  the prohibition on resigning or reallocating identity/sequence/predecessor.
 - Drift tests must cover authority, tenant, principal, role, device/key,
   policy, entitlement, revocation, every secret generation, directive, target,
-  plan, resource set, trusted time, and execution-time state.
-- Evidence-settlement tests must assert zero Pistis calls and denial for
-  missing, corrupt, superseded, cross-epoch, or context-mismatched evidence.
+  plan, resource set, signing-key trust projection, owner fence, trusted time,
+  and execution-time state.
+- Evidence-settlement tests must use call-counting ceremony, completion,
+  consumption, signer, and network fakes to assert zero calls and denial for
+  missing, corrupt, uncommitted, uncheckpointed, superseded, cross-scope,
+  cross-epoch, legacy-chain, overflow, or context-mismatched evidence.
+- Presentation fixtures must cover exact fingerprints, context/display
+  mapping, decimal generations, integer/UTC time pairs, Unicode bidi controls,
+  default-ignorable code points, noncharacters, and labels requiring renderer
+  isolation.
+- Key-lifecycle tests must distinguish active, routine post-consumption
+  retirement/revocation, overlapping or unknown compromise, destruction, and
+  historical validity from current readiness. COSE tests must independently
+  mutate protected and unprotected `kid`, `alg`, key generation, and trust
+  projection.
 - Leak-negative tests must reject or redact sessions, cookies, raw
   idempotency keys, nonces, responses, tokens, secret values/references,
   leases, private keys, recovery material, and complete display documents.

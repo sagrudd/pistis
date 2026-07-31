@@ -82,6 +82,8 @@ Architecture and operations
    adr/0028-protected-first-invitation-cli-qr
    adr/0029-qr-bound-app-scoped-host-trust
    adr/0030-authority-backed-account-and-installation-removal
+   adr/0031-enrolment-and-product-audience-separation
+   adr/0032-retire-incompatible-local-trust
    protocol/README
    protocol/domain-model
    protocol/action-approval

@@ -178,6 +178,12 @@ mod tests {
     const IOS_INFO_PLIST: &str = include_str!("../../ios/PistisApp/Info.plist");
     const IOS_GITHUB_CONFIGURATION: &str =
         include_str!("../../ios/PistisApp/Sources/App/GitHubEnrolmentReadiness.swift");
+    const IOS_DESTRUCTIVE_CONFIRMATION: &str =
+        include_str!("../../ios/PistisApp/Sources/App/DestructiveConfirmationButton.swift");
+    const IOS_IDENTITIES_VIEW: &str =
+        include_str!("../../ios/PistisApp/Sources/App/IdentitiesView.swift");
+    const IOS_INSTALLATIONS_VIEW: &str =
+        include_str!("../../ios/PistisApp/Sources/App/InstallationsView.swift");
 
     #[test]
     fn accepts_hierarchical_source_below_limit() {
@@ -189,6 +195,19 @@ mod tests {
             )
             .is_ok()
         );
+    }
+
+    #[test]
+    fn local_removal_uses_a_native_confirmation_without_a_persistent_slider() {
+        assert!(IOS_DESTRUCTIVE_CONFIRMATION.contains(".confirmationDialog("));
+        assert!(IOS_DESTRUCTIVE_CONFIRMATION.contains("role: .destructive"));
+        assert!(IOS_DESTRUCTIVE_CONFIRMATION.contains(".alert("));
+        assert!(!IOS_DESTRUCTIVE_CONFIRMATION.contains("Slider("));
+        assert!(!IOS_DESTRUCTIVE_CONFIRMATION.contains("MnStatusLabel"));
+        assert!(IOS_IDENTITIES_VIEW.contains("Remove local account"));
+        assert!(IOS_INSTALLATIONS_VIEW.contains("Remove local enrolment"));
+        assert!(!IOS_IDENTITIES_VIEW.contains("Slide to"));
+        assert!(!IOS_INSTALLATIONS_VIEW.contains("Slide to"));
     }
 
     #[test]

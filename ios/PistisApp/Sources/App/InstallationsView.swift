@@ -108,13 +108,13 @@ private struct InstallationDetailView: View {
                                     ? "This older enrolment cannot authorise in the current app. Removing it deletes this phone’s local trust and device key so you can re-enrol; authority-side revocation and existing server sessions remain separate."
                                     : "This expired record cannot authorise. Forgetting it removes this phone’s cached trust and device key; it does not delete authority audit history or change server state."
                             )
-                            DestructiveConfirmationSlider(
+                            DestructiveConfirmationButton(
                                 label: isIncompatible
-                                    ? "Slide to remove incompatible enrolment"
-                                    : "Slide to forget this expired installation",
-                                confirmationLabel: isIncompatible
-                                    ? "Confirm local enrolment removal"
-                                    : "Confirm forget local record"
+                                    ? "Remove local enrolment"
+                                    : "Remove expired local enrolment",
+                                confirmationTitle: "Remove this local enrolment?",
+                                confirmationMessage:
+                                    "This removes only the trust and device key stored on this phone. Authority records and server sessions are unchanged."
                             ) {
                                 try await forgetExpired(installation.id)
                             }

@@ -377,11 +377,13 @@ first opens or reloads one durable completion record and then:
 6. follows the recoverable receipt-signing protocol below;
 7. after the exact receipt signature is durable, rechecks trusted time and
    conditionally compares every prepared fence;
-8. in one serialisable host commit consumes the ceremony, advances the exact
-   evidence-chain head, and persists the receipt, idempotent result, minimised
-   audit events, and committed read-set digest; and
-9. commits or aborts every prepared authority participant before reporting an
-   outcome.
+8. in one serialisable host commit durably records coordinator decision
+   `COMMIT`, consumes the ceremony, advances the exact evidence-chain head, and
+   persists the receipt, idempotent result, minimised audit events, and
+   committed read-set digest; and
+9. after recovering that durable decision, sends only `COMMIT` to every
+   prepared authority participant and obtains a durable successful outcome
+   from each before reporting success.
 
 The final compare and host commit are one transaction for host-owned
 projections. External owner state may participate only through the bounded
@@ -392,6 +394,30 @@ fresh read, cached generation, best-effort validation, or an unconditional
 write. These rules include the signing-key/trust projection and Oikodome's
 immutable projections, removing a signing-provider or cross-owner
 time-of-check/time-of-use gap.
+
+The completion record is the durable two-phase coordinator and has the closed
+decision states `PREPARE`, `COMMIT`, and `ABORT`. `PREPARE` binds the exact
+participant set, revision, prepare handle, and operation identifier for each
+owner. A denial before the serialisable host commit atomically changes
+`PREPARE` to `ABORT`; only after that durable decision may the coordinator send
+idempotent `ABORT` to every participant. The serialisable host commit
+atomically changes `PREPARE` to `COMMIT` with the receipt and chain changes
+above. Once `COMMIT` is durable, neither normal processing nor recovery may
+write or send `ABORT`; it may only repeat byte-identical, idempotent `COMMIT`
+for the recorded handles until every participant proves commit. Once `ABORT`
+is durable, neither path may write or send `COMMIT`.
+
+A crash or uncertain host-commit response is not a decision. Recovery first
+reads the local serialisable coordinator record and verifies its integrity. It
+sends no participant decision while the local outcome is absent, unreadable,
+conflicting, or otherwise uncertain. A recovered `COMMIT` drives only commit;
+a recovered `ABORT` drives only abort; a recovered `PREPARE` may become
+`ABORT` only after the authority store proves that the host transaction never
+committed. Mixed participant outcomes, a participant that cannot prove its
+decision, or any coordinator fork remains ambiguous and blocks checkpoint
+creation and evidence release. Manual reconciliation must preserve the durable
+coordinator decision and can never compensate a committed participant by
+aborting it.
 
 The receipt signer is an authority-controlled idempotent provider using the
 accepted untagged COSE profile and a key identifier trusted for the closed
@@ -467,12 +493,138 @@ cannot override signed fields. Unknown purposes, fields, keys, revisions,
 algorithms, non-canonical bytes, invalid signatures, chain discontinuity,
 missing authoritative inclusion, or context mismatch deny.
 
-The immutable public trust projection binds installation, Site Trust Domain,
-authority, audience, receipt purpose, public key or public-key digest, exact
-authority key ID and generation, activation interval, lifecycle status,
-policy generation, revocation generation, and its own revision. Its exact
-canonical bytes are retained with exported evidence. The projection reference
-and SHA-256 digest in the receipt must match those bytes.
+The immutable public trust projection is the signed closed profile defined
+below. Its exact canonical payload and COSE bytes are retained with exported
+evidence. `trust_projection_digest` is SHA-256 of the exact untagged
+COSE_Sign1 bytes, not of metadata or a re-encoded payload. The projection
+reference and digest in the receipt must resolve to and match those bytes.
+
+### Receipt-signing trust and lifecycle projection
+
+The trust-chain scope is the exact canonical map:
+
+```text
+{
+  0: 1,
+  1: "pistis.governed-action-receipt-trust-scope.v1",
+  2: installation_id,
+  3: site_trust_domain_id,
+  4: authority_id,
+  5: "oikodome",
+  6: "pistis.governed-action-consumption-receipt.v1",
+  7: authority_key_id,
+  8: authority_key_generation
+}
+```
+
+`receipt_trust_scope_digest` is SHA-256 of those exact bytes. The scope fixes
+one receipt-signing key generation; a replacement receipt key starts a new
+scope and cannot make an older receipt currently ready.
+
+`pistis.governed-action-receipt-trust-projection.v1` is this closed canonical
+map:
+
+| Key | Field | Type and constraint |
+| ---: | --- | --- |
+| 0 | `version` | unsigned integer `1` |
+| 1 | `purpose` | exact projection purpose |
+| 2 | `receipt_trust_scope_digest` | exact 32-byte scope digest |
+| 3 | `revision` | unsigned 64-bit integer beginning at `1` |
+| 4 | `previous_projection_digest` | 32-byte digest defined below |
+| 5 | `authority_key_id` | exact 32-byte receipt-signing key identifier |
+| 6 | `authority_key_generation` | bounded immutable text identifier |
+| 7 | `receipt_cose_algorithm` | accepted non-zero signed COSE algorithm integer |
+| 8 | `receipt_public_key` | 1 through 4,096 canonical suite-defined public-key bytes |
+| 9 | `key_not_before` | unsigned Unix time in milliseconds |
+| 10 | `key_not_after` | unsigned Unix time in milliseconds, exclusive |
+| 11 | `lifecycle_state` | closed unsigned integer defined below |
+| 12 | `lifecycle_effective_at` | unsigned Unix time in milliseconds |
+| 13 | `policy_generation` | unsigned integer |
+| 14 | `revocation_generation` | unsigned integer |
+| 15 | `issued_at` | unsigned Unix time in milliseconds |
+| 16 | `expires_at` | unsigned Unix time in milliseconds, exclusive |
+| 17 | `projection_signer_key_id` | 32-byte identifier |
+| 18 | `projection_signer_key_generation` | bounded immutable text identifier |
+| 19 | `projection_signer_cose_algorithm` | accepted non-zero signed COSE algorithm integer |
+| 20 | `projection_signer_public_key` | 1 through 4,096 canonical suite-defined public-key bytes |
+| 21 | `next_projection_signer` | closed signer map defined below |
+
+The lifecycle registry is `1` `active`, `2` `retiring`, `3`
+`revoked-routine`, `4` `revoked-compromise`, and `5` `destroyed`. Zero and
+unknown values deny. The signer map is:
+
+| Key | Field | Type and constraint |
+| ---: | --- | --- |
+| 0 | `key_id` | exact 32-byte identifier authorised for revision plus one |
+| 1 | `key_generation` | bounded immutable text identifier |
+| 2 | `cose_algorithm` | accepted non-zero signed COSE algorithm integer |
+| 3 | `public_key` | 1 through 4,096 canonical suite-defined public-key bytes |
+| 4 | `not_before` | unsigned Unix time in milliseconds |
+
+All projection text uses the opaque-text rule above. The receipt algorithm and
+public key are immutable within a scope and must verify the receipt COSE
+signature. `key_not_before < key_not_after`,
+`key_not_before <= lifecycle_effective_at <= issued_at < expires_at`, and
+`expires_at - issued_at <= 300,000` milliseconds are checked without
+overflow. Projection expiry limits current-readiness proof; it does not erase
+a retained historical statement.
+
+Projection revision `1` alone uses 32 zero bytes for
+`previous_projection_digest` and its signer tuple must equal one configured
+installation trust anchor for this exact scope. Every later revision is exactly
+the previous revision plus one, without wrap, and
+`previous_projection_digest` is SHA-256 of the exact preceding untagged
+COSE_Sign1 projection bytes. Its signer tuple must equal the predecessor's
+complete `next_projection_signer` tuple, and its `issued_at` must be at or
+after that tuple's `not_before`. The projection's protected COSE `alg` and
+`kid` equal `projection_signer_cose_algorithm` and
+`projection_signer_key_id` byte for byte; the unprotected map and external AAD
+are empty. The signature verifies with the exact
+`projection_signer_public_key`. A rotation is therefore authorised only by the
+previous signer in the previous signed projection. Repeating the current tuple
+retains the signer. No unsigned alias, local key lookup, skipped revision,
+second genesis, parallel successor, or out-of-band signer substitution is
+accepted.
+
+Installation, scope, receipt-key tuple, key interval, and receipt purpose never
+change within a chain. Policy and revocation generations never decrease.
+`active` may move to `retiring`, either revocation state, or `destroyed`;
+`retiring` may move only to either revocation state or `destroyed`;
+`revoked-routine` may move only to `revoked-compromise` or `destroyed`; and
+`revoked-compromise` and `destroyed` are terminal. Repeating a state requires
+the same effective time. Routine transition effective times cannot move
+backwards. A compromise projection may set an earlier, evidence-supported
+effective time within the key interval; that earlier time deliberately makes
+overlapping historical use indeterminate. Any other state reversal, fork,
+generation rollback, time rollback, or changed immutable field denies.
+
+Current readiness also requires an exact signed head statement.
+`pistis.governed-action-receipt-trust-head.v1` is this closed canonical map:
+
+| Key | Field | Type and constraint |
+| ---: | --- | --- |
+| 0 | `version` | unsigned integer `1` |
+| 1 | `purpose` | exact head purpose |
+| 2 | `receipt_trust_scope_digest` | exact 32-byte scope digest |
+| 3 | `latest_revision` | exact unsigned 64-bit revision |
+| 4 | `latest_projection_digest` | SHA-256 of exact latest projection COSE bytes |
+| 5 | `issued_at` | unsigned Unix time in milliseconds |
+| 6 | `expires_at` | unsigned Unix time in milliseconds, exclusive |
+| 7 | `projection_signer_key_id` | exact latest-projection signer identifier |
+| 8 | `projection_signer_key_generation` | exact latest-projection signer generation |
+
+The head COSE protected `alg` and `kid`, empty unprotected map, empty external
+AAD, signer tuple, and signature follow the latest projection. Its exact time
+rule is `issued_at <= now < expires_at` and
+`expires_at - issued_at <= 300,000` milliseconds, checked without overflow.
+The authority store conditionally appends one successor and atomically updates
+an anti-rollback tuple of scope, latest revision, and latest projection digest.
+The local verifier requires the head payload, its signature, the complete
+gap-free projection chain, and that authoritative anti-rollback tuple all to
+name the same latest revision and digest. A stale, future, expired, missing,
+forked, rolled-back, or merely caller-asserted head blocks current readiness.
+Historical analysis may retain an older complete prefix but must label it
+non-current and cannot use it as latest-state proof.
 
 Historical verification and current readiness are separate decisions. Routine
 retirement or revocation effective strictly after `consumed_at` preserves a
@@ -491,9 +643,11 @@ subsequent signed lifecycle projection known to the installation, ordered by
 monotonic revision. Historical verification applies all retained projections
 to `consumed_at`; it does not let a later routine event rewrite the earlier
 cryptographic fact. Current readiness additionally requires the locally
-authoritative latest projection to be present, active, uncompromised, and
-unexpired. An unavailable or potentially stale latest projection blocks
-readiness without causing a Pistis ceremony or consumption call.
+authoritative latest projection and signed head to be present, mutually
+consistent, active, uncompromised, within the receipt-key interval, and
+unexpired. An unavailable or potentially stale projection, head, or
+anti-rollback tuple blocks readiness without causing a Pistis ceremony or
+consumption call.
 
 ## Evidence-chain definition and committed inclusion
 
@@ -575,10 +729,12 @@ Oikodome gains an additive, receipt-only
 `verify_governed_approval_evidence_v1` port. Its input is a closed
 `GovernedApprovalEvidenceBundleV1` containing the exact canonical context or
 protected context projection defined below, receipt payload and COSE envelope,
-receipt-bound and subsequent public trust projections, evidence-chain scope,
-and authoritative checkpoint. The port accepts only local immutable bytes and
-configured public trust anchors. It has no Pistis ceremony, completion,
-consumption, signing, or network callback and produces a non-serialisable
+the exact receipt-trust scope, receipt-bound and subsequent public trust
+projections, current signed trust head and local anti-rollback tuple,
+evidence-chain scope, and authoritative checkpoint. The port accepts only
+local immutable bytes and configured public trust anchors. It has no Pistis
+ceremony, completion, consumption, signing, or network callback and produces a
+non-serialisable
 `VerifiedGovernedApprovalEvidenceV1` result, never a bearer.
 
 The alternative minimum projection is
@@ -653,36 +809,61 @@ and idempotency digest. Before invoking the receipt signer, it durably stores
 one `pending_signature` record containing the exact canonical unsigned receipt
 payload bytes, receipt ID, reserved sequence, predecessor digest, chain scope,
 authority key ID and generation, trust projection, read-set digest, and a
-unique provider operation ID bound to the payload digest. It also stores the
-exact protected-header bytes, empty unprotected map, external AAD, and
-Sig_structure bytes supplied to the provider. Those values are never
-regenerated after the first durable write.
+unique provider operation ID. It also stores the exact protected-header bytes,
+empty unprotected map, empty external AAD, and Sig_structure bytes supplied to
+the provider. Those values are never regenerated after the first durable
+write.
 
-The signer operation is idempotent for exactly `(provider_operation_id,
-payload_digest)` and returns either the byte-identical prior signature or one
-new signature. A different payload under that operation ID is a terminal
-provider error. After a signature is obtained, the host durably records the
-exact COSE bytes as `signed_pending_commit`, then performs the final time and
-owner-fence comparison and atomic host commit. A failed final comparison does
-not make the orphan signature accepted; the record is retained for diagnosis,
-the ceremony cannot authorise changed state, and a new operation intent and
-ceremony are required.
+`receipt_signing_input_digest` is:
+
+```text
+SHA-256(
+  "pistis.governed-action-receipt-signing-input.v1\0" ||
+  exact persisted canonical Sig_structure bytes
+)
+```
+
+The Sig_structure already contains the exact protected-header bytes, empty
+external AAD, and exact receipt payload bytes. The provider operation is
+idempotent for exactly `(provider_operation_id,
+receipt_signing_input_digest)` and returns either the byte-identical prior
+signature or one new signature. Reuse of the operation identifier with any
+different signing-input digest is a terminal provider conflict, including a
+change to payload, protected `alg`, protected `kid`, external AAD, framing, or
+canonical encoding.
+
+Before constructing or persisting COSE bytes, the host requires the returned
+signature to verify with the prepared receipt key over the exact persisted
+Sig_structure and requires the provider's result identity and signing-input
+digest to equal the pending record. After that verification, the host durably
+records the exact COSE bytes as `signed_pending_commit`, then performs the
+final time and owner-fence comparison and atomic host commit. A failed final
+comparison does not make the orphan signature accepted; the record is retained
+for diagnosis, the ceremony cannot authorise changed state, and a new operation
+intent and ceremony are required.
 
 Recovery reloads the exact pending bytes and provider operation ID and queries
 only that idempotent operation. It accepts only the exact signature already
-bound to those bytes. Provider `not-found` is retryable only when the provider
-authoritatively proves that signing never occurred, and even then only through
-a documented manual recovery which resubmits the byte-identical operation.
-There is no automatic resign path. `unknown`, timeout, lost response,
-contradictory status, or inability to prove absence transitions the record to
-`ambiguous`; the host does not resign, allocate another ID or sequence, change
-the predecessor, reuse the response in a new record, or release evidence.
-Recovery is manual and fail-closed.
+bound to that signing-input digest and cryptographically verifies it again
+against the exact persisted Sig_structure before any state transition.
+Provider `not-found` is retryable only when the provider authoritatively proves
+that exact `(provider_operation_id, receipt_signing_input_digest)` was never
+processed, and even then only through a documented manual recovery which
+resubmits the byte-identical operation. There is no automatic resign path.
+`unknown`, timeout, lost response, contradictory status, input-digest mismatch,
+signature-verification failure, or inability to prove absence transitions the
+record to `ambiguous`; the host does not resign, allocate another ID or
+sequence, change the predecessor, reuse the response in a new record, or
+release evidence. Recovery is manual and fail-closed.
 
 After the receipt commit, checkpoint creation has its own durable pending
 payload, provider operation ID, exact-result recovery, and
-`unknown => ambiguous` rule. An exact retry after both commits returns the
-byte-identical stored evidence bundle and does not reverify the mobile
+`unknown => ambiguous` rule. Its provider tuple substitutes the exact
+domain-separated `checkpoint_signing_input_digest`, using ASCII
+`pistis.governed-action-checkpoint-signing-input.v1` plus NUL and the exact
+persisted checkpoint Sig_structure, and applies every input-equality and
+signature-verification rule above. An exact retry after both commits returns
+the byte-identical stored evidence bundle and does not reverify the mobile
 response, invoke either signer, append another audit event, consume another
 ceremony, or advance another sequence. If the receipt is committed but its
 checkpoint is pending or ambiguous, the acceptance remains internal and
@@ -777,9 +958,13 @@ and data-subject policy remain independently governed.
   purpose, field, type, width, order, decision, time, nonce, audience, and
   signature independently and require denial.
 - Transaction tests must inject failure before and after every owner prepare,
-  fence comparison, re-resolution, receipt-signing request/result persistence,
-  consume, receipt, idempotency, audit, sequence, participant commit, host
-  commit, checkpoint lookup/signing/result persistence, and release stage.
+  durable coordinator decision, fence comparison, re-resolution,
+  receipt-signing request/result persistence, consume, receipt, idempotency,
+  audit, sequence, participant commit, host commit, checkpoint
+  lookup/signing/result persistence, and release stage. Crash tests must prove
+  that a durable host `COMMIT` can send only participant `COMMIT`, a durable
+  `ABORT` can send only participant `ABORT`, and an uncertain host outcome
+  sends neither.
 - Restart and concurrency tests must prove exactly one receipt, audit event,
   consumption, sequence advancement, event and checkpoint; exact retry returns
   identical bytes. Signer tests must cover exact-result recovery, proven
@@ -799,9 +984,12 @@ and data-subject policy remain independently governed.
   isolation.
 - Key-lifecycle tests must distinguish active, routine post-consumption
   retirement/revocation, overlapping or unknown compromise, destruction, and
-  historical validity from current readiness. COSE tests must independently
-  mutate protected and unprotected `kid`, `alg`, key generation, and trust
-  projection.
+  historical validity from current readiness. Trust fixtures must freeze the
+  exact scope, genesis, successor, signer-retention, signer-rotation, lifecycle
+  transition, signed-head, expiry, anti-rollback, fork, gap, and overflow
+  cases. COSE tests must independently mutate protected and unprotected `kid`,
+  `alg`, key generation, trust projection, persisted Sig_structure, external
+  AAD, and both domain-separated signing-input digests.
 - Leak-negative tests must reject or redact sessions, cookies, raw
   idempotency keys, nonces, responses, tokens, secret values/references,
   leases, private keys, recovery material, and complete display documents.

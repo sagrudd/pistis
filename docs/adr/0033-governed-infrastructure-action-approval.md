@@ -161,6 +161,28 @@ prepare handle. Prepare handles are host-internal, non-bearer material and
 never enter the read set, challenge, receipt, browser, mobile client, logs, or
 exported evidence.
 
+The read set is this closed canonical map:
+
+| Key | Field | Type and constraint |
+| ---: | --- | --- |
+| 0 | `version` | unsigned integer `1` |
+| 1 | `purpose` | exact text `pistis.governed-action-authoritative-read-set.v1` |
+| 2 | `context_bindings_digest` | SHA-256 of canonical context keys 2 through 28 |
+| 3 | `installation_revision` | bounded immutable text revision |
+| 4 | `prosopikon_revision` | bounded immutable text revision |
+| 5 | `oikodome_revision` | bounded immutable text revision |
+| 6 | `thesaurophylax_revision` | bounded immutable text revision |
+| 7 | `policy_revision` | bounded immutable text revision |
+| 8 | `entitlement_revision` | bounded immutable text revision |
+| 9 | `revocation_revision` | bounded immutable text revision |
+| 10 | `receipt_trust_revision` | bounded immutable text revision |
+
+`context_bindings_digest` hashes one closed canonical map retaining the
+original context integer keys 2 through 28 and their exact values; it excludes
+version, purpose, and key 29 to avoid self-reference. Each revision identifies
+the complete owner projection used to derive those values. Missing,
+unresolvable, mutable, or projection-mismatched revision identifiers deny.
+
 Acceptance-relevant mutable facts must use one of these two authority models:
 
 1. the installation host owns an authoritative materialised projection whose
@@ -196,6 +218,8 @@ outcome, governed acceptance is unavailable and fails closed.
 | 12 | `target_digest_fingerprint` | exact fingerprint of context key 19 |
 | 13 | `plan_digest_fingerprint` | exact fingerprint of context key 20 |
 | 14 | `resource_set_digest_fingerprint` | exact fingerprint of context key 21 |
+| 15 | `authority_name` | text |
+| 16 | `authority_fingerprint` | exact fingerprint of context key 4 |
 
 Names are 1 through 128 UTF-8 bytes and summaries are 1 through 512 UTF-8
 bytes. Control characters, Unicode `Bidi_Control`, Unicode
@@ -207,29 +231,32 @@ record, but it is not authority: the canonical identifiers, revisions, and
 digests remain decisive.
 
 A display fingerprint is the first 12 lower-case hexadecimal characters of
-SHA-256 of the exact canonical identifier bytes or the exact 32-byte digest,
-rendered as `hhhh-hhhh-hhhh`. It is a human comparison aid only; all machine
-checks use the complete value. The secret-generation-set fingerprint applies
-the same rule to SHA-256 of the exact canonical array.
+SHA-256 of the identifier's exact raw byte-string value, exact UTF-8 text
+value, or exact 32-byte digest value, rendered as `hhhh-hhhh-hhhh`. CBOR
+headers are not part of that input. It is a human comparison aid only; all
+machine checks use the complete value. The secret-generation-set fingerprint
+applies the same rule to SHA-256 of the exact canonical array.
 
-Every display value has one deterministic source. The five identity labels
-map respectively to context keys 2, 3, 6, 7, and 10 through authority-owned
-label projections; `action_label` maps only from action class `1`;
-`target_name` maps from the immutable target projection bound by keys 18 and
-19; and fields 11 through 14 derive from context keys 18 through 21. Intent
-and consequence summaries map from the immutable operation-intent projection
-bound by key 15. A missing mapping, a projection digest mismatch, or two
-labels for one bound identifier denies.
+Every display value has one deterministic source. The installation, site,
+tenant, principal, role, and authority labels map respectively to context keys
+2, 3, 6, 7, 10, and 4 through authority-owned label projections;
+`action_label` maps only from action class `1`; `target_name` maps from the
+immutable target projection bound by keys 18 and 19; fields 11 through 14
+derive from context keys 18 through 21; and field 16 derives from context key
+4. Intent and consequence summaries map from the immutable operation-intent
+projection bound by key 15. A missing mapping, a projection digest mismatch,
+or two labels for one bound identifier denies.
 
 The mobile presentation must show, without truncation or hidden expansion:
 
-- the installation, site, tenant, principal, and role labels alongside stable
-  short fingerprints of their canonical identifiers;
+- the installation, site, tenant, principal, role, and authority labels
+  alongside stable short fingerprints of their canonical identifiers;
 - the fixed action, target, intent, and consequence;
 - the directive and intent digest fingerprints;
 - every authority, role, policy, entitlement, and revocation generation, plus
   the secret-generation set count and fingerprint;
-- the exact installation-scoped audience; and
+- the exact audience `oikodome` alongside the installation and Site Trust
+  Domain scope; and
 - issue time, exclusive expiry, and an explicit `Approve` or `Deny` choice.
 
 Identifier fingerprints use the exact hexadecimal rule above. Generations are
@@ -450,11 +477,23 @@ and SHA-256 digest in the receipt must match those bytes.
 Historical verification and current readiness are separate decisions. Routine
 retirement or revocation effective strictly after `consumed_at` preserves a
 historical accepted result when the retained projection proves that the key
-was active and uncompromised at `consumed_at`. A compromise with an unknown or
-overlapping effective interval, missing destruction evidence, or uncertain
-key history makes historical validity indeterminate and fail-closed pending a
-separately reviewed adjudication. No retired, revoked, compromised, destroyed,
-or historically accepted key establishes current readiness.
+was active and uncompromised at `consumed_at`. Deliberate key destruction
+strictly after `consumed_at` has the same historical treatment when its time
+and reason are proven and the retained public key remains verifiable. A
+compromise or destruction with an unknown or overlapping effective interval,
+or any uncertain key history, makes historical validity indeterminate and
+fail-closed pending a separately reviewed adjudication. No retired, revoked,
+compromised, destroyed, or historically accepted key establishes current
+readiness.
+
+The local evidence bundle retains the receipt-bound projection and every
+subsequent signed lifecycle projection known to the installation, ordered by
+monotonic revision. Historical verification applies all retained projections
+to `consumed_at`; it does not let a later routine event rewrite the earlier
+cryptographic fact. Current readiness additionally requires the locally
+authoritative latest projection to be present, active, uncompromised, and
+unexpired. An unavailable or potentially stale latest projection blocks
+readiness without causing a Pistis ceremony or consumption call.
 
 ## Evidence-chain definition and committed inclusion
 
@@ -536,10 +575,10 @@ Oikodome gains an additive, receipt-only
 `verify_governed_approval_evidence_v1` port. Its input is a closed
 `GovernedApprovalEvidenceBundleV1` containing the exact canonical context or
 protected context projection defined below, receipt payload and COSE envelope,
-public trust projection, evidence-chain scope, and authoritative checkpoint.
-The port accepts only local immutable bytes and configured public trust
-anchors. It has no Pistis ceremony, completion, consumption, signing, or
-network callback and produces a non-serialisable
+receipt-bound and subsequent public trust projections, evidence-chain scope,
+and authoritative checkpoint. The port accepts only local immutable bytes and
+configured public trust anchors. It has no Pistis ceremony, completion,
+consumption, signing, or network callback and produces a non-serialisable
 `VerifiedGovernedApprovalEvidenceV1` result, never a bearer.
 
 The alternative minimum projection is

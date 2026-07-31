@@ -8,7 +8,32 @@
 **Primary integrations:** Mnemosyne Synoptikon and Monas standalone deployments  
 **Initial external trust anchors:** GitHub and Google OpenID Connect  
 **Default operating model:** Local-first, challenge-response authentication without a continuously available Pistis server  
-**Last revised:** 24 July 2026
+**Last revised:** 31 July 2026
+
+---
+
+## Current MVP closure position
+
+The controlled development round ending 31 July 2026 established one merged
+Pistis and Prosopikon authority baseline and advanced the standalone Monas /
+DASObjectStore route to its final dependency-ordered integration review:
+
+- Pistis `eb7e90daebd64a534d66ed655fa45c4993ebd43a`;
+- Prosopikon `cf065000ba2d6cae99a974512e3d89d77e382e89`;
+- DASObjectStore `2b0922ab4a7fb88c99fba393dc1824f068092515`;
+- Propylaion `ec343545af51c2372d71205fd06ab7855aadc404`;
+- Monas remains a reviewed pull-request candidate until its exact dependency
+  repin and local verification merge; and
+- Jenkins remains the final evidence and attended-host qualification layer,
+  not an authentication state owner.
+
+This is meaningful MVP integration progress, but it is not a release-candidate
+claim. The remaining release blockers include the final Monas and Jenkins
+integration merges, a clean attended bare-earth deployment, physical iPhone
+login to both Jenkins and DASObjectStore, the Synoptikon/Hebe route, Android
+interoperability, security review, packaging and immutable release evidence.
+The dependency order and exact review state are maintained in
+`TODO.md` under “Controlled development-round closure”.
 
 ---
 

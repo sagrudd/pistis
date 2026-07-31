@@ -7,6 +7,11 @@ a Changelog and releases follow Semantic Versioning.
 
 ### Added
 
+- Define the bounded end-to-end Monas demonstration contract linking a
+  device-approved Pistis session to DASObjectStore evidence, Oikodome compute
+  admission, and a pinned Jenkins Expedition task, including fail-closed
+  negative cases and the retained cross-repository dossier.
+
 - Retain the exact first-device operation identifier and Secure Enclave key
   across ambiguous begin-response failures, enabling Prosopikon's
   byte-identical idempotent replay instead of generating a divergent retry.

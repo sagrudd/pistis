@@ -97,14 +97,24 @@ interoperability.
 
 ## Demonstration runbook boundary
 
-The programme's first end-to-end run is deliberately constrained to one
-isolated Monas installation. It begins with a generated Prosopikon principal
-and a device-approved Pistis challenge, then issues one exact-audience Monas
-session. The session is used to perform a DASObjectStore operation whose
-inputs, outputs, and redacted evidence are retained. Oikodome then admits the
-operation to the registered private Kubernetes seed offering, and Jenkins runs
-one pinned Expedition task against that admission. Jenkins records references
-to the DASObjectStore objects and all exact component revisions in its dossier.
+This runbook covers only the bounded **Pistis → Monas → DASObjectStore →
+Oikodome → Jenkins** lane. It is not the complete programme chain
+(Pistis → Kyberneterion → Proxenos → Thesaurophylax → Monas → DASObjectStore →
+Oikodome → Phoreus Registry → Phoreus Forge → Jenkins), which is defined in the
+[programme demonstration plan](https://github.com/sagrudd/mnemosyne-programme/blob/main/DEMONSTRATION_PLAN.md).
+The lane assumes the upstream entitlement, Site Trust Domain, and intrinsic
+treasury work and does not define Phoreus publication. Monas/Praxis work
+admission and Kubernetes Job materialisation are also outside this Pistis
+contract; their evidence is required before full programme acceptance.
+
+The run is deliberately constrained to one isolated Monas installation. It
+begins with a generated Prosopikon principal and a device-approved Pistis
+challenge, then issues one exact-audience Monas session. The session is used to
+perform a DASObjectStore operation whose inputs, outputs, and redacted evidence
+are retained. Oikodome then admits the operation to the registered private
+Kubernetes seed offering, and Jenkins runs one pinned Expedition task against
+that admission. Jenkins records references to the DASObjectStore objects and
+all exact component revisions in its dossier.
 
 Operators MUST treat these as separate authority transitions: Pistis proves
 the device-bound human decision; Prosopikon owns the immutable principal and
@@ -119,4 +129,5 @@ The run is not accepted from console output alone. Retain the correlation
 record, machine-readable result, source and package digests, and redacted
 failure evidence under the Jenkins dossier policy. A successful local QR
 ceremony or Monas password login is useful development evidence but does not
-close this demonstration gate.
+ceremony or Monas password login is useful development evidence but does not
+close the lane or the full programme demonstration gate.

@@ -170,3 +170,16 @@ features.
 - If live Kanon services are unavailable, use a verified pinned Kanon snapshot
   or lockset. Do not bypass identity or compatibility validation to make a
   release proceed.
+## Programme Governance
+
+This repository participates in the Mnemosyne Programme.
+
+Programme-level planning, integration priorities and dependency management are governed by:
+
+`~/Projects/mnemosyne-programme`
+
+Engineering standards are governed by:
+
+`~/Projects/mnemosyne-engineering-standard`
+
+Repository-local engineering guidance supplements, but does not replace, programme governance.

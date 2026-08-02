@@ -162,6 +162,22 @@ fn monas_handoff_uses_an_authority_signed_product_audience() {
 }
 
 #[test]
+fn iphone_fixture_requires_face_id_without_passcode_fallback() {
+    let manifest: serde_json::Value = serde_json::from_str(MANIFEST).unwrap();
+    let assertions = manifest["steps"][2]["assertions"].as_array().unwrap();
+    assert!(assertions.iter().any(|assertion| {
+        assertion
+            .as_str()
+            .is_some_and(|text| text.contains("Face ID is required"))
+    }));
+    assert!(assertions.iter().any(|assertion| {
+        assertion
+            .as_str()
+            .is_some_and(|text| text.contains("passcode fallback does not complete"))
+    }));
+}
+
+#[test]
 fn selected_workflow_is_bound_to_the_exact_cli_argument_vector() {
     let manifest: serde_json::Value = serde_json::from_str(MANIFEST).unwrap();
     let command = manifest["steps"][4]["command"].as_array().unwrap();

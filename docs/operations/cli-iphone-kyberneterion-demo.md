@@ -35,7 +35,8 @@ durable authority transaction and browser-session completion.
    the installation, HTTPS origin, three trust words, and expiry; it never
    prints the raw `PISTIS1:` transfer or an invitation secret.
 2. The user opens Pistis on an iPhone, scans the QR, checks the origin and
-   trust words, and confirms with Face ID or the device passcode. The app
+   trust words, and confirms with Face ID. The attended iPhone profile does
+   not allow device-passcode fallback to complete approval. The app
    verifies the authority descriptor and exact registration before one
    Keychain/Secure Enclave update. The device private key does not leave the
    phone.

@@ -48,7 +48,7 @@
       "assertions": [
         "origin and trust words are shown for human comparison",
         "the exact authority descriptor and registration are verified",
-        "Face ID or device passcode is required before signing",
+        "Face ID is required before signing; device-passcode fallback does not complete approval",
         "the private device key remains in Secure Enclave"
       ]
     },

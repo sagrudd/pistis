@@ -26,8 +26,11 @@ Expedition has retained the evidence.
    Keychain/Secure Enclave update. The device private key does not leave the
    phone.
 3. The user opens the Monas web shell. Monas displays a fresh audience-bound
-   login QR. The same iPhone signs only the displayed `monas:web` request; the
+   login QR. The same iPhone signs only the displayed `propylaion` request; the
    response is consumed once and only then is the browser session issued.
+   This is the accepted Monas product audience, distinct from the fixed
+   `prosopikon:pistis:enrolment` ceremony audience; an unlisted or substituted
+   audience is a stop condition.
 4. In Kyberneterion, the user selects `bioinformatics.rnaseq.v1`. The product
    supplies the exact action descriptor to Pistis. The phone displays the
    ordered command, resource references, workflow audience, and expiry before

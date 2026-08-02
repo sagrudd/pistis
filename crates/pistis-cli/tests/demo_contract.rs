@@ -41,6 +41,7 @@ fn manifest_is_redacted_and_ordered_for_the_review_demo() {
         ids,
         [
             "cli-user-registration",
+            "cli-unconfigured-authority",
             "iphone-host-trust",
             "monas-web-qr-login",
             "kyberneterion-workflow-selection",
@@ -67,12 +68,35 @@ fn manifest_is_redacted_and_ordered_for_the_review_demo() {
 }
 
 #[test]
+fn unconfigured_authority_preflight_is_explicitly_non_mutating() {
+    let manifest: serde_json::Value = serde_json::from_str(MANIFEST).unwrap();
+    let preflight = &manifest["steps"][1];
+    assert_eq!(preflight["id"], "cli-unconfigured-authority");
+    assert_eq!(preflight["status"], "fixture");
+    assert_eq!(preflight["expected_exit"], 69);
+    assert_eq!(preflight["expected_outcome"], "authority-unavailable");
+    let assertions = preflight["assertions"].as_array().unwrap();
+    assert!(
+        assertions
+            .iter()
+            .filter_map(serde_json::Value::as_str)
+            .any(|assertion| assertion.contains("no QR"))
+    );
+    assert!(
+        assertions
+            .iter()
+            .filter_map(serde_json::Value::as_str)
+            .any(|assertion| assertion.contains("no CLI command creates trust"))
+    );
+}
+
+#[test]
 fn fixture_digests_and_qr_kind_are_stable() {
     let manifest: serde_json::Value = serde_json::from_str(MANIFEST).unwrap();
     let first_device_digest = hex_digest(&Sha256::digest(FIRST_DEVICE.as_bytes()));
     assert_eq!(manifest["steps"][0]["input_sha256"], first_device_digest);
     let challenge_digest = hex_digest(&Sha256::digest(CHALLENGE_QR.as_bytes()));
-    assert_eq!(manifest["steps"][2]["challenge_sha256"], challenge_digest);
+    assert_eq!(manifest["steps"][3]["challenge_sha256"], challenge_digest);
 
     let (payload, signature) = decode(CHALLENGE_QR.trim(), TransferKind::Challenge).unwrap();
     assert!(!payload.is_empty());
@@ -83,7 +107,7 @@ fn fixture_digests_and_qr_kind_are_stable() {
 fn monas_handoff_uses_an_authority_signed_product_audience() {
     let manifest: serde_json::Value = serde_json::from_str(MANIFEST).unwrap();
     let enrolment: serde_json::Value = serde_json::from_str(FIRST_DEVICE).unwrap();
-    let monas = &manifest["steps"][2];
+    let monas = &manifest["steps"][3];
 
     assert_eq!(monas["id"], "monas-web-qr-login");
     assert_eq!(monas["audience"], MONAS_PRODUCT_AUDIENCE);
@@ -105,7 +129,7 @@ fn monas_handoff_uses_an_authority_signed_product_audience() {
 #[test]
 fn selected_workflow_is_bound_to_the_exact_cli_argument_vector() {
     let manifest: serde_json::Value = serde_json::from_str(MANIFEST).unwrap();
-    let command = manifest["steps"][3]["command"].as_array().unwrap();
+    let command = manifest["steps"][4]["command"].as_array().unwrap();
     let arguments = command
         .iter()
         .map(|value| value.as_str().unwrap().to_owned())

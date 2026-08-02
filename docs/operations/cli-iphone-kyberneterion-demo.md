@@ -7,6 +7,20 @@ authentication claim. The machine-readable shape is
 Its `verdict` remains `not_run` until a clean, pinned cross-repository
 Expedition has retained the evidence.
 
+## Safe preflight observation
+
+Before the attended demonstration, run `pistis auth login` without an
+authoritative local authentication agent. The expected result is exit status
+`69` with the non-secret `authority-unavailable` category. It must present no
+QR, response, opaque reference, credential, or local socket path, and it must
+not create trust, a device binding, or a Monas session. This deterministic
+negative result demonstrates that the command line cannot establish trust or
+work around Monas completion when the host authority is not configured.
+
+Do not turn this preflight into a configuration procedure. The command line
+remains an untrusted presentation surface; Monas and Prosopikon own the
+durable authority transaction and browser-session completion.
+
 ## What the audience sees
 
 1. An administrator creates the immutable Prosopikon user and starts the

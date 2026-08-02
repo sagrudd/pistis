@@ -9,6 +9,11 @@ fn valid_auth_command_refuses_unavailable_agent() {
         .env_remove("XDG_RUNTIME_DIR");
     let output = command.output().unwrap();
     assert_eq!(output.status.code(), Some(69));
+    assert!(
+        output.stdout.is_empty(),
+        "unavailable authority must not render a QR or any standard output"
+    );
+    assert!(!String::from_utf8_lossy(&output.stdout).contains("PISTIS1:"));
     let stderr = String::from_utf8(output.stderr).unwrap();
     assert!(stderr.contains("authoritative local authentication agent is unavailable"));
     assert!(!stderr.contains("PISTIS1:"));
@@ -23,6 +28,11 @@ fn login_rejects_a_relative_authority_socket_without_presenting_a_qr() {
         .output()
         .unwrap();
     assert_eq!(output.status.code(), Some(69));
+    assert!(
+        output.stdout.is_empty(),
+        "an invalid authority socket must not render a QR or any standard output"
+    );
+    assert!(!String::from_utf8_lossy(&output.stdout).contains("PISTIS1:"));
     let stderr = String::from_utf8(output.stderr).unwrap();
     assert!(stderr.contains("authoritative local authentication agent is unavailable"));
     assert!(!stderr.contains("PISTIS1:"));

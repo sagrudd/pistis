@@ -21,6 +21,19 @@
       ]
     },
     {
+      "id": "cli-unconfigured-authority",
+      "surface": "pistis-cli",
+      "operation": "login-preflight-without-host-authority",
+      "status": "fixture",
+      "expected_exit": 69,
+      "expected_outcome": "authority-unavailable",
+      "assertions": [
+        "no CLI command creates trust, a device binding, or a Monas session",
+        "no QR, response, reference, credential, or socket path is printed",
+        "the operator receives the stable unavailable result before any ceremony is presented"
+      ]
+    },
+    {
       "id": "iphone-host-trust",
       "surface": "pistis-ios",
       "operation": "scan-and-confirm-first-device",

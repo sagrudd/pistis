@@ -7,6 +7,10 @@ a Changelog and releases follow Semantic Versioning.
 
 ### Fixed
 
+- Make the CLI demonstration's unavailable-authority preflight deterministic
+  and prove that missing or relative local-agent configuration returns a
+  redacted exit-69 failure before any QR presentation or authority mutation.
+
 - Bind the funding-review Monas web-QR fixture to the accepted `propylaion`
   product audience and prove that it remains distinct from, and authorised by,
   the signed first-device enrolment profile.

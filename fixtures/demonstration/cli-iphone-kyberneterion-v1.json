@@ -39,7 +39,7 @@
       "status": "not_run",
       "challenge_fixture": "fixtures/protocol-v1/qr/challenge-minimal.qr.txt",
       "challenge_sha256": "1dcd465edbdd3b102ba17f603a70f7eb74bd3dd6a9aca0d73b087493ecfb7084",
-      "audience": "monas:web",
+      "audience": "propylaion",
       "assertions": [
         "the browser displays only a redacted challenge and expiry",
         "the iPhone signs only after displaying the exact audience",

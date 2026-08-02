@@ -3,7 +3,7 @@
 use pistis_cli::{AuthCommand, parse};
 use pistis_qr::{TransferKind, decode};
 use sha2::{Digest, Sha256};
-use std::{fs, path::PathBuf};
+use std::{fmt::Write as _, fs, path::PathBuf};
 
 const MANIFEST: &str =
     include_str!("../../../fixtures/demonstration/cli-iphone-kyberneterion-v1.json");
@@ -11,9 +11,14 @@ const FIRST_DEVICE: &str =
     include_str!("../../../fixtures/protocol-v4/first-device/presentation-positive.json");
 const CHALLENGE_QR: &str =
     include_str!("../../../fixtures/protocol-v1/qr/challenge-minimal.qr.txt");
+const MONAS_PRODUCT_AUDIENCE: &str = "propylaion";
 
 fn hex_digest(bytes: &[u8]) -> String {
-    bytes.iter().map(|byte| format!("{byte:02x}")).collect()
+    let mut digest = String::with_capacity(bytes.len() * 2);
+    for byte in bytes {
+        write!(digest, "{byte:02x}").expect("writing to String cannot fail");
+    }
+    digest
 }
 
 #[test]
@@ -72,6 +77,29 @@ fn fixture_digests_and_qr_kind_are_stable() {
     let (payload, signature) = decode(CHALLENGE_QR.trim(), TransferKind::Challenge).unwrap();
     assert!(!payload.is_empty());
     assert_eq!(signature.len(), 64);
+}
+
+#[test]
+fn monas_handoff_uses_an_authority_signed_product_audience() {
+    let manifest: serde_json::Value = serde_json::from_str(MANIFEST).unwrap();
+    let enrolment: serde_json::Value = serde_json::from_str(FIRST_DEVICE).unwrap();
+    let monas = &manifest["steps"][2];
+
+    assert_eq!(monas["id"], "monas-web-qr-login");
+    assert_eq!(monas["audience"], MONAS_PRODUCT_AUDIENCE);
+    assert!(
+        enrolment["authorised_product_audiences"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .filter_map(serde_json::Value::as_str)
+            .any(|audience| audience == MONAS_PRODUCT_AUDIENCE),
+        "the Monas demo audience must be authorized by the signed enrolment fixture"
+    );
+    assert_ne!(
+        monas["audience"], enrolment["audience"],
+        "the product handoff must not reuse the enrolment ceremony audience"
+    );
 }
 
 #[test]

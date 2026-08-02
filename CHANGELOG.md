@@ -5,6 +5,12 @@ a Changelog and releases follow Semantic Versioning.
 
 ## [Unreleased]
 
+### Fixed
+
+- Bind the funding-review Monas web-QR fixture to the accepted `propylaion`
+  product audience and prove that it remains distinct from, and authorised by,
+  the signed first-device enrolment profile.
+
 ### Added
 
 - Add a redacted, machine-readable funding-review demonstration contract for

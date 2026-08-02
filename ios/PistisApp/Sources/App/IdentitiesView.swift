@@ -137,13 +137,13 @@ private struct IdentityDetailView: View {
                                     ? "This older provider enrolment cannot authorise in the current app. Removing it deletes the phone’s local identity, trust and device key so you can re-enrol; authority-side revocation remains separate."
                                     : "This expired provider account cannot authorise. Forgetting it removes this phone’s cached identity, trust and device key; it does not delete authority audit history or change server state."
                             )
-                            DestructiveConfirmationSlider(
+                            DestructiveConfirmationButton(
                                 label: isIncompatible
-                                    ? "Slide to remove incompatible account"
-                                    : "Slide to forget this expired account",
-                                confirmationLabel: isIncompatible
-                                    ? "Confirm local account removal"
-                                    : "Confirm forget local account"
+                                    ? "Remove local account"
+                                    : "Remove expired local account",
+                                confirmationTitle: "Remove this local account?",
+                                confirmationMessage:
+                                    "This removes only the account, trust and device key stored on this phone. Authority records and server sessions are unchanged."
                             ) {
                                 try await forgetExpired(identity.id)
                             }

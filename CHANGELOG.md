@@ -5,7 +5,22 @@ a Changelog and releases follow Semantic Versioning.
 
 ## [Unreleased]
 
+### Fixed
+
+- Bind the funding-review Monas web-QR fixture to the accepted `propylaion`
+  product audience and prove that it remains distinct from, and authorised by,
+  the signed first-device enrolment profile.
+
 ### Added
+
+- Add a redacted, machine-readable funding-review demonstration contract for
+  CLI first-device registration, iPhone host trust, Monas web QR login,
+  Kyberneterion exact-action workflow selection, and fail-closed negative cases.
+
+- Define the bounded end-to-end Monas demonstration contract linking a
+  device-approved Pistis session to DASObjectStore evidence, Oikodome compute
+  admission, and a pinned Jenkins Expedition task, including fail-closed
+  negative cases and the retained cross-repository dossier.
 
 - Retain the exact first-device operation identifier and Secure Enclave key
   across ambiguous begin-response failures, enabling Prosopikon's

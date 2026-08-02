@@ -1,0 +1,90 @@
+{
+  "schema": "pistis.cli-iphone-kyberneterion-demonstration.v1",
+  "verdict": "not_run",
+  "live_claim": false,
+  "live_credentials_used": false,
+  "purpose": "bounded evidence shape for CLI registration, iPhone approval, web QR login, and Kyberneterion workflow selection",
+  "steps": [
+    {
+      "id": "cli-user-registration",
+      "surface": "pistis-cli",
+      "operation": "first-device-registration",
+      "command": "pistis enrolment present --stdin",
+      "status": "fixture",
+      "input_fixture": "fixtures/protocol-v4/first-device/presentation-positive.json",
+      "input_sha256": "51265d80c50af446760b53641b0cf354bc3306a8dccb80d749cd3539c7eb018c",
+      "assertions": [
+        "input is a protected pipe",
+        "output is an attended terminal",
+        "the iPhone receives an alternate-screen QR presentation",
+        "the raw PISTIS1 transfer is never printed"
+      ]
+    },
+    {
+      "id": "iphone-host-trust",
+      "surface": "pistis-ios",
+      "operation": "scan-and-confirm-first-device",
+      "status": "fixture",
+      "assertions": [
+        "origin and trust words are shown for human comparison",
+        "the exact authority descriptor and registration are verified",
+        "Face ID or device passcode is required before signing",
+        "the private device key remains in Secure Enclave"
+      ]
+    },
+    {
+      "id": "monas-web-qr-login",
+      "surface": "monas-web",
+      "operation": "audience-bound-login",
+      "status": "not_run",
+      "challenge_fixture": "fixtures/protocol-v1/qr/challenge-minimal.qr.txt",
+      "challenge_sha256": "1dcd465edbdd3b102ba17f603a70f7eb74bd3dd6a9aca0d73b087493ecfb7084",
+      "audience": "propylaion",
+      "assertions": [
+        "the browser displays only a redacted challenge and expiry",
+        "the iPhone signs only after displaying the exact audience",
+        "Monas consumes the response once before issuing a session"
+      ]
+    },
+    {
+      "id": "kyberneterion-workflow-selection",
+      "surface": "kyberneterion",
+      "operation": "select-approved-workflow",
+      "status": "not_run",
+      "workflow_id": "bioinformatics.rnaseq.v1",
+      "audience": "kyberneterion:workflow:bioinformatics.rnaseq.v1",
+      "approval": "pistis-exact-action-v2",
+      "command": [
+        "pistis",
+        "auth",
+        "exec",
+        "--",
+        "/usr/bin/nextflow",
+        "run",
+        "rnaseq.nf",
+        "--input",
+        "das://demo/input"
+      ],
+      "assertions": [
+        "the workflow digest is derived from the exact ordered command",
+        "the phone displays workflow, resources, and output references",
+        "approval is bound to the Kyberneterion audience",
+        "a generic login cannot authorise this action"
+      ]
+    },
+    {
+      "id": "negative-fail-closed",
+      "surface": "all",
+      "operation": "replay-and-substitution-cases",
+      "status": "fixture",
+      "cases": [
+        "replayed response",
+        "wrong audience",
+        "revoked device",
+        "expired challenge",
+        "workflow digest substitution"
+      ],
+      "expected": "no session, dispatch, workload, or durable mutation"
+    }
+  ]
+}

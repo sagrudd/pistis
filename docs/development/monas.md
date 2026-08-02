@@ -129,3 +129,55 @@ Do not add a Jenkins task that merely checks Monas's existing
 `/api/auth/login`; that path proves Prosopikon password authentication, not
 Pistis integration. Native packaging, systemd, container, RPM/SRPM, migration,
 and appliance-profile acceptance require separate retained evidence.
+
+## End-to-end demonstration contract
+
+This section defines only a bounded
+**Pistis → Monas → DASObjectStore → Oikodome → Jenkins** lane. It is a
+demonstration profile, not the complete programme demonstration and not a
+shortcut around the standalone readiness gates above. The authoritative full
+chain is documented in the [programme architecture](https://github.com/sagrudd/mnemosyne-programme/blob/main/ARCHITECTURE.md)
+and [demonstration plan](https://github.com/sagrudd/mnemosyne-programme/blob/main/DEMONSTRATION_PLAN.md):
+Pistis → Kyberneterion → Proxenos → Thesaurophylax → Monas → DASObjectStore →
+Oikodome → Phoreus Registry → Phoreus Forge → Jenkins.
+
+The lane assumes the upstream Kyberneterion entitlement projection, Proxenos
+Site Trust Domain, and Thesaurophylax intrinsic treasury/signature work. It
+does not define Phoreus Registry or Forge publication, or Monas/Praxis work
+admission and Kubernetes Job materialisation. Those boundaries and their
+evidence remain required for the full programme demonstration. The run MUST
+use generated identities and an isolated state root, and MUST record exact
+source revisions, package digests, and the redacted evidence identifiers for
+each step:
+
+1. Prosopikon provisions one immutable local principal, an explicit Pistis
+   principal binding, a trusted device, and the installation trust descriptor.
+2. Monas creates a purpose-bound Pistis challenge, the device signs the
+   challenge after local user verification, and the host verifies and consumes
+   it exactly once before requesting a Prosopikon session.
+3. The resulting audience-bound session enters the Monas product shell and
+   authorises a DASObjectStore operation. The operation MUST persist its
+   input, output, and redacted approval evidence in DASObjectStore; a browser
+   cookie, product visibility flag, or actor name is not an authority input.
+4. Oikodome registers or verifies the private local Kubernetes seed offering
+   and returns a bounded compute admission. The host MUST retain the offering
+   identity, capacity observation, admission decision, and failure reason; it
+   MUST NOT launch an unmanaged process or silently expand beyond the offering.
+5. Jenkins obtains a fresh, exact-audience approval for its owner-local
+   authority, submits a pinned Expedition task, and records the Pistis,
+   Monas, Oikodome, and DASObjectStore revisions in the retained dossier.
+   Jenkins task input and output evidence MUST reference the corresponding
+   DASObjectStore objects and the Oikodome admission; no secret or browser
+   session is passed to the worker.
+6. A negative replay, wrong-audience, revoked-device, and unavailable-seed
+   case is run alongside the happy path. Each MUST fail closed without a
+   Monas session, product dispatch, Kubernetes workload, or Jenkins task.
+
+The minimum cross-repository dossier is therefore a single correlation record
+linking the Pistis challenge and terminal decision, Prosopikon principal and
+session identifiers, Monas audience, DASObjectStore object references,
+Oikodome offering/admission identifiers, and Jenkins task/result identifiers.
+It MUST contain no challenge capability, nonce, response, signature, cookie,
+provider credential, private key, or raw personal data. Until Jenkins retains
+this dossier for exact pinned revisions, this lane may be demonstrated but the
+ecosystem MUST NOT claim the full programme demonstration.

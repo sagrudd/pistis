@@ -80,17 +80,19 @@ audit source.
 A record created before ADR 0031 has no authority-signed product-audience set
 and cannot authorise in the current app. Pistis displays that exact preceding
 profile as ``Re-enrolment required`` rather than hiding it or inferring
-permissions. Use ``Slide to remove incompatible enrolment`` to delete only the
-phone's local trust and Secure Enclave key, then revoke the old credential at
+permissions. Use ``Remove local enrolment`` and confirm the native destructive
+dialogue to delete only the phone's local trust and Secure Enclave key, then
+revoke the old credential at
 the authority or use a fresh authority before issuing a schema-v11
 presentation. Local removal does not revoke authority state or existing server
 sessions.
 
-An expired or inactive installation detail offers a destructive
-``Slide to forget this expired installation`` control. Its coupled provider
-identity detail independently offers ``Slide to forget this expired account``.
-Both have accessible confirmation alternatives and execute the same exact
-local-record transaction: re-check the immutable installation or external
+An expired or inactive installation detail offers a destructive ``Remove
+expired local enrolment`` button. Its coupled provider identity detail
+independently offers ``Remove expired local account``. Each opens a standard
+native confirmation dialogue; there is no persistent armed state or gesture to
+complete. Both execute the same exact local-record transaction: re-check the
+immutable installation or external
 identity identifier, prove that the record cannot authorise, retain minimised
 diagnostic history, and delete the exact namespaced Secure Enclave key and
 Keychain trust record. Neither action contacts the authority, revokes server

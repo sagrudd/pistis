@@ -108,6 +108,7 @@ Architecture and operations
    operations/security-hardening
    operations/release-packaging
    operations/cli-authentication
+   operations/cli-iphone-kyberneterion-demo
    operations/local-agent
    operations/linux-hardware-signing
    operations/mvp-deployment-profile

@@ -37,11 +37,7 @@ fn manifest_is_redacted_and_ordered_for_the_review_demo() {
     );
     let requirements = manifest["dossier_requirements"].as_array().unwrap();
     assert_eq!(requirements.len(), 4);
-    assert!(
-        requirements
-            .iter()
-            .all(|requirement| requirement.is_string())
-    );
+    assert!(requirements.iter().all(serde_json::Value::is_string));
 
     let steps = manifest["steps"].as_array().unwrap();
     let ids = steps

@@ -91,3 +91,12 @@ Oikodome, and Jenkins revisions, plus lockfile and fixture digests. It must
 also include a redacted physical-iPhone observation for the scan, local user
 verification, signed response, and Keychain update. Synthetic fixtures prove
 the contract shape only; they do not replace that device observation.
+
+The checked-in manifest deliberately cannot be turned into a ceremony record:
+its evidence scope is `redacted-fixture-contract-only`, its verdict is
+`not_run`, and it contains no live correlation values. The Jenkins dossier,
+not this repository fixture, must record the exact revisions and lockfile
+digests. For every attended step it must explicitly state `observed` or
+`not_run`; for every negative case it must record `no-session-or-dispatch`.
+An absent observation, ambiguous result, or retained secret is a failed
+demonstration gate, not a result that may be inferred from successful setup.

@@ -31,6 +31,13 @@ fn manifest_is_redacted_and_ordered_for_the_review_demo() {
     assert_eq!(manifest["verdict"], "not_run");
     assert_eq!(manifest["live_claim"], false);
     assert_eq!(manifest["live_credentials_used"], false);
+    assert_eq!(
+        manifest["evidence_scope"], "redacted-fixture-contract-only",
+        "a checked-in fixture can never become live evidence"
+    );
+    let requirements = manifest["dossier_requirements"].as_array().unwrap();
+    assert_eq!(requirements.len(), 4);
+    assert!(requirements.iter().all(serde_json::Value::is_string));
 
     let steps = manifest["steps"].as_array().unwrap();
     let ids = steps
@@ -64,6 +71,30 @@ fn manifest_is_redacted_and_ordered_for_the_review_demo() {
             !serialised.contains(forbidden),
             "demo manifest must not contain {forbidden}"
         );
+    }
+}
+
+#[test]
+fn manifest_requires_a_redacted_dossier_boundary_and_explicit_negative_results() {
+    let manifest: serde_json::Value = serde_json::from_str(MANIFEST).unwrap();
+    let requirements = manifest["dossier_requirements"].as_array().unwrap();
+    for required in [
+        "retain exact source revisions and lockfile digests outside this fixture",
+        "retain only non-secret correlation and evidence references",
+        "record an explicit per-step observed or not-run status",
+        "record an explicit no-dispatch result for every negative case",
+    ] {
+        assert!(
+            requirements.iter().any(|value| value == required),
+            "missing dossier requirement: {required}"
+        );
+    }
+
+    let negative_cases = manifest["steps"][5]["cases"].as_array().unwrap();
+    assert_eq!(negative_cases.len(), 5);
+    for case in negative_cases {
+        assert!(case["id"].as_str().is_some_and(|id| !id.is_empty()));
+        assert_eq!(case["expected"], "no-session-or-dispatch");
     }
 }
 
@@ -124,6 +155,22 @@ fn monas_handoff_uses_an_authority_signed_product_audience() {
         monas["audience"], enrolment["audience"],
         "the product handoff must not reuse the enrolment ceremony audience"
     );
+}
+
+#[test]
+fn iphone_fixture_requires_face_id_without_passcode_fallback() {
+    let manifest: serde_json::Value = serde_json::from_str(MANIFEST).unwrap();
+    let assertions = manifest["steps"][2]["assertions"].as_array().unwrap();
+    assert!(assertions.iter().any(|assertion| {
+        assertion
+            .as_str()
+            .is_some_and(|text| text.contains("Face ID is required"))
+    }));
+    assert!(assertions.iter().any(|assertion| {
+        assertion
+            .as_str()
+            .is_some_and(|text| text.contains("passcode fallback does not complete"))
+    }));
 }
 
 #[test]

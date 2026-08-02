@@ -3,6 +3,13 @@
   "verdict": "not_run",
   "live_claim": false,
   "live_credentials_used": false,
+  "evidence_scope": "redacted-fixture-contract-only",
+  "dossier_requirements": [
+    "retain exact source revisions and lockfile digests outside this fixture",
+    "retain only non-secret correlation and evidence references",
+    "record an explicit per-step observed or not-run status",
+    "record an explicit no-dispatch result for every negative case"
+  ],
   "purpose": "bounded evidence shape for CLI registration, iPhone approval, web QR login, and Kyberneterion workflow selection",
   "steps": [
     {
@@ -41,7 +48,7 @@
       "assertions": [
         "origin and trust words are shown for human comparison",
         "the exact authority descriptor and registration are verified",
-        "Face ID or device passcode is required before signing",
+        "Face ID is required before signing; device-passcode fallback does not complete approval",
         "the private device key remains in Secure Enclave"
       ]
     },
@@ -91,11 +98,26 @@
       "operation": "replay-and-substitution-cases",
       "status": "fixture",
       "cases": [
-        "replayed response",
-        "wrong audience",
-        "revoked device",
-        "expired challenge",
-        "workflow digest substitution"
+        {
+          "id": "replayed-response",
+          "expected": "no-session-or-dispatch"
+        },
+        {
+          "id": "wrong-audience",
+          "expected": "no-session-or-dispatch"
+        },
+        {
+          "id": "revoked-device",
+          "expected": "no-session-or-dispatch"
+        },
+        {
+          "id": "expired-challenge",
+          "expected": "no-session-or-dispatch"
+        },
+        {
+          "id": "workflow-digest-substitution",
+          "expected": "no-session-or-dispatch"
+        }
       ],
       "expected": "no session, dispatch, workload, or durable mutation"
     }

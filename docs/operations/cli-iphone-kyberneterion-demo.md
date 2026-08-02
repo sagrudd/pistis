@@ -35,7 +35,8 @@ durable authority transaction and browser-session completion.
    the installation, HTTPS origin, three trust words, and expiry; it never
    prints the raw `PISTIS1:` transfer or an invitation secret.
 2. The user opens Pistis on an iPhone, scans the QR, checks the origin and
-   trust words, and confirms with Face ID or the device passcode. The app
+   trust words, and confirms with Face ID. The attended iPhone profile does
+   not allow device-passcode fallback to complete approval. The app
    verifies the authority descriptor and exact registration before one
    Keychain/Secure Enclave update. The device private key does not leave the
    phone.
@@ -91,3 +92,12 @@ Oikodome, and Jenkins revisions, plus lockfile and fixture digests. It must
 also include a redacted physical-iPhone observation for the scan, local user
 verification, signed response, and Keychain update. Synthetic fixtures prove
 the contract shape only; they do not replace that device observation.
+
+The checked-in manifest deliberately cannot be turned into a ceremony record:
+its evidence scope is `redacted-fixture-contract-only`, its verdict is
+`not_run`, and it contains no live correlation values. The Jenkins dossier,
+not this repository fixture, must record the exact revisions and lockfile
+digests. For every attended step it must explicitly state `observed` or
+`not_run`; for every negative case it must record `no-session-or-dispatch`.
+An absent observation, ambiguous result, or retained secret is a failed
+demonstration gate, not a result that may be inferred from successful setup.

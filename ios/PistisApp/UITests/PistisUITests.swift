@@ -58,7 +58,7 @@ final class PistisUITests: XCTestCase {
             "Scan",
             "Ready to scan",
             "The accepted QR v2 and COSE verifier is available.",
-            "Scanning for a Pistis QR code",
+            "Scanning for a supported QR code",
         ]
         return issue.auditType == .contrast
             && partlyObscuredAtTop.contains(issue.element?.label ?? "")

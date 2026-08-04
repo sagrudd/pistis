@@ -42,6 +42,27 @@ not itself transport authority. Until an enrolled-host/session-bound transport
 is implemented, the default transport is explicitly unavailable and fails
 closed. This scanner is separate from the legacy `PISTIS1` v2 approval flow.
 
+## Monas transport compatibility
+
+The iOS adapter accepts a configured HTTPS authority origin, never an origin
+selected by a QR code. It accepts only the following exact paths with no
+query, fragment, user-info, redirect, cookie, cache, or alternate-host
+fallback:
+
+- `GET /auth/pistis/v1/site-root-delegation/readiness` returning exactly
+  `monas.site-root-delegation-readiness.v1` with `state`, `live_ceremony`,
+  `registered_device`, `app_attest_binding_present`, and bounded `reasons`.
+- `POST /auth/pistis/site-root-delegations/v1/submit` returning exactly
+  `monas.site-root-delegation-submission-receipt.v1` with the submitted
+  `reference` and a terminal `state` of `completed`, `denied`, `expired`, or
+  `cancelled`.
+
+Any unavailable endpoint, malformed or expanded response, non-2xx status,
+redirect, reference mismatch, or `not-ready` readiness result is unavailable,
+not an implicit retry or proof acceptance. The currently shipped Monas
+readiness route truthfully reports `not-ready`; the reserved submission path
+is unavailable until its durable authority dependencies exist.
+
 ## Consequences
 
 This is a separate profile from ADR 0018's attached 32-byte-key-id Pistis

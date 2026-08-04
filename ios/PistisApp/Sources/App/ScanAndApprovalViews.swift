@@ -1,10 +1,13 @@
 import SwiftUI
+#if canImport(UIKit)
+import UIKit
+#endif
 import PistisCore
 
 struct ScanView: View {
     @StateObject private var ceremony = ProductionCeremonyCoordinator()
     @StateObject private var siteRootCeremony = SiteRootDelegationCoordinator()
-    @State private var scanning = false
+    @State private var scanning = true
     @State private var siteRootScanning = false
     @State private var scanFailure: PlatformFailure?
     @State private var siteRootScanFailure: PlatformFailure?
@@ -18,40 +21,31 @@ struct ScanView: View {
                     orientation: "Point the camera at a Pistis QR code. Captured frames are not saved."
                 )
 
-                Button {
-                    scanning ? stopScanning() : startScanning()
-                } label: {
-                    ZStack {
-                        RoundedRectangle(cornerRadius: MnRadius.large)
-                            .fill(MnColor.textPrimary)
-                            .aspectRatio(1, contentMode: .fit)
-                        if scanning {
-                            QRScannerCameraView(onResult: handleScan)
-                                .clipShape(RoundedRectangle(cornerRadius: MnRadius.large))
-                                .aspectRatio(1, contentMode: .fill)
-                            Image(systemName: "viewfinder")
-                                .resizable()
-                                .scaledToFit()
-                                .frame(width: 160, height: 160)
-                                .foregroundStyle(MnColor.onBrand)
-                                .accessibilityHidden(true)
-                        } else {
-                            Image(systemName: "qrcode.viewfinder")
-                                .resizable()
-                                .scaledToFit()
-                                .frame(width: 112, height: 112)
-                                .foregroundStyle(MnColor.onBrand)
-                                .accessibilityHidden(true)
-                        }
+                ZStack {
+                    RoundedRectangle(cornerRadius: MnRadius.large)
+                        .fill(MnColor.textPrimary)
+                        .aspectRatio(1, contentMode: .fit)
+                    if scanning {
+                        QRScannerCameraView(onResult: handleScan)
+                            .clipShape(RoundedRectangle(cornerRadius: MnRadius.large))
+                            .aspectRatio(1, contentMode: .fill)
+                        Image(systemName: "viewfinder")
+                            .resizable()
+                            .scaledToFit()
+                            .frame(width: 160, height: 160)
+                            .foregroundStyle(MnColor.onBrand)
+                            .accessibilityHidden(true)
+                    } else {
+                        Image(systemName: "qrcode.viewfinder")
+                            .resizable()
+                            .scaledToFit()
+                            .frame(width: 112, height: 112)
+                            .foregroundStyle(MnColor.onBrand)
+                            .accessibilityHidden(true)
                     }
                 }
-                .buttonStyle(.plain)
-                .accessibilityLabel(
-                    scanning
-                        ? "Stop scanning for a Pistis QR code"
-                        : "Start scanning for a Pistis QR code"
-                )
-                .accessibilityHint("Activates the camera without scrolling")
+                .accessibilityElement(children: .ignore)
+                .accessibilityLabel(scanning ? "Scanning for a Pistis QR code" : "Pistis camera unavailable")
 
                 MnPanel {
                     VStack(alignment: .leading, spacing: MnSpacing.x2) {
@@ -89,18 +83,13 @@ struct ScanView: View {
                         VStack(alignment: .leading, spacing: MnSpacing.x3) {
                             MnStatusLabel(text: "Scan failed", kind: .danger)
                             Text(scanFailure.safeUserMessage)
-                            Button("Try again") { startScanning() }
-                                .font(.headline)
-                                .frame(minHeight: MnMetrics.minimumTarget)
+                            if scanFailure == .cameraPermissionDenied {
+                                Button("Open Settings") { openCameraSettings() }
+                                    .font(.headline)
+                                    .frame(minHeight: MnMetrics.minimumTarget)
+                            }
                         }
                     }
-                }
-
-                MnPrimaryButton(
-                    scanning ? "Stop scanning" : "Start camera",
-                    systemImage: scanning ? "stop.circle" : "camera.viewfinder"
-                ) {
-                    scanning ? stopScanning() : startScanning()
                 }
 
                 Divider()
@@ -153,6 +142,8 @@ struct ScanView: View {
         .navigationTitle("Scan")
         .mnScreenBackground()
         .task { readiness = await PasswordlessReadinessProbe.current() }
+        .onAppear { startScanning() }
+        .onDisappear { stopScanning() }
         .sheet(item: reviewBinding) { request in
             ApprovalView(request: request, coordinator: ceremony)
         }
@@ -187,6 +178,13 @@ struct ScanView: View {
 
     private func stopScanning() {
         scanning = false
+    }
+
+    private func openCameraSettings() {
+#if canImport(UIKit)
+        guard let settings = URL(string: UIApplication.openSettingsURLString) else { return }
+        UIApplication.shared.open(settings)
+#endif
     }
 
     @MainActor

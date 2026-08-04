@@ -24,6 +24,7 @@ enum PlatformFailure: Error, Equatable, Sendable {
     case qrPayloadUnsupported
     case operationCancelled
     case productionEnvelopeUnavailable
+    case siteRootAuthorityUnavailable
     case enrolmentBeginRetryRequired
     case enrolmentRequired
     case existingEnrolmentMustBeRemoved
@@ -48,6 +49,8 @@ extension PlatformFailure {
             "The host did not return a verifiable enrolment response. This exact attempt was retained; retry once or cancel and scan a fresh invitation."
         case .existingEnrolmentMustBeRemoved:
             "An existing Pistis identity already occupies this device. Remove or revoke it before beginning a new enrolment."
+        case .siteRootAuthorityUnavailable:
+            "The Monas Site Root authority is unavailable. No proof was submitted."
         case .secureHardwareUnavailable:
             "Secure Enclave is unavailable on this device."
         case .keyCreationFailed:

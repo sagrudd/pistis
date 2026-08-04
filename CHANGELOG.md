@@ -23,6 +23,11 @@ a Changelog and releases follow Semantic Versioning.
   key export, software fallback, HTTP authority, or Apple attestation claim.
   Release this compatible iOS capability as 0.2.0.
 
+- Add the separate `monas.site-root-delegation-presentation.v1` QR scanner,
+  redacted review surface, and fail-closed typed Monas submission boundary for
+  an attended Secure Enclave Site Root proof. The legacy Pistis v2 scanner is
+  unchanged. Release this compatible iOS capability as 0.3.0.
+
 - Add a redacted, machine-readable funding-review demonstration contract for
   CLI first-device registration, iPhone host trust, Monas web QR login,
   Kyberneterion exact-action workflow selection, and fail-closed negative cases.

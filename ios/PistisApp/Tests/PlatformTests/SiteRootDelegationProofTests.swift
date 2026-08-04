@@ -37,4 +37,37 @@ final class SiteRootDelegationProofTests: XCTestCase {
         let highS = Data([1] + Array(repeating: 0, count: 31) + Array(repeating: 0xff, count: 32))
         XCTAssertThrowsError(try DetachedES256Cose.envelope(protected: protected, signature: highS))
     }
+
+    func testQRPresentationAcceptsOnlyExactWrapperAndPreservesDelegationBytes() throws {
+        let delegation = Data("{\"device_key_id\":\"site-root-fixture\",\"proof_profile\":\"pistis-secure-enclave-es256-cose-v1\",\"schema\":\"monas.site-root-delegation.v1\",\"secure_enclave_attestation\":\"not-asserted\"}".utf8)
+        let base64URL = delegation.base64EncodedString()
+            .replacingOccurrences(of: "+", with: "-")
+            .replacingOccurrences(of: "/", with: "_")
+            .replacingOccurrences(of: "=", with: "")
+        let qr = "{\"canonical_delegation_base64url\":\"\(base64URL)\",\"device_key_id\":\"site-root-fixture\",\"reference\":\"ceremony-fixture-1234\",\"schema\":\"monas.site-root-delegation-presentation.v1\",\"submit_url\":\"https://monas.example.test/auth/pistis/site-root-delegations/v1/submit\"}"
+
+        let parsed = try SiteRootDelegationQRPresentationV1(qrText: qr)
+
+        XCTAssertEqual(parsed.presentation.canonicalDelegationJSON, delegation)
+        XCTAssertEqual(parsed.presentation.reference, "ceremony-fixture-1234")
+        XCTAssertThrowsError(try SiteRootDelegationQRPresentationV1(qrText: String(qr.dropLast()) + "x"))
+        XCTAssertThrowsError(try SiteRootDelegationQRPresentationV1(
+            qrText: String(qr.dropLast()) + ",\"extra\":true}"
+        ))
+    }
+
+    func testReviewRedactsIdentifiers() throws {
+        let presentation = try SiteRootDelegationPresentationV1(
+            canonicalDelegationJSON: Data("{\"device_key_id\":\"site-root-fixture\",\"proof_profile\":\"pistis-secure-enclave-es256-cose-v1\",\"schema\":\"monas.site-root-delegation.v1\",\"secure_enclave_attestation\":\"not-asserted\"}".utf8),
+            deviceKeyID: "site-root-fixture",
+            submitURL: try XCTUnwrap(URL(string: "https://monas.example.test/auth/pistis/site-root-delegations/v1/submit")),
+            reference: "ceremony-fixture-1234"
+        )
+
+        let review = SiteRootDelegationReview(presentation: presentation)
+
+        XCTAssertFalse(review.reference.contains("fixture-1234"))
+        XCTAssertFalse(review.deviceKeyFingerprint.contains("root-fixture"))
+        XCTAssertEqual(review.destination, "monas.example.test")
+    }
 }

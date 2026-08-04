@@ -9,11 +9,15 @@ struct ScannedQRPayload: Equatable, Sendable {
 enum QRPayloadProfile: Sendable {
     case pistisAuthenticationV2
     case monasSiteRootDelegationV1
+    /// The Scan tab's acquisition-only router. It does not merge ceremony
+    /// semantics: each accepted family still reaches its own strict parser.
+    case pistisAuthenticationOrMonasSiteRoot
 
     var maximumBytes: Int {
         switch self {
         case .pistisAuthenticationV2: 2_331
         case .monasSiteRootDelegationV1: 90_000
+        case .pistisAuthenticationOrMonasSiteRoot: 90_000
         }
     }
 
@@ -23,6 +27,8 @@ enum QRPayloadProfile: Sendable {
         // The strict Site Root parser owns schema and field validation. This
         // narrow acquisition check prevents the legacy scanner accepting it.
         case .monasSiteRootDelegationV1: text.hasPrefix("{")
+        case .pistisAuthenticationOrMonasSiteRoot:
+            text.hasPrefix("PISTIS1:") || text.hasPrefix("{")
         }
     }
 }

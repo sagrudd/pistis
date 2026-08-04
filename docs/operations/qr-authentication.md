@@ -47,6 +47,11 @@ If a response QR cannot be captured, retry camera permission or begin a fresh
 ceremony using an approved local-transfer adapter. There is no shortened
 manual code in v1.
 
+QR transport structures redact scanned binary material from `Debug` output.
+Diagnostics may identify a transfer kind and byte lengths only; they must not
+format QR payload, signature, COSE, invitation presentation, or authority
+bundle bytes.
+
 ## Direct-local failure
 
 Endpoint hints in the signed challenge are transport metadata, not automatic

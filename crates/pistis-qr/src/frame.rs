@@ -40,7 +40,7 @@ impl TransferKind {
 }
 
 /// Borrowed signed material returned by callers or a decoded transfer.
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+#[derive(Clone, Copy, Eq, PartialEq)]
 pub struct TransferRef<'a> {
     /// Separates challenge and response frames.
     pub kind: TransferKind,
@@ -48,6 +48,17 @@ pub struct TransferRef<'a> {
     pub payload: &'a [u8],
     /// Detached fixed-width ES256 signature bytes.
     pub signature: &'a [u8],
+}
+
+impl fmt::Debug for TransferRef<'_> {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        formatter
+            .debug_struct("TransferRef")
+            .field("kind", &self.kind)
+            .field("payload_length", &self.payload.len())
+            .field("signature_length", &self.signature.len())
+            .finish()
+    }
 }
 
 /// A bounded QR framing, parsing, or rendering failure.

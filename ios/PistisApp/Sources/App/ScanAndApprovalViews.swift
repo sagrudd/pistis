@@ -8,9 +8,7 @@ struct ScanView: View {
     @StateObject private var ceremony = ProductionCeremonyCoordinator()
     @StateObject private var siteRootCeremony = SiteRootDelegationCoordinator()
     @State private var scanning = true
-    @State private var siteRootScanning = false
     @State private var scanFailure: PlatformFailure?
-    @State private var siteRootScanFailure: PlatformFailure?
     @State private var readiness = PasswordlessReadiness.checking
 
     var body: some View {
@@ -48,7 +46,7 @@ struct ScanView: View {
                     }
                 }
                 .accessibilityElement(children: .ignore)
-                .accessibilityLabel(scanning ? "Scanning for a Pistis QR code" : "Pistis camera unavailable")
+                .accessibilityLabel(scanning ? "Scanning for a supported QR code" : "Pistis camera unavailable")
 
                 MnPanel {
                     VStack(alignment: .leading, spacing: MnSpacing.x2) {
@@ -95,50 +93,6 @@ struct ScanView: View {
                     }
                 }
 
-                Divider()
-
-                MnSectionHeading(
-                    "Site Root delegation",
-                    orientation: "Scan a separate Monas Site Root delegation. This does not alter the Pistis v2 approval scanner."
-                )
-
-                MnPanel {
-                    VStack(alignment: .leading, spacing: MnSpacing.x3) {
-                        MnStatusLabel(
-                            text: siteRootStatusText,
-                            kind: siteRootStatusKind
-                        )
-                        Text("Pistis displays only redacted delegation facts before Face ID signs the exact canonical Monas record. The phone never exports a private key or creates authority.")
-                            .font(.footnote)
-                            .fixedSize(horizontal: false, vertical: true)
-                    }
-                }
-
-                if siteRootScanning {
-                    QRScannerCameraView(profile: .monasSiteRootDelegationV1, onResult: handleSiteRootScan)
-                        .clipShape(RoundedRectangle(cornerRadius: MnRadius.large))
-                        .aspectRatio(1, contentMode: .fit)
-                        .accessibilityLabel("Scanning for a Monas Site Root delegation")
-                }
-
-                if let siteRootScanFailure {
-                    MnPanel {
-                        VStack(alignment: .leading, spacing: MnSpacing.x3) {
-                            MnStatusLabel(text: "Site Root delegation unavailable", kind: .danger)
-                            Text(siteRootScanFailure.safeUserMessage)
-                            Button("Clear") { resetSiteRoot() }
-                                .font(.headline)
-                                .frame(minHeight: MnMetrics.minimumTarget)
-                        }
-                    }
-                }
-
-                MnPrimaryButton(
-                    siteRootScanning ? "Stop Site Root scan" : "Scan Site Root delegation",
-                    systemImage: siteRootScanning ? "stop.circle" : "qrcode.viewfinder"
-                ) {
-                    siteRootScanning ? stopSiteRootScanning() : startSiteRootScanning()
-                }
             }
             .padding(MnMetrics.screenGutter)
         }
@@ -162,7 +116,10 @@ struct ScanView: View {
         case let .success(payload):
             scanFailure = nil
             if payload.text.hasPrefix("{") {
-                handleSiteRootScan(.success(payload))
+                siteRootCeremony.accept(qrText: payload.text)
+                if case let .failed(failure) = siteRootCeremony.phase {
+                    scanFailure = failure
+                }
                 return
             }
             Task {
@@ -194,36 +151,7 @@ struct ScanView: View {
 #endif
     }
 
-    @MainActor
-    private func handleSiteRootScan(_ result: Result<ScannedQRPayload, PlatformFailure>) {
-        siteRootScanning = false
-        switch result {
-        case let .success(payload):
-            siteRootScanFailure = nil
-            siteRootCeremony.accept(qrText: payload.text)
-            if case let .failed(failure) = siteRootCeremony.phase {
-                siteRootScanFailure = failure
-            }
-        case let .failure(failure):
-            guard failure != .operationCancelled else { return }
-            siteRootScanFailure = failure
-        }
-    }
-
-    private func startSiteRootScanning() {
-        ceremony.reset()
-        scanning = false
-        resetSiteRoot()
-        siteRootScanning = true
-    }
-
-    private func stopSiteRootScanning() {
-        siteRootScanning = false
-    }
-
     private func resetSiteRoot() {
-        siteRootScanning = false
-        siteRootScanFailure = nil
         siteRootCeremony.reset()
     }
 
@@ -239,7 +167,10 @@ struct ScanView: View {
         Binding {
             if case let .review(review) = siteRootCeremony.phase { review } else { nil }
         } set: { value in
-            if value == nil { resetSiteRoot() }
+            if value == nil {
+                resetSiteRoot()
+                startScanning()
+            }
         }
     }
 
@@ -259,24 +190,6 @@ struct ScanView: View {
         }
     }
 
-    private var siteRootStatusText: String {
-        switch siteRootCeremony.phase {
-        case .review: "Delegation ready for redacted review"
-        case .signing: "Awaiting Face ID"
-        case let .submitted(receipt): receipt.accepted ? "Delegation submitted" : "Delegation not accepted"
-        case .failed: "Delegation denied"
-        case .idle: siteRootScanning ? "Camera active" : "Ready to scan a Monas delegation"
-        }
-    }
-
-    private var siteRootStatusKind: MnStatusKind {
-        switch siteRootCeremony.phase {
-        case .review, .submitted: .success
-        case .signing: .warning
-        case .failed: .danger
-        case .idle: .neutral
-        }
-    }
 }
 
 private struct ReadinessRow: View {

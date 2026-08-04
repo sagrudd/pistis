@@ -26,7 +26,7 @@ struct ScanView: View {
                         .fill(MnColor.textPrimary)
                         .aspectRatio(1, contentMode: .fit)
                     if scanning {
-                        QRScannerCameraView(onResult: handleScan)
+                        QRScannerCameraView(profile: .pistisAuthenticationV2, onResult: handleScan)
                             .clipShape(RoundedRectangle(cornerRadius: MnRadius.large))
                             .aspectRatio(1, contentMode: .fill)
                         Image(systemName: "viewfinder")
@@ -112,7 +112,7 @@ struct ScanView: View {
                 }
 
                 if siteRootScanning {
-                    QRScannerCameraView(onResult: handleSiteRootScan)
+                    QRScannerCameraView(profile: .monasSiteRootDelegationV1, onResult: handleSiteRootScan)
                         .clipShape(RoundedRectangle(cornerRadius: MnRadius.large))
                         .aspectRatio(1, contentMode: .fit)
                         .accessibilityLabel("Scanning for a Monas Site Root delegation")

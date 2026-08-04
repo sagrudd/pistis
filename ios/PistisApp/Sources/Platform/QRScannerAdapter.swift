@@ -4,6 +4,29 @@ struct ScannedQRPayload: Equatable, Sendable {
     let text: String
 }
 
+/// The acquisition boundary knows only the bounded wire family expected by its
+/// caller. Semantic validation remains with that family's protocol parser.
+enum QRPayloadProfile: Sendable {
+    case pistisAuthenticationV2
+    case monasSiteRootDelegationV1
+
+    var maximumBytes: Int {
+        switch self {
+        case .pistisAuthenticationV2: 2_331
+        case .monasSiteRootDelegationV1: 90_000
+        }
+    }
+
+    func accepts(_ text: String) -> Bool {
+        switch self {
+        case .pistisAuthenticationV2: text.hasPrefix("PISTIS1:")
+        // The strict Site Root parser owns schema and field validation. This
+        // narrow acquisition check prevents the legacy scanner accepting it.
+        case .monasSiteRootDelegationV1: text.hasPrefix("{")
+        }
+    }
+}
+
 #if canImport(AVFoundation) && canImport(UIKit)
 import AVFoundation
 import UIKit
@@ -20,7 +43,11 @@ final class QRScannerAdapter: NSObject, AVCaptureMetadataOutputObjectsDelegate,
     private var handler: Handler?
     private var backgroundObserver: NSObjectProtocol?
 
-    init(maximumBytes: Int = 2_331) throws {
+    private let profile: QRPayloadProfile
+
+    init(profile: QRPayloadProfile = .pistisAuthenticationV2) throws {
+        self.profile = profile
+        let maximumBytes = profile.maximumBytes
         guard (1 ... 2_331).contains(maximumBytes) else {
             throw PlatformFailure.invalidConfiguration
         }
@@ -103,7 +130,7 @@ final class QRScannerAdapter: NSObject, AVCaptureMetadataOutputObjectsDelegate,
             finish(.failure(.qrPayloadTooLarge))
             return
         }
-        guard value.hasPrefix("PISTIS1:") else {
+        guard profile.accepts(value) else {
             finish(.failure(.qrPayloadUnsupported))
             return
         }
@@ -145,7 +172,8 @@ final class QRScannerAdapter: NSObject, AVCaptureMetadataOutputObjectsDelegate,
 }
 #else
 final class QRScannerAdapter: Sendable {
-    init(maximumBytes: Int = 2_331) throws {
+    init(profile: QRPayloadProfile = .pistisAuthenticationV2) throws {
+        let maximumBytes = profile.maximumBytes
         guard (1 ... 2_331).contains(maximumBytes) else {
             throw PlatformFailure.invalidConfiguration
         }

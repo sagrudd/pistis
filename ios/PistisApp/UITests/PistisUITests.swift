@@ -45,7 +45,7 @@ final class PistisUITests: XCTestCase {
 
     private func handleScanTopViewportFinding(_ issue: XCUIAccessibilityAuditIssue) -> Bool {
         let partlyObscuredAtBottom = [
-            "Only bounded PISTIS1 version-2 challenge text is accepted. Request facts appear only after the enrolled installation key verifies the exact signed payload.",
+            "Only bounded Pistis v2 and Monas Site Root v1 envelopes are acquired. Each reaches its own mandatory protocol validator before facts are shown.",
             "Passwordless approval unavailable",
             "Camera",
         ]

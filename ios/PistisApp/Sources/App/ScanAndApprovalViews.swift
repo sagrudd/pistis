@@ -17,8 +17,8 @@ struct ScanView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: MnSpacing.x6) {
                 MnSectionHeading(
-                    "Scan a Pistis request",
-                    orientation: "Point the camera at a Pistis QR code. Captured frames are not saved."
+                    "Scan a Pistis or Monas request",
+                    orientation: "Point the camera at a supported QR code. Captured frames are not saved."
                 )
 
                 ZStack {
@@ -26,7 +26,10 @@ struct ScanView: View {
                         .fill(MnColor.textPrimary)
                         .aspectRatio(1, contentMode: .fit)
                     if scanning {
-                        QRScannerCameraView(profile: .pistisAuthenticationV2, onResult: handleScan)
+                        QRScannerCameraView(
+                            profile: .pistisAuthenticationOrMonasSiteRoot,
+                            onResult: handleScan
+                        )
                             .clipShape(RoundedRectangle(cornerRadius: MnRadius.large))
                             .aspectRatio(1, contentMode: .fill)
                         Image(systemName: "viewfinder")
@@ -53,7 +56,7 @@ struct ScanView: View {
                             text: statusText,
                             kind: statusKind
                         )
-                        Text("Only bounded PISTIS1 version-2 challenge text is accepted. Request facts appear only after the enrolled installation key verifies the exact signed payload.")
+                        Text("Only bounded Pistis v2 and Monas Site Root v1 envelopes are acquired. Each reaches its own mandatory protocol validator before facts are shown.")
                             .font(.footnote)
                             .foregroundStyle(MnColor.textPrimary)
                             .fixedSize(horizontal: false, vertical: true)
@@ -158,6 +161,10 @@ struct ScanView: View {
         switch result {
         case let .success(payload):
             scanFailure = nil
+            if payload.text.hasPrefix("{") {
+                handleSiteRootScan(.success(payload))
+                return
+            }
             Task {
                 await ceremony.accept(qrText: payload.text)
                 if case let .failed(failure) = ceremony.phase {

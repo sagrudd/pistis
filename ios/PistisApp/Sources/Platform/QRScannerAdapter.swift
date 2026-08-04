@@ -54,7 +54,7 @@ final class QRScannerAdapter: NSObject, AVCaptureMetadataOutputObjectsDelegate,
     init(profile: QRPayloadProfile = .pistisAuthenticationV2) throws {
         self.profile = profile
         let maximumBytes = profile.maximumBytes
-        guard (1 ... 2_331).contains(maximumBytes) else {
+        guard (1 ... 90_000).contains(maximumBytes) else {
             throw PlatformFailure.invalidConfiguration
         }
         self.maximumBytes = maximumBytes
@@ -180,7 +180,7 @@ final class QRScannerAdapter: NSObject, AVCaptureMetadataOutputObjectsDelegate,
 final class QRScannerAdapter: Sendable {
     init(profile: QRPayloadProfile = .pistisAuthenticationV2) throws {
         let maximumBytes = profile.maximumBytes
-        guard (1 ... 2_331).contains(maximumBytes) else {
+        guard (1 ... 90_000).contains(maximumBytes) else {
             throw PlatformFailure.invalidConfiguration
         }
     }

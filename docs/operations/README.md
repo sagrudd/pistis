@@ -7,6 +7,7 @@ recovery, backup, audit, and incident-response guidance.
 - [Google trust enrolment](google-enrolment.md)
 - [Device registry operations](device-registry.md)
 - [QR authentication operations](qr-authentication.md)
+- [Formal Site Root QR scanner](formal-site-root-qr-scanner.md)
 - [iOS application operations](ios.md)
 - [Android application operations](android.md)
 - [Synoptikon integration operations](synoptikon.md)

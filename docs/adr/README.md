@@ -81,3 +81,8 @@ review and exact cross-project conformance evidence.
 [ADR 0032](0032-retire-incompatible-local-trust.md) accepts a fail-closed
 mobile migration that exposes an older non-authorising trust record and permits
 truthfully labelled local retirement before re-enrolment.
+
+[ADR 0033](0033-iphone-site-root-delegation.md) accepts the separate iPhone
+Secure Enclave Site Root key and detached ES256 COSE profile for the bounded
+Monas Site Root delegation. It does not assert Apple App Attest or activate
+live server authority.

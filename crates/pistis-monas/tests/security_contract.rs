@@ -184,6 +184,43 @@ fn readiness_is_checked_before_authoritative_resolution() {
 }
 
 #[test]
+fn zero_audit_correlation_is_rejected_before_authoritative_resolution() {
+    let resolver = Resolver::new(Ok(resolved()));
+
+    assert_eq!(
+        pistis_monas::HostSessionRequest::authorize(
+            DeliveryProfile::Standalone,
+            &ready(),
+            &resolver,
+            expectation(),
+            UnixTimeMillis::new(9),
+            AuditCorrelationId::from_bytes([0; 16]),
+        ),
+        Err(IntegrationBlocker::InvalidAuditCorrelation)
+    );
+    assert_eq!(resolver.calls.get(), 0);
+}
+
+#[test]
+fn non_zero_audit_correlation_remains_eligible_for_authorized_request() {
+    let resolver = Resolver::new(Ok(resolved()));
+
+    let request = authorize(
+        DeliveryProfile::Standalone,
+        &ready(),
+        &resolver,
+        expectation(),
+    )
+    .expect("non-zero correlation must preserve the authorized contract path");
+
+    assert_eq!(
+        request.correlation_id,
+        AuditCorrelationId::from_bytes(id16(10))
+    );
+    assert_eq!(resolver.calls.get(), 1);
+}
+
+#[test]
 fn every_exact_binding_substitution_is_rejected() {
     let cases = [
         (

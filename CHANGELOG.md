@@ -7,6 +7,11 @@ a Changelog and releases follow Semantic Versioning.
 
 ### Added
 
+- Harden the non-production Pistis-to-Monas host-session contract to reject
+  the reserved all-zero audit-correlation sentinel before binding resolution
+  or session issuance. This does not add QR, device, broker, signature,
+  persistence, or browser-session behaviour.
+
 - Start bounded QR camera capture when the Scan tab appears and stop it when
   the tab disappears. Camera recovery is shown only after an explicit
   permission denial. Add a typed, HTTPS-only Monas Site Root readiness and

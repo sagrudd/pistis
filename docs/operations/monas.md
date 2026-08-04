@@ -78,6 +78,11 @@ verification reason. Logs and evidence exports exclude:
 - private keys and database encryption material; and
 - production personal data used as a test fixture.
 
+The host generates a fresh non-zero `AuditCorrelationId` for each completion
+attempt. It is non-secret audit metadata, not a capability or a session
+identifier. The all-zero value is a reserved sentinel and blocks the request
+before Pistis resolves bindings or asks Prosopikon to issue a session.
+
 An operator may retain public keys, stable non-secret identifiers, coarse
 outcomes, policy/revocation generations, authoritative timestamps, and exact
 software revisions according to the accepted evidence schema and retention

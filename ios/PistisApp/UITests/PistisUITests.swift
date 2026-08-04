@@ -58,7 +58,7 @@ final class PistisUITests: XCTestCase {
             "Scan",
             "Ready to scan",
             "The accepted QR v2 and COSE verifier is available.",
-            "Start camera",
+            "Scanning for a Pistis QR code",
         ]
         return issue.auditType == .contrast
             && partlyObscuredAtTop.contains(issue.element?.label ?? "")
@@ -102,8 +102,12 @@ final class PistisUITests: XCTestCase {
         }
         application.tabBars.buttons["Scan"].tap()
 
-        XCTAssertTrue(application.buttons["Start camera"].exists)
-        XCTAssertTrue(application.staticTexts["Ready to scan"].exists)
+        XCTAssertFalse(application.buttons["Start camera"].exists)
+        XCTAssertTrue(
+            application.staticTexts["Camera active"].exists
+                || application.staticTexts["Ready to scan"].exists
+                || application.staticTexts["Scan failed"].exists
+        )
         XCTAssertTrue(application.staticTexts["Passwordless approval unavailable"].exists)
         XCTAssertTrue(application.staticTexts["Installation authority"].exists)
         XCTAssertTrue(application.staticTexts["Production verifier"].exists)

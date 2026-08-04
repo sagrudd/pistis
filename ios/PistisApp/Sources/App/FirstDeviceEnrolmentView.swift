@@ -25,7 +25,10 @@ struct FirstDeviceEnrolmentView: View {
                 )
 
                 if flow.presentation == nil {
-                    QRScannerCameraView(onResult: flow.handleScan)
+                    QRScannerCameraView(
+                        profile: .pistisAuthenticationV2,
+                        onResult: flow.handleScan
+                    )
                         .frame(minHeight: 320)
                         .clipShape(RoundedRectangle(cornerRadius: 12))
                     Text(

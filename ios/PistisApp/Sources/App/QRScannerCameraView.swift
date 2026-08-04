@@ -9,6 +9,7 @@ import UIKit
 /// This view acquires text only. It does not interpret a challenge or grant
 /// authority; the protocol verifier remains a separate mandatory boundary.
 struct QRScannerCameraView: UIViewRepresentable {
+    let profile: QRPayloadProfile
     let onResult: @MainActor (Result<ScannedQRPayload, PlatformFailure>) -> Void
 
     func makeCoordinator() -> Coordinator {
@@ -18,7 +19,7 @@ struct QRScannerCameraView: UIViewRepresentable {
     func makeUIView(context: Context) -> PreviewView {
         let view = PreviewView()
         do {
-            let scanner = try QRScannerAdapter()
+            let scanner = try QRScannerAdapter(profile: profile)
             context.coordinator.scanner = scanner
             view.previewLayer = scanner.makePreviewLayer()
             context.coordinator.startTask = Task {
@@ -78,6 +79,7 @@ struct QRScannerCameraView: UIViewRepresentable {
 }
 #else
 struct QRScannerCameraView: View {
+    let profile: QRPayloadProfile
     let onResult: @MainActor (Result<ScannedQRPayload, PlatformFailure>) -> Void
 
     var body: some View {

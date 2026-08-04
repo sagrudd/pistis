@@ -5,6 +5,15 @@ a Changelog and releases follow Semantic Versioning.
 
 ## [Unreleased]
 
+### Added
+
+- Start bounded QR camera capture when the Scan tab appears and stop it when
+  the tab disappears. Camera recovery is shown only after an explicit
+  permission denial. Add a typed, HTTPS-only Monas Site Root readiness and
+  submission transport that remains unavailable for every malformed, redirected
+  or unavailable authority response. Release this compatible iOS capability as
+  0.3.1.
+
 ### Fixed
 
 - Make the CLI demonstration's unavailable-authority preflight deterministic

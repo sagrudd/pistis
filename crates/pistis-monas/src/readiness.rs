@@ -141,6 +141,8 @@ pub enum IntegrationBlocker {
         /// Evidence state observed by the host.
         evidence: ProductionEvidence,
     },
+    /// The completion correlation is the reserved all-zero sentinel.
+    InvalidAuditCorrelation,
     /// Authoritative binding resolution rejected completion.
     Binding(crate::BindingFailure),
 }
@@ -158,6 +160,9 @@ impl fmt::Display for IntegrationBlocker {
                 formatter,
                 "standalone readiness blocked: {requirement:?} is {evidence:?}"
             ),
+            Self::InvalidAuditCorrelation => {
+                formatter.write_str("standalone session request has an unusable audit correlation")
+            }
             Self::Binding(failure) => write!(formatter, "binding rejected: {failure:?}"),
         }
     }

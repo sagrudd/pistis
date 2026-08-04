@@ -22,6 +22,16 @@ impl AuditCorrelationId {
     pub const fn as_bytes(&self) -> &[u8; 16] {
         &self.0
     }
+
+    /// Returns whether this is the reserved all-zero sentinel.
+    ///
+    /// A host completion must reject this value before it resolves bindings or
+    /// requests a session. Correlation identifiers are independently generated
+    /// audit metadata, never an optional/default field.
+    #[must_use]
+    pub fn is_zero_sentinel(&self) -> bool {
+        self.0 == [0; 16]
+    }
 }
 
 /// Digest of a host session identifier, never the session credential.
@@ -90,6 +100,9 @@ impl HostSessionRequest {
             return Err(IntegrationBlocker::WrongProfile(profile));
         }
         readiness.require_ready()?;
+        if correlation_id.is_zero_sentinel() {
+            return Err(IntegrationBlocker::InvalidAuditCorrelation);
+        }
         let binding = resolver
             .resolve(expected)
             .map_err(IntegrationBlocker::Binding)?;

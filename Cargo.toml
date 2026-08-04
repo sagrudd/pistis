@@ -49,7 +49,7 @@ pistis-domain = { version = "0.1.0", path = "crates/pistis-domain" }
 pistis-github = { version = "0.1.0", path = "crates/pistis-github" }
 pistis-google = { version = "0.1.0", path = "crates/pistis-google" }
 pistis-identity = { version = "0.1.0", path = "crates/pistis-identity" }
-pistis-monas = { version = "0.1.0", path = "crates/pistis-monas" }
+pistis-monas = { version = "0.1.1", path = "crates/pistis-monas" }
 pistis-agent = { version = "0.1.0", path = "crates/pistis-agent" }
 pistis-protocol = { version = "0.1.0", path = "crates/pistis-protocol" }
 pistis-qr = { version = "0.1.0", path = "crates/pistis-qr" }

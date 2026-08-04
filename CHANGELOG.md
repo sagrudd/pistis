@@ -17,6 +17,12 @@ a Changelog and releases follow Semantic Versioning.
 
 ### Added
 
+- Add the accepted `pistis-secure-enclave-es256-cose-v1` iPhone Site Root
+  boundary: a distinct Secure Enclave key registration and a closed detached
+  ES256 COSE proof producer for Monas `SiteRootDelegationV1`. It has no private
+  key export, software fallback, HTTP authority, or Apple attestation claim.
+  Release this compatible iOS capability as 0.2.0.
+
 - Add a redacted, machine-readable funding-review demonstration contract for
   CLI first-device registration, iPhone host trust, Monas web QR login,
   Kyberneterion exact-action workflow selection, and fail-closed negative cases.

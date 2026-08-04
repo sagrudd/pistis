@@ -25,6 +25,23 @@ The initial registration truthfully reports `secure_enclave_attestation` as
 requiring Apple/server validation, binding to this public signing key,
 anti-replay state, privacy review and specialist acceptance.
 
+## iPhone QR presentation and submission boundary
+
+The iPhone scanner has a distinct, versioned presentation wrapper
+`monas.site-root-delegation-presentation.v1`. It contains exactly the schema,
+base64url-encoded canonical `monas.site-root-delegation.v1` bytes, a matching
+device-key identifier, the exact HTTPS Monas submission path, and a bounded
+reference. Unknown, duplicate, malformed, redirected, non-HTTPS, or different
+path presentations are rejected. The embedded canonical delegation bytes are
+not parsed and re-encoded by Pistis before signing.
+
+After the operator reviews only redacted identifier fragments and the Monas
+host, Pistis produces `monas.site-root-delegation-submission.v1` and hands the
+typed request to a separately reviewed Monas submission transport. QR text is
+not itself transport authority. Until an enrolled-host/session-bound transport
+is implemented, the default transport is explicitly unavailable and fails
+closed. This scanner is separate from the legacy `PISTIS1` v2 approval flow.
+
 ## Consequences
 
 This is a separate profile from ADR 0018's attached 32-byte-key-id Pistis

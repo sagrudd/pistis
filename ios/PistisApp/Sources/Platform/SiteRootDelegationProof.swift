@@ -87,6 +87,97 @@ struct SiteRootDelegationSubmissionV1: Equatable, Sendable {
     }
 }
 
+/// Versioned QR presentation for one Monas Site Root delegation review.
+///
+/// The QR code carries opaque canonical delegation bytes. Pistis parses its
+/// small wrapper strictly, but deliberately never re-serialises the embedded
+/// delegation: those exact bytes are the detached COSE payload.
+struct SiteRootDelegationQRPresentationV1: Sendable {
+    static let schema = "monas.site-root-delegation-presentation.v1"
+    private static let requiredFields: Set<String> = [
+        "schema", "canonical_delegation_base64url", "device_key_id", "submit_url", "reference",
+    ]
+
+    let presentation: SiteRootDelegationPresentationV1
+
+    init(qrText: String) throws {
+        guard qrText.utf8.count <= 90_000,
+              let data = qrText.data(using: .utf8)
+        else { throw PlatformFailure.qrPayloadUnsupported }
+        let object: [String: StrictJSONObject.Value]
+        do {
+            object = try StrictJSONObject(data: data, maximumBytes: 90_000).values
+        } catch {
+            throw PlatformFailure.qrPayloadUnsupported
+        }
+        guard Set(object.keys) == Self.requiredFields,
+              case let .string(schema)? = object["schema"], schema == Self.schema,
+              case let .string(encoded)? = object["canonical_delegation_base64url"],
+              let delegation = Self.decodeBase64URL(encoded),
+              case let .string(keyID)? = object["device_key_id"],
+              case let .string(endpoint)? = object["submit_url"],
+              let submitURL = URL(string: endpoint),
+              case let .string(reference)? = object["reference"]
+        else { throw PlatformFailure.qrPayloadUnsupported }
+        do {
+            presentation = try SiteRootDelegationPresentationV1(
+                canonicalDelegationJSON: delegation,
+                deviceKeyID: keyID,
+                submitURL: submitURL,
+                reference: reference
+            )
+        } catch {
+            throw PlatformFailure.qrPayloadUnsupported
+        }
+    }
+
+    private static func decodeBase64URL(_ value: String) -> Data? {
+        guard !value.isEmpty,
+              value.utf8.allSatisfy({
+                  ($0 >= 65 && $0 <= 90) || ($0 >= 97 && $0 <= 122)
+                      || ($0 >= 48 && $0 <= 57) || $0 == 45 || $0 == 95
+              })
+        else { return nil }
+        let padding = String(repeating: "=", count: (4 - value.count % 4) % 4)
+        return Data(base64Encoded: value.replacingOccurrences(of: "-", with: "+")
+            .replacingOccurrences(of: "_", with: "/") + padding)
+    }
+}
+
+/// Typed request handed from the iPhone-only proof producer to Monas transport.
+///
+/// It contains no private material and does not make the presentation endpoint
+/// authoritative. A concrete transport must still bind the endpoint to an
+/// enrolled Monas authority before it sends the detached proof.
+struct MonasSiteRootDelegationSubmissionRequestV1: Sendable {
+    let endpoint: URL
+    let submission: SiteRootDelegationSubmissionV1
+}
+
+/// Minimal response which proves neither authority nor work completion.
+struct MonasSiteRootDelegationSubmissionReceiptV1: Equatable, Sendable {
+    let reference: String
+    let accepted: Bool
+}
+
+/// Boundary for the separately reviewed Monas Site Root submission transport.
+///
+/// The UI depends on this protocol rather than treating QR text as a network
+/// capability. The current default denies submission until a reviewed Monas
+/// transport has its own enrolled-host and session binding implementation.
+protocol MonasSiteRootDelegationSubmitting: Sendable {
+    func submit(_ request: MonasSiteRootDelegationSubmissionRequestV1) async throws
+        -> MonasSiteRootDelegationSubmissionReceiptV1
+}
+
+struct UnavailableMonasSiteRootDelegationTransport: MonasSiteRootDelegationSubmitting {
+    func submit(_: MonasSiteRootDelegationSubmissionRequestV1) async throws
+        -> MonasSiteRootDelegationSubmissionReceiptV1
+    {
+        throw PlatformFailure.productionEnvelopeUnavailable
+    }
+}
+
 /// iPhone-only Site Root registration and detached proof boundary.
 ///
 /// It creates a distinct Secure Enclave key namespace and requires fresh Face

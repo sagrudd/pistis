@@ -3,8 +3,11 @@ import PistisCore
 
 struct ScanView: View {
     @StateObject private var ceremony = ProductionCeremonyCoordinator()
+    @StateObject private var siteRootCeremony = SiteRootDelegationCoordinator()
     @State private var scanning = false
+    @State private var siteRootScanning = false
     @State private var scanFailure: PlatformFailure?
+    @State private var siteRootScanFailure: PlatformFailure?
     @State private var readiness = PasswordlessReadiness.checking
 
     var body: some View {
@@ -99,6 +102,51 @@ struct ScanView: View {
                 ) {
                     scanning ? stopScanning() : startScanning()
                 }
+
+                Divider()
+
+                MnSectionHeading(
+                    "Site Root delegation",
+                    orientation: "Scan a separate Monas Site Root delegation. This does not alter the Pistis v2 approval scanner."
+                )
+
+                MnPanel {
+                    VStack(alignment: .leading, spacing: MnSpacing.x3) {
+                        MnStatusLabel(
+                            text: siteRootStatusText,
+                            kind: siteRootStatusKind
+                        )
+                        Text("Pistis displays only redacted delegation facts before Face ID signs the exact canonical Monas record. The phone never exports a private key or creates authority.")
+                            .font(.footnote)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                }
+
+                if siteRootScanning {
+                    QRScannerCameraView(onResult: handleSiteRootScan)
+                        .clipShape(RoundedRectangle(cornerRadius: MnRadius.large))
+                        .aspectRatio(1, contentMode: .fit)
+                        .accessibilityLabel("Scanning for a Monas Site Root delegation")
+                }
+
+                if let siteRootScanFailure {
+                    MnPanel {
+                        VStack(alignment: .leading, spacing: MnSpacing.x3) {
+                            MnStatusLabel(text: "Site Root delegation unavailable", kind: .danger)
+                            Text(siteRootScanFailure.safeUserMessage)
+                            Button("Clear") { resetSiteRoot() }
+                                .font(.headline)
+                                .frame(minHeight: MnMetrics.minimumTarget)
+                        }
+                    }
+                }
+
+                MnPrimaryButton(
+                    siteRootScanning ? "Stop Site Root scan" : "Scan Site Root delegation",
+                    systemImage: siteRootScanning ? "stop.circle" : "qrcode.viewfinder"
+                ) {
+                    siteRootScanning ? stopSiteRootScanning() : startSiteRootScanning()
+                }
             }
             .padding(MnMetrics.screenGutter)
         }
@@ -107,6 +155,9 @@ struct ScanView: View {
         .task { readiness = await PasswordlessReadinessProbe.current() }
         .sheet(item: reviewBinding) { request in
             ApprovalView(request: request, coordinator: ceremony)
+        }
+        .sheet(item: siteRootReviewBinding) { review in
+            SiteRootDelegationReviewView(review: review, coordinator: siteRootCeremony)
         }
     }
 
@@ -138,11 +189,52 @@ struct ScanView: View {
         scanning = false
     }
 
+    @MainActor
+    private func handleSiteRootScan(_ result: Result<ScannedQRPayload, PlatformFailure>) {
+        siteRootScanning = false
+        switch result {
+        case let .success(payload):
+            siteRootScanFailure = nil
+            siteRootCeremony.accept(qrText: payload.text)
+            if case let .failed(failure) = siteRootCeremony.phase {
+                siteRootScanFailure = failure
+            }
+        case let .failure(failure):
+            guard failure != .operationCancelled else { return }
+            siteRootScanFailure = failure
+        }
+    }
+
+    private func startSiteRootScanning() {
+        ceremony.reset()
+        scanning = false
+        resetSiteRoot()
+        siteRootScanning = true
+    }
+
+    private func stopSiteRootScanning() {
+        siteRootScanning = false
+    }
+
+    private func resetSiteRoot() {
+        siteRootScanning = false
+        siteRootScanFailure = nil
+        siteRootCeremony.reset()
+    }
+
     private var reviewBinding: Binding<ApprovalRequest?> {
         Binding {
             if case let .review(request) = ceremony.phase { request } else { nil }
         } set: { value in
             if value == nil { ceremony.reset() }
+        }
+    }
+
+    private var siteRootReviewBinding: Binding<SiteRootDelegationReview?> {
+        Binding {
+            if case let .review(review) = siteRootCeremony.phase { review } else { nil }
+        } set: { value in
+            if value == nil { resetSiteRoot() }
         }
     }
 
@@ -159,6 +251,25 @@ struct ScanView: View {
         case .review: .success
         case .verifying: .warning
         default: .neutral
+        }
+    }
+
+    private var siteRootStatusText: String {
+        switch siteRootCeremony.phase {
+        case .review: "Delegation ready for redacted review"
+        case .signing: "Awaiting Face ID"
+        case let .submitted(receipt): receipt.accepted ? "Delegation submitted" : "Delegation not accepted"
+        case .failed: "Delegation denied"
+        case .idle: siteRootScanning ? "Camera active" : "Ready to scan a Monas delegation"
+        }
+    }
+
+    private var siteRootStatusKind: MnStatusKind {
+        switch siteRootCeremony.phase {
+        case .review, .submitted: .success
+        case .signing: .warning
+        case .failed: .danger
+        case .idle: .neutral
         }
     }
 }
@@ -208,6 +319,86 @@ private struct ReadinessRow: View {
         case .actionRequired: "Action required"
         case .unavailable: "Unavailable"
         case .checking: "Checking"
+        }
+    }
+}
+
+private struct SiteRootDelegationReviewView: View {
+    let review: SiteRootDelegationReview
+    @ObservedObject var coordinator: SiteRootDelegationCoordinator
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        NavigationStack {
+            ScrollView {
+                VStack(alignment: .leading, spacing: MnSpacing.x4) {
+                    MnSectionHeading(
+                        "Review Site Root delegation",
+                        orientation: "Face ID signs one exact, short-lived Monas delegation. It does not grant authority on its own."
+                    )
+
+                    MnPanel {
+                        VStack(alignment: .leading, spacing: MnSpacing.x4) {
+                            MnEvidenceRow(label: "Delegation", value: review.reference, monospaced: true)
+                            Divider()
+                            MnEvidenceRow(label: "Device key", value: review.deviceKeyFingerprint, monospaced: true)
+                            Divider()
+                            MnEvidenceRow(label: "Monas destination", value: review.destination)
+                        }
+                    }
+
+                    Text("Only redacted public facts are shown. Pistis will use the separate Secure Enclave Site Root key and will not export private material, use a software fallback, or claim Apple attestation.")
+                        .font(.footnote)
+                        .fixedSize(horizontal: false, vertical: true)
+
+                    switch coordinator.phase {
+                    case .review:
+                        MnPrimaryButton("Sign with Face ID", systemImage: "faceid") {
+                            Task { await coordinator.approve() }
+                        }
+                        Button("Deny") {
+                            coordinator.reset()
+                            dismiss()
+                        }
+                        .font(.headline)
+                        .foregroundStyle(MnColor.danger)
+                        .frame(maxWidth: .infinity, minHeight: MnMetrics.minimumTarget)
+                    case .signing:
+                        MnStatusLabel(text: "Waiting for Face ID", kind: .warning)
+                    case let .submitted(receipt):
+                        MnStatusLabel(
+                            text: receipt.accepted ? "Monas accepted the proof" : "Monas did not accept the proof",
+                            kind: receipt.accepted ? .success : .danger
+                        )
+                        MnPrimaryButton("Done") {
+                            coordinator.reset()
+                            dismiss()
+                        }
+                    case let .failed(failure):
+                        MnStatusLabel(text: "Proof was not submitted", kind: .danger)
+                        Text(failure.safeUserMessage)
+                        MnPrimaryButton("Done") {
+                            coordinator.reset()
+                            dismiss()
+                        }
+                    case .idle:
+                        EmptyView()
+                    }
+                }
+                .padding(MnMetrics.screenGutter)
+            }
+            .navigationTitle("Site Root")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel") {
+                        coordinator.reset()
+                        dismiss()
+                    }
+                    .frame(minHeight: MnMetrics.minimumTarget)
+                }
+            }
+            .mnScreenBackground()
         }
     }
 }

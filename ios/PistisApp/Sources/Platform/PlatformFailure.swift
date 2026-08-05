@@ -28,6 +28,10 @@ enum PlatformFailure: Error, Equatable, Sendable {
     case enrolmentBeginRetryRequired
     case enrolmentRequired
     case existingEnrolmentMustBeRemoved
+    case appAttestUnavailable
+    case appAttestInvalidInput
+    case appAttestKeyCreationFailed
+    case appAttestAttestationFailed
 }
 
 extension PlatformFailure {
@@ -53,6 +57,12 @@ extension PlatformFailure {
             "The Monas Site Root authority is unavailable. No proof was submitted."
         case .secureHardwareUnavailable:
             "Secure Enclave is unavailable on this device."
+        case .appAttestUnavailable:
+            "Apple App Attest is unavailable on this device. No device attestation was submitted."
+        case .appAttestInvalidInput:
+            "The attestation request is invalid. Scan a fresh request from Monas."
+        case .appAttestKeyCreationFailed, .appAttestAttestationFailed:
+            "Pistis could not create device attestation. No device attestation was submitted."
         case .keyCreationFailed:
             "Pistis could not create the protected device key."
         case .keyInvalidated:

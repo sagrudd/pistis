@@ -67,6 +67,32 @@ token. An authorised owner must select the Mnemosyne Biosciences Apple
 Developer team and register the final bundle identifier before device,
 archive, or TestFlight validation.
 
+## Apple App Attest registration
+
+The iOS application configures the Apple development App Attest entitlement
+and can prepare exactly `pistis.apple-app-attest-registration.v1` for a
+server-supplied, one-use Monas ceremony. The fixed current App ID is
+`C7A6NQTSY4.org.mnemosynebiosciences.pistis`. It sends the ceremony and Site
+Trust Domain identifiers, canonical base64url credential ID, SHA-256 challenge
+digest, and Apple attestation object directly to Monas. It does not log or
+persist the challenge, attestation object, or any private key; the operating
+system owns the private App Attest key.
+
+This entitlement is intentionally `development`. It neither enables a Monas
+route nor claims a production verification result. Before any route is
+enabled, obtain a redacted physical-iPhone interoperability record and satisfy
+the offline Apple-root verifier, durable replay store, and reviewed
+production-profile gates in Monas #74.
+
+On an unlocked connected iPhone, select the Pistis test scheme and run only
+the opt-in `testPhysicalDeviceAppAttestRegistrationPreparation` with
+`PISTIS_RUN_PHYSICAL_APP_ATTEST=1`. The test produces an Apple attestation in
+memory and retains only a redacted protocol/ceremony/Site-Trust-Domain record.
+It must never copy the attestation object, key ID, or challenge digest to a
+terminal, issue, fixture, or commit. A real Monas registration uses a fresh
+one-use challenge supplied by Monas; this physical capability test is not a
+registration submission.
+
 The native UI suite runs Apple's accessibility audit on onboarding and every
 primary tab. It exercises the GitHub-enrolment readiness and fail-closed
 scanner states without contacting a provider or enabling an approval. Run the

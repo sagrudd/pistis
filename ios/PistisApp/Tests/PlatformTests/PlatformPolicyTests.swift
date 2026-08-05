@@ -117,6 +117,63 @@ final class PlatformPolicyTests: XCTestCase {
         }
     }
 
+    func testAppleAppAttestRegistrationEnvelopeUsesReviewedV1Contract() throws {
+        let appleKeyID = Data(repeating: 0x11, count: 32).base64EncodedString()
+        let envelope = try AppleAppAttestRegistrationEnvelope(
+            ceremonyID: "ceremony-7f2e",
+            siteTrustDomain: "site-demo-1",
+            appleKeyID: appleKeyID,
+            clientDataHash: Data(repeating: 0x22, count: 32),
+            attestationObject: Data(repeating: 0x33, count: 128)
+        )
+
+        XCTAssertEqual(envelope.version, "pistis.apple-app-attest-registration.v1")
+        XCTAssertEqual(envelope.appIdentifier, "C7A6NQTSY4.org.mnemosynebiosciences.pistis")
+        XCTAssertEqual(envelope.keyIDB64URL, String(repeating: "ERERERERERERERERERERERERERERERERERERERERERE", count: 1))
+        XCTAssertEqual(envelope.clientDataHashB64URL.count, 43)
+        XCTAssertFalse(envelope.redactedDiagnostic.contains(envelope.keyIDB64URL))
+        XCTAssertFalse(envelope.redactedDiagnostic.contains(envelope.clientDataHashB64URL))
+        XCTAssertFalse(envelope.redactedDiagnostic.contains(envelope.attestationObjectB64URL))
+
+        let encoded = try JSONEncoder().encode(envelope)
+        let decoded = try JSONDecoder().decode(
+            AppleAppAttestRegistrationEnvelope.self,
+            from: encoded
+        )
+        XCTAssertEqual(decoded, envelope)
+    }
+
+    func testAppleAppAttestRegistrationEnvelopeRejectsUnboundedOrInvalidInput() {
+        let validKeyID = Data(repeating: 0x11, count: 32).base64EncodedString()
+        XCTAssertThrowsError(
+            try AppleAppAttestRegistrationEnvelope(
+                ceremonyID: "has whitespace",
+                siteTrustDomain: "site-demo-1",
+                appleKeyID: validKeyID,
+                clientDataHash: Data(repeating: 0x22, count: 32),
+                attestationObject: Data([0x01])
+            )
+        )
+        XCTAssertThrowsError(
+            try AppleAppAttestRegistrationEnvelope(
+                ceremonyID: "ceremony-7f2e",
+                siteTrustDomain: "site-demo-1",
+                appleKeyID: "not-base64url",
+                clientDataHash: Data(repeating: 0x22, count: 32),
+                attestationObject: Data([0x01])
+            )
+        )
+        XCTAssertThrowsError(
+            try AppleAppAttestRegistrationEnvelope(
+                ceremonyID: "ceremony-7f2e",
+                siteTrustDomain: "site-demo-1",
+                appleKeyID: validKeyID,
+                clientDataHash: Data(repeating: 0x22, count: 31),
+                attestationObject: Data([0x01])
+            )
+        )
+    }
+
     func testScannerFailuresExposeOnlyBoundedRecoveryMessages() {
         XCTAssertEqual(
             PlatformFailure.qrPayloadTooLarge.safeUserMessage,

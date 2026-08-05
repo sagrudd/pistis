@@ -7,7 +7,7 @@ use crate::frame::{
 use base64::Engine as _;
 use base64::engine::general_purpose::URL_SAFE_NO_PAD;
 use pistis_canonical::{Value, from_slice_with_fields, to_vec};
-use std::collections::BTreeMap;
+use std::{collections::BTreeMap, fmt};
 
 const VERSION: u64 = 4;
 const KIND: u64 = 3;
@@ -15,7 +15,7 @@ const FIELDS: &[u64] = &[0, 1, 2, 3];
 const MAX_BUNDLE_BYTES: usize = 512;
 
 /// Borrowed exact signed presentation and purpose-separated authority bundle.
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+#[derive(Clone, Copy, Eq, PartialEq)]
 pub struct EnrolmentTransferRef<'a> {
     /// Exact untagged COSE Sign1 invitation-presentation envelope.
     pub presentation_cose: &'a [u8],
@@ -23,13 +23,33 @@ pub struct EnrolmentTransferRef<'a> {
     pub authority_bundle: &'a [u8],
 }
 
+impl fmt::Debug for EnrolmentTransferRef<'_> {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        formatter
+            .debug_struct("EnrolmentTransferRef")
+            .field("presentation_cose_length", &self.presentation_cose.len())
+            .field("authority_bundle_length", &self.authority_bundle.len())
+            .finish()
+    }
+}
+
 /// Exact binary material decoded from a version-4/kind-3 transfer.
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Eq, PartialEq)]
 pub struct EnrolmentTransfer {
     /// Exact untagged COSE Sign1 invitation-presentation envelope.
     pub presentation_cose: Vec<u8>,
     /// Exact canonical authority bundle bytes.
     pub authority_bundle: Vec<u8>,
+}
+
+impl fmt::Debug for EnrolmentTransfer {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        formatter
+            .debug_struct("EnrolmentTransfer")
+            .field("presentation_cose_length", &self.presentation_cose.len())
+            .field("authority_bundle_length", &self.authority_bundle.len())
+            .finish()
+    }
 }
 
 /// Encode one distinct first-device QR transfer.

@@ -1,5 +1,14 @@
 # Changelog
 
+## Unreleased
+
+### Fixed
+
+- Redact QR transfer `Debug` output to kind and byte lengths. Scanned payload,
+  signature, COSE, invitation-presentation, and authority-bundle bytes can no
+  longer be formatted accidentally. Framing, parsing, wire bytes, and ceremony
+  semantics are unchanged.
+
 All notable changes to Pistis will be documented here. The format follows Keep
 a Changelog and releases follow Semantic Versioning.
 

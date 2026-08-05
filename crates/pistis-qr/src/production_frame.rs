@@ -7,7 +7,7 @@ use crate::frame::{
 use base64::Engine as _;
 use base64::engine::general_purpose::URL_SAFE_NO_PAD;
 use pistis_canonical::{Value, from_slice_with_fields, to_vec};
-use std::collections::BTreeMap;
+use std::{collections::BTreeMap, fmt};
 
 const PRODUCTION_VERSION: u64 = 2;
 const PRODUCTION_FIELDS: &[u64] = &[0, 1, 2];
@@ -16,12 +16,22 @@ const PRODUCTION_FIELDS: &[u64] = &[0, 1, 2];
 pub const MAX_COSE_ENVELOPE_BYTES: usize = 2_048;
 
 /// Borrowed production COSE material carried by a version-2 transfer.
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+#[derive(Clone, Copy, Eq, PartialEq)]
 pub struct ProductionTransferRef<'a> {
     /// Separates authentication challenges from signed device responses.
     pub kind: TransferKind,
     /// Exact complete untagged COSE Sign1 bytes.
     pub cose: &'a [u8],
+}
+
+impl fmt::Debug for ProductionTransferRef<'_> {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        formatter
+            .debug_struct("ProductionTransferRef")
+            .field("kind", &self.kind)
+            .field("cose_length", &self.cose.len())
+            .finish()
+    }
 }
 
 /// Encode exact COSE Sign1 bytes as an accepted production QR transfer.

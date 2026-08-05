@@ -128,7 +128,7 @@ final class PlatformPolicyTests: XCTestCase {
         )
 
         XCTAssertEqual(envelope.version, "pistis.apple-app-attest-registration.v1")
-        XCTAssertEqual(envelope.appIdentifier, "SN859PCTMW.org.mnemosynebiosciences.pistis")
+        XCTAssertEqual(envelope.appIdentifier, "C7A6NQTSY4.org.mnemosynebiosciences.pistis")
         XCTAssertEqual(envelope.keyIDB64URL, String(repeating: "ERERERERERERERERERERERERERERERERERERERERERE", count: 1))
         XCTAssertEqual(envelope.clientDataHashB64URL.count, 43)
         XCTAssertFalse(envelope.redactedDiagnostic.contains(envelope.keyIDB64URL))

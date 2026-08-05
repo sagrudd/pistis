@@ -7,7 +7,7 @@ import Foundation
 /// treats preparation as a successful Monas registration.
 struct AppleAppAttestRegistrationEnvelope: Codable, Equatable, Sendable {
     static let protocolVersion = "pistis.apple-app-attest-registration.v1"
-    static let reviewedAppIdentifier = "SN859PCTMW.org.mnemosynebiosciences.pistis"
+    static let reviewedAppIdentifier = "C7A6NQTSY4.org.mnemosynebiosciences.pistis"
 
     let version: String
     let ceremonyID: String

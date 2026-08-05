@@ -72,7 +72,7 @@ archive, or TestFlight validation.
 The iOS application configures the Apple development App Attest entitlement
 and can prepare exactly `pistis.apple-app-attest-registration.v1` for a
 server-supplied, one-use Monas ceremony. The fixed current App ID is
-`SN859PCTMW.org.mnemosynebiosciences.pistis`. It sends the ceremony and Site
+`C7A6NQTSY4.org.mnemosynebiosciences.pistis`. It sends the ceremony and Site
 Trust Domain identifiers, canonical base64url credential ID, SHA-256 challenge
 digest, and Apple attestation object directly to Monas. It does not log or
 persist the challenge, attestation object, or any private key; the operating

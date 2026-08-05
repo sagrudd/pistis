@@ -99,7 +99,7 @@ final class PlatformDeviceInteroperabilityTests: XCTestCase {
         )
 
         XCTAssertEqual(envelope.version, "pistis.apple-app-attest-registration.v1")
-        XCTAssertEqual(envelope.appIdentifier, "SN859PCTMW.org.mnemosynebiosciences.pistis")
+        XCTAssertEqual(envelope.appIdentifier, "C7A6NQTSY4.org.mnemosynebiosciences.pistis")
         XCTAssertFalse(envelope.keyIDB64URL.isEmpty)
         XCTAssertFalse(envelope.attestationObjectB64URL.isEmpty)
 

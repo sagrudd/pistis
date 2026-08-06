@@ -12,6 +12,7 @@ recovery, backup, audit, and incident-response guidance.
 - [Android application operations](android.md)
 - [Synoptikon integration operations](synoptikon.md)
 - [Monas standalone integration operations](monas.md)
+- [Monas-owned Pistis provider Debian package](monas-provider-package.md)
 - [Local discovery and direct exchange operations](discovery.md)
 - [Recovery, revocation, and multi-device operations](device-lifecycle.md)
 - [Security hardening and independent review](security-hardening.md)

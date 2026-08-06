@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+### Added
+
+- Define and test the credential-free Debian content gate for the
+  Monas-owned Pistis provider lifecycle.  The gate requires the fixed
+  `mnemosyne-monas` peer boundary and rejects shipped authority sockets and
+  package-time activation; it establishes no runtime authority.
+
 ### Fixed
 
 - Redact QR transfer `Debug` output to kind and byte lengths. Scanned payload,

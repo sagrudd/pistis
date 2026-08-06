@@ -127,7 +127,7 @@ final class PlatformPolicyTests: XCTestCase {
             attestationObject: Data(repeating: 0x33, count: 128)
         )
 
-        XCTAssertEqual(envelope.version, "pistis.apple-app-attest-registration.v1")
+        XCTAssertEqual(envelope.wireProtocol, "pistis.apple-app-attest-registration.v1")
         XCTAssertEqual(envelope.appIdentifier, "C7A6NQTSY4.org.mnemosynebiosciences.pistis")
         XCTAssertEqual(envelope.keyIDB64URL, String(repeating: "ERERERERERERERERERERERERERERERERERERERERERE", count: 1))
         XCTAssertEqual(envelope.clientDataHashB64URL.count, 43)
@@ -136,6 +136,14 @@ final class PlatformPolicyTests: XCTestCase {
         XCTAssertFalse(envelope.redactedDiagnostic.contains(envelope.attestationObjectB64URL))
 
         let encoded = try JSONEncoder().encode(envelope)
+        let encodedObject = try XCTUnwrap(
+            try JSONSerialization.jsonObject(with: encoded) as? [String: Any]
+        )
+        XCTAssertEqual(
+            encodedObject["protocol"] as? String,
+            "pistis.apple-app-attest-registration.v1"
+        )
+        XCTAssertNil(encodedObject["version"])
         let decoded = try JSONDecoder().decode(
             AppleAppAttestRegistrationEnvelope.self,
             from: encoded

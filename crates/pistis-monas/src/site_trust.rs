@@ -13,6 +13,13 @@ use pistis_domain::{DeviceId, InstallationId, KeyId};
 use pistis_protocol::UnixTimeMillis;
 use sha2::{Digest as _, Sha256};
 
+mod issuance;
+
+pub(crate) use issuance::{
+    build_site_trust_human_authority_fact_from_verified_v1,
+    issue_site_trust_human_authority_fact_from_verified_v1,
+};
+
 /// Exact versioned profile for the durable human-authority fact.
 pub const SITE_TRUST_HUMAN_AUTHORITY_FACT_PROFILE_V1: &str =
     "mnemosyne.pistis.site-trust-human-authority-fact.v1";
@@ -214,8 +221,17 @@ impl SiteTrustCanonicalPayloadV1 {
 ///
 /// This value is never stored in a human-authority fact, returned to Monas, or
 /// emitted in an error.  It is retained only for the synchronous verifier call.
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Eq, PartialEq)]
 pub struct AppleAppAttestAssertionV1(Vec<u8>);
+
+impl fmt::Debug for AppleAppAttestAssertionV1 {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        formatter
+            .debug_struct("AppleAppAttestAssertionV1")
+            .field("byte_len", &self.0.len())
+            .finish()
+    }
+}
 
 impl AppleAppAttestAssertionV1 {
     /// Bounds untrusted assertion bytes before they reach an Apple verifier.
@@ -228,6 +244,14 @@ impl AppleAppAttestAssertionV1 {
             return Err(AttestationVerificationFailureV1::Invalid);
         }
         Ok(Self(bytes))
+    }
+
+    /// Returns bounded assertion bytes only to sibling Pistis verification
+    /// boundaries.  They must remain transient and must never be retained in a
+    /// fact, vector, error, or transport response.
+    #[must_use]
+    pub(crate) fn transient_bytes(&self) -> &[u8] {
+        &self.0
     }
 }
 
@@ -621,34 +645,7 @@ pub fn issue_site_trust_human_authority_fact_v1(
             AttestationVerificationFailureV1::BindingMismatch,
         ));
     }
-    let fact_id = SiteTrustFactIdV1(digest_components(
-        FACT_ID_DOMAIN_V1,
-        [
-            request.installation_id.as_bytes().as_slice(),
-            request.device_id.as_bytes().as_slice(),
-            request.key_id.as_bytes().as_slice(),
-            request.ceremony_id.as_bytes().as_slice(),
-            request.canonical_payload.canonical_bytes(),
-            request.pistis_intent.as_str().as_bytes(),
-            &request.issued_at.get().to_be_bytes(),
-            &verified_result.assertion_digest,
-        ],
-    ));
-    let fact = SiteTrustHumanAuthorityFactV1 {
-        id: fact_id,
-        installation_id: request.installation_id,
-        device_id: request.device_id,
-        key_id: request.key_id,
-        ceremony_id: request.ceremony_id,
-        canonical_payload: request.canonical_payload,
-        pistis_intent: request.pistis_intent,
-        issued_at: request.issued_at,
-        attestation_digest: verified_result.assertion_digest,
-    };
-    store
-        .record_verified(fact.clone())
-        .map_err(SiteTrustFactIssuanceErrorV1::Store)?;
-    Ok(fact)
+    issue_site_trust_human_authority_fact_from_verified_v1(store, request, verified_result)
 }
 
 /// Opaque successfully verified App Attest result.
@@ -663,6 +660,18 @@ pub struct VerifiedIPhoneAppAttestationV1 {
 }
 
 impl VerifiedIPhoneAppAttestationV1 {
+    pub(crate) fn from_verified_assertion_digest(
+        device_id: DeviceId,
+        key_id: KeyId,
+        assertion_digest: [u8; 32],
+    ) -> Self {
+        Self {
+            device_id,
+            key_id,
+            assertion_digest,
+        }
+    }
+
     #[cfg(test)]
     fn test_verified(device_id: DeviceId, key_id: KeyId, assertion: &[u8]) -> Self {
         Self {

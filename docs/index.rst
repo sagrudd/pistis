@@ -102,6 +102,7 @@ Architecture and operations
    operations/qr-authentication
    operations/formal-site-root-qr-scanner
    operations/ios
+   operations/app-attest-assertion-ingress
    operations/android
    operations/synoptikon
    operations/monas

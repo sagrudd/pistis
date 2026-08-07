@@ -163,6 +163,17 @@ must be bound to the exact source revision and independently verified by Rust
 before Jenkins retains it. A simulator run, an unverified signature, or a
 filled-in template is not physical-device acceptance evidence.
 
+For the Site Trust App Attest gate, retain the resulting redacted vector only
+through Monas' atomic `pistis-monas` 0.3.0 retention port after the reviewed
+production Apple verifier has checked the physical iPhone, pinned Apple trust
+bundle, organisation App ID, registered key/counter, and exact Site Trust
+fact. The current shipped adapter is unavailable and must not be bypassed with
+a simulator, fixture, browser, local account, PAM identity, CLI, or operating
+system identity. The retained record contains only typed identifiers, digests,
+reviewed verifier/trust-manifest identity, application identifier, and time;
+it contains no raw Apple object, challenge, credential, token, cookie, key, or
+device secret.
+
 The Xcode test target includes a deliberately test-only ceremony harness. It
 loads the pinned copy of `fixtures/protocol-v1/cose/signing-input.hex`, checks
 its SHA-256 digest, and invokes `SecureEnclaveSigner.interoperabilityProbe`.

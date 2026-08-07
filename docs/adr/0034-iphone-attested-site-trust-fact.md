@@ -55,6 +55,14 @@ and replay record.
 - Apple App Attest acceptance remains a future implementation gate requiring
   reviewed trust-bundle code and physical-iPhone evidence. Until then the
   normal outcome is unavailable and fail closed.
+- `pistis-monas` 0.3.0 adds a complementary, evidence-only redacted physical
+  vector port. It accepts an opaque result only from a reviewed in-process
+  verifier that identifies Monas'
+  `monas.apple-app-attest-verifier-profile.v1` production profile, a reviewed
+  trust-anchor manifest, organisation App ID, and exact fact bindings. The
+  default verifier is unavailable and the Monas-owned retention port must be
+  atomic. This port does not mint a fact, activate a route, establish Site
+  Trust, issue a session, or provide a substitute for an attended iPhone run.
 - The Monas #144 UDS client remains unmounted until its durable fact-store,
   verified Apple path, and protected service configuration are independently
   qualified.

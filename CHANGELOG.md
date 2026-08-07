@@ -4,6 +4,15 @@
 
 ### Added
 
+- Add the additive `pistis-monas` 0.3.0 redacted physical-iPhone App Attest
+  vector boundary. It derives exact bindings from the accepted Site Trust
+  human-authority fact, accepts only an opaque reviewed production-verifier
+  result compatible with Monas' Apple verifier profile, and delegates atomic
+  retention to Monas. The shipped verifier remains unavailable; it cannot
+  retain synthetic, incomplete, unverified, browser, CLI, local-account, PAM,
+  kernel-UID, token, cookie, key, or raw Apple evidence, and grants no session
+  or Site Trust authority.
+
 - Add the accepted `mnemosyne.pistis.site-trust-human-authority-fact.v1`
   `pistis-monas` contract. It structurally binds a frozen Proxenos Site Trust
   payload, exact Pistis intent, installation, enrolled iPhone, key and

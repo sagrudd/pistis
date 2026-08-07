@@ -754,6 +754,12 @@ fn digest_components<const N: usize>(domain: &[u8], components: [&[u8]; N]) -> [
     hasher.finalize().into()
 }
 
+/// Isolated wholly in-process fixtures for sibling contract tests.
+///
+/// This module is compiled only for tests and cannot mint production evidence.
+#[cfg(test)]
+pub(crate) mod test_fixture;
+
 #[cfg(test)]
 mod tests {
     use super::*;

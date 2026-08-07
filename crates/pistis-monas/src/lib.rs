@@ -9,6 +9,7 @@
 #![deny(missing_docs)]
 
 mod binding;
+mod physical_iphone_vector;
 mod readiness;
 mod session;
 mod site_trust;
@@ -16,6 +17,14 @@ mod site_trust;
 pub use binding::{
     BindingExpectation, BindingFailure, BindingResolver, BindingState, Generation,
     OperationPurpose, ResolvedBinding,
+};
+pub use physical_iphone_vector::{
+    MONAS_APP_ATTEST_VERIFIER_PROFILE_V1, PHYSICAL_IPHONE_APP_ATTEST_VECTOR_PROFILE_V1,
+    PhysicalIPhoneAppAttestVectorErrorV1, PhysicalIPhoneAppAttestVectorIdV1,
+    PhysicalIPhoneAppAttestVectorRequestV1, PhysicalIPhoneAppAttestVectorStoreV1,
+    PhysicalIPhoneAppAttestVectorV1, PhysicalIPhoneAppAttestVectorVerifierV1,
+    UnavailablePhysicalIPhoneAppAttestVectorVerifierV1,
+    validate_and_retain_physical_iphone_app_attest_vector_v1,
 };
 pub use readiness::{
     DeliveryProfile, IntegrationBlocker, ProductionEvidence, ReadinessRequirement,

@@ -84,6 +84,17 @@ enabled, obtain a redacted physical-iPhone interoperability record and satisfy
 the offline Apple-root verifier, durable replay store, and reviewed
 production-profile gates in Monas #74.
 
+The Rust `pistis-monas` 0.3.0 physical-vector boundary is deliberately
+evidence-only. A reviewed in-process adapter must verify a production physical
+iPhone against Monas'
+`monas.apple-app-attest-verifier-profile.v1`, a pinned Apple trust-anchor
+manifest, the organisation App ID, the registered key/counter, and the exact
+typed Site Trust fact before Monas atomically retains redacted bindings. The
+shipped adapter is unavailable. It never retains the raw attestation object,
+challenge, credential, private key, cookie, token, or browser material; it
+does not establish Site Trust or a Monas session. Unit fixtures exercise only
+the refusal boundary and are never physical evidence.
+
 On an unlocked connected iPhone, select the Pistis test scheme and run only
 the opt-in `testPhysicalDeviceAppAttestRegistrationPreparation` with
 `PISTIS_RUN_PHYSICAL_APP_ATTEST=1`. The test produces an Apple attestation in

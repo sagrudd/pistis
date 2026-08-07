@@ -921,12 +921,13 @@ dependencies = [
 
 [[package]]
 name = "pistis-monas"
-version = "0.1.1"
+version = "0.2.0"
 dependencies = [
  "pistis-device-registry",
  "pistis-domain",
  "pistis-identity",
  "pistis-protocol",
+ "sha2",
 ]
 
 [[package]]

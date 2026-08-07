@@ -11,6 +11,7 @@
 mod binding;
 mod readiness;
 mod session;
+mod site_trust;
 
 pub use binding::{
     BindingExpectation, BindingFailure, BindingResolver, BindingState, Generation,
@@ -23,4 +24,14 @@ pub use readiness::{
 pub use session::{
     AuditCorrelationId, HostSessionError, HostSessionIssuer, HostSessionOutcome,
     HostSessionRequest, SessionIdDigest,
+};
+pub use site_trust::{
+    AppleAppAttestAssertionV1, AppleAppAttestVerifierV1, AttestationVerificationFailureV1,
+    SiteTrustAttestationChallengeDigestV1, SiteTrustAttestationRequestV1,
+    SiteTrustAttestationVerificationRequestV1, SiteTrustCanonicalPayloadErrorV1,
+    SiteTrustCanonicalPayloadV1, SiteTrustFactCeremonyIdV1, SiteTrustFactConsumptionErrorV1,
+    SiteTrustFactConsumptionRequestV1, SiteTrustFactConsumptionV1, SiteTrustFactIdV1,
+    SiteTrustFactIssuanceErrorV1, SiteTrustFactStoreV1, SiteTrustHumanAuthorityFactV1,
+    SiteTrustPistisIntentV1, UnavailableAppleAppAttestVerifierV1, VerifiedIPhoneAppAttestationV1,
+    issue_site_trust_human_authority_fact_v1,
 };

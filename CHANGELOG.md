@@ -4,6 +4,14 @@
 
 ### Added
 
+- Add the accepted `mnemosyne.pistis.site-trust-human-authority-fact.v1`
+  `pistis-monas` contract. It structurally binds a frozen Proxenos Site Trust
+  payload, exact Pistis intent, installation, enrolled iPhone, key and
+  ceremony to a fail-closed Apple App Attest verification request and
+  host-owned atomic one-use fact store. The shipped Apple verifier is
+  explicitly unavailable; no unverified or synthetic assertion can issue a
+  fact. Release this compatible capability as `pistis-monas` 0.2.0.
+
 - Define and test the credential-free Debian content gate for the
   Monas-owned Pistis provider lifecycle.  The gate requires the fixed
   `mnemosyne-monas` peer boundary and rejects shipped authority sockets and

@@ -13,6 +13,8 @@ mod physical_iphone_vector;
 mod readiness;
 mod session;
 mod site_trust;
+mod site_trust_assertion_ingress;
+mod site_trust_registration_acceptance;
 
 pub use binding::{
     BindingExpectation, BindingFailure, BindingResolver, BindingState, Generation,
@@ -43,4 +45,19 @@ pub use site_trust::{
     SiteTrustFactIssuanceErrorV1, SiteTrustFactStoreV1, SiteTrustHumanAuthorityFactV1,
     SiteTrustPistisIntentV1, UnavailableAppleAppAttestVerifierV1, VerifiedIPhoneAppAttestationV1,
     issue_site_trust_human_authority_fact_v1,
+};
+pub use site_trust_assertion_ingress::{
+    MONAS_PRODUCTION_APP_ATTEST_APP_IDENTIFIER_V1, MonasSiteTrustAppAttestAtomicStoreV1,
+    MonotonicAppAttestCounterV1, ProductionAppleAppAttestAssertionVerifierV1,
+    SITE_TRUST_APP_ATTEST_ASSERTION_INGRESS_PROFILE_V1, ServerHeldMonasAppAttestAcceptanceV1,
+    SiteTrustAppAttestAssertionIngressErrorV1, SiteTrustAppAttestAssertionIngressOutcomeV1,
+    SiteTrustAppAttestAssertionRedactedVectorV1, SiteTrustAppAttestMobileSubmissionV1,
+    decode_site_trust_app_attest_mobile_submission_v1,
+    issue_site_trust_human_authority_fact_from_server_held_app_attest_assertion_v1,
+};
+pub use site_trust_registration_acceptance::{
+    MONAS_APP_ATTEST_REVIEWED_MANIFEST_PROFILE_V1, PISTIS_APP_ATTEST_REGISTRATION_PROFILE_V1,
+    ProductionAppleAppAttestAcceptanceFactoryV1, SiteTrustAppAttestRegistrationErrorV1,
+    SiteTrustAppAttestRegistrationSubmissionV1,
+    decode_site_trust_app_attest_registration_submission_v1,
 };

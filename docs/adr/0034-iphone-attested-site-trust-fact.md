@@ -27,11 +27,18 @@ issuance time. A later Apple verifier must validate Apple's trust chain,
 organisation application identity, registered key, assertion counter, and
 this exact digest before Pistis can create a verified result.
 
-The current shipped verifier is deliberately `Unavailable`. It cannot mint a
-fact, and unavailable, invalid, or mismatched attestation leaves the Monas
-fact store untouched. No mock, browser, cookie, local account, PAM identity,
-CLI, operating-system identity, software key, or synthetic assertion is an
-authority substitute.
+`pistis-monas` 0.4.0 adds a production assertion verifier and registration
+acceptance factory. The factory verifies the bounded registration object under
+the release-pinned reviewed Apple root and manifest, including x5c linkage,
+Apple's nonce extension, credential key, production App ID/AAGUID, and the
+server-held registration binding. Only it can create the opaque acceptance
+consumed by the assertion verifier, which then requires the exact production
+App ID, registered P-256 key, domain-separated challenge, strictly monotonic
+counter, and Apple's reviewed production distribution extensions. Assertion
+objects contain no certificate chain. Unavailable, invalid, or mismatched input
+leaves the Monas atomic counter-and-fact store untouched. No mock, browser,
+cookie, local account, PAM identity, CLI, operating-system identity, software
+key, or synthetic assertion is an authority substitute.
 
 Monas owns durable state. Its implementation of the Pistis fact-store port
 must atomically record a verified fact and atomically compare and consume it
@@ -45,16 +52,18 @@ and replay record.
 
 ## Consequences
 
-- This is an additive `pistis-monas` 0.2.0 contract. It does not issue a
+- This is an additive `pistis-monas` 0.4.0 contract. It does not issue a
   Monas browser session, activate a service, establish Site Trust, or grant a
   product or operating-system role.
 - The fact parser accepts only the frozen Proxenos v1 TLV grammar, pending
   state, closed audience/purpose values, printable ASCII fields, and no
   prohibited credential or secret material. Proxenos retains final runtime
   semantic validation against its protected configuration.
-- Apple App Attest acceptance remains a future implementation gate requiring
-  reviewed trust-bundle code and physical-iPhone evidence. Until then the
-  normal outcome is unavailable and fail closed.
+- Assertion acceptance is available only through the reviewed Pistis
+  registration factory and verifier, invoked by Monas with its server-owned
+  ceremony bindings, and a Monas-owned durable transaction recording the
+  counter plus fact. There is no client receipt, unchecked acceptance
+  constructor, default verifier, browser, or local-authority fallback.
 - `pistis-monas` 0.3.0 adds a complementary, evidence-only redacted physical
   vector port. It accepts an opaque result only from a reviewed in-process
   verifier that identifies Monas'

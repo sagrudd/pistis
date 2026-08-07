@@ -1,17 +1,24 @@
 [package]
 name = "pistis-monas"
-version = "0.3.0"
+version = "0.4.0"
 edition.workspace = true
 rust-version.workspace = true
 license.workspace = true
 repository.workspace = true
 
 [dependencies]
+base64.workspace = true
+ciborium.workspace = true
+coset.workspace = true
 pistis-device-registry.workspace = true
 pistis-domain.workspace = true
 pistis-identity.workspace = true
 pistis-protocol.workspace = true
+p256.workspace = true
+serde = { workspace = true, features = ["derive"] }
+serde_json.workspace = true
 sha2.workspace = true
+x509-parser.workspace = true
 
 [lints]
 workspace = true

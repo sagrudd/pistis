@@ -1,0 +1,8 @@
+{
+  "protocol": "monas.apple-app-attest-reviewed-manifest.v1",
+  "profile_id": "apple-app-attestation-root-ca-2020-03-18",
+  "app_identifier": "C7A6NQTSY4.org.mnemosynebiosciences.pistis",
+  "environment": "Production",
+  "trust_anchor_set_id": "apple-app-attestation-root-ca-2020-03-18",
+  "trust_anchor_bundle_sha256_b64url": "x3jQmsNB9_2fjzsZ4rgVr2rtStRJDh6SwFyzVSEqUBM"
+}

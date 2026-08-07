@@ -9,7 +9,10 @@ struct AppleAppAttestRegistrationEnvelope: Codable, Equatable, Sendable {
     static let protocolVersion = "pistis.apple-app-attest-registration.v1"
     static let reviewedAppIdentifier = "C7A6NQTSY4.org.mnemosynebiosciences.pistis"
 
-    let version: String
+    /// Exact wire discriminator required by Monas.  This is deliberately
+    /// encoded as `protocol`, not `version`: the receiver rejects unknown
+    /// fields before it considers Apple evidence.
+    let wireProtocol: String
     let ceremonyID: String
     let siteTrustDomain: String
     let appIdentifier: String
@@ -18,7 +21,7 @@ struct AppleAppAttestRegistrationEnvelope: Codable, Equatable, Sendable {
     let attestationObjectB64URL: String
 
     enum CodingKeys: String, CodingKey {
-        case version
+        case wireProtocol = "protocol"
         case ceremonyID = "ceremony_id"
         case siteTrustDomain = "site_trust_domain"
         case appIdentifier = "app_identifier"
@@ -44,7 +47,7 @@ struct AppleAppAttestRegistrationEnvelope: Codable, Equatable, Sendable {
             throw PlatformFailure.appAttestInvalidInput
         }
 
-        version = Self.protocolVersion
+        wireProtocol = Self.protocolVersion
         self.ceremonyID = ceremonyID
         self.siteTrustDomain = siteTrustDomain
         appIdentifier = Self.reviewedAppIdentifier
@@ -56,7 +59,7 @@ struct AppleAppAttestRegistrationEnvelope: Codable, Equatable, Sendable {
     /// A bounded audit value that deliberately excludes the Apple credential,
     /// challenge digest, and attestation object.
     var redactedDiagnostic: String {
-        "\(version) ceremony=\(ceremonyID) site=\(siteTrustDomain) prepared"
+        "\(wireProtocol) ceremony=\(ceremonyID) site=\(siteTrustDomain) prepared"
     }
 
     private static func validIdentifier(_ value: String, maximumLength: Int) -> Bool {

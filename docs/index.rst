@@ -85,6 +85,7 @@ Architecture and operations
    adr/0031-enrolment-and-product-audience-separation
    adr/0032-retire-incompatible-local-trust
    adr/0033-iphone-site-root-delegation
+   adr/0034-iphone-attested-site-trust-fact
    protocol/README
    protocol/domain-model
    protocol/action-approval

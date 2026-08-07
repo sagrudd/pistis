@@ -86,3 +86,8 @@ truthfully labelled local retirement before re-enrolment.
 Secure Enclave Site Root key and detached ES256 COSE profile for the bounded
 Monas Site Root delegation. It does not assert Apple App Attest or activate
 live server authority.
+
+[ADR 0034](0034-iphone-attested-site-trust-fact.md) accepts the fail-closed
+server-side Site Trust human-authority fact contract. It binds the exact
+Proxenos payload and Pistis intent to an Apple-verifier request, but no fact
+can issue until a reviewed Apple trust-bundle verifier is available.

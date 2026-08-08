@@ -1,6 +1,7 @@
 import CryptoKit
 import DeviceCheck
 import Foundation
+import Security
 
 /// The reviewed, purpose-separated registration protocol between Pistis and
 /// Monas. This client prepares the request only; it neither submits it nor
@@ -78,28 +79,153 @@ struct AppleAppAttestRegistrationEnvelope: Codable, Equatable, Sendable {
     }
 }
 
+/// The purpose-separated assertion envelope accepted only by Monas's exact
+/// Site Trust ingress. It deliberately carries neither a challenge nor a
+/// session, and a successful HTTP delivery is not a completed Monas session.
+struct AppleAppAttestAssertionEnvelope: Codable, Equatable, Sendable {
+    static let ingressProfile =
+        "mnemosyne.pistis.site-trust-app-attest-assertion-ingress.v1"
+
+    let profile: String
+    let ceremonyIDB64URL: String
+    let assertionB64URL: String
+
+    enum CodingKeys: String, CodingKey {
+        case profile
+        case ceremonyIDB64URL = "ceremony_id_b64url"
+        case assertionB64URL = "assertion_b64url"
+    }
+
+    init(ceremonyID: Data, assertion: Data) throws {
+        guard ceremonyID.count == 16,
+              !ceremonyID.allSatisfy({ $0 == 0 }),
+              !assertion.isEmpty,
+              assertion.count <= 16_384
+        else { throw PlatformFailure.appAttestInvalidInput }
+        profile = Self.ingressProfile
+        ceremonyIDB64URL = Self.base64URL(ceremonyID)
+        assertionB64URL = Self.base64URL(assertion)
+    }
+
+    private static func base64URL(_ value: Data) -> String {
+        value.base64EncodedString()
+            .replacingOccurrences(of: "+", with: "-")
+            .replacingOccurrences(of: "/", with: "_")
+            .replacingOccurrences(of: "=", with: "")
+    }
+}
+
 /// Persists only Apple's opaque key identifier. The private App Attest key is
 /// managed by the operating system and is never read, exported, or logged by
 /// Pistis.
 protocol AppleAppAttestKeyIDStoring: Sendable {
     func loadKeyID() -> String?
-    func saveKeyID(_ keyID: String)
+    func saveKeyID(_ keyID: String) throws
 }
 
-final class UserDefaultsAppleAppAttestKeyIDStore: AppleAppAttestKeyIDStoring, @unchecked Sendable {
-    private static let storageKey = "org.mnemosyne.pistis.apple-app-attest.key-id.v1"
-    private let defaults: UserDefaults
+/// Narrow boundary around the Apple framework. This makes exact input hashing
+/// testable without a simulator pretending to be a physical iPhone.
+protocol AppleAppAttestServicing: AnyObject, Sendable {
+    var isSupported: Bool { get }
+    func generateKey() async throws -> String
+    func attestKey(_ keyID: String, clientDataHash: Data) async throws -> Data
+    func generateAssertion(_ keyID: String, clientDataHash: Data) async throws -> Data
+}
 
-    init(defaults: UserDefaults = .standard) {
-        self.defaults = defaults
+final class DeviceCheckAppAttestService: AppleAppAttestServicing, @unchecked Sendable {
+    private let service: DCAppAttestService
+
+    init(service: DCAppAttestService = .shared) {
+        self.service = service
     }
+
+    var isSupported: Bool { service.isSupported }
+
+    func generateKey() async throws -> String {
+        try await withCheckedThrowingContinuation { continuation in
+            service.generateKey { keyID, error in
+                if let keyID {
+                    continuation.resume(returning: keyID)
+                } else {
+                    continuation.resume(
+                        throwing: error ?? PlatformFailure.appAttestKeyCreationFailed
+                    )
+                }
+            }
+        }
+    }
+
+    func attestKey(_ keyID: String, clientDataHash: Data) async throws -> Data {
+        try await withCheckedThrowingContinuation { continuation in
+            service.attestKey(keyID, clientDataHash: clientDataHash) { object, error in
+                if let object {
+                    continuation.resume(returning: object)
+                } else {
+                    continuation.resume(
+                        throwing: error ?? PlatformFailure.appAttestAttestationFailed
+                    )
+                }
+            }
+        }
+    }
+
+    func generateAssertion(_ keyID: String, clientDataHash: Data) async throws -> Data {
+        try await withCheckedThrowingContinuation { continuation in
+            service.generateAssertion(keyID, clientDataHash: clientDataHash) { assertion, error in
+                if let assertion {
+                    continuation.resume(returning: assertion)
+                } else {
+                    continuation.resume(
+                        throwing: error ?? PlatformFailure.appAttestAssertionFailed
+                    )
+                }
+            }
+        }
+    }
+}
+
+final class KeychainAppleAppAttestKeyIDStore: AppleAppAttestKeyIDStoring, @unchecked Sendable {
+    private let service = "org.mnemosynebiosciences.pistis.app-attest-key-id.v1"
+    private let account = "primary"
 
     func loadKeyID() -> String? {
-        defaults.string(forKey: Self.storageKey)
+        var query = baseQuery()
+        query[kSecReturnData as String] = true
+        query[kSecMatchLimit as String] = kSecMatchLimitOne
+        var result: CFTypeRef?
+        guard SecItemCopyMatching(query as CFDictionary, &result) == errSecSuccess,
+              let data = result as? Data,
+              let keyID = String(data: data, encoding: .utf8),
+              !keyID.isEmpty,
+              keyID.utf8.count <= 512
+        else { return nil }
+        return keyID
     }
 
-    func saveKeyID(_ keyID: String) {
-        defaults.set(keyID, forKey: Self.storageKey)
+    func saveKeyID(_ keyID: String) throws {
+        guard !keyID.isEmpty, keyID.utf8.count <= 512 else {
+            throw PlatformFailure.appAttestKeyCreationFailed
+        }
+        let data = Data(keyID.utf8)
+        let query = baseQuery()
+        let attributes: [String: Any] = [
+            kSecValueData as String: data,
+            kSecAttrAccessible as String: kSecAttrAccessibleWhenUnlockedThisDeviceOnly,
+        ]
+        let status = SecItemAdd((query.merging(attributes) { _, new in new }) as CFDictionary, nil)
+        guard status == errSecSuccess
+            || (status == errSecDuplicateItem
+                && SecItemUpdate(query as CFDictionary, attributes as CFDictionary)
+                    == errSecSuccess)
+        else { throw PlatformFailure.appAttestKeyCreationFailed }
+    }
+
+    private func baseQuery() -> [String: Any] {
+        [
+            kSecClass as String: kSecClassGenericPassword,
+            kSecAttrService as String: service,
+            kSecAttrAccount as String: account,
+        ]
     }
 }
 
@@ -109,12 +235,16 @@ final class UserDefaultsAppleAppAttestKeyIDStore: AppleAppAttestKeyIDStoring, @u
 /// The returned envelope must be delivered directly to the reviewed Monas
 /// authority; callers must not persist, log, or place it in a QR code.
 final class AppleAppAttestClient: @unchecked Sendable {
-    private let service: DCAppAttestService
+    static let assertionClientDataPrefix = Data(
+        "mnemosyne.pistis.site-trust-app-attest-client-data.v1\0".utf8
+    )
+
+    private let service: AppleAppAttestServicing
     private let keyIDStore: AppleAppAttestKeyIDStoring
 
     init(
-        service: DCAppAttestService = .shared,
-        keyIDStore: AppleAppAttestKeyIDStoring = UserDefaultsAppleAppAttestKeyIDStore()
+        service: AppleAppAttestServicing = DeviceCheckAppAttestService(),
+        keyIDStore: AppleAppAttestKeyIDStoring = KeychainAppleAppAttestKeyIDStore()
     ) {
         self.service = service
         self.keyIDStore = keyIDStore
@@ -149,35 +279,50 @@ final class AppleAppAttestClient: @unchecked Sendable {
         )
     }
 
+    /// Uses the registered physical iPhone key to make a single assertion for
+    /// the exact server-issued ceremony. The assertion and its input never
+    /// leave this call except in the returned, bounded wire envelope.
+    func prepareAssertion(
+        bootstrap: MonasAppAttestCeremonyBootstrap
+    ) async throws -> AppleAppAttestAssertionEnvelope {
+        guard service.isSupported,
+              let keyID = existingKeyID()
+        else { throw PlatformFailure.appAttestUnavailable }
+
+        let clientData = Self.assertionClientDataPrefix + bootstrap.challengeDigest
+        let clientDataHash = Data(SHA256.hash(data: clientData))
+        let assertion = try await service.generateAssertion(
+            keyID,
+            clientDataHash: clientDataHash
+        )
+        return try AppleAppAttestAssertionEnvelope(
+            ceremonyID: bootstrap.ceremonyID,
+            assertion: assertion
+        )
+    }
+
     private func existingOrNewKeyID() async throws -> String {
-        if let existing = keyIDStore.loadKeyID(), Data(base64Encoded: existing) != nil {
+        if let existing = existingKeyID() {
             return existing
         }
-        let keyID = try await withCheckedThrowingContinuation { continuation in
-            service.generateKey { keyID, error in
-                if let keyID {
-                    continuation.resume(returning: keyID)
-                } else {
-                    continuation.resume(throwing: error ?? PlatformFailure.appAttestKeyCreationFailed)
-                }
-            }
-        }
+        let keyID = try await service.generateKey()
         guard Data(base64Encoded: keyID) != nil else {
             throw PlatformFailure.appAttestKeyCreationFailed
         }
-        keyIDStore.saveKeyID(keyID)
+        try keyIDStore.saveKeyID(keyID)
         return keyID
     }
 
     private func attest(keyID: String, clientDataHash: Data) async throws -> Data {
-        try await withCheckedThrowingContinuation { continuation in
-            service.attestKey(keyID, clientDataHash: clientDataHash) { object, error in
-                if let object {
-                    continuation.resume(returning: object)
-                } else {
-                    continuation.resume(throwing: error ?? PlatformFailure.appAttestAttestationFailed)
-                }
-            }
-        }
+        try await service.attestKey(keyID, clientDataHash: clientDataHash)
+    }
+
+    private func existingKeyID() -> String? {
+        guard let keyID = keyIDStore.loadKeyID(),
+              let decoded = Data(base64Encoded: keyID),
+              !decoded.isEmpty,
+              decoded.count <= 256
+        else { return nil }
+        return keyID
     }
 }

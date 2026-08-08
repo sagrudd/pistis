@@ -61,22 +61,35 @@ xcodebuild \
   test
 ```
 
-The project does not contain a development-team identifier, signing
-certificate, provisioning profile, provider client secret, or provider access
-token. An authorised owner must select the Mnemosyne Biosciences Apple
-Developer team and register the final bundle identifier before device,
-archive, or TestFlight validation.
+The project commits the Mnemosyne Biosciences development team and production
+App Attest entitlement, but never a signing certificate, provisioning profile,
+provider client secret, or provider access token. An authorised owner must use
+that team with a provisioned physical iPhone before device, archive, or
+TestFlight validation.
 
 ## Apple App Attest registration
 
 The iOS application configures the Apple production App Attest entitlement
-and can prepare exactly `pistis.apple-app-attest-registration.v1` for a
-server-supplied, one-use Monas ceremony. The fixed current App ID is
+and can prepare exactly `pistis.apple-app-attest-registration.v1` plus the
+separate `mnemosyne.pistis.site-trust-app-attest-assertion-ingress.v1`
+assertion envelope for a server-issued, one-use Monas ceremony. The fixed current App ID is
 `C7A6NQTSY4.org.mnemosynebiosciences.pistis`. It sends the ceremony and Site
 Trust Domain identifiers, canonical base64url credential ID, SHA-256 challenge
 digest, and Apple attestation object directly to Monas. It does not log or
 persist the challenge, attestation object, or any private key; the operating
-system owns the private App Attest key.
+system owns the private App Attest key. Pistis stores only the opaque Apple key
+identifier in a device-only Keychain item.
+
+For an assertion, the only accepted input is the verified, server-issued
+Monas ceremony bootstrap: exact HTTPS origin and SPKI SHA-256, a non-zero
+16-byte ceremony identifier, and a non-zero 32-byte challenge digest. Pistis
+forms `mnemosyne.pistis.site-trust-app-attest-client-data.v1\\0 || digest`,
+hashes it with SHA-256, calls `DCAppAttestService.generateAssertion`, then
+posts strict JSON only to `/v1/pistis/site-trust/app-attest/assertion` on the
+pinned origin. Registration uses its distinct exact endpoint. Both transports
+reject redirects, cookies, cache, non-202 responses, response bodies, generic
+COSE, browser/QR/free-text input, and local identity; HTTP acceptance does not
+claim a completed Monas session.
 
 This entitlement neither enables a Monas route nor claims a production
 verification result. Before any route is
@@ -95,14 +108,12 @@ challenge, credential, private key, cookie, token, or browser material; it
 does not establish Site Trust or a Monas session. Unit fixtures exercise only
 the refusal boundary and are never physical evidence.
 
-On an unlocked connected iPhone, select the Pistis test scheme and run only
-the opt-in `testPhysicalDeviceAppAttestRegistrationPreparation` with
-`PISTIS_RUN_PHYSICAL_APP_ATTEST=1`. The test produces an Apple attestation in
-memory and retains only a redacted protocol/ceremony/Site-Trust-Domain record.
-It must never copy the attestation object, key ID, or challenge digest to a
-terminal, issue, fixture, or commit. A real Monas registration uses a fresh
-one-use challenge supplied by Monas; this physical capability test is not a
-registration submission.
+The opt-in physical registration preparation test remains a capability check
+only and must never be used as evidence. Formal #393 evidence requires a
+fresh Monas-issued bootstrap, real iPhone assertion, 202-only pinned delivery,
+and a redacted retained Monas receipt/reference. It must never copy the raw
+assertion, key ID, challenge digest, attestation object, cookie, or session to
+a terminal, issue, fixture, or commit.
 
 The native UI suite runs Apple's accessibility audit on onboarding and every
 primary tab. It exercises the GitHub-enrolment readiness and fail-closed

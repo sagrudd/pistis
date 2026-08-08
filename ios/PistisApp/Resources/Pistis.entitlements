@@ -2,11 +2,7 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-	<!--
-	 App Attest is deliberately configured for Apple's development environment.
-	 Production attestation needs a separately reviewed profile and signed build.
-	-->
 	<key>com.apple.developer.devicecheck.appattest-environment</key>
-	<string>development</string>
+	<string>production</string>
 </dict>
 </plist>

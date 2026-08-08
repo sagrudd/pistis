@@ -86,11 +86,8 @@ final class PlatformDeviceInteroperabilityTests: XCTestCase {
             throw XCTSkip("Set PISTIS_RUN_PHYSICAL_APP_ATTEST=1 for the reviewed physical-device App Attest ceremony.")
         }
 
-        let suiteName = "org.mnemosyne.pistis.tests.app-attest.\(UUID().uuidString)"
-        let defaults = try XCTUnwrap(UserDefaults(suiteName: suiteName))
-        defer { defaults.removePersistentDomain(forName: suiteName) }
         let client = AppleAppAttestClient(
-            keyIDStore: UserDefaultsAppleAppAttestKeyIDStore(defaults: defaults)
+            keyIDStore: InMemoryAppleAppAttestKeyIDStore()
         )
         let envelope = try await client.prepareRegistration(
             ceremonyID: "physical-device-app-attest-v1",
@@ -98,7 +95,7 @@ final class PlatformDeviceInteroperabilityTests: XCTestCase {
             serverChallenge: Data(repeating: 0xa5, count: 32)
         )
 
-        XCTAssertEqual(envelope.version, "pistis.apple-app-attest-registration.v1")
+        XCTAssertEqual(envelope.wireProtocol, "pistis.apple-app-attest-registration.v1")
         XCTAssertEqual(envelope.appIdentifier, "C7A6NQTSY4.org.mnemosynebiosciences.pistis")
         XCTAssertFalse(envelope.keyIDB64URL.isEmpty)
         XCTAssertFalse(envelope.attestationObjectB64URL.isEmpty)
@@ -124,4 +121,11 @@ final class PlatformDeviceInteroperabilityTests: XCTestCase {
         add(attachment)
     }
     #endif
+}
+
+private final class InMemoryAppleAppAttestKeyIDStore: AppleAppAttestKeyIDStoring, @unchecked Sendable {
+    private var keyID: String?
+
+    func loadKeyID() -> String? { keyID }
+    func saveKeyID(_ keyID: String) throws { self.keyID = keyID }
 }

@@ -1,0 +1,7 @@
+{
+  "profile": "mnemosyne.pistis.site-trust-app-attest-client-data-vector.v1",
+  "purpose": "non-production deterministic client-data known-answer vector",
+  "challenge_digest_b64url": "AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8",
+  "client_data_b64url": "bW5lbW9zeW5lLnBpc3Rpcy5zaXRlLXRydXN0LWFwcC1hdHRlc3QtY2xpZW50LWRhdGEudjEAAAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8",
+  "client_data_sha256_b64url": "nWdBxB_BOrYhgIWaEZB-Kfd2k5byU6J8exKdpSJ6xeQ"
+}

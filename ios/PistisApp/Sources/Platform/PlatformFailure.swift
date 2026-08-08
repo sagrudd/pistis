@@ -32,6 +32,7 @@ enum PlatformFailure: Error, Equatable, Sendable {
     case appAttestInvalidInput
     case appAttestKeyCreationFailed
     case appAttestAttestationFailed
+    case appAttestAssertionFailed
 }
 
 extension PlatformFailure {
@@ -61,7 +62,8 @@ extension PlatformFailure {
             "Apple App Attest is unavailable on this device. No device attestation was submitted."
         case .appAttestInvalidInput:
             "The attestation request is invalid. Scan a fresh request from Monas."
-        case .appAttestKeyCreationFailed, .appAttestAttestationFailed:
+        case .appAttestKeyCreationFailed, .appAttestAttestationFailed,
+             .appAttestAssertionFailed:
             "Pistis could not create device attestation. No device attestation was submitted."
         case .keyCreationFailed:
             "Pistis could not create the protected device key."

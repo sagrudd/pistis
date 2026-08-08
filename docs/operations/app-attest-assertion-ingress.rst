@@ -71,6 +71,12 @@ issuance time.  The iPhone therefore supplies
 ``SHA-256(clientData)`` to ``DCAppAttestService.generateAssertion``.  The
 assertion envelope contains neither value.
 
+``fixtures/app-attest/site-trust-assertion-client-data-v1.json`` is the shared
+non-production known-answer vector for those exact bytes and hash. It is
+checked by the Rust ingress suite and is intended for the iPhone client's unit
+tests. It contains no Apple evidence, assertion, key, ceremony, receipt, or
+session material and cannot activate the route.
+
 Apple does not put a certificate chain into an assertion.  Apple-root and
 production-AAGUID validation therefore happen in Pistis' registration factory
 before it creates the opaque server-held acceptance; the assertion verifier

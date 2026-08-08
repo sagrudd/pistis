@@ -4,6 +4,14 @@
 
 ### Added
 
+- Add the compatible ``pistis-monas`` 0.5.0 typed App Attest fact-to-session
+  handoff. It binds only an opaque production-issued fact to exact Monas
+  installation/principal/device/key/binding/generation/session facts and
+  canonical bounded bytes. Monas must still consume the fact, re-resolve
+  authority, issue a protected Prosopikon session, and append audit evidence
+  atomically. It carries no raw Apple assertion, cookie, session credential,
+  local/OS identity, PAM path, token, role, or fallback.
+
 - Add the additive `pistis-monas` 0.3.0 redacted physical-iPhone App Attest
   vector boundary. It derives exact bindings from the accepted Site Trust
   human-authority fact, accepts only an opaque reviewed production-verifier

@@ -55,6 +55,12 @@ and replay record.
 - This is an additive `pistis-monas` 0.4.0 contract. It does not issue a
   Monas browser session, activate a service, establish Site Trust, or grant a
   product or operating-system role.
+- `pistis-monas` 0.5.0 adds a canonical, bounded fact-to-session handoff for
+  Monas only. It can be derived only from the opaque verified fact and exact
+  session bindings; Monas still must consume the fact, re-resolve authority,
+  issue its protected Prosopikon session, and append audit evidence atomically.
+  The handoff carries neither raw Apple evidence nor a cookie, token, local/OS
+  identity, PAM authority, role, or session credential.
 - The fact parser accepts only the frozen Proxenos v1 TLV grammar, pending
   state, closed audience/purpose values, printable ASCII fields, and no
   prohibited credential or secret material. Proxenos retains final runtime

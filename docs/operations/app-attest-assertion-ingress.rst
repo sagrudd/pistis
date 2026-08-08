@@ -100,6 +100,24 @@ redacted vector of digests and counter.  Raw assertions, client data, Apple
 objects, receipts, public keys, tokens, cookies, and private keys are not
 retained, surfaced in errors, or emitted in debug output.
 
+Typed Monas session handoff
+---------------------------
+
+``pistis-monas`` 0.5.0 can bind only that opaque verified fact to one exact
+``authenticate-session`` completion request through
+``MonasAppAttestSessionHandoffV1``. Its fixed, bounded canonical record binds
+the fact and ceremony identifiers, Proxenos-payload digest, Pistis intent,
+installation, immutable Prosopikon principal, external binding, iPhone and
+key, policy/revocation generations, authentication time, and non-zero audit
+correlation. It carries no raw assertion or browser credential.
+
+The handoff does not issue a session. Monas must consume the fact using its
+exact one-use request, re-resolve all current bindings, invalidate
+pre-authentication state, request the normal protected Prosopikon session, and
+append audit evidence in one rollback-capable transaction. Missing readiness,
+wrong purpose, stale authority, fact substitution, local/OS identity, cookies,
+PAM, CLI input, and any fallback are denied before session issuance.
+
 Validation
 ----------
 

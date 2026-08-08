@@ -8,6 +8,7 @@
 #![forbid(unsafe_code)]
 #![deny(missing_docs)]
 
+mod app_attest_session_handoff;
 mod binding;
 mod physical_iphone_vector;
 mod readiness;
@@ -16,6 +17,10 @@ mod site_trust;
 mod site_trust_assertion_ingress;
 mod site_trust_registration_acceptance;
 
+pub use app_attest_session_handoff::{
+    MONAS_APP_ATTEST_SESSION_HANDOFF_PROFILE_V1, MonasAppAttestSessionHandoffErrorV1,
+    MonasAppAttestSessionHandoffV1,
+};
 pub use binding::{
     BindingExpectation, BindingFailure, BindingResolver, BindingState, Generation,
     OperationPurpose, ResolvedBinding,

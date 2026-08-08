@@ -278,7 +278,7 @@ impl ProductionAppleAppAttestAssertionVerifierV1 {
         let decoded = decode_assertion_object(assertion.transient_bytes())?;
         let counter = validate_authenticator_data(&decoded.authenticator_data, acceptance)?;
         let challenge = acceptance.request.verification_request().challenge_digest;
-        let client_data = assertion_client_data_v1(&challenge);
+        let client_data = assertion_client_data_v1(challenge.as_bytes());
         let client_data_hash = Sha256::digest(client_data);
         let nonce =
             Sha256::digest([decoded.authenticator_data.as_slice(), &client_data_hash].concat());
@@ -512,10 +512,10 @@ fn decode_assertion_object(
     })
 }
 
-fn assertion_client_data_v1(challenge: &crate::SiteTrustAttestationChallengeDigestV1) -> Vec<u8> {
+fn assertion_client_data_v1(challenge: &[u8; 32]) -> Vec<u8> {
     let mut client_data = Vec::with_capacity(ASSERTION_CLIENT_DATA_DOMAIN_V1.len() + 32);
     client_data.extend_from_slice(ASSERTION_CLIENT_DATA_DOMAIN_V1);
-    client_data.extend_from_slice(challenge.as_bytes());
+    client_data.extend_from_slice(challenge);
     client_data
 }
 
@@ -682,6 +682,7 @@ mod tests {
     use p256::ecdsa::{SigningKey, signature::Signer as _};
     use pistis_domain::{DeviceId, InstallationId, KeyId};
     use pistis_protocol::UnixTimeMillis;
+    use serde::Deserialize;
 
     use super::*;
     use crate::{SiteTrustCanonicalPayloadV1, SiteTrustPistisIntentV1};
@@ -767,7 +768,7 @@ mod tests {
     ) -> Vec<u8> {
         let auth_data = authenticator_data(request, counter);
         let challenge = request.verification_request().challenge_digest;
-        let client_data_hash = Sha256::digest(assertion_client_data_v1(&challenge));
+        let client_data_hash = Sha256::digest(assertion_client_data_v1(challenge.as_bytes()));
         let nonce = Sha256::digest([auth_data.as_slice(), &client_data_hash].concat());
         let signature: Signature = signing_key.sign(&nonce);
         cbor_map_bytes(&[
@@ -838,6 +839,45 @@ mod tests {
             public_key,
             prior_counter,
         )
+    }
+
+    #[derive(Deserialize)]
+    struct ClientDataKnownAnswerVectorV1 {
+        profile: String,
+        purpose: String,
+        challenge_digest_b64url: String,
+        client_data_b64url: String,
+        client_data_sha256_b64url: String,
+    }
+
+    #[test]
+    fn client_data_known_answer_vector_fixes_iphone_hash_input() {
+        let vector: ClientDataKnownAnswerVectorV1 = serde_json::from_str(include_str!(
+            "../../../fixtures/app-attest/site-trust-assertion-client-data-v1.json"
+        ))
+        .unwrap();
+        assert_eq!(
+            vector.profile,
+            "mnemosyne.pistis.site-trust-app-attest-client-data-vector.v1"
+        );
+        assert_eq!(
+            vector.purpose,
+            "non-production deterministic client-data known-answer vector"
+        );
+        let challenge: [u8; 32] = URL_SAFE_NO_PAD
+            .decode(vector.challenge_digest_b64url)
+            .unwrap()
+            .try_into()
+            .unwrap();
+        let client_data = assertion_client_data_v1(&challenge);
+        assert_eq!(
+            URL_SAFE_NO_PAD.encode(&client_data),
+            vector.client_data_b64url
+        );
+        assert_eq!(
+            URL_SAFE_NO_PAD.encode(Sha256::digest(client_data)),
+            vector.client_data_sha256_b64url
+        );
     }
 
     #[test]

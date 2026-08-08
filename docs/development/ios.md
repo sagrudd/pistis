@@ -69,7 +69,7 @@ archive, or TestFlight validation.
 
 ## Apple App Attest registration
 
-The iOS application configures the Apple development App Attest entitlement
+The iOS application configures the Apple production App Attest entitlement
 and can prepare exactly `pistis.apple-app-attest-registration.v1` for a
 server-supplied, one-use Monas ceremony. The fixed current App ID is
 `C7A6NQTSY4.org.mnemosynebiosciences.pistis`. It sends the ceremony and Site
@@ -78,8 +78,8 @@ digest, and Apple attestation object directly to Monas. It does not log or
 persist the challenge, attestation object, or any private key; the operating
 system owns the private App Attest key.
 
-This entitlement is intentionally `development`. It neither enables a Monas
-route nor claims a production verification result. Before any route is
+This entitlement neither enables a Monas route nor claims a production
+verification result. Before any route is
 enabled, obtain a redacted physical-iPhone interoperability record and satisfy
 the offline Apple-root verifier, durable replay store, and reviewed
 production-profile gates in Monas #74.

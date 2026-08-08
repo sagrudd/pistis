@@ -4,6 +4,14 @@
 
 ### Added
 
+- Add the iPhone-only, pinned Monas App Attest assertion producer for
+  `PIS-IOS-APP-ATTEST-ASSERTION-1`: exact purpose-separated client-data hash,
+  strict bounded JSON envelope, device-only opaque key-ID storage, and
+  redirect/cookie/cache-free 202-only registration and assertion transports.
+  This establishes no Site Trust or Monas session without the separate
+  server-side ceremony, verifier, and retention gates. Release the compatible
+  iOS capability as 0.4.0.
+
 - Add the additive `pistis-monas` 0.3.0 redacted physical-iPhone App Attest
   vector boundary. It derives exact bindings from the accepted Site Trust
   human-authority fact, accepts only an opaque reviewed production-verifier

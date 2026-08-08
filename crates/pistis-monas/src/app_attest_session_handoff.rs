@@ -21,6 +21,9 @@ use pistis_protocol::UnixTimeMillis;
 pub const MONAS_APP_ATTEST_SESSION_HANDOFF_PROFILE_V1: &str =
     "mnemosyne.pistis.monas-app-attest-session-handoff.v1";
 
+const MONAS_LOCAL_AUDIENCE_V1: &str = "monas-local";
+const MONAS_SESSION_SITE_TRUST_PURPOSE_V1: &str = "trust-admission";
+
 const HANDOFF_DIGEST_DOMAIN_V1: &[u8] = b"mnemosyne.pistis.monas-app-attest-session-handoff.v1\0";
 const MAXIMUM_CANONICAL_HANDOFF_BYTES: usize = 1024;
 const HANDOFF_FIELD_COUNT: usize = 17;
@@ -28,6 +31,10 @@ const HANDOFF_FIELD_COUNT: usize = 17;
 /// Redacted failure while deriving a Monas session handoff.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum MonasAppAttestSessionHandoffErrorV1 {
+    /// The fact was issued for another product audience.
+    WrongAudience,
+    /// The Site Trust fact cannot establish a Monas session.
+    WrongSiteTrustPurpose,
     /// The fact does not bind the exact installation, device, or key request.
     FactBindingMismatch,
     /// The request attempts a non-session purpose.
@@ -43,6 +50,8 @@ pub enum MonasAppAttestSessionHandoffErrorV1 {
 impl fmt::Display for MonasAppAttestSessionHandoffErrorV1 {
     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
         formatter.write_str(match self {
+            Self::WrongAudience => "App Attest fact did not target Monas",
+            Self::WrongSiteTrustPurpose => "App Attest fact cannot establish a Monas session",
             Self::FactBindingMismatch => "App Attest fact did not bind the Monas session request",
             Self::WrongPurpose => "App Attest fact cannot authorize this Monas operation",
             Self::InvalidCompletionMetadata => "Monas session handoff metadata is invalid",
@@ -93,6 +102,12 @@ impl MonasAppAttestSessionHandoffV1 {
         authenticated_at: UnixTimeMillis,
         correlation_id: AuditCorrelationId,
     ) -> Result<Self, MonasAppAttestSessionHandoffErrorV1> {
+        if fact.canonical_payload().audience() != MONAS_LOCAL_AUDIENCE_V1 {
+            return Err(MonasAppAttestSessionHandoffErrorV1::WrongAudience);
+        }
+        if fact.canonical_payload().purpose() != MONAS_SESSION_SITE_TRUST_PURPOSE_V1 {
+            return Err(MonasAppAttestSessionHandoffErrorV1::WrongSiteTrustPurpose);
+        }
         if expected.purpose != OperationPurpose::AuthenticateSession {
             return Err(MonasAppAttestSessionHandoffErrorV1::WrongPurpose);
         }
@@ -342,6 +357,34 @@ mod tests {
                 AuditCorrelationId::from_bytes([0; 16]),
             ),
             Err(MonasAppAttestSessionHandoffErrorV1::WrongPurpose)
+        );
+    }
+
+    #[test]
+    fn other_product_audiences_and_site_trust_purposes_never_produce_monas_handoffs() {
+        assert_eq!(
+            MonasAppAttestSessionHandoffV1::from_verified_app_attest_fact(
+                crate::site_trust::test_fixture::human_authority_fact_with_audience_and_purpose_v1(
+                    "jenkins-local",
+                    "trust-admission",
+                ),
+                expected(),
+                UnixTimeMillis::new(100),
+                AuditCorrelationId::from_bytes([12; 16]),
+            ),
+            Err(MonasAppAttestSessionHandoffErrorV1::WrongAudience)
+        );
+        assert_eq!(
+            MonasAppAttestSessionHandoffV1::from_verified_app_attest_fact(
+                crate::site_trust::test_fixture::human_authority_fact_with_audience_and_purpose_v1(
+                    "monas-local",
+                    "trust-deploy",
+                ),
+                expected(),
+                UnixTimeMillis::new(100),
+                AuditCorrelationId::from_bytes([12; 16]),
+            ),
+            Err(MonasAppAttestSessionHandoffErrorV1::WrongSiteTrustPurpose)
         );
     }
 }

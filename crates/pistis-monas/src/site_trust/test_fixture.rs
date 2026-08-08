@@ -7,6 +7,17 @@ use super::*;
 /// It is not a verifier, cannot be exposed by a package, and must never be
 /// treated as a physical-iPhone vector.
 pub(crate) fn human_authority_fact_v1() -> SiteTrustHumanAuthorityFactV1 {
+    human_authority_fact_with_audience_and_purpose_v1("monas-local", "trust-admission")
+}
+
+/// Produces a wholly in-process fact fixture for a valid closed Site Trust
+/// audience and purpose pair.
+///
+/// This is test-only and exists to prove product-audience and purpose fencing.
+pub(crate) fn human_authority_fact_with_audience_and_purpose_v1(
+    audience: &str,
+    purpose: &str,
+) -> SiteTrustHumanAuthorityFactV1 {
     let fields = [
         PROXENOS_PAYLOAD_PROFILE_V1,
         "1",
@@ -15,8 +26,8 @@ pub(crate) fn human_authority_fact_v1() -> SiteTrustHumanAuthorityFactV1 {
         "proxenos-local",
         "rev-00000001",
         "machine-000001",
-        "monas-local",
-        "trust-admission",
+        audience,
+        purpose,
         "op-000000000001",
         "20260802T120000Z",
         "20260802T120500Z",

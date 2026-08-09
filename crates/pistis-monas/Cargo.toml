@@ -1,6 +1,6 @@
 [package]
 name = "pistis-monas"
-version = "0.6.0"
+version = "0.7.0"
 edition.workspace = true
 rust-version.workspace = true
 license.workspace = true
@@ -11,6 +11,9 @@ base64.workspace = true
 ciborium.workspace = true
 coset.workspace = true
 pistis-device-registry.workspace = true
+pistis-canonical.workspace = true
+pistis-cose.workspace = true
+pistis-crypto.workspace = true
 pistis-domain.workspace = true
 pistis-identity.workspace = true
 pistis-protocol.workspace = true

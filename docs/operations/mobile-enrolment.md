@@ -113,6 +113,19 @@ Enclave device key, verifies the receipt only under the committed
 mobile-receipt key, and then performs one create-once Keychain installation.
 An exact replay is idempotent; a different stored enrolment is never replaced.
 
+## Retained confirmation verification
+
+Monas may later verify the exact four-field provider confirmation only through
+the ``pistis-monas`` retained-receipt verifier. It pins the canonical authority
+bundle, expected installation identifier and canonical HTTPS host before it
+accepts any mobile bytes. The verifier checks both strict COSE envelopes and
+their registration-digest binding, then returns typed installation, principal,
+external-identity, device, key and generation facts plus a receipt SHA-256
+reference. It exposes neither raw COSE envelope and retains no local Keychain
+claim, browser state, credential, session or mutable authority. A substituted
+bundle, receipt, registration, installation, host, expiry or signature fails
+closed.
+
 GitHub success first renders the immutable login and numeric subject together
 with the installation context. The user must press the separate confirmation
 control before Face ID, device signing, authority confirmation, or Keychain

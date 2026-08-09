@@ -20,6 +20,19 @@
 
 ### Added
 
+- Add the compatible `pistis-monas` 0.7.0 retained provider-confirmation
+  verifier. It accepts only the exact version-one, four-field Prosopikon
+  confirmation against a pinned authority bundle, installation and host;
+  verifies the canonical registration and authority receipt COSE envelopes;
+  returns typed receipt facts and a digest reference only. It creates no
+  session, credential, local authority, Keychain substitute or raw-COSE
+  retention path.
+- Add its receipt-derived, one-use Site Root genesis binding verifier. It
+  accepts only strict canonical JSON and detached low-S ES256 signed by the
+  registered Site Root key, binds every value to the verified receipt and
+  server-owned registration context, and returns a replay-safe digest reference
+  only.
+
 - Add the compatible `pistis-monas` 0.6.0 recipient-key accessor required by
   accepted Site Trust custody genesis. It yields only the canonical compressed
   P-256 public key already verified by the production Apple-root registration

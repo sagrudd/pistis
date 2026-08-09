@@ -10,9 +10,11 @@
 
 mod app_attest_session_handoff;
 mod binding;
+mod mobile_enrolment_receipt;
 mod physical_iphone_vector;
 mod readiness;
 mod session;
+mod site_root_genesis_device_binding;
 mod site_trust;
 mod site_trust_assertion_ingress;
 mod site_trust_registration_acceptance;
@@ -24,6 +26,11 @@ pub use app_attest_session_handoff::{
 pub use binding::{
     BindingExpectation, BindingFailure, BindingResolver, BindingState, Generation,
     OperationPurpose, ResolvedBinding,
+};
+pub use mobile_enrolment_receipt::{
+    ExpectedProviderEnrolmentConfirmationV2, MobileEnrolmentReceiptErrorV2,
+    PISTIS_MOBILE_ENROLMENT_RECEIPT_PROFILE_V2, ProviderEnrolmentConfirmResponseV2,
+    VerifiedMobileEnrolmentReceiptV2, verify_provider_enrolment_confirm_response_v2,
 };
 pub use physical_iphone_vector::{
     MONAS_APP_ATTEST_VERIFIER_PROFILE_V1, PHYSICAL_IPHONE_APP_ATTEST_VECTOR_PROFILE_V1,
@@ -40,6 +47,11 @@ pub use readiness::{
 pub use session::{
     AuditCorrelationId, HostSessionError, HostSessionIssuer, HostSessionOutcome,
     HostSessionRequest, SessionIdDigest,
+};
+pub use site_root_genesis_device_binding::{
+    ExpectedSiteRootGenesisDeviceBindingV1, SITE_ROOT_GENESIS_DEVICE_BINDING_PROFILE_V1,
+    SiteRootGenesisBindingContextV1, SiteRootGenesisDeviceBindingErrorV1,
+    VerifiedSiteRootGenesisDeviceBindingV1, decode_and_verify_site_root_genesis_device_binding_v1,
 };
 pub use site_trust::{
     AppleAppAttestAssertionV1, AppleAppAttestVerifierV1, AttestationVerificationFailureV1,

@@ -18,9 +18,10 @@ device signing key is separate and non-exportable in the Secure Enclave.
 
 ## iPhone-mediated custody rewrap
 
-The iOS 0.6.0 source includes only the client-side cryptographic foundation
-for the accepted Thesaurophylax iPhone-mediated custody rewrap profile. It is
-not a live custody transport or a readiness claim.
+The iOS 0.7.0 source includes the client-side cryptographic foundation and
+strict terminal-response consumer for the accepted Thesaurophylax
+iPhone-mediated custody rewrap profile. It is not a live custody transport or
+a readiness claim.
 
 After a future fixed authority has verified a retained App Attest-backed
 Pistis session, it may construct one typed, protected presentation containing
@@ -31,12 +32,14 @@ again for each Secure Enclave ECDH operation. It decrypts the current record
 only in transient memory and immediately re-encrypts the 32-byte custody seed
 to the fresh host key using the selected ECDH/HKDF/AES-256-GCM profile.
 
-Pistis has no decoder or generic network route for this presentation or its
-result. It does not accept QR, browser state, cookie, token, CLI, local file,
-local identity, password, PAM, user input, or arbitrary HTTPS endpoint as
-custody authority. Until the fixed peer-authenticated Thesaurophylax transport
-and its retained App Attest session binding are specified and implemented, the
-operation remains unavailable and no iPhone interaction should be requested.
+ADR 0035 permits one decoder and one transport only: Monas's terminal response
+to the already SPKI-pinned App Attest assertion ingress, followed by the exact
+fixed Monas custody-submission endpoint. Pistis does not accept QR, browser
+state, cookie, bearer token, CLI, local file, local identity, password, PAM,
+user input, or an arbitrary HTTPS endpoint as custody authority. Monas must
+still mount the retained-session terminal response and bind the submission to
+its fixed Thesaurophylax peer before the operation can be activated or an
+iPhone interaction requested.
 
 The operator configures the reviewed GitHub App public client identifier and
 exact ADR 0025 endpoint profile. Never put a GitHub or Google client secret in

@@ -4,6 +4,14 @@
 
 ### Added
 
+- Add the accepted iOS 0.7.0 retained-session custody-presentation relay
+  consumer for Pistis #401. It accepts only Monas's exact terminal,
+  SPKI-pinned App Attest response and binds its correlation/canonical challenge
+  to the existing #400 Face-ID/Secure-Enclave rewrap producer. No browser, QR,
+  cookie, bearer token, local authority, persistence, fallback or activation
+  path is introduced; Monas must still provide the matching retained-session
+  response composition.
+
 - Add the compatible iOS 0.6.0, non-activating iPhone custody-rewrap
   producer foundation. It maps only an authenticated protected presentation to
   Thesaurophylax #148's exact detached Secure Enclave proof and fresh

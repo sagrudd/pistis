@@ -12,11 +12,13 @@ enum IphoneMediatedCustodyRewrapPurposeV1 {
 ///
 /// A reviewed fixed-peer authority obtains these values from protected current
 /// state only after it has verified the retained App Attest-backed Pistis
-/// session.  This model is deliberately not `Codable`: it cannot turn a QR,
-/// browser parameter, cookie, local file, or user input into a custody
-/// ceremony.  A future fixed service transport must decode and authenticate
-/// its own separately reviewed response before constructing this value.
+/// session. This model is deliberately not `Codable`: only the reviewed,
+/// SPKI-pinned terminal Monas response decoder may construct it. It cannot
+/// turn a QR, browser parameter, cookie, local file, or user input into a
+/// custody ceremony.
 struct IphoneMediatedCustodyRewrapPresentationV1: Sendable {
+    let correlation: Data
+    let canonicalChallenge: Data
     let siteTrustDomain: String
     let keyGeneration: String
     let deviceKeyID: String
@@ -30,6 +32,8 @@ struct IphoneMediatedCustodyRewrapPresentationV1: Sendable {
     let freshHostEphemeralPublicSEC1: Data
 
     init(
+        correlation: Data,
+        canonicalChallenge: Data,
         siteTrustDomain: String,
         keyGeneration: String,
         deviceKeyID: String,
@@ -42,7 +46,11 @@ struct IphoneMediatedCustodyRewrapPresentationV1: Sendable {
         existingEncryptedRecord: Data,
         freshHostEphemeralPublicSEC1: Data
     ) throws {
-        guard [siteTrustDomain, keyGeneration, deviceKeyID, delegationSerial].allSatisfy(
+        guard correlation.count == 16,
+              !correlation.allSatisfy({ $0 == 0 }),
+              !canonicalChallenge.isEmpty,
+              canonicalChallenge.count <= 4_096,
+              [siteTrustDomain, keyGeneration, deviceKeyID, delegationSerial].allSatisfy(
             Self.validIdentifier
         ), expectedEd25519PublicKey.count == 32,
            !expectedEd25519PublicKey.allSatisfy({ $0 == 0 }),
@@ -56,6 +64,8 @@ struct IphoneMediatedCustodyRewrapPresentationV1: Sendable {
            existingEncryptedRecord.count <= 4_096,
            Data(SHA256.hash(data: existingEncryptedRecord)) == encryptedRecordDigest
         else { throw PlatformFailure.custodyRewrapUnavailable }
+        self.correlation = correlation
+        self.canonicalChallenge = canonicalChallenge
         self.siteTrustDomain = siteTrustDomain
         self.keyGeneration = keyGeneration
         self.deviceKeyID = deviceKeyID
@@ -67,6 +77,9 @@ struct IphoneMediatedCustodyRewrapPresentationV1: Sendable {
         self.existingHostEphemeralPublicSEC1 = existingHostEphemeralPublicSEC1
         self.existingEncryptedRecord = existingEncryptedRecord
         self.freshHostEphemeralPublicSEC1 = freshHostEphemeralPublicSEC1
+        guard let expectedCanonicalChallenge = try? SecureEnclaveIphoneMediatedCustodyRewrapProducer
+            .canonicalChallenge(for: self), expectedCanonicalChallenge == canonicalChallenge
+        else { throw PlatformFailure.custodyRewrapUnavailable }
     }
 
     private static func validIdentifier(_ value: String) -> Bool {
@@ -85,11 +98,12 @@ struct IphoneMediatedCustodyRewrapPresentationV1: Sendable {
 /// One non-secret iPhone result that maps exactly to Thesaurophylax's
 /// `IphoneMediatedCustodyRewrapSubmissionV1` fields.
 ///
-/// It intentionally has no JSON encoding.  Only the future fixed,
-/// peer-authenticated custody transport may define an approved wire encoding;
+/// It intentionally has no general JSON encoding. Only the reviewed fixed
+/// Monas submission transport maps it into the exact UDS submission fields;
 /// a generic HTTPS, QR, browser, token, cookie, CLI, or local fallback would
 /// weaken the custody boundary.
 struct IphoneMediatedCustodyRewrapSubmissionV1: Sendable {
+    let correlation: Data
     let canonicalPayload: Data
     let deviceKeyID: String
     let delegationSerial: String
@@ -99,12 +113,10 @@ struct IphoneMediatedCustodyRewrapSubmissionV1: Sendable {
     let rewrappedCiphertext: Data
 }
 
-/// Dedicated boundary for the future fixed authenticated custody transport.
+/// Dedicated boundary for the exact fixed authenticated custody transport.
 ///
-/// It deliberately offers no URL-based implementation.  The current Monas
-/// and Thesaurophylax trees do not define an approved endpoint or wire model,
-/// so emitting a network request here would be unauthenticated architecture,
-/// not progress.
+/// The implementation is permitted only through the reviewed, pinned Monas
+/// endpoint in ADR 0035. It has no URL input or alternate transport.
 protocol IphoneMediatedCustodyRewrapSubmitting: Sendable {
     func submit(_ submission: IphoneMediatedCustodyRewrapSubmissionV1) async throws
 }
@@ -195,7 +207,8 @@ final class SecureEnclaveIphoneMediatedCustodyRewrapProducer: @unchecked Sendabl
         let ciphertext = try Self.seal(seed, key: freshKey, aadDigest: freshAAD)
         guard ciphertext.count <= 4_096 else { throw PlatformFailure.custodyRewrapUnavailable }
         return IphoneMediatedCustodyRewrapSubmissionV1(
-            canonicalPayload: canonicalPayload,
+            correlation: presentation.correlation,
+            canonicalPayload: presentation.canonicalChallenge,
             deviceKeyID: presentation.deviceKeyID,
             delegationSerial: presentation.delegationSerial,
             siteTrustDomain: presentation.siteTrustDomain,

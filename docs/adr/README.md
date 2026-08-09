@@ -91,3 +91,7 @@ live server authority.
 server-side Site Trust human-authority fact contract. It binds the exact
 Proxenos payload and Pistis intent to an Apple-verifier request, but no fact
 can issue until a reviewed Apple trust-bundle verifier is available.
+
+[ADR 0035](0035-retained-iphone-custody-presentation-relay.md) accepts the
+one terminal, SPKI-pinned App Attest response that can carry a custody-owned
+iPhone rewrap presentation after Monas retains the matching session.

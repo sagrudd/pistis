@@ -86,6 +86,7 @@ Architecture and operations
    adr/0032-retire-incompatible-local-trust
    adr/0033-iphone-site-root-delegation
    adr/0034-iphone-attested-site-trust-fact
+   adr/0035-retained-iphone-custody-presentation-relay
    protocol/README
    protocol/domain-model
    protocol/action-approval

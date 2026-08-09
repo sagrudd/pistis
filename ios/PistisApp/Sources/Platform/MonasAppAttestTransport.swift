@@ -44,6 +44,8 @@ struct MonasAppAttestTransport: Sendable {
         "/v1/pistis/site-trust/app-attest/registration"
     private static let assertionPath =
         "/v1/pistis/site-trust/app-attest/assertion"
+    private static let custodyRewrapSubmissionPath =
+        "/v1/pistis/site-trust/custody-rewrap/submit"
     private let origin: URL
     private let session: URLSession
 
@@ -78,6 +80,65 @@ struct MonasAppAttestTransport: Sendable {
             envelope,
             path: Self.assertionPath,
             maximumRequestBytes: 32_768
+        )
+    }
+
+    /// Delivers an App Attest assertion through the one pinned Monas ingress
+    /// and accepts a custody presentation only as its terminal retained-session
+    /// response. The same fixed URL is used; this method does not discover or
+    /// select a second endpoint, cookie, token, browser state, or fallback.
+    ///
+    /// A normal assertion remains 202/empty. This stricter operation accepts
+    /// only a 200 no-store response matching the custody relay schema, which a
+    /// future Monas runtime may issue only after it has retained the session
+    /// and contacted its fixed Thesaurophylax peer.
+    func submitAssertionForCustodyPresentation(
+        _ envelope: AppleAppAttestAssertionEnvelope,
+        nowUnixSeconds: UInt64
+    ) async throws -> IphoneMediatedCustodyRewrapPresentationV1 {
+        let body = try JSONEncoder.sorted.encode(envelope)
+        guard !body.isEmpty,
+              body.count <= 32_768,
+              let endpoint = URL(string: Self.assertionPath, relativeTo: origin)?.absoluteURL,
+              endpoint.absoluteString == origin.absoluteString + Self.assertionPath
+        else { throw PlatformFailure.custodyRewrapUnavailable }
+        var request = URLRequest(url: endpoint)
+        request.httpMethod = "POST"
+        request.httpBody = body
+        request.timeoutInterval = 15
+        request.setValue("application/json; charset=utf-8", forHTTPHeaderField: "Content-Type")
+        request.setValue("application/json", forHTTPHeaderField: "Accept")
+        request.setValue("no-store", forHTTPHeaderField: "Cache-Control")
+        do {
+            let (data, response) = try await session.data(for: request)
+            guard let http = response as? HTTPURLResponse,
+                  http.url == endpoint,
+                  http.statusCode == 200,
+                  !data.isEmpty,
+                  data.count <= 16_384,
+                  http.value(forHTTPHeaderField: "Cache-Control")?
+                      .lowercased().contains("no-store") == true
+            else { throw PlatformFailure.custodyRewrapUnavailable }
+            return try MonasRetainedCustodyPresentationResponseV1(
+                data: data, nowUnixSeconds: nowUnixSeconds
+            ).presentation
+        } catch let error as PlatformFailure {
+            throw error
+        } catch {
+            throw PlatformFailure.custodyRewrapUnavailable
+        }
+    }
+
+    /// Sends exactly one transient Secure Enclave rewrap response to Monas's
+    /// fixed custody submission endpoint. This carries no cookie, bearer,
+    /// browser state, local identity, endpoint override, retry or fallback.
+    /// Monas must bind its correlation to the retained App Attest session and
+    /// pass the opaque result only to its fixed Thesaurophylax peer.
+    func submitCustodyRewrap(_ submission: IphoneMediatedCustodyRewrapSubmissionV1) async throws {
+        try await submit(
+            MonasRetainedCustodyRewrapSubmissionV1(submission),
+            path: Self.custodyRewrapSubmissionPath,
+            maximumRequestBytes: 16_384
         )
     }
 

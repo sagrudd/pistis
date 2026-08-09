@@ -54,6 +54,8 @@ final class IphoneMediatedCustodyRewrapTests: XCTestCase {
     func testPresentationRejectsRecordDigestAndKeyDrift() throws {
         let record = Data(repeating: 0x44, count: 60)
         XCTAssertThrowsError(try IphoneMediatedCustodyRewrapPresentationV1(
+            correlation: Data(repeating: 0x01, count: 16),
+            canonicalChallenge: Data([0x01]),
             siteTrustDomain: "site-1",
             keyGeneration: "generation-1",
             deviceKeyID: "site-root-fixture",
@@ -76,18 +78,42 @@ final class IphoneMediatedCustodyRewrapTests: XCTestCase {
         record: Data,
         freshHostEphemeralPublicSEC1: Data? = nil
     ) throws -> IphoneMediatedCustodyRewrapPresentationV1 {
-        try IphoneMediatedCustodyRewrapPresentationV1(
-            siteTrustDomain: "site-1",
-            keyGeneration: "generation-1",
-            deviceKeyID: "site-root-fixture",
-            expectedEd25519PublicKey: Data(repeating: 0x11, count: 32),
-            encryptedRecordDigest: Data(SHA256.hash(data: record)),
-            currentRevocationGeneration: 7,
-            delegationSerial: "serial-1",
-            expiresAtUnixSeconds: 1_100,
-            existingHostEphemeralPublicSEC1: publicKey(2),
+        let siteTrustDomain = "site-1"
+        let keyGeneration = "generation-1"
+        let deviceKeyID = "site-root-fixture"
+        let expectedEd25519PublicKey = Data(repeating: 0x11, count: 32)
+        let encryptedRecordDigest = Data(SHA256.hash(data: record))
+        let currentRevocationGeneration: UInt64 = 7
+        let delegationSerial = "serial-1"
+        let expiresAtUnixSeconds: UInt64 = 1_100
+        let existingHostEphemeralPublicSEC1 = publicKey(2)
+        let freshHostEphemeralPublicSEC1 = freshHostEphemeralPublicSEC1 ?? publicKey(3)
+        var canonicalChallenge = Data(
+            "thesaurophylax.iphone-mediated-custody-rewrap.v1\0".utf8
+        )
+        append(1, Data(siteTrustDomain.utf8), to: &canonicalChallenge)
+        append(2, Data(keyGeneration.utf8), to: &canonicalChallenge)
+        append(3, Data(deviceKeyID.utf8), to: &canonicalChallenge)
+        append(4, expectedEd25519PublicKey, to: &canonicalChallenge)
+        append(5, encryptedRecordDigest, to: &canonicalChallenge)
+        append(6, Data([0, 0, 0, 0, 0, 0, 0, 7]), to: &canonicalChallenge)
+        append(7, Data(delegationSerial.utf8), to: &canonicalChallenge)
+        append(8, Data([0, 0, 0, 0, 0, 0, 4, 76]), to: &canonicalChallenge)
+        append(9, freshHostEphemeralPublicSEC1, to: &canonicalChallenge)
+        return try IphoneMediatedCustodyRewrapPresentationV1(
+            correlation: Data(repeating: 0x01, count: 16),
+            canonicalChallenge: canonicalChallenge,
+            siteTrustDomain: siteTrustDomain,
+            keyGeneration: keyGeneration,
+            deviceKeyID: deviceKeyID,
+            expectedEd25519PublicKey: expectedEd25519PublicKey,
+            encryptedRecordDigest: encryptedRecordDigest,
+            currentRevocationGeneration: currentRevocationGeneration,
+            delegationSerial: delegationSerial,
+            expiresAtUnixSeconds: expiresAtUnixSeconds,
+            existingHostEphemeralPublicSEC1: existingHostEphemeralPublicSEC1,
             existingEncryptedRecord: record,
-            freshHostEphemeralPublicSEC1: freshHostEphemeralPublicSEC1 ?? publicKey(3)
+            freshHostEphemeralPublicSEC1: freshHostEphemeralPublicSEC1
         )
     }
 

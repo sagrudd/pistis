@@ -104,6 +104,38 @@ final class AppAttestAssertionTransportTests: XCTestCase {
         ])
     }
 
+    func testCustodyRewrapUsesOnlyItsFixedPinnedSubmissionEndpoint() async throws {
+        AssertionURLProtocol.reset()
+        let configuration = URLSessionConfiguration.ephemeral
+        configuration.protocolClasses = [AssertionURLProtocol.self]
+        let transport = try MonasAppAttestTransport(
+            bootstrap: bootstrap(), configuration: configuration
+        )
+        try await transport.submitCustodyRewrap(IphoneMediatedCustodyRewrapSubmissionV1(
+            correlation: Data(repeating: 0x01, count: 16),
+            canonicalPayload: Data(repeating: 0x02, count: 64),
+            deviceKeyID: "site-root-1",
+            delegationSerial: "serial-1",
+            siteTrustDomain: "site-1",
+            purpose: IphoneMediatedCustodyRewrapPurposeV1.value,
+            coseSign1: Data(repeating: 0x03, count: 64),
+            rewrappedCiphertext: Data(repeating: 0x04, count: 60)
+        ))
+
+        let request = try XCTUnwrap(AssertionURLProtocol.lastRequest())
+        XCTAssertEqual(request.url?.absoluteString,
+                       "https://monas.example.test/v1/pistis/site-trust/custody-rewrap/submit")
+        XCTAssertNil(request.value(forHTTPHeaderField: "Cookie"))
+        XCTAssertNil(request.value(forHTTPHeaderField: "Authorization"))
+        let body = try XCTUnwrap(AssertionURLProtocol.lastBody())
+        let object = try XCTUnwrap(JSONSerialization.jsonObject(with: body) as? [String: Any])
+        XCTAssertEqual(Set(object.keys), [
+            "schema", "correlation_b64url", "canonical_challenge_b64url", "device_key_id",
+            "delegation_serial", "site_trust_domain", "purpose", "detached_cose_sign1_b64url",
+            "rewrapped_ciphertext_b64url",
+        ])
+    }
+
     func testTransportRejectsRedirectOrNonAcceptedResponse() async throws {
         let configuration = URLSessionConfiguration.ephemeral
         configuration.protocolClasses = [RejectingAssertionURLProtocol.self]

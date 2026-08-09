@@ -16,6 +16,28 @@ Pistis never asks Keeper for a vault item, passkey, private key, password, or
 token. It cannot use a GitHub passkey to sign a Pistis approval. The Pistis
 device signing key is separate and non-exportable in the Secure Enclave.
 
+## iPhone-mediated custody rewrap
+
+The iOS 0.6.0 source includes only the client-side cryptographic foundation
+for the accepted Thesaurophylax iPhone-mediated custody rewrap profile. It is
+not a live custody transport or a readiness claim.
+
+After a future fixed authority has verified a retained App Attest-backed
+Pistis session, it may construct one typed, protected presentation containing
+the exact Site Trust Domain, custody generation, active Site Root device key,
+current encrypted-record digest, one-use delegation serial and fresh host
+ECDH public key. Pistis then requires Face ID for the detached ES256 proof and
+again for each Secure Enclave ECDH operation. It decrypts the current record
+only in transient memory and immediately re-encrypts the 32-byte custody seed
+to the fresh host key using the selected ECDH/HKDF/AES-256-GCM profile.
+
+Pistis has no decoder or generic network route for this presentation or its
+result. It does not accept QR, browser state, cookie, token, CLI, local file,
+local identity, password, PAM, user input, or arbitrary HTTPS endpoint as
+custody authority. Until the fixed peer-authenticated Thesaurophylax transport
+and its retained App Attest session binding are specified and implemented, the
+operation remains unavailable and no iPhone interaction should be requested.
+
 The operator configures the reviewed GitHub App public client identifier and
 exact ADR 0025 endpoint profile. Never put a GitHub or Google client secret in
 the application bundle. Device codes and provider access tokens are transient

@@ -4,6 +4,15 @@
 
 ### Added
 
+- Add the compatible iOS 0.6.0, non-activating iPhone custody-rewrap
+  producer foundation. It maps only an authenticated protected presentation to
+  Thesaurophylax #148's exact detached Secure Enclave proof and fresh
+  ECDH/HKDF/AES-256-GCM ciphertext, holding the seed only in process memory.
+  It deliberately has no presentation decoder, UI entry point, HTTP endpoint,
+  browser, QR, cookie, token, local identity, persistence, fallback, or live
+  submission path until the separately reviewed fixed custody transport can
+  prove the retained App Attest-backed Pistis session.
+
 - Add the compatible iOS 0.5.0 Site Root success consumer. It accepts only
   Monas's exact one-use App Attest bootstrap response after the signed proof,
   keeps it in memory, and immediately sends the iPhone assertion through the

@@ -27,6 +27,7 @@ enum UnenrolledKeyLifecycle {
 }
 
 #if canImport(LocalAuthentication) && canImport(Security)
+import CryptoKit
 import LocalAuthentication
 import Security
 
@@ -208,6 +209,61 @@ final class SecureEnclaveSigner: @unchecked Sendable {
             throw mapSecurityError(signingError?.takeRetainedValue())
         }
         return try P256Format.rawSignature(fromStrictDER: der)
+    }
+
+    /// Derives one raw P-256 ECDH secret with the enrolled Secure Enclave key.
+    ///
+    /// The peer key is public, canonical compressed SEC1 material supplied by
+    /// an already authenticated, exact-purpose ceremony.  The shared secret
+    /// is returned only to the immediate caller so that it can derive a
+    /// purpose-specific wrapping key in memory; it is never persisted,
+    /// logged, or projected into application state.
+    ///
+    /// A fresh Face ID operation is required.  There is deliberately no
+    /// software-key, passcode, or cached-authentication fallback.
+    func deriveECDHSharedSecret(peerPublicCompressedSEC1: Data) throws -> Data {
+        guard SecureEnclaveSigner.secureEnclaveIsAvailable,
+              let peerPublicKey = try? P256.KeyAgreement.PublicKey(
+                  compressedRepresentation: peerPublicCompressedSEC1
+              )
+        else { throw PlatformFailure.secureHardwareUnavailable }
+
+        let context = LAContext()
+        context.localizedCancelTitle = "Cancel"
+        context.localizedReason = authenticationReason
+        context.interactionNotAllowed = false
+        try requireFaceID(using: context)
+        guard let privateKey = try findPrivateKey(authenticationContext: context) else {
+            throw PlatformFailure.keyNotFound
+        }
+        guard SecKeyIsAlgorithmSupported(
+            privateKey,
+            .keyExchange,
+            SecKeyAlgorithm.ecdhKeyExchangeStandard
+        ) else { throw PlatformFailure.secureHardwareUnavailable }
+
+        let peerAttributes: [CFString: Any] = [
+            kSecAttrKeyType: kSecAttrKeyTypeECSECPrimeRandom,
+            kSecAttrKeyClass: kSecAttrKeyClassPublic,
+            kSecAttrKeySizeInBits: 256,
+        ]
+        var publicKeyError: Unmanaged<CFError>?
+        guard let peer = SecKeyCreateWithData(
+            peerPublicKey.x963Representation as CFData,
+            peerAttributes as CFDictionary,
+            &publicKeyError
+        ) else { throw PlatformFailure.invalidConfiguration }
+
+        var exchangeError: Unmanaged<CFError>?
+        guard let secret = SecKeyCopyKeyExchangeResult(
+            privateKey,
+            SecKeyAlgorithm.ecdhKeyExchangeStandard,
+            peer,
+            [:] as CFDictionary,
+            &exchangeError
+        ) as Data?, secret.count == 32, !secret.allSatisfy({ $0 == 0 })
+        else { throw mapSecurityError(exchangeError?.takeRetainedValue()) }
+        return secret
     }
 
     /// Exercise the real Secure Enclave and local-biometry path for an exact

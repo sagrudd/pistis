@@ -154,25 +154,20 @@ struct MonasSiteRootDelegationSubmissionRequestV1: Sendable {
     let submission: SiteRootDelegationSubmissionV1
 }
 
-/// Minimal response which proves neither authority nor work completion.
-struct MonasSiteRootDelegationSubmissionReceiptV1: Equatable, Sendable {
-    let reference: String
-    let accepted: Bool
-}
-
 /// Boundary for the separately reviewed Monas Site Root submission transport.
 ///
 /// The UI depends on this protocol rather than treating QR text as a network
-/// capability. The current default denies submission until a reviewed Monas
-/// transport has its own enrolled-host and session binding implementation.
+/// capability. A successful response is the exact, short-lived bootstrap that
+/// must be consumed immediately by the separately pinned App Attest transport;
+/// it is not a receipt, fact, session, or browser credential.
 protocol MonasSiteRootDelegationSubmitting: Sendable {
     func submit(_ request: MonasSiteRootDelegationSubmissionRequestV1) async throws
-        -> MonasSiteRootDelegationSubmissionReceiptV1
+        -> MonasAppAttestCeremonyBootstrap
 }
 
 struct UnavailableMonasSiteRootDelegationTransport: MonasSiteRootDelegationSubmitting {
     func submit(_: MonasSiteRootDelegationSubmissionRequestV1) async throws
-        -> MonasSiteRootDelegationSubmissionReceiptV1
+        -> MonasAppAttestCeremonyBootstrap
     {
         throw PlatformFailure.productionEnvelopeUnavailable
     }

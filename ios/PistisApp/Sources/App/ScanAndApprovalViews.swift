@@ -283,11 +283,14 @@ private struct SiteRootDelegationReviewView: View {
                         .frame(maxWidth: .infinity, minHeight: MnMetrics.minimumTarget)
                     case .signing:
                         MnStatusLabel(text: "Waiting for Face ID", kind: .warning)
-                    case let .submitted(receipt):
+                    case .attesting:
+                        MnStatusLabel(text: "Submitting device assertion", kind: .warning)
+                    case .submitted:
                         MnStatusLabel(
-                            text: receipt.accepted ? "Monas accepted the proof" : "Monas did not accept the proof",
-                            kind: receipt.accepted ? .success : .danger
+                            text: "Device assertion submitted to Monas",
+                            kind: .success
                         )
+                        Text("Monas must still verify and retain the assertion before it can issue a session.")
                         MnPrimaryButton("Done") {
                             coordinator.reset()
                             dismiss()

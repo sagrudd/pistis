@@ -10,16 +10,22 @@ final class SiteRootDelegationCoordinator: ObservableObject {
         case idle
         case review(SiteRootDelegationReview)
         case signing
-        case submitted(MonasSiteRootDelegationSubmissionReceiptV1)
+        case attesting
+        case submitted
         case failed(PlatformFailure)
     }
 
     @Published private(set) var phase: Phase = .idle
     private let transport: any MonasSiteRootDelegationSubmitting
+    private let appAttestClient: AppleAppAttestClient
     private var qrPresentation: SiteRootDelegationQRPresentationV1?
 
-    init(transport: any MonasSiteRootDelegationSubmitting = UnavailableMonasSiteRootDelegationTransport()) {
+    init(
+        transport: any MonasSiteRootDelegationSubmitting = UnavailableMonasSiteRootDelegationTransport(),
+        appAttestClient: AppleAppAttestClient = AppleAppAttestClient()
+    ) {
         self.transport = transport
+        self.appAttestClient = appAttestClient
     }
 
     func accept(qrText: String) {
@@ -45,16 +51,21 @@ final class SiteRootDelegationCoordinator: ObservableObject {
                 authenticationReason: "Sign this exact Monas Site Root delegation"
             )
             let submission = try producer.prove(qrPresentation.presentation)
-            let receipt = try await transport.submit(
+            let bootstrap = try await transport.submit(
                 MonasSiteRootDelegationSubmissionRequestV1(
                     endpoint: qrPresentation.presentation.submitURL,
                     submission: submission
                 )
             )
-            guard receipt.reference == qrPresentation.presentation.reference else {
-                throw PlatformFailure.productionEnvelopeUnavailable
-            }
-            phase = .submitted(receipt)
+            // The bootstrap is deliberately stack-local. It is used immediately
+            // to bind the assertion transport to Monas's exact origin and SPKI;
+            // it is never projected into SwiftUI state, persistence, logs, QR,
+            // browser state, or a session.
+            phase = .attesting
+            let appAttestTransport = try MonasAppAttestTransport(bootstrap: bootstrap)
+            let assertion = try await appAttestClient.prepareAssertion(bootstrap: bootstrap)
+            try await appAttestTransport.submitAssertion(assertion)
+            phase = .submitted
         } catch let failure as PlatformFailure {
             phase = .failed(failure)
         } catch {

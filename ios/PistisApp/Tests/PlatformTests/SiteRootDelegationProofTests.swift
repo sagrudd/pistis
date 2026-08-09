@@ -4,11 +4,12 @@ import XCTest
 
 final class SiteRootDelegationProofTests: XCTestCase {
     func testPresentationAcceptsOnlyExactV1Bindings() throws {
-        let payload = Data("{\"device_key_id\":\"site-root-fixture\",\"proof_profile\":\"pistis-secure-enclave-es256-cose-v1\",\"schema\":\"monas.site-root-delegation.v1\",\"secure_enclave_attestation\":\"not-asserted\"}".utf8)
+        let payload = Data("{\"device_key_id\":\"site-root-fixture\",\"proof_profile\":\"pistis-secure-enclave-es256-cose-v1\",\"schema\":\"monas.site-root-delegation.v1\",\"secure_enclave_attestation\":\"not-asserted\",\"site_trust_domain\":\"site-demo-1\"}".utf8)
         let endpoint = try XCTUnwrap(URL(string: "https://monas.example.test/auth/pistis/site-root-delegations/v1/submit"))
         let presentation = try SiteRootDelegationPresentationV1(
             canonicalDelegationJSON: payload,
             deviceKeyID: "site-root-fixture",
+            siteTrustDomain: "site-demo-1",
             submitURL: endpoint,
             reference: "ceremony-fixture"
         )
@@ -16,7 +17,15 @@ final class SiteRootDelegationProofTests: XCTestCase {
         XCTAssertThrowsError(try SiteRootDelegationPresentationV1(
             canonicalDelegationJSON: payload,
             deviceKeyID: "site-root-fixture",
+            siteTrustDomain: "site-demo-1",
             submitURL: try XCTUnwrap(URL(string: "https://monas.example.test/other")),
+            reference: "ceremony-fixture"
+        ))
+        XCTAssertThrowsError(try SiteRootDelegationPresentationV1(
+            canonicalDelegationJSON: payload,
+            deviceKeyID: "site-root-fixture",
+            siteTrustDomain: "different-site",
+            submitURL: endpoint,
             reference: "ceremony-fixture"
         ))
     }
@@ -39,7 +48,7 @@ final class SiteRootDelegationProofTests: XCTestCase {
     }
 
     func testQRPresentationAcceptsOnlyExactWrapperAndPreservesDelegationBytes() throws {
-        let delegation = Data("{\"device_key_id\":\"site-root-fixture\",\"proof_profile\":\"pistis-secure-enclave-es256-cose-v1\",\"schema\":\"monas.site-root-delegation.v1\",\"secure_enclave_attestation\":\"not-asserted\"}".utf8)
+        let delegation = Data("{\"device_key_id\":\"site-root-fixture\",\"proof_profile\":\"pistis-secure-enclave-es256-cose-v1\",\"schema\":\"monas.site-root-delegation.v1\",\"secure_enclave_attestation\":\"not-asserted\",\"site_trust_domain\":\"site-demo-1\"}".utf8)
         let base64URL = delegation.base64EncodedString()
             .replacingOccurrences(of: "+", with: "-")
             .replacingOccurrences(of: "/", with: "_")
@@ -49,6 +58,7 @@ final class SiteRootDelegationProofTests: XCTestCase {
         let parsed = try SiteRootDelegationQRPresentationV1(qrText: qr)
 
         XCTAssertEqual(parsed.presentation.canonicalDelegationJSON, delegation)
+        XCTAssertEqual(parsed.presentation.siteTrustDomain, "site-demo-1")
         XCTAssertEqual(parsed.presentation.reference, "ceremony-fixture-1234")
         XCTAssertThrowsError(try SiteRootDelegationQRPresentationV1(qrText: String(qr.dropLast()) + "x"))
         XCTAssertThrowsError(try SiteRootDelegationQRPresentationV1(
@@ -58,8 +68,9 @@ final class SiteRootDelegationProofTests: XCTestCase {
 
     func testReviewRedactsIdentifiers() throws {
         let presentation = try SiteRootDelegationPresentationV1(
-            canonicalDelegationJSON: Data("{\"device_key_id\":\"site-root-fixture\",\"proof_profile\":\"pistis-secure-enclave-es256-cose-v1\",\"schema\":\"monas.site-root-delegation.v1\",\"secure_enclave_attestation\":\"not-asserted\"}".utf8),
+            canonicalDelegationJSON: Data("{\"device_key_id\":\"site-root-fixture\",\"proof_profile\":\"pistis-secure-enclave-es256-cose-v1\",\"schema\":\"monas.site-root-delegation.v1\",\"secure_enclave_attestation\":\"not-asserted\",\"site_trust_domain\":\"site-demo-1\"}".utf8),
             deviceKeyID: "site-root-fixture",
+            siteTrustDomain: "site-demo-1",
             submitURL: try XCTUnwrap(URL(string: "https://monas.example.test/auth/pistis/site-root-delegations/v1/submit")),
             reference: "ceremony-fixture-1234"
         )

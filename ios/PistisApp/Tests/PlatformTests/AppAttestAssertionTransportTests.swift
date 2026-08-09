@@ -36,6 +36,34 @@ final class AppAttestAssertionTransportTests: XCTestCase {
         XCTAssertFalse(envelope.assertionB64URL.contains("="))
     }
 
+    func testRegistrationCanUseOnlyTheSealedServerClientDataHash() async throws {
+        let keyID = Data(repeating: 0x11, count: 32).base64EncodedString()
+        let service = RecordingAppAttestService(keyID: keyID)
+        let client = AppleAppAttestClient(
+            service: service,
+            keyIDStore: FixedKeyIDStore(keyID: keyID)
+        )
+        let hash = Data(repeating: 0x5a, count: 32)
+
+        _ = try await client.prepareRegistration(
+            ceremonyID: "server-owned-registration-ceremony",
+            siteTrustDomain: "site-demo-1",
+            clientDataHash: hash
+        )
+
+        XCTAssertEqual(service.attestationHash, hash)
+        do {
+            _ = try await client.prepareRegistration(
+                ceremonyID: "server-owned-registration-ceremony",
+                siteTrustDomain: "site-demo-1",
+                clientDataHash: Data(repeating: 0, count: 32)
+            )
+            XCTFail("zero client-data hash unexpectedly accepted")
+        } catch {
+            XCTAssertEqual(error as? PlatformFailure, .appAttestInvalidInput)
+        }
+    }
+
     func testAssertionEnvelopeRejectsZeroOrOversizedInputs() {
         XCTAssertThrowsError(try AppleAppAttestAssertionEnvelope(
             ceremonyID: Data(repeating: 0, count: 16), assertion: Data([1])
@@ -201,11 +229,15 @@ private final class FixedKeyIDStore: AppleAppAttestKeyIDStoring, @unchecked Send
 
 private final class RecordingAppAttestService: AppleAppAttestServicing, @unchecked Sendable {
     let keyID: String
+    private(set) var attestationHash: Data?
     private(set) var assertionHash: Data?
     init(keyID: String) { self.keyID = keyID }
     var isSupported: Bool { true }
     func generateKey() async throws -> String { keyID }
-    func attestKey(_: String, clientDataHash _: Data) async throws -> Data { Data([1]) }
+    func attestKey(_: String, clientDataHash: Data) async throws -> Data {
+        attestationHash = clientDataHash
+        return Data([1])
+    }
     func generateAssertion(_: String, clientDataHash: Data) async throws -> Data {
         assertionHash = clientDataHash
         return Data(repeating: 0x44, count: 64)

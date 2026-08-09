@@ -41,7 +41,7 @@ protocol MonasSiteRootDelegationReadinessChecking: Sendable {
 /// submission URL must exactly match that origin and the reviewed v1 path.
 /// Redirects, cookies, caches, unexpected JSON and all non-success statuses
 /// deny without retrying another endpoint.
-struct MonasSiteRootDelegationTransport: MonasSiteRootDelegationSubmitting,
+struct MonasSiteRootDelegationTransport: MonasSiteRootCeremonyTransport,
     MonasSiteRootDelegationReadinessChecking, Sendable
 {
     private static let maximumResponseBytes = 1_024
@@ -50,11 +50,17 @@ struct MonasSiteRootDelegationTransport: MonasSiteRootDelegationSubmitting,
     private let authorityOrigin: URL
     private let session: URLSession
 
+    var genesisAuthorityOrigin: URL? { authorityOrigin }
+
     init(
         authorityOrigin: URL,
+        expectedSPKISHA256: Data,
         configuration: URLSessionConfiguration = .ephemeral
     ) throws {
-        guard Self.isValidOrigin(authorityOrigin) else {
+        guard Self.isValidOrigin(authorityOrigin),
+              expectedSPKISHA256.count == 32,
+              !expectedSPKISHA256.allSatisfy({ $0 == 0 })
+        else {
             throw PlatformFailure.invalidConfiguration
         }
         self.authorityOrigin = authorityOrigin
@@ -63,7 +69,10 @@ struct MonasSiteRootDelegationTransport: MonasSiteRootDelegationSubmitting,
         configuration.requestCachePolicy = .reloadIgnoringLocalCacheData
         self.session = URLSession(
             configuration: configuration,
-            delegate: RedirectRejectingSessionDelegate(),
+            delegate: try PinnedEnrolmentSessionDelegate(
+                origin: authorityOrigin,
+                expectedSPKISHA256: expectedSPKISHA256
+            ),
             delegateQueue: nil
         )
     }
@@ -132,6 +141,52 @@ struct MonasSiteRootDelegationTransport: MonasSiteRootDelegationSubmitting,
         }
     }
 
+    /// Posts the sole public first-device registration to the fixed, pinned
+    /// authority. The response may contain only the issued one-time canonical
+    /// delegation and its binding facts; it cannot select a new endpoint.
+    func registerGenesis(_ request: SiteRootGenesisRegistrationRequestV1) async throws
+        -> SiteRootDelegationPresentationV1
+    {
+        guard Self.matchesAuthority(
+            request.presentation.registrationURL,
+            origin: authorityOrigin,
+            expectedPath: MonasSiteRootGenesisEndpointV1.registrationPath
+        ) else { throw PlatformFailure.siteRootAuthorityUnavailable }
+        let body: Data
+        do {
+            body = try JSONEncoder().encode(MonasSiteRootGenesisRegistrationRequest(request))
+        } catch {
+            throw PlatformFailure.invalidConfiguration
+        }
+        guard !body.isEmpty, body.count <= Self.maximumSubmissionBytes else {
+            throw PlatformFailure.invalidConfiguration
+        }
+        var urlRequest = URLRequest(url: request.presentation.registrationURL)
+        urlRequest.httpMethod = "POST"
+        urlRequest.httpBody = body
+        urlRequest.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        urlRequest.setValue("application/json", forHTTPHeaderField: "Accept")
+        urlRequest.setValue("no-store", forHTTPHeaderField: "Cache-Control")
+        urlRequest.timeoutInterval = 15
+        let (data, _) = try await requestData(
+            urlRequest,
+            expectedURL: request.presentation.registrationURL,
+            expectedStatus: 200,
+            maximumResponseBytes: Self.maximumSubmissionBytes
+        )
+        do {
+            return try MonasSiteRootGenesisRegistrationResult(
+                data: data,
+                request: request,
+                authorityOrigin: authorityOrigin
+            ).presentation
+        } catch let failure as PlatformFailure {
+            throw failure
+        } catch {
+            throw PlatformFailure.siteRootAuthorityUnavailable
+        }
+    }
+
     private func endpoint(path: String) throws -> URL {
         guard let endpoint = URL(string: path, relativeTo: authorityOrigin)?.absoluteURL,
               Self.matchesAuthority(endpoint, origin: authorityOrigin, expectedPath: path)
@@ -142,7 +197,8 @@ struct MonasSiteRootDelegationTransport: MonasSiteRootDelegationSubmitting,
     private func requestData(
         _ request: URLRequest,
         expectedURL: URL,
-        expectedStatus: Int? = nil
+        expectedStatus: Int? = nil,
+        maximumResponseBytes: Int = Self.maximumResponseBytes
     ) async throws
         -> (Data, URLResponse)
     {
@@ -151,7 +207,7 @@ struct MonasSiteRootDelegationTransport: MonasSiteRootDelegationSubmitting,
             guard let http = response as? HTTPURLResponse,
                   expectedStatus.map({ http.statusCode == $0 }) ?? (200 ... 299).contains(http.statusCode),
                   http.url == expectedURL,
-                  data.count <= Self.maximumResponseBytes
+                  data.count <= maximumResponseBytes
             else { throw PlatformFailure.siteRootAuthorityUnavailable }
             return (data, response)
         } catch let failure as PlatformFailure {
@@ -167,7 +223,7 @@ struct MonasSiteRootDelegationTransport: MonasSiteRootDelegationSubmitting,
             && value.path.isEmpty
     }
 
-    private static func matchesAuthority(_ value: URL, origin: URL, expectedPath: String) -> Bool {
+    static func matchesAuthority(_ value: URL, origin: URL, expectedPath: String) -> Bool {
         value.scheme == "https" && value.host == origin.host && value.port == origin.port
             && value.user == nil && value.password == nil && value.query == nil
             && value.fragment == nil && value.path == expectedPath

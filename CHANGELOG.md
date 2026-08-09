@@ -1,5 +1,21 @@
 # Changelog
 
+## [0.7.2] - 2026-08-09
+
+### Added
+
+- Compose the first Site Root device ceremony on iPhone: a strict Monas
+  genesis QR can create or reuse the Face-ID protected Site Root key, submit
+  its typed public registration with the genuine App Attest evidence only to
+  the fixed SPKI-pinned Monas authority, receive the bound one-time delegation,
+  and continue through the existing proof, assertion and custody flow.
+
+### Security
+
+- Require a compile-time Monas Site Root SPKI digest before any Site Root or
+  first-genesis request is possible. The QR never chooses an authority,
+  endpoint, pin, browser, credential, token or local identity.
+
 ## Unreleased
 
 ### Added
@@ -9,6 +25,16 @@
   P-256 public key already verified by the production Apple-root registration
   acceptance; it adds no client key input, persistence, secret, session,
   local authority, fallback, or key derivation.
+
+- Compose the iOS 0.7.1 production Site Root path at application startup:
+  only a signed build-time Monas authority origin may construct the existing
+  Site Root transport; QR text cannot select an authority. After the exact
+  proof and App Attest assertion, Pistis now consumes only the pinned terminal
+  custody presentation, requires Face ID for the existing Secure Enclave
+  rewrap, and submits it only to Monas's fixed custody endpoint. Missing
+  application configuration and every network or custody failure remain
+  unavailable; no fallback, session credential, local authority, or persisted
+  bootstrap is introduced.
 
 - Add the accepted iOS 0.7.0 retained-session custody-presentation relay
   consumer for Pistis #401. It accepts only Monas's exact terminal,

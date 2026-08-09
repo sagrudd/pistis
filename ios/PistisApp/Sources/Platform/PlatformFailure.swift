@@ -33,6 +33,7 @@ enum PlatformFailure: Error, Equatable, Sendable {
     case appAttestKeyCreationFailed
     case appAttestAttestationFailed
     case appAttestAssertionFailed
+    case custodyRewrapUnavailable
 }
 
 extension PlatformFailure {
@@ -65,6 +66,8 @@ extension PlatformFailure {
         case .appAttestKeyCreationFailed, .appAttestAttestationFailed,
              .appAttestAssertionFailed:
             "Pistis could not create device attestation. No device attestation was submitted."
+        case .custodyRewrapUnavailable:
+            "The protected custody ceremony is unavailable. No custody material was released."
         case .keyCreationFailed:
             "Pistis could not create the protected device key."
         case .keyInvalidated:

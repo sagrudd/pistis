@@ -4,6 +4,12 @@
 
 ### Added
 
+- Add the compatible `pistis-monas` 0.6.0 recipient-key accessor required by
+  accepted Site Trust custody genesis. It yields only the canonical compressed
+  P-256 public key already verified by the production Apple-root registration
+  acceptance; it adds no client key input, persistence, secret, session,
+  local authority, fallback, or key derivation.
+
 - Add the accepted iOS 0.7.0 retained-session custody-presentation relay
   consumer for Pistis #401. It accepts only Monas's exact terminal,
   SPKI-pinned App Attest response and binds its correlation/canonical challenge

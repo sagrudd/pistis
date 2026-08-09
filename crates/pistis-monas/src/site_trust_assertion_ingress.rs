@@ -23,6 +23,8 @@ use crate::{
     SiteTrustFactConsumptionErrorV1, SiteTrustHumanAuthorityFactV1, VerifiedIPhoneAppAttestationV1,
 };
 
+mod verified_recipient_key;
+
 /// Exact profile accepted from an iPhone for the Site Trust assertion ceremony.
 pub const SITE_TRUST_APP_ATTEST_ASSERTION_INGRESS_PROFILE_V1: &str =
     "mnemosyne.pistis.site-trust-app-attest-assertion-ingress.v1";
@@ -827,7 +829,7 @@ mod tests {
         }
     }
 
-    fn acceptance(
+    pub(super) fn acceptance(
         signing_key: &SigningKey,
         prior_counter: u32,
     ) -> ServerHeldMonasAppAttestAcceptanceV1 {

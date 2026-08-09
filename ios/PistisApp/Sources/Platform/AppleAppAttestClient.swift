@@ -257,15 +257,29 @@ final class AppleAppAttestClient: @unchecked Sendable {
         siteTrustDomain: String,
         serverChallenge: Data
     ) async throws -> AppleAppAttestRegistrationEnvelope {
-        guard service.isSupported,
-              !serverChallenge.isEmpty,
-              serverChallenge.count <= 4_096
-        else {
-            throw PlatformFailure.appAttestUnavailable
+        let clientDataHash = Data(SHA256.hash(data: serverChallenge))
+        return try await prepareRegistration(
+            ceremonyID: ceremonyID,
+            siteTrustDomain: siteTrustDomain,
+            clientDataHash: clientDataHash
+        )
+    }
+
+    /// Creates a registration envelope when the only reviewed server input is
+    /// the exact, already-derived 32-byte client-data hash. This is used by
+    /// the sealed Site Root bootstrap bridge; it must not derive, substitute,
+    /// log, persist, or double-hash the server-held value.
+    func prepareRegistration(
+        ceremonyID: String,
+        siteTrustDomain: String,
+        clientDataHash: Data
+    ) async throws -> AppleAppAttestRegistrationEnvelope {
+        guard service.isSupported else { throw PlatformFailure.appAttestUnavailable }
+        guard clientDataHash.count == 32, !clientDataHash.allSatisfy({ $0 == 0 }) else {
+            throw PlatformFailure.appAttestInvalidInput
         }
 
         let keyID = try await existingOrNewKeyID()
-        let clientDataHash = Data(SHA256.hash(data: serverChallenge))
         let attestationObject = try await attest(
             keyID: keyID,
             clientDataHash: clientDataHash

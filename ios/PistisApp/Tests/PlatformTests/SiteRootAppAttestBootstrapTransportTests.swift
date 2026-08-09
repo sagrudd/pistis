@@ -22,6 +22,7 @@ final class SiteRootAppAttestBootstrapTransportTests: XCTestCase {
         configuration.protocolClasses = [BootstrapURLProtocol.self]
         let transport = try MonasSiteRootDelegationTransport(
             authorityOrigin: try XCTUnwrap(URL(string: "https://monas.example.test")),
+            expectedSPKISHA256: Data(repeating: 0x11, count: 32),
             configuration: configuration
         )
 
@@ -111,6 +112,7 @@ final class SiteRootAppAttestBootstrapTransportTests: XCTestCase {
         configuration.protocolClasses = [BootstrapURLProtocol.self]
         let transport = try MonasSiteRootDelegationTransport(
             authorityOrigin: try XCTUnwrap(URL(string: "https://monas.example.test")),
+            expectedSPKISHA256: Data(repeating: 0x11, count: 32),
             configuration: configuration
         )
         do {

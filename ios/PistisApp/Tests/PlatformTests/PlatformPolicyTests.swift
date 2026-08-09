@@ -117,6 +117,38 @@ final class PlatformPolicyTests: XCTestCase {
         }
     }
 
+    func testMonasSiteRootAuthorityConfigurationAcceptsOnlyAnExactSignedOrigin() throws {
+        let configuration = try MonasSiteRootAuthorityConfiguration(
+            infoDictionary: [
+                MonasSiteRootAuthorityConfiguration.infoDictionaryKey:
+                    "https://monas.example.test",
+                MonasSiteRootAuthorityConfiguration.spkiInfoDictionaryKey:
+                    "ERERERERERERERERERERERERERERERERERERERERERE",
+            ]
+        )
+        XCTAssertEqual(configuration.authorityOrigin.absoluteString, "https://monas.example.test")
+        XCTAssertNoThrow(try configuration.makeTransport())
+
+        for invalid in [
+            "",
+            "$(PISTIS_MONAS_SITE_ROOT_AUTHORITY_ORIGIN)",
+            "http://monas.example.test",
+            "https://monas.example.test/authority",
+            "https://user@monas.example.test",
+            "https://monas.example.test?selected=by-qr",
+        ] {
+            XCTAssertThrowsError(try MonasSiteRootAuthorityConfiguration(
+                rawValue: invalid,
+                spkiB64URL: "ERERERERERERERERERERERERERERERERERERERERERE"
+            ))
+        }
+    }
+
+    func testMonasSiteRootTransportFactoryFailsClosedWithoutBuildConfiguration() {
+        let transport = ProductionMonasSiteRootTransportFactory.make(infoDictionary: [:])
+        XCTAssertTrue(transport is UnavailableMonasSiteRootDelegationTransport)
+    }
+
     func testAppleAppAttestRegistrationEnvelopeUsesReviewedV1Contract() throws {
         let appleKeyID = Data(repeating: 0x11, count: 32).base64EncodedString()
         let envelope = try AppleAppAttestRegistrationEnvelope(

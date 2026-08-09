@@ -78,6 +78,24 @@ final class SiteRootGenesisRegistrationTests: XCTestCase {
         XCTAssertEqual(key["secure_enclave_attestation"] as? String, "not-asserted")
     }
 
+    @MainActor
+    func testPresentedReviewSurvivesTransitionOutOfReviewPhase() async throws {
+        let coordinator = SiteRootDelegationCoordinator(
+            transport: GenesisReviewTransport(origin: origin)
+        )
+
+        coordinator.accept(qrText: genesisQR())
+        let review = try XCTUnwrap(coordinator.presentedReview)
+        XCTAssertTrue(review.isFirstDevice)
+
+        // Simulator/device hardware may reject the protected-key operation;
+        // either outcome must retain the attended review surface. Otherwise
+        // SwiftUI dismisses the sheet and resets a ceremony before it can
+        // submit its first network request.
+        await coordinator.approve()
+        XCTAssertEqual(coordinator.presentedReview, review)
+    }
+
     private func request() throws -> SiteRootGenesisRegistrationRequestV1 {
         let presentation = try SiteRootGenesisRegistrationPresentationV1(
             qrText: genesisQR(), authorityOrigin: origin, nowUnixMillis: now
@@ -123,5 +141,22 @@ final class SiteRootGenesisRegistrationTests: XCTestCase {
             .replacingOccurrences(of: "+", with: "-")
             .replacingOccurrences(of: "/", with: "_")
             .replacingOccurrences(of: "=", with: "")
+    }
+}
+
+private struct GenesisReviewTransport: MonasSiteRootCeremonyTransport {
+    let origin: URL
+    var genesisAuthorityOrigin: URL? { origin }
+
+    func submit(_: MonasSiteRootDelegationSubmissionRequestV1) async throws
+        -> MonasAppAttestCeremonyBootstrap
+    {
+        throw PlatformFailure.productionEnvelopeUnavailable
+    }
+
+    func registerGenesis(_: SiteRootGenesisRegistrationRequestV1) async throws
+        -> SiteRootDelegationPresentationV1
+    {
+        throw PlatformFailure.productionEnvelopeUnavailable
     }
 }

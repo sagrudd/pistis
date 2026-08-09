@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.7.3] - 2026-08-09
+
+### Fixed
+
+- Keep the attended iPhone Site Root review surface alive across Face ID and
+  App Attest phase transitions. The sheet can now be dismissed only by the
+  operator's explicit Cancel or Done action, rather than resetting the
+  in-flight ceremony before its first Monas request.
+
 ## [0.7.2] - 2026-08-09
 
 ### Added

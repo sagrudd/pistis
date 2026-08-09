@@ -18,6 +18,15 @@ final class SiteRootDelegationCoordinator: ObservableObject {
     }
 
     @Published private(set) var phase: Phase = .idle
+    /// The review sheet's identity is deliberately independent of `phase`.
+    ///
+    /// SwiftUI writes `nil` to an item-backed sheet when its item disappears.
+    /// A Face ID transition changes `phase` from `.review` before the attended
+    /// ceremony has completed, so deriving sheet identity from that phase would
+    /// dismiss the sheet and reset the in-flight ceremony. Keeping the reviewed
+    /// public facts here holds the attended surface until the operator chooses
+    /// Cancel or Done; it neither persists nor authorises anything.
+    @Published private(set) var presentedReview: SiteRootDelegationReview?
     private let transport: any MonasSiteRootCeremonyTransport
     private let appAttestClient: AppleAppAttestClient
     private var pending: PendingPresentation?
@@ -46,15 +55,21 @@ final class SiteRootDelegationCoordinator: ObservableObject {
                )
             {
                 pending = .firstDevice(firstDevice)
-                phase = .review(SiteRootDelegationReview(firstDevice: firstDevice))
+                let review = SiteRootDelegationReview(firstDevice: firstDevice)
+                presentedReview = review
+                phase = .review(review)
                 return
             }
             let scanned = try SiteRootDelegationQRPresentationV1(qrText: qrText)
             pending = .delegation(scanned)
-            phase = .review(SiteRootDelegationReview(presentation: scanned.presentation))
+            let review = SiteRootDelegationReview(presentation: scanned.presentation)
+            presentedReview = review
+            phase = .review(review)
         } catch let failure as PlatformFailure {
+            presentedReview = nil
             phase = .failed(failure)
         } catch {
+            presentedReview = nil
             phase = .failed(.qrPayloadUnsupported)
         }
     }
@@ -105,6 +120,7 @@ final class SiteRootDelegationCoordinator: ObservableObject {
 
     func reset() {
         pending = nil
+        presentedReview = nil
         phase = .idle
     }
 

@@ -173,7 +173,7 @@ struct ScanView: View {
 
     private var siteRootReviewBinding: Binding<SiteRootDelegationReview?> {
         Binding {
-            if case let .review(review) = siteRootCeremony.phase { review } else { nil }
+            siteRootCeremony.presentedReview
         } set: { value in
             if value == nil {
                 resetSiteRoot()

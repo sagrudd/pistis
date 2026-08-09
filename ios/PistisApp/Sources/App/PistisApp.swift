@@ -15,7 +15,7 @@ struct PistisApp: App {
 
 private struct AppContainerView: View {
     @AppStorage("hasCompletedOnboarding") private var hasCompletedOnboarding = false
-    let siteRootTransport: any MonasSiteRootDelegationSubmitting
+    let siteRootTransport: any MonasSiteRootCeremonyTransport
 
     var body: some View {
         if hasCompletedOnboarding {

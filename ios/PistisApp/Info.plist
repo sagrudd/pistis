@@ -41,6 +41,8 @@
 	<string>Iv23lievHWZTGyot0BXa</string>
 	<key>PistisMonasSiteRootAuthorityOrigin</key>
 	<string>$(PISTIS_MONAS_SITE_ROOT_AUTHORITY_ORIGIN)</string>
+	<key>PistisMonasSiteRootAuthoritySPKISHA256</key>
+	<string>$(PISTIS_MONAS_SITE_ROOT_AUTHORITY_SPKI_SHA256)</string>
 	<key>NSCameraUsageDescription</key>
 	<string>Pistis scans authentication and approval challenges. Camera frames are not retained.</string>
 	<key>NSAppTransportSecurity</key>

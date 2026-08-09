@@ -3,7 +3,7 @@ import SwiftUI
 struct RootTabView: View {
     @Environment(\.scenePhase) private var scenePhase
     @StateObject private var enrollment = EnrollmentProjectionStore()
-    let siteRootTransport: any MonasSiteRootDelegationSubmitting
+    let siteRootTransport: any MonasSiteRootCeremonyTransport
 
     var body: some View {
         TabView {

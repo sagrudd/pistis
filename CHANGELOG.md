@@ -1,5 +1,21 @@
 # Changelog
 
+## [0.7.2] - 2026-08-09
+
+### Added
+
+- Compose the first Site Root device ceremony on iPhone: a strict Monas
+  genesis QR can create or reuse the Face-ID protected Site Root key, submit
+  its typed public registration with the genuine App Attest evidence only to
+  the fixed SPKI-pinned Monas authority, receive the bound one-time delegation,
+  and continue through the existing proof, assertion and custody flow.
+
+### Security
+
+- Require a compile-time Monas Site Root SPKI digest before any Site Root or
+  first-genesis request is possible. The QR never chooses an authority,
+  endpoint, pin, browser, credential, token or local identity.
+
 ## Unreleased
 
 ### Added

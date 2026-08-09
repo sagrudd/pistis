@@ -107,11 +107,27 @@ session credential.
 
 The signed Pistis build supplies exactly one public
 ``PistisMonasSiteRootAuthorityOrigin`` value through the Xcode
-``PISTIS_MONAS_SITE_ROOT_AUTHORITY_ORIGIN`` build setting. It must be an exact
-HTTPS origin without path, query, fragment, or credentials. It is not a
-secret, but it is a deployment commitment: QR, browser, local-network and
-user input cannot override it. An absent or unresolved build setting leaves
-the Site Root authority unavailable.
+``PISTIS_MONAS_SITE_ROOT_AUTHORITY_ORIGIN`` build setting and its exact
+``PistisMonasSiteRootAuthoritySPKISHA256`` value through
+``PISTIS_MONAS_SITE_ROOT_AUTHORITY_SPKI_SHA256``. The origin must be exact
+HTTPS without path, query, fragment, or credentials; the pin must be a
+canonical non-zero 32-byte base64url digest. Neither is a secret, but together
+they are a deployment commitment: QR, browser, local-network and user input
+cannot override them. An absent or unresolved setting leaves the Site Root
+authority unavailable.
+
+For the first Site Root device only, the existing unified scanner accepts the
+strict ``monas.site-root-genesis-registration-presentation.v1`` QR. The QR
+must name that compiled authority's one fixed registration route, an unexpired
+reference, Site Trust Domain, and exact 16-byte App Attest ceremony plus
+pre-derived 32-byte client-data hash. After explicit review, Face ID creates
+or reuses the separate Secure Enclave Site Root key and Pistis sends only its
+typed public registration and the genuine App Attest registration through the
+compiled SPKI pin. Monas atomically returns the one-time canonical delegation
+bound to that same public key; Pistis then follows the ordinary detached proof
+flow. This first-device POST is the sole App Attest registration: the
+subsequent Site Root bootstrap is assertion-only, so Pistis must never submit
+the registration a second time.
 
 After a signed Site Root proof receives the short-lived bootstrap, Pistis
 constructs the existing SPKI-pinned App Attest transport. The terminal

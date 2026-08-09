@@ -7,12 +7,12 @@ import PistisCore
 struct ScanView: View {
     @StateObject private var ceremony = ProductionCeremonyCoordinator()
     @StateObject private var siteRootCeremony: SiteRootDelegationCoordinator
-    private let siteRootTransport: any MonasSiteRootDelegationSubmitting
+    private let siteRootTransport: any MonasSiteRootCeremonyTransport
     @State private var scanning = true
     @State private var scanFailure: PlatformFailure?
     @State private var readiness = PasswordlessReadiness.checking
 
-    init(siteRootTransport: any MonasSiteRootDelegationSubmitting) {
+    init(siteRootTransport: any MonasSiteRootCeremonyTransport) {
         self.siteRootTransport = siteRootTransport
         _siteRootCeremony = StateObject(
             wrappedValue: SiteRootDelegationCoordinator(transport: siteRootTransport)
@@ -259,8 +259,12 @@ private struct SiteRootDelegationReviewView: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: MnSpacing.x4) {
                     MnSectionHeading(
-                        "Review Site Root delegation",
-                        orientation: "Face ID signs one exact, short-lived Monas delegation. It does not grant authority on its own."
+                        review.isFirstDevice
+                            ? "Register first Site Root device"
+                            : "Review Site Root delegation",
+                        orientation: review.isFirstDevice
+                            ? "Face ID creates or uses this iPhone’s protected Site Root key. Monas then issues one exact, short-lived delegation."
+                            : "Face ID signs one exact, short-lived Monas delegation. It does not grant authority on its own."
                     )
 
                     MnPanel {
@@ -273,13 +277,20 @@ private struct SiteRootDelegationReviewView: View {
                         }
                     }
 
-                    Text("Only redacted public facts are shown. Pistis will use the separate Secure Enclave Site Root key and will not export private material, use a software fallback, or claim Apple attestation.")
+                    Text(review.isFirstDevice
+                        ? "Only redacted public facts are shown. Pistis submits a typed public key and Apple App Attest registration to Monas’s fixed pinned authority. It does not export private material, use a software fallback, or create browser or local authority."
+                        : "Only redacted public facts are shown. Pistis will use the separate Secure Enclave Site Root key and will not export private material, use a software fallback, or claim Apple attestation.")
                         .font(.footnote)
                         .fixedSize(horizontal: false, vertical: true)
 
                     switch coordinator.phase {
                     case .review:
-                        MnPrimaryButton("Sign with Face ID", systemImage: "faceid") {
+                        MnPrimaryButton(
+                            review.isFirstDevice
+                                ? "Register with Face ID"
+                                : "Sign with Face ID",
+                            systemImage: "faceid"
+                        ) {
                             Task { await coordinator.approve() }
                         }
                         Button("Deny") {
@@ -289,6 +300,8 @@ private struct SiteRootDelegationReviewView: View {
                         .font(.headline)
                         .foregroundStyle(MnColor.danger)
                         .frame(maxWidth: .infinity, minHeight: MnMetrics.minimumTarget)
+                    case .registeringFirstDevice:
+                        MnStatusLabel(text: "Registering protected first device", kind: .warning)
                     case .signing:
                         MnStatusLabel(text: "Waiting for Face ID", kind: .warning)
                     case .attesting:

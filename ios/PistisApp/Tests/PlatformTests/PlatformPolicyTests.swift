@@ -122,6 +122,8 @@ final class PlatformPolicyTests: XCTestCase {
             infoDictionary: [
                 MonasSiteRootAuthorityConfiguration.infoDictionaryKey:
                     "https://monas.example.test",
+                MonasSiteRootAuthorityConfiguration.spkiInfoDictionaryKey:
+                    "ERERERERERERERERERERERERERERERERERERERERERE",
             ]
         )
         XCTAssertEqual(configuration.authorityOrigin.absoluteString, "https://monas.example.test")
@@ -135,7 +137,10 @@ final class PlatformPolicyTests: XCTestCase {
             "https://user@monas.example.test",
             "https://monas.example.test?selected=by-qr",
         ] {
-            XCTAssertThrowsError(try MonasSiteRootAuthorityConfiguration(rawValue: invalid))
+            XCTAssertThrowsError(try MonasSiteRootAuthorityConfiguration(
+                rawValue: invalid,
+                spkiB64URL: "ERERERERERERERERERERERERERERERERERERERERERE"
+            ))
         }
     }
 

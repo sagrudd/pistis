@@ -187,9 +187,17 @@ protocol MonasSiteRootDelegationSubmitting: Sendable {
         -> MonasAppAttestCeremonyBootstrap
 }
 
-struct UnavailableMonasSiteRootDelegationTransport: MonasSiteRootDelegationSubmitting {
+struct UnavailableMonasSiteRootDelegationTransport: MonasSiteRootCeremonyTransport {
+    let genesisAuthorityOrigin: URL? = nil
+
     func submit(_: MonasSiteRootDelegationSubmissionRequestV1) async throws
         -> MonasAppAttestCeremonyBootstrap
+    {
+        throw PlatformFailure.productionEnvelopeUnavailable
+    }
+
+    func registerGenesis(_: SiteRootGenesisRegistrationRequestV1) async throws
+        -> SiteRootDelegationPresentationV1
     {
         throw PlatformFailure.productionEnvelopeUnavailable
     }

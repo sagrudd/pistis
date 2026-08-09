@@ -4,6 +4,13 @@
 
 ### Added
 
+- Add the compatible iOS 0.5.0 Site Root success consumer. It accepts only
+  Monas's exact one-use App Attest bootstrap response after the signed proof,
+  keeps it in memory, and immediately sends the iPhone assertion through the
+  bootstrap's exact HTTPS-origin and SPKI-pinned transport. It accepts no
+  receipt, browser state, cookie, token, local identity, QR-derived endpoint,
+  fallback, persisted bootstrap, or completed-session claim.
+
 - Add the compatible ``pistis-monas`` 0.5.0 typed App Attest fact-to-session
   handoff. It binds only an opaque production-issued fact to exact Monas
   installation/principal/device/key/binding/generation/session facts and

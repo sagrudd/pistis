@@ -91,6 +91,16 @@ reject redirects, cookies, cache, non-202 responses, response bodies, generic
 COSE, browser/QR/free-text input, and local identity; HTTP acceptance does not
 claim a completed Monas session.
 
+The only Site Root submission success response is
+``monas.pistis.site-trust-app-attest-bootstrap.v1``. Pistis rejects a coarse
+receipt, every missing or additional field, an expired response, non-canonical
+base64url, zero or incorrectly sized bootstrap material, and an origin other
+than the enrolled Monas authority. The bootstrap is retained only on the call
+stack long enough to construct the existing SPKI-pinned assertion transport;
+it is never saved, displayed, logged, passed through a browser, or used as a
+session credential. A successful assertion submission remains only a ``202``
+delivery acknowledgement, never a Monas session.
+
 This entitlement neither enables a Monas route nor claims a production
 verification result. Before any route is
 enabled, obtain a redacted physical-iPhone interoperability record and satisfy

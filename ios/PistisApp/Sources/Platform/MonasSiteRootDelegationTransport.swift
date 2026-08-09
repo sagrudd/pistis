@@ -3,9 +3,9 @@ import Foundation
 /// The only currently documented Monas Site Root endpoints.
 ///
 /// The readiness endpoint is present to report a deliberately unavailable
-/// authority.  The submission endpoint is reserved by the v1 contract and is
-/// not enabled until Monas has durable session, replay, and App Attest
-/// adapters.  This client never substitutes another origin or endpoint.
+/// authority. The submission endpoint accepts a signed iPhone proof and, only
+/// on a successful proof consumption, returns the one-use App Attest bootstrap.
+/// This client never substitutes another origin or endpoint.
 enum MonasSiteRootDelegationEndpointV1 {
     static let readinessPath = "/auth/pistis/v1/site-root-delegation/readiness"
     static let submitPath = "/auth/pistis/site-root-delegations/v1/submit"
@@ -73,8 +73,9 @@ struct MonasSiteRootDelegationTransport: MonasSiteRootDelegationSubmitting,
         var request = URLRequest(url: endpoint)
         request.httpMethod = "GET"
         request.setValue("application/json", forHTTPHeaderField: "Accept")
+        request.setValue("no-store", forHTTPHeaderField: "Cache-Control")
         request.timeoutInterval = 15
-        let (data, response) = try await requestData(request, expectedURL: endpoint)
+        let (data, _) = try await requestData(request, expectedURL: endpoint)
         do {
             return try JSONDecoder().decode(MonasReadinessResponse.self, from: data).value
         } catch {
@@ -82,8 +83,11 @@ struct MonasSiteRootDelegationTransport: MonasSiteRootDelegationSubmitting,
         }
     }
 
+    /// Submits one detached iPhone proof and accepts only the exact bootstrap
+    /// response defined by Monas. The bootstrap remains a stack-local value and
+    /// must immediately construct the separately pinned App Attest transport.
     func submit(_ request: MonasSiteRootDelegationSubmissionRequestV1) async throws
-        -> MonasSiteRootDelegationSubmissionReceiptV1
+        -> MonasAppAttestCeremonyBootstrap
     {
         guard Self.matchesAuthority(
             request.endpoint,
@@ -105,14 +109,22 @@ struct MonasSiteRootDelegationTransport: MonasSiteRootDelegationSubmitting,
         urlRequest.httpBody = body
         urlRequest.setValue("application/json", forHTTPHeaderField: "Content-Type")
         urlRequest.setValue("application/json", forHTTPHeaderField: "Accept")
+        urlRequest.setValue("no-store", forHTTPHeaderField: "Cache-Control")
         urlRequest.timeoutInterval = 15
-        let (data, response) = try await requestData(urlRequest, expectedURL: request.endpoint)
+        guard let nowUnixMillis = Self.nowUnixMillis() else {
+            throw PlatformFailure.siteRootAuthorityUnavailable
+        }
+        let (data, _) = try await requestData(
+            urlRequest,
+            expectedURL: request.endpoint,
+            expectedStatus: 200
+        )
         do {
-            let receipt = try JSONDecoder().decode(MonasSubmissionReceipt.self, from: data)
-            guard receipt.reference == request.submission.reference else {
-                throw PlatformFailure.siteRootAuthorityUnavailable
-            }
-            return .init(reference: receipt.reference, accepted: receipt.state == .completed)
+            return try MonasAppAttestBootstrapResponse(
+                data: data,
+                authorityOrigin: authorityOrigin,
+                nowUnixMillis: nowUnixMillis
+            ).bootstrap
         } catch let failure as PlatformFailure {
             throw failure
         } catch {
@@ -127,13 +139,17 @@ struct MonasSiteRootDelegationTransport: MonasSiteRootDelegationSubmitting,
         return endpoint
     }
 
-    private func requestData(_ request: URLRequest, expectedURL: URL) async throws
+    private func requestData(
+        _ request: URLRequest,
+        expectedURL: URL,
+        expectedStatus: Int? = nil
+    ) async throws
         -> (Data, URLResponse)
     {
         do {
             let (data, response) = try await session.data(for: request)
             guard let http = response as? HTTPURLResponse,
-                  (200 ... 299).contains(http.statusCode),
+                  expectedStatus.map({ http.statusCode == $0 }) ?? (200 ... 299).contains(http.statusCode),
                   http.url == expectedURL,
                   data.count <= Self.maximumResponseBytes
             else { throw PlatformFailure.siteRootAuthorityUnavailable }
@@ -145,16 +161,22 @@ struct MonasSiteRootDelegationTransport: MonasSiteRootDelegationSubmitting,
         }
     }
 
-    private static func isValidOrigin(_ value: URL) -> Bool {
+    fileprivate static func isValidOrigin(_ value: URL) -> Bool {
         value.scheme == "https" && value.host != nil && value.user == nil
             && value.password == nil && value.query == nil && value.fragment == nil
-            && (value.path.isEmpty || value.path == "/")
+            && value.path.isEmpty
     }
 
     private static func matchesAuthority(_ value: URL, origin: URL, expectedPath: String) -> Bool {
         value.scheme == "https" && value.host == origin.host && value.port == origin.port
             && value.user == nil && value.password == nil && value.query == nil
             && value.fragment == nil && value.path == expectedPath
+    }
+
+    private static func nowUnixMillis() -> UInt64? {
+        let value = Date().timeIntervalSince1970 * 1_000
+        guard value.isFinite, value >= 0, value <= Double(UInt64.max) else { return nil }
+        return UInt64(value)
     }
 }
 
@@ -211,21 +233,115 @@ private struct MonasSubmissionRequest: Encodable {
     }
 }
 
-private struct MonasSubmissionReceipt: Decodable {
-    enum State: String, Decodable { case completed, denied, expired, cancelled }
-    let schema: String
-    let reference: String
-    let state: State
+/// Strict, redacted bootstrap response issued only after Monas atomically
+/// consumes the signed Site Root proof. It deliberately has no persistence or
+/// public initializer: callers can obtain the typed value only from the exact
+/// HTTPS response decoder below.
+private struct MonasAppAttestBootstrapResponse {
+    private static let schema = "monas.pistis.site-trust-app-attest-bootstrap.v1"
+    private static let maximumLifetimeMillis: UInt64 = 300_000
 
-    private enum CodingKeys: String, CodingKey, CaseIterable { case schema, reference, state }
-    init(from decoder: any Decoder) throws {
-        let untyped = try decoder.container(keyedBy: MonasSiteRootWireKey.self)
-        guard Set(untyped.allKeys.map(\.stringValue)) == Set(CodingKeys.allCases.map(\.rawValue)) else { throw DecodingError.dataCorruptedError(forKey: .schema, in: try decoder.container(keyedBy: CodingKeys.self), debugDescription: "unexpected receipt fields") }
-        let values = try decoder.container(keyedBy: CodingKeys.self)
-        schema = try values.decode(String.self, forKey: .schema)
-        reference = try values.decode(String.self, forKey: .reference)
-        state = try values.decode(State.self, forKey: .state)
-        guard schema == "monas.site-root-delegation-submission-receipt.v1", !reference.isEmpty, reference.utf8.count <= 128 else { throw DecodingError.dataCorruptedError(forKey: .schema, in: values, debugDescription: "invalid receipt") }
+    let bootstrap: MonasAppAttestCeremonyBootstrap
+
+    init(data: Data, authorityOrigin: URL, nowUnixMillis: UInt64) throws {
+        let decoder = JSONDecoder()
+        let response: WireResponse
+        do {
+            response = try decoder.decode(WireResponse.self, from: data)
+        } catch {
+            throw PlatformFailure.siteRootAuthorityUnavailable
+        }
+        guard response.schema == Self.schema,
+              let origin = URL(string: response.httpsOrigin),
+              MonasSiteRootDelegationTransport.isValidOrigin(origin),
+              response.httpsOrigin == origin.absoluteString,
+              origin.absoluteString == authorityOrigin.absoluteString,
+              let spki = Self.decodeCanonicalBase64URL(
+                  response.tlsSPKISHA256B64URL,
+                  exactLength: 32
+              ),
+              let ceremonyID = Self.decodeCanonicalBase64URL(
+                  response.ceremonyIDB64URL,
+                  exactLength: 16
+              ),
+              let challenge = Self.decodeCanonicalBase64URL(
+                  response.challengeDigestB64URL,
+                  exactLength: 32
+              ),
+              response.expiresAtUnixMillis > nowUnixMillis,
+              response.expiresAtUnixMillis - nowUnixMillis <= Self.maximumLifetimeMillis
+        else { throw PlatformFailure.siteRootAuthorityUnavailable }
+
+        do {
+            bootstrap = try MonasAppAttestCeremonyBootstrap(
+                httpsOrigin: origin,
+                tlsSPKISHA256: spki,
+                ceremonyID: ceremonyID,
+                challengeDigest: challenge
+            )
+        } catch {
+            throw PlatformFailure.siteRootAuthorityUnavailable
+        }
+    }
+
+    private struct WireResponse: Decodable {
+        let schema: String
+        let httpsOrigin: String
+        let tlsSPKISHA256B64URL: String
+        let ceremonyIDB64URL: String
+        let challengeDigestB64URL: String
+        let expiresAtUnixMillis: UInt64
+
+        private enum CodingKeys: String, CodingKey, CaseIterable {
+            case schema
+            case httpsOrigin = "https_origin"
+            case tlsSPKISHA256B64URL = "tls_spki_sha256_b64url"
+            case ceremonyIDB64URL = "ceremony_id_b64url"
+            case challengeDigestB64URL = "challenge_digest_b64url"
+            case expiresAtUnixMillis = "expires_at_unix_millis"
+        }
+
+        init(from decoder: any Decoder) throws {
+            let untyped = try decoder.container(keyedBy: MonasSiteRootWireKey.self)
+            guard Set(untyped.allKeys.map(\.stringValue))
+                == Set(CodingKeys.allCases.map(\.rawValue))
+            else {
+                throw DecodingError.dataCorruptedError(
+                    forKey: .schema,
+                    in: try decoder.container(keyedBy: CodingKeys.self),
+                    debugDescription: "unexpected bootstrap fields"
+                )
+            }
+            let values = try decoder.container(keyedBy: CodingKeys.self)
+            schema = try values.decode(String.self, forKey: .schema)
+            httpsOrigin = try values.decode(String.self, forKey: .httpsOrigin)
+            tlsSPKISHA256B64URL = try values.decode(String.self, forKey: .tlsSPKISHA256B64URL)
+            ceremonyIDB64URL = try values.decode(String.self, forKey: .ceremonyIDB64URL)
+            challengeDigestB64URL = try values.decode(String.self, forKey: .challengeDigestB64URL)
+            expiresAtUnixMillis = try values.decode(UInt64.self, forKey: .expiresAtUnixMillis)
+        }
+    }
+
+    private static func decodeCanonicalBase64URL(_ value: String, exactLength: Int) -> Data? {
+        guard !value.isEmpty,
+              value.utf8.allSatisfy({ byte in
+                  (byte >= 65 && byte <= 90) || (byte >= 97 && byte <= 122)
+                      || (byte >= 48 && byte <= 57) || byte == 45 || byte == 95
+              }),
+              value.count % 4 != 1
+        else { return nil }
+        let padding = String(repeating: "=", count: (4 - value.count % 4) % 4)
+        let standard = value.replacingOccurrences(of: "-", with: "+")
+            .replacingOccurrences(of: "_", with: "/") + padding
+        guard let decoded = Data(base64Encoded: standard),
+              decoded.count == exactLength,
+              !decoded.allSatisfy({ $0 == 0 }),
+              decoded.base64EncodedString()
+                  .replacingOccurrences(of: "+", with: "-")
+                  .replacingOccurrences(of: "/", with: "_")
+                  .replacingOccurrences(of: "=", with: "") == value
+        else { return nil }
+        return decoded
     }
 }
 

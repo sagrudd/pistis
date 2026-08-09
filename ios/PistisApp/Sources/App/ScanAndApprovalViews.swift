@@ -6,10 +6,18 @@ import PistisCore
 
 struct ScanView: View {
     @StateObject private var ceremony = ProductionCeremonyCoordinator()
-    @StateObject private var siteRootCeremony = SiteRootDelegationCoordinator()
+    @StateObject private var siteRootCeremony: SiteRootDelegationCoordinator
+    private let siteRootTransport: any MonasSiteRootDelegationSubmitting
     @State private var scanning = true
     @State private var scanFailure: PlatformFailure?
     @State private var readiness = PasswordlessReadiness.checking
+
+    init(siteRootTransport: any MonasSiteRootDelegationSubmitting) {
+        self.siteRootTransport = siteRootTransport
+        _siteRootCeremony = StateObject(
+            wrappedValue: SiteRootDelegationCoordinator(transport: siteRootTransport)
+        )
+    }
 
     var body: some View {
         ScrollView {
@@ -285,12 +293,14 @@ private struct SiteRootDelegationReviewView: View {
                         MnStatusLabel(text: "Waiting for Face ID", kind: .warning)
                     case .attesting:
                         MnStatusLabel(text: "Submitting device assertion", kind: .warning)
+                    case .rewrappingCustody:
+                        MnStatusLabel(text: "Waiting for custody Face ID", kind: .warning)
                     case .submitted:
                         MnStatusLabel(
-                            text: "Device assertion submitted to Monas",
+                            text: "Monas retained the protected session",
                             kind: .success
                         )
-                        Text("Monas must still verify and retain the assertion before it can issue a session.")
+                        Text("The exact custody rewrap was submitted to Monas's fixed authority route.")
                         MnPrimaryButton("Done") {
                             coordinator.reset()
                             dismiss()

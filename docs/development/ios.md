@@ -87,9 +87,10 @@ forms `mnemosyne.pistis.site-trust-app-attest-client-data.v1\\0 || digest`,
 hashes it with SHA-256, calls `DCAppAttestService.generateAssertion`, then
 posts strict JSON only to `/v1/pistis/site-trust/app-attest/assertion` on the
 pinned origin. Registration uses its distinct exact endpoint. Both transports
-reject redirects, cookies, cache, non-202 responses, response bodies, generic
-COSE, browser/QR/free-text input, and local identity; HTTP acceptance does not
-claim a completed Monas session.
+reject redirects, cookies, cache, generic COSE, browser/QR/free-text input,
+and local identity. Registration accepts only an empty ``202 no-store``;
+assertion accepts only the exact pinned terminal custody-presentation response
+and never exposes a Monas session credential.
 
 The only Site Root submission success response is
 ``monas.pistis.site-trust-app-attest-bootstrap.v1``. Pistis rejects a coarse
@@ -98,8 +99,34 @@ base64url, zero or incorrectly sized bootstrap material, and an origin other
 than the enrolled Monas authority. The bootstrap is retained only on the call
 stack long enough to construct the existing SPKI-pinned assertion transport;
 it is never saved, displayed, logged, passed through a browser, or used as a
-session credential. A successful assertion submission remains only a ``202``
-delivery acknowledgement, never a Monas session.
+session credential. The assertion result is a custody presentation only after
+Monas has retained its protected server-side session; it is never a browser or
+session credential.
+
+### Production Site Root composition
+
+The signed Pistis build supplies exactly one public
+``PistisMonasSiteRootAuthorityOrigin`` value through the Xcode
+``PISTIS_MONAS_SITE_ROOT_AUTHORITY_ORIGIN`` build setting. It must be an exact
+HTTPS origin without path, query, fragment, or credentials. It is not a
+secret, but it is a deployment commitment: QR, browser, local-network and
+user input cannot override it. An absent or unresolved build setting leaves
+the Site Root authority unavailable.
+
+After a signed Site Root proof receives the short-lived bootstrap, Pistis
+constructs the existing SPKI-pinned App Attest transport. The terminal
+assertion response is accepted only as the retained-session custody
+presentation. Pistis then performs the existing Face-ID-protected Secure
+Enclave rewrap and submits it only through the fixed custody endpoint. The
+bootstrap, presentation, rewrap seed, session and assertion are never stored,
+shown, or logged.
+
+The bootstrap's canonical ceremony identifier is supplied only as the sealed
+server bridge's registration correlation. The Site Trust Domain is read only
+from the exact signed canonical delegation bytes and must match them exactly.
+The 32-byte bootstrap challenge digest is passed directly to Apple App Attest
+registration as the server-owned client-data hash; Pistis must never derive,
+replace, or double-hash it.
 
 This entitlement neither enables a Monas route nor claims a production
 verification result. Before any route is

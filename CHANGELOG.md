@@ -4,6 +4,16 @@
 
 ### Added
 
+- Compose the iOS 0.7.1 production Site Root path at application startup:
+  only a signed build-time Monas authority origin may construct the existing
+  Site Root transport; QR text cannot select an authority. After the exact
+  proof and App Attest assertion, Pistis now consumes only the pinned terminal
+  custody presentation, requires Face ID for the existing Secure Enclave
+  rewrap, and submits it only to Monas's fixed custody endpoint. Missing
+  application configuration and every network or custody failure remain
+  unavailable; no fallback, session credential, local authority, or persisted
+  bootstrap is introduced.
+
 - Add the accepted iOS 0.7.0 retained-session custody-presentation relay
   consumer for Pistis #401. It accepts only Monas's exact terminal,
   SPKI-pinned App Attest response and binds its correlation/canonical challenge

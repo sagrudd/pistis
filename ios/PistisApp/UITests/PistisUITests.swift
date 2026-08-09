@@ -115,7 +115,7 @@ final class PistisUITests: XCTestCase {
         XCTAssertFalse(application.buttons["Deny"].exists)
     }
 
-    func testScannerPresentsSeparateSiteRootDelegationEntryPoint() {
+    func testScannerRoutesSiteRootWithoutASeparateCameraEntryPoint() {
         let application = XCUIApplication()
         application.launch()
         if application.buttons["Continue to Pistis"].exists {
@@ -123,8 +123,8 @@ final class PistisUITests: XCTestCase {
         }
         application.tabBars.buttons["Scan"].tap()
 
-        XCTAssertTrue(application.staticTexts["Site Root delegation"].exists)
-        XCTAssertTrue(application.buttons["Scan Site Root delegation"].exists)
+        XCTAssertTrue(application.staticTexts["Scan a Pistis or Monas request"].exists)
+        XCTAssertFalse(application.buttons["Scan Site Root delegation"].exists)
         XCTAssertFalse(application.buttons["Sign with Face ID"].exists)
     }
 }

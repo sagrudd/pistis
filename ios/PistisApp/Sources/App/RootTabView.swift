@@ -3,6 +3,7 @@ import SwiftUI
 struct RootTabView: View {
     @Environment(\.scenePhase) private var scenePhase
     @StateObject private var enrollment = EnrollmentProjectionStore()
+    let siteRootTransport: any MonasSiteRootDelegationSubmitting
 
     var body: some View {
         TabView {
@@ -29,7 +30,7 @@ struct RootTabView: View {
             }
 
             NavigationStack {
-                ScanView()
+                ScanView(siteRootTransport: siteRootTransport)
             }
             .tabItem {
                 Label("Scan", systemImage: "qrcode.viewfinder")

@@ -25,18 +25,24 @@ struct SiteRootDelegationPresentationV1: Sendable {
 
     let canonicalDelegationJSON: Data
     let deviceKeyID: String
+    /// The exact Site Trust Domain signed in canonical Monas delegation
+    /// bytes. It is exposed only to bind the separately server-issued App
+    /// Attest registration; it is never editable or inferred on the phone.
+    let siteTrustDomain: String
     let submitURL: URL
     let reference: String
 
     init(
         canonicalDelegationJSON: Data,
         deviceKeyID: String,
+        siteTrustDomain: String,
         submitURL: URL,
         reference: String
     ) throws {
         guard !canonicalDelegationJSON.isEmpty,
               canonicalDelegationJSON.count <= Self.maximumPayloadLength,
               Self.validIdentifier(deviceKeyID),
+              Self.validIdentifier(siteTrustDomain),
               Self.validIdentifier(reference),
               submitURL.scheme == "https",
               submitURL.user == nil,
@@ -53,11 +59,13 @@ struct SiteRootDelegationPresentationV1: Sendable {
         guard case let .string(schema)? = object["schema"], schema == Self.schema,
               case let .string(profile)? = object["proof_profile"], profile == Self.profile,
               case let .string(keyID)? = object["device_key_id"], keyID == deviceKeyID,
+              case let .string(domain)? = object["site_trust_domain"], domain == siteTrustDomain,
               case let .string(attestation)? = object["secure_enclave_attestation"],
               attestation == "not-asserted"
         else { throw PlatformFailure.invalidConfiguration }
         self.canonicalDelegationJSON = canonicalDelegationJSON
         self.deviceKeyID = deviceKeyID
+        self.siteTrustDomain = siteTrustDomain
         self.submitURL = submitURL
         self.reference = reference
     }
@@ -115,6 +123,7 @@ struct SiteRootDelegationQRPresentationV1: Sendable {
               case let .string(encoded)? = object["canonical_delegation_base64url"],
               let delegation = Self.decodeBase64URL(encoded),
               case let .string(keyID)? = object["device_key_id"],
+              let siteTrustDomain = Self.siteTrustDomain(in: delegation),
               case let .string(endpoint)? = object["submit_url"],
               let submitURL = URL(string: endpoint),
               case let .string(reference)? = object["reference"]
@@ -123,6 +132,7 @@ struct SiteRootDelegationQRPresentationV1: Sendable {
             presentation = try SiteRootDelegationPresentationV1(
                 canonicalDelegationJSON: delegation,
                 deviceKeyID: keyID,
+                siteTrustDomain: siteTrustDomain,
                 submitURL: submitURL,
                 reference: reference
             )
@@ -141,6 +151,18 @@ struct SiteRootDelegationQRPresentationV1: Sendable {
         let padding = String(repeating: "=", count: (4 - value.count % 4) % 4)
         return Data(base64Encoded: value.replacingOccurrences(of: "-", with: "+")
             .replacingOccurrences(of: "_", with: "/") + padding)
+    }
+
+    /// Reads no QR-wrapper authority. The value is accepted only when it is
+    /// present in the exact canonical delegation that the phone later signs.
+    private static func siteTrustDomain(in canonicalDelegation: Data) -> String? {
+        guard let object = try? StrictJSONObject(
+            data: canonicalDelegation,
+            maximumBytes: SiteRootDelegationPresentationV1.maximumPayloadLength
+        ).values,
+        case let .string(domain)? = object["site_trust_domain"]
+        else { return nil }
+        return domain
     }
 }
 

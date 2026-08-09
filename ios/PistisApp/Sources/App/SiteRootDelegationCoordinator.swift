@@ -11,6 +11,7 @@ final class SiteRootDelegationCoordinator: ObservableObject {
         case review(SiteRootDelegationReview)
         case signing
         case attesting
+        case rewrappingCustody
         case submitted
         case failed(PlatformFailure)
     }
@@ -63,8 +64,23 @@ final class SiteRootDelegationCoordinator: ObservableObject {
             // browser state, or a session.
             phase = .attesting
             let appAttestTransport = try MonasAppAttestTransport(bootstrap: bootstrap)
+            let registration = try await appAttestClient.prepareRegistration(
+                ceremonyID: Self.base64URL(bootstrap.ceremonyID),
+                siteTrustDomain: qrPresentation.presentation.siteTrustDomain,
+                clientDataHash: bootstrap.challengeDigest
+            )
+            try await appAttestTransport.submitRegistration(registration)
             let assertion = try await appAttestClient.prepareAssertion(bootstrap: bootstrap)
-            try await appAttestTransport.submitAssertion(assertion)
+            let presentation = try await appAttestTransport.submitAssertionForCustodyPresentation(
+                assertion,
+                nowUnixSeconds: Self.nowUnixSeconds()
+            )
+            phase = .rewrappingCustody
+            let rewrap = try SecureEnclaveIphoneMediatedCustodyRewrapProducer(
+                authenticationReason: "Unlock and rewrap the exact Thesaurophylax custody record"
+            )
+            let rewrapSubmission = try rewrap.produce(presentation: presentation)
+            try await appAttestTransport.submitCustodyRewrap(rewrapSubmission)
             phase = .submitted
         } catch let failure as PlatformFailure {
             phase = .failed(failure)
@@ -76,6 +92,21 @@ final class SiteRootDelegationCoordinator: ObservableObject {
     func reset() {
         qrPresentation = nil
         phase = .idle
+    }
+
+    private static func nowUnixSeconds() throws -> UInt64 {
+        let value = Date().timeIntervalSince1970
+        guard value.isFinite, value >= 0, value <= Double(UInt64.max) else {
+            throw PlatformFailure.custodyRewrapUnavailable
+        }
+        return UInt64(value)
+    }
+
+    private static func base64URL(_ value: Data) -> String {
+        value.base64EncodedString()
+            .replacingOccurrences(of: "+", with: "-")
+            .replacingOccurrences(of: "/", with: "_")
+            .replacingOccurrences(of: "=", with: "")
     }
 }
 

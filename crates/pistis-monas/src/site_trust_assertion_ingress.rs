@@ -522,15 +522,25 @@ pub fn verify_custody_rotation_app_attest_assertion_v1(
 /// Redacted, non-secret failure stage for production custody assertion audit.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum CustodyRotationAppAttestFailureStageV1 {
+    /// The server-owned request failed its canonical binding validation.
     RequestBinding,
+    /// The ceremony identifier or server-owned validity window did not match.
     CeremonyOrLifetime,
+    /// The durable registered key did not match the request key identifier.
     RegisteredKeyBinding,
+    /// Apple's assertion object was not structurally canonical.
     AssertionEncoding,
+    /// The production application hash or authenticator flags did not match.
     ApplicationBinding,
+    /// Apple's monotonic counter was malformed or stale.
     Counter,
+    /// Apple's validation-category or bundle-version extensions did not match.
     AppleExtensions,
+    /// The durable registered public key was unusable.
     RegisteredKey,
+    /// Apple's assertion signature was not canonical DER.
     SignatureEncoding,
+    /// The assertion signature did not verify against the registered key.
     SignatureVerification,
 }
 

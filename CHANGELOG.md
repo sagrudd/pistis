@@ -4,10 +4,10 @@
 
 ### Changed
 
-- Correct App Attest assertion flags to Apple's non-WebAuthn profile: accept
-  only `0x00` for the exact legacy shape and `0x80` for the exact
-  extension-bearing shape, while reporting redacted length, RP-ID, flags, CBOR,
-  validation-category, and bundle-version failure stages.
+- Validate App Attest assertion flags by contract shape: treat user presence as
+  advisory, require extension data only for the extension-bearing shape, deny
+  reserved bits and mixed shapes, and report redacted length, flag, RP-ID,
+  CBOR, validation-category, and bundle-version failure details.
 - Accept Apple's closed 37-byte iOS 26 App Attest assertion authenticator data
   only with the exact registered application RP-ID hash, legacy flags, fresh
   counter, and valid signature, while retaining mandatory strict validation of

@@ -4,6 +4,36 @@ import XCTest
 @testable import Pistis
 
 final class PlatformPolicyTests: XCTestCase {
+    @MainActor
+    func testCommittedProviderIdentitySkipsRepeatedGitHubPrompt() async {
+        let flow = FirstDeviceEnrolmentFlow()
+        let prompt = GitHubDeviceAuthorizationPrompt(
+            userCode: "REC0-VERY",
+            verificationURI: URL(string: "https://github.com/login/device")!,
+            expiresInSeconds: 300,
+            intervalSeconds: 1
+        )
+
+        await flow.applyProviderStatus(
+            .verified(
+                numericSubject: 3_848_500,
+                displayLogin: "sagrudd",
+                policyGeneration: 1,
+                authorityChallenge: Data(repeating: 0x44, count: 32),
+                authorityChallengeExpiresAtMilliseconds: 1_900_000_000_000
+            ),
+            pendingPrompt: prompt
+        )
+
+        XCTAssertNil(flow.prompt)
+        XCTAssertEqual(flow.verifiedSubject, 3_848_500)
+        XCTAssertEqual(flow.displayLogin, "sagrudd")
+        XCTAssertEqual(
+            flow.status,
+            "Review the verified GitHub account before enrolling"
+        )
+    }
+
     func testPKCEFixture() throws {
         let verifier = "dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk"
         XCTAssertEqual(

@@ -315,6 +315,24 @@ final class AppleAppAttestClient: @unchecked Sendable {
         )
     }
 
+    /// Produces the exact fresh custody-rotation assertion supplied by Monas.
+    /// The server has already purpose-separated and hashed the challenge, so
+    /// this path must neither rehash nor substitute bootstrap/session material.
+    func prepareCustodyRotationAssertion(
+        challenge: CustodyRotationAppAttestChallengeV2
+    ) async throws -> AppleAppAttestAssertionEnvelope {
+        guard service.isSupported, let keyID = existingKeyID(),
+              let decodedKeyID = Data(base64Encoded: keyID),
+              decodedKeyID == challenge.keyID
+        else { throw PlatformFailure.appAttestUnavailable }
+        let assertion = try await service.generateAssertion(
+            keyID, clientDataHash: challenge.clientDataHash
+        )
+        return try AppleAppAttestAssertionEnvelope(
+            ceremonyID: challenge.ceremonyID, assertion: assertion
+        )
+    }
+
     private func existingOrNewKeyID() async throws -> String {
         if let existing = existingKeyID() {
             return existing

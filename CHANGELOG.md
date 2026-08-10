@@ -12,6 +12,10 @@
   configuration, expiry, package manifest, and monotonic counter bindings. The
   distinct result cannot carry a device, principal, human-authority fact, session
   identity, replayed Apple registration object, raw acceptance, or fallback.
+- Require installation continuation to fetch a fresh, strict custody-rotation
+  challenge over the retained SPKI-pinned origin, bind it to the registered App
+  Attest key, call Apple's real `generateAssertion` with the exact server hash,
+  and receive the assertion ingress's accepted response before v2 begin/complete.
 
 ## [0.8.2] - 2026-08-10
 

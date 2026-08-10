@@ -80,13 +80,15 @@ persist the challenge, attestation object, or any private key; the operating
 system owns the private App Attest key. Pistis stores only the opaque Apple key
 identifier in a device-only Keychain item.
 
-For an assertion, the only accepted input is the verified, server-issued
-Monas ceremony bootstrap: exact HTTPS origin and SPKI SHA-256, a non-zero
-16-byte ceremony identifier, and a non-zero 32-byte challenge digest. Pistis
-forms `mnemosyne.pistis.site-trust-app-attest-client-data.v1\\0 || digest`,
-hashes it with SHA-256, calls `DCAppAttestService.generateAssertion`, then
-posts strict JSON only to `/v1/pistis/site-trust/app-attest/assertion` on the
-pinned origin. Registration uses its distinct exact endpoint. Both transports
+For custody rotation, Pistis first fetches the fresh server-owned challenge
+from the fixed `authority-custody-rotation/v2/assertion-challenge` route over
+the already retained HTTPS origin and SPKI pin. It strictly validates the
+installation, Site Trust, production App ID, registered key, ceremony, issue
+time, expiry, and exact 32-byte client-data hash. It passes that hash unchanged
+to `DCAppAttestService.generateAssertion`, posts strict JSON only to
+`/v1/pistis/site-trust/app-attest/assertion`, and requires an empty `202
+no-store` response before invoking v2 begin/complete. Registration uses its
+distinct exact endpoint. Both transports
 reject redirects, cookies, cache, generic COSE, browser/QR/free-text input,
 and local identity. Registration accepts only an empty ``202 no-store``;
 assertion accepts only the exact pinned terminal custody-presentation response

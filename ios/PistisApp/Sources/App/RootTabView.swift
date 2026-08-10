@@ -13,6 +13,7 @@ struct RootTabView: View {
     @StateObject private var enrollment = EnrollmentProjectionStore()
     @State private var reconciliationMessage: String?
     @State private var selectedTab = Tab.identities
+    @State private var providerEnrolmentRequested = false
     let siteRootTransport: any MonasSiteRootCeremonyTransport
 
     var body: some View {
@@ -21,7 +22,8 @@ struct RootTabView: View {
                 IdentitiesView(
                     identities: projection.identities,
                     loadFailure: enrollment.state == .failed,
-                    forgetExpired: forgetExpiredIdentity
+                    forgetExpired: forgetExpiredIdentity,
+                    providerEnrolmentRequested: $providerEnrolmentRequested
                 )
             }
             .tabItem {
@@ -35,7 +37,8 @@ struct RootTabView: View {
                     loadFailure: enrollment.state == .failed,
                     forgetExpired: forgetExpired,
                     recoverSiteRootInstallation: recoverSiteRootInstallation,
-                    reconciliationMessage: reconciliationMessage
+                    reconciliationMessage: reconciliationMessage,
+                    startProviderEnrolment: startProviderEnrolment
                 )
             }
             .tabItem {
@@ -154,6 +157,18 @@ struct RootTabView: View {
             } catch {
                 reconciliationMessage = "Pistis could not safely recover Site Root setup progress."
             }
+        }
+    }
+
+    private func startProviderEnrolment() {
+        selectedTab = .identities
+        // Let the Identities NavigationStack become visible before presenting
+        // the existing signed-presentation flow. The redacted local Site Root
+        // record never supplies an endpoint, certificate pin, invitation or
+        // provider authority.
+        Task { @MainActor in
+            await Task.yield()
+            providerEnrolmentRequested = true
         }
     }
 

@@ -4,6 +4,7 @@ struct IdentitiesView: View {
     let identities: [IdentitySummary]
     let loadFailure: Bool
     let forgetExpired: (UUID) async throws -> Void
+    @Binding var providerEnrolmentRequested: Bool
 
     var body: some View {
         ScrollView {
@@ -89,12 +90,14 @@ struct IdentitiesView: View {
                 forgetExpired: forgetExpired
             )
         }
-        .navigationDestination(for: FirstDeviceEnrolmentRoute.self) { _ in
+        .navigationDestination(isPresented: $providerEnrolmentRequested) {
             FirstDeviceEnrolmentView()
         }
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
-                NavigationLink(value: FirstDeviceEnrolmentRoute()) {
+                Button {
+                    providerEnrolmentRequested = true
+                } label: {
                     Label("Enrol first device", systemImage: "plus")
                         .frame(minWidth: MnMetrics.minimumTarget, minHeight: MnMetrics.minimumTarget)
                 }
@@ -104,8 +107,6 @@ struct IdentitiesView: View {
         .mnScreenBackground()
     }
 }
-
-private struct FirstDeviceEnrolmentRoute: Hashable {}
 
 private struct IdentityDetailView: View {
     let identity: IdentitySummary

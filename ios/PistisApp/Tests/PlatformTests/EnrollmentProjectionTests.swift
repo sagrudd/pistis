@@ -234,6 +234,32 @@ final class EnrollmentProjectionTests: XCTestCase {
         )
     }
 
+    func testSetupInProgressInstallationOffersOnlyIdentitySetupContinuation() throws {
+        let installation = try IncompleteSiteRootInstallation(
+            authorityHost: "monas.example.test",
+            redactedReference: "abc123…def4",
+            recordedAt: Date(timeIntervalSince1970: 1_000)
+        )
+        let projection = EnrollmentProjection(
+            retainedHistory: [],
+            incompleteSiteRootInstallations: [installation]
+        )
+
+        XCTAssertEqual(
+            InstallationDetailAction(installation: try XCTUnwrap(projection.installations.first)),
+            .continueIdentitySetup
+        )
+    }
+
+    func testTrustedInstallationDoesNotOfferIdentitySetupContinuation() throws {
+        let projection = EnrollmentProjection(enrollment: try fixtureEnrollment())
+
+        XCTAssertEqual(
+            InstallationDetailAction(installation: try XCTUnwrap(projection.installations.first)),
+            .none
+        )
+    }
+
     func testLocalForgetPolicyNeverAllowsCurrentActiveTrust() {
         let now = Date(timeIntervalSince1970: 1_000)
 

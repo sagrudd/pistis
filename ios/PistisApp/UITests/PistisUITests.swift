@@ -92,6 +92,14 @@ final class PistisUITests: XCTestCase {
         XCTAssertTrue(application.buttons["Enrol first device"].exists)
         XCTAssertTrue(application.buttons["Enrol first device"].isEnabled)
         XCTAssertFalse(application.buttons["Verify with GitHub"].exists)
+
+        application.buttons["Enrol first device"].tap()
+        XCTAssertTrue(application.staticTexts["First device"].waitForExistence(timeout: 5))
+        XCTAssertTrue(
+            application.staticTexts[
+                "The signed invitation, server origin, application configuration and expiry are verified before Pistis contacts the server."
+            ].exists
+        )
     }
 
     func testScannerDoesNotPresentUnverifiedInputAsApproval() {

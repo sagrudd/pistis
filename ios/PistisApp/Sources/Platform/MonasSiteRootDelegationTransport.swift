@@ -59,6 +59,12 @@ struct MonasSiteRootDelegationTransport: MonasSiteRootCeremonyTransport,
     var genesisAuthorityOrigin: URL? { authorityOrigin }
     var authorityHost: String? { authorityOrigin.host }
 
+    enum AuthorityCustodyStatusV2: Equatable {
+        case initialRotationRequired
+        case recoveryRequired
+        case ready
+    }
+
     init(
         authorityOrigin: URL,
         expectedSPKISHA256: Data,
@@ -96,6 +102,34 @@ struct MonasSiteRootDelegationTransport: MonasSiteRootCeremonyTransport,
             return try JSONDecoder().decode(MonasReadinessResponse.self, from: data).value
         } catch {
             throw PlatformFailure.siteRootAuthorityUnavailable
+        }
+    }
+
+    func authorityCustodyStatusV2() async throws -> AuthorityCustodyStatusV2 {
+        let endpoint = try endpoint(
+            path: "/v1/pistis/site-trust/authority-custody/v2/status"
+        )
+        var request = URLRequest(url: endpoint)
+        request.httpMethod = "GET"
+        request.setValue("application/json", forHTTPHeaderField: "Accept")
+        request.setValue("no-store", forHTTPHeaderField: "Cache-Control")
+        request.timeoutInterval = 15
+        let (data, response) = try await requestData(
+            request, expectedURL: endpoint, expectedStatus: 200
+        )
+        guard data.count <= 1_024,
+              (response as? HTTPURLResponse)?.value(forHTTPHeaderField: "Cache-Control")?
+                  .lowercased().contains("no-store") == true,
+              let object = try JSONSerialization.jsonObject(with: data) as? [String: Any],
+              Set(object.keys) == ["schema", "state"],
+              object["schema"] as? String == "monas.first-authority-custody-status.v2",
+              let state = object["state"] as? String
+        else { throw PlatformFailure.siteRootAuthorityUnavailable }
+        switch state {
+        case "initial-rotation-required": return .initialRotationRequired
+        case "recovery-required": return .recoveryRequired
+        case "ready": return .ready
+        default: throw PlatformFailure.siteRootAuthorityUnavailable
         }
     }
 

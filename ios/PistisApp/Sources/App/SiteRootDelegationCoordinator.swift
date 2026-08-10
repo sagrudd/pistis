@@ -32,6 +32,7 @@ final class SiteRootDelegationCoordinator: ObservableObject {
     @Published private(set) var presentedReview: SiteRootDelegationReview?
     private let transport: any MonasSiteRootCeremonyTransport
     private let appAttestClient: AppleAppAttestClient
+    private let authorityCustodyMode: FirstAuthorityCustodyModeV2
     private var pending: PendingPresentation?
 
     private enum PendingPresentation {
@@ -41,10 +42,12 @@ final class SiteRootDelegationCoordinator: ObservableObject {
 
     init(
         transport: any MonasSiteRootCeremonyTransport = UnavailableMonasSiteRootDelegationTransport(),
-        appAttestClient: AppleAppAttestClient = AppleAppAttestClient()
+        appAttestClient: AppleAppAttestClient = AppleAppAttestClient(),
+        authorityCustodyMode: FirstAuthorityCustodyModeV2 = .rotation
     ) {
         self.transport = transport
         self.appAttestClient = appAttestClient
+        self.authorityCustodyMode = authorityCustodyMode
     }
 
     func accept(qrText: String) {
@@ -159,14 +162,22 @@ final class SiteRootDelegationCoordinator: ObservableObject {
         let rotation = try SecureEnclaveFirstAuthorityCustodyProducerV2(
             authenticationReason: "Approve this exact first-authority custody rotation"
         )
-        let commitment = try rotation.prepareInitialRotation()
-        let presentation = try await appAttestTransport.beginFirstAuthorityCustodyRotationV2(
-            commitment, nowUnixSeconds: Self.nowUnixSeconds()
-        )
-        let rotationSubmission = try rotation.completeInitialRotation(presentation)
-        _ = try await appAttestTransport.completeFirstAuthorityCustodyRotationV2(
-            rotationSubmission
-        )
+        switch authorityCustodyMode {
+        case .rotation:
+            let commitment = try rotation.prepareInitialRotation()
+            let presentation = try await appAttestTransport.beginFirstAuthorityCustodyRotationV2(
+                commitment, nowUnixSeconds: Self.nowUnixSeconds()
+            )
+            let submission = try rotation.completeInitialRotation(presentation)
+            _ = try await appAttestTransport.completeFirstAuthorityCustodyRotationV2(submission)
+        case .recovery:
+            let commitment = try rotation.retainedRecoveryCommitment()
+            let presentation = try await appAttestTransport.beginFirstAuthorityCustodyRecoveryV2(
+                expectedCommitment: commitment, nowUnixSeconds: Self.nowUnixSeconds()
+            )
+            let submission = try rotation.completeRecovery(presentation)
+            _ = try await appAttestTransport.completeFirstAuthorityCustodyRecoveryV2(submission)
+        }
         if let review = presentedReview {
             try SiteRootInstallationRepository.shared.recordAuthorityCustodyCompleted(
                 authorityHost: review.destination

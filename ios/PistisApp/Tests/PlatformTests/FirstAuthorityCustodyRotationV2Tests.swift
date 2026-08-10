@@ -154,6 +154,58 @@ final class FirstAuthorityCustodyRotationV2Tests: XCTestCase {
         ])
     }
 
+    func testRecoveryTranscriptMatchesThesaurophylaxFixture() throws {
+        let value = try recoveryFixture()
+        let transcript = try value.canonicalTranscript()
+        XCTAssertEqual(
+            Data(SHA256.hash(data: transcript)).hexadecimal,
+            "bc565540e26cd1a185d1dfe88cf3041c6d4df11c1cc1d88993663a19ef8d48a1"
+        )
+        let commitment = try fixtureIdentity()
+        let decoded = try FirstAuthorityCustodyRotationV2Wire.recoveryPresentation(
+            data: try recoveryWireData(), expectedDeviceKeyID: commitment.deviceKeyID,
+            expectedEnrolledPublicKey: commitment.enrolledDevicePublicSEC1,
+            expectedRecoveryCommitment: commitment.recoverySeedEd25519PublicKey,
+            nowUnixSeconds: 99
+        )
+        XCTAssertEqual(try decoded.canonicalTranscript(), transcript)
+    }
+
+    func testRecoveryWireIsPurposeSeparatedAndRejectsSubstitution() throws {
+        XCTAssertEqual(
+            try jsonKeys(JSONEncoder().encode(
+                FirstAuthorityCustodyRotationV2Wire.RecoveryBegin()
+            )), ["schema"]
+        )
+        let complete = try JSONEncoder().encode(
+            FirstAuthorityCustodyRotationV2Wire.RecoveryComplete(
+                FirstAuthorityCustodySubmissionV2(
+                    correlation: Data(repeating: 1, count: 16),
+                    detachedCOSESign1: Data(repeating: 2, count: 80),
+                    rewrappedSeedCiphertext: Data(repeating: 3, count: 60)
+                )
+            )
+        )
+        let object = try XCTUnwrap(JSONSerialization.jsonObject(with: complete) as? [String: Any])
+        XCTAssertEqual(
+            object["schema"] as? String,
+            FirstAuthorityCustodyRotationV2Wire.recoveryCompleteSchema
+        )
+
+        var presentation = try XCTUnwrap(
+            JSONSerialization.jsonObject(with: recoveryWireData()) as? [String: Any]
+        )
+        presentation["schema"] = FirstAuthorityCustodyRotationV2Wire.presentationSchema
+        let identity = try fixtureIdentity()
+        XCTAssertThrowsError(try FirstAuthorityCustodyRotationV2Wire.recoveryPresentation(
+            data: JSONSerialization.data(withJSONObject: presentation),
+            expectedDeviceKeyID: identity.deviceKeyID,
+            expectedEnrolledPublicKey: identity.enrolledDevicePublicSEC1,
+            expectedRecoveryCommitment: identity.recoverySeedEd25519PublicKey,
+            nowUnixSeconds: 99
+        ))
+    }
+
     private func jsonKeys(_ data: Data) throws -> Set<String> {
         Set(try XCTUnwrap(JSONSerialization.jsonObject(with: data) as? [String: Any]).keys)
     }
@@ -178,6 +230,44 @@ final class FirstAuthorityCustodyRotationV2Tests: XCTestCase {
             "site_root_proof_sha256_b64url": base64URL(Data(repeating: 7, count: 32)),
             "delegation_serial": "delegation-v2",
             "expires_at_unix_seconds": 100,
+        ]
+        return try JSONSerialization.data(withJSONObject: object, options: [.sortedKeys])
+    }
+
+    private func recoveryFixture() throws -> FirstAuthorityRecoveryPresentationV2 {
+        try FirstAuthorityRecoveryPresentationV2(
+            correlation: Data(repeating: 1, count: 16), identity: fixtureIdentity(),
+            hostEphemeralPublicSEC1: enrolledPublicKey(),
+            encryptedRecordSHA256: Data(repeating: 8, count: 32),
+            authorityContextSHA256: Data(repeating: 9, count: 32),
+            encryptedRecord: Data(repeating: 10, count: 40),
+            delegationSerial: "delegation-v2", expiresAtUnixSeconds: 100
+        )
+    }
+
+    private func recoveryWireData() throws -> Data {
+        let value = try recoveryFixture()
+        let object: [String: Any] = [
+            "schema": FirstAuthorityCustodyRotationV2Wire.recoveryPresentationSchema,
+            "purpose": FirstAuthorityCustodyPurposeV2.recovery,
+            "correlation_b64url": base64URL(value.correlation),
+            "canonical_transcript_b64url": base64URL(try value.canonicalTranscript()),
+            "site_trust_domain_id": value.identity.siteTrustDomain,
+            "custody_generation": value.identity.custodyGeneration,
+            "device_key_id": value.identity.deviceKeyID,
+            "enrolled_device_public_sec1_b64url": base64URL(
+                value.identity.enrolledDevicePublicSEC1
+            ),
+            "recovery_seed_ed25519_public_key_b64url": base64URL(
+                value.identity.recoverySeedEd25519PublicKey
+            ),
+            "revocation_generation": value.identity.revocationGeneration,
+            "host_ephemeral_public_sec1_b64url": base64URL(value.hostEphemeralPublicSEC1),
+            "encrypted_record_sha256_b64url": base64URL(value.encryptedRecordSHA256),
+            "authority_context_sha256_b64url": base64URL(value.authorityContextSHA256),
+            "encrypted_record_b64url": base64URL(value.encryptedRecord),
+            "delegation_serial": value.delegationSerial,
+            "expires_at_unix_seconds": value.expiresAtUnixSeconds,
         ]
         return try JSONSerialization.data(withJSONObject: object, options: [.sortedKeys])
     }

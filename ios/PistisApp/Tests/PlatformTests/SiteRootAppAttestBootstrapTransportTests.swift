@@ -76,6 +76,41 @@ final class SiteRootAppAttestBootstrapTransportTests: XCTestCase {
         try await assertSubmissionDenied(response: extended)
     }
 
+    func testAuthorityCustodyStatusUsesOnlyFixedNoStoreState() async throws {
+        let response = Data(
+            #"{"schema":"monas.first-authority-custody-status.v2","state":"recovery-required"}"#.utf8
+        )
+        BootstrapURLProtocol.configure(response: response, status: 200)
+        let configuration = URLSessionConfiguration.ephemeral
+        configuration.protocolClasses = [BootstrapURLProtocol.self]
+        let transport = try MonasSiteRootDelegationTransport(
+            authorityOrigin: try XCTUnwrap(URL(string: "https://monas.example.test")),
+            expectedSPKISHA256: Data(repeating: 0x11, count: 32),
+            configuration: configuration
+        )
+        let status = try await transport.authorityCustodyStatusV2()
+        XCTAssertEqual(status, .recoveryRequired)
+        let request = try XCTUnwrap(BootstrapURLProtocol.requests().first)
+        XCTAssertEqual(
+            request.url?.path, "/v1/pistis/site-trust/authority-custody/v2/status"
+        )
+        XCTAssertEqual(request.httpMethod, "GET")
+        XCTAssertNil(request.value(forHTTPHeaderField: "Cookie"))
+        XCTAssertNil(request.value(forHTTPHeaderField: "Authorization"))
+
+        BootstrapURLProtocol.configure(
+            response: Data(
+                #"{"schema":"monas.first-authority-custody-status.v2","state":"unknown"}"#.utf8
+            ), status: 200
+        )
+        do {
+            _ = try await transport.authorityCustodyStatusV2()
+            XCTFail("unknown custody status unexpectedly selected a mode")
+        } catch {
+            XCTAssertEqual(error as? PlatformFailure, .siteRootAuthorityUnavailable)
+        }
+    }
+
     func testInitialStaticCeremonyAcceptsOnlyAnEmpty204Completion() async throws {
         BootstrapURLProtocol.configure(response: Data(), status: 204)
         let configuration = URLSessionConfiguration.ephemeral
@@ -243,7 +278,7 @@ private final class BootstrapURLProtocol: URLProtocol, @unchecked Sendable {
             url: request.url!,
             statusCode: assertion ? 202 : configuredStatus,
             httpVersion: "HTTP/1.1",
-            headerFields: assertion ? ["Cache-Control": "no-store"] : nil
+            headerFields: ["Cache-Control": "no-store"]
         )!
         client?.urlProtocol(self, didReceive: response, cacheStoragePolicy: .notAllowed)
         if !assertion {

@@ -511,36 +511,75 @@ pub fn verify_custody_rotation_app_attest_assertion_v1(
     submission: &SiteTrustAppAttestMobileSubmissionV1,
     now_unix_seconds: u64,
 ) -> Result<CustodyRotationAppAttestOutcomeV1, SiteTrustAppAttestAssertionIngressErrorV1> {
-    acceptance.request.validate()?;
+    verify_custody_rotation_app_attest_assertion_diagnostic_v1(
+        acceptance,
+        submission,
+        now_unix_seconds,
+    )
+    .map_err(|_| SiteTrustAppAttestAssertionIngressErrorV1::Denied)
+}
+
+/// Redacted, non-secret failure stage for production custody assertion audit.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum CustodyRotationAppAttestFailureStageV1 {
+    RequestBinding,
+    CeremonyOrLifetime,
+    RegisteredKeyBinding,
+    AssertionEncoding,
+    ApplicationBinding,
+    Counter,
+    AppleExtensions,
+    RegisteredKey,
+    SignatureEncoding,
+    SignatureVerification,
+}
+
+/// Verifies the same fail-closed assertion while preserving only its safe
+/// failure stage for a protected service journal. No assertion bytes, keys,
+/// identifiers, counters, hashes, or caller text are exposed by the error.
+pub fn verify_custody_rotation_app_attest_assertion_diagnostic_v1(
+    acceptance: &ServerHeldCustodyRotationAppAttestAcceptanceV1,
+    submission: &SiteTrustAppAttestMobileSubmissionV1,
+    now_unix_seconds: u64,
+) -> Result<CustodyRotationAppAttestOutcomeV1, CustodyRotationAppAttestFailureStageV1> {
+    acceptance
+        .request
+        .validate()
+        .map_err(|_| CustodyRotationAppAttestFailureStageV1::RequestBinding)?;
     if submission.ceremony_id != acceptance.request.ceremony_id
         || now_unix_seconds < acceptance.request.issued_at_unix_seconds
         || now_unix_seconds >= acceptance.request.expires_at_unix_seconds
-        || <[u8; 32]>::from(Sha256::digest(acceptance.registered_public_key_sec1))
-            != *acceptance.request.key_id.as_bytes()
     {
-        return Err(SiteTrustAppAttestAssertionIngressErrorV1::Denied);
+        return Err(CustodyRotationAppAttestFailureStageV1::CeremonyOrLifetime);
     }
-    let decoded = decode_assertion_object(submission.assertion.transient_bytes())?;
+    if <[u8; 32]>::from(Sha256::digest(acceptance.registered_public_key_sec1))
+        != *acceptance.request.key_id.as_bytes()
+    {
+        return Err(CustodyRotationAppAttestFailureStageV1::RegisteredKeyBinding);
+    }
+    let decoded = decode_assertion_object(submission.assertion.transient_bytes())
+        .map_err(|_| CustodyRotationAppAttestFailureStageV1::AssertionEncoding)?;
     let application_hash: [u8; 32] =
         Sha256::digest(MONAS_PRODUCTION_APP_ATTEST_APP_IDENTIFIER_V1).into();
     if decoded.authenticator_data.len() <= AUTHENTICATOR_DATA_MINIMUM_BYTES
         || decoded.authenticator_data[..32] != application_hash
         || decoded.authenticator_data[32] != USER_PRESENT_AND_EXTENSION_FLAGS
     {
-        return Err(SiteTrustAppAttestAssertionIngressErrorV1::Denied);
+        return Err(CustodyRotationAppAttestFailureStageV1::ApplicationBinding);
     }
     let counter = MonotonicAppAttestCounterV1(u32::from_be_bytes(
         decoded.authenticator_data[33..37]
             .try_into()
-            .map_err(|_| SiteTrustAppAttestAssertionIngressErrorV1::Denied)?,
+            .map_err(|_| CustodyRotationAppAttestFailureStageV1::Counter)?,
     ));
     if !counter.strictly_after(acceptance.previous_counter) {
-        return Err(SiteTrustAppAttestAssertionIngressErrorV1::Denied);
+        return Err(CustodyRotationAppAttestFailureStageV1::Counter);
     }
     validate_app_attest_extensions(
         &decoded.authenticator_data[37..],
         &acceptance.bundle_version,
-    )?;
+    )
+    .map_err(|_| CustodyRotationAppAttestFailureStageV1::AppleExtensions)?;
     let nonce = Sha256::digest(
         [
             decoded.authenticator_data.as_slice(),
@@ -549,11 +588,11 @@ pub fn verify_custody_rotation_app_attest_assertion_v1(
         .concat(),
     );
     let key = VerifyingKey::from_sec1_bytes(&acceptance.registered_public_key_sec1)
-        .map_err(|_| SiteTrustAppAttestAssertionIngressErrorV1::Unavailable)?;
+        .map_err(|_| CustodyRotationAppAttestFailureStageV1::RegisteredKey)?;
     let signature = Signature::from_der(&decoded.signature)
-        .map_err(|_| SiteTrustAppAttestAssertionIngressErrorV1::Denied)?;
+        .map_err(|_| CustodyRotationAppAttestFailureStageV1::SignatureEncoding)?;
     key.verify(&nonce, &signature)
-        .map_err(|_| SiteTrustAppAttestAssertionIngressErrorV1::Denied)?;
+        .map_err(|_| CustodyRotationAppAttestFailureStageV1::SignatureVerification)?;
     Ok(CustodyRotationAppAttestOutcomeV1 {
         counter,
         assertion_sha256: Sha256::digest(submission.assertion.transient_bytes()).into(),

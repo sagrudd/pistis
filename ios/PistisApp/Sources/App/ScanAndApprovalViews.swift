@@ -8,12 +8,17 @@ struct ScanView: View {
     @StateObject private var ceremony = ProductionCeremonyCoordinator()
     @StateObject private var siteRootCeremony: SiteRootDelegationCoordinator
     private let siteRootTransport: any MonasSiteRootCeremonyTransport
+    private let showInstallations: () -> Void
     @State private var scanning = true
     @State private var scanFailure: PlatformFailure?
     @State private var readiness = PasswordlessReadiness.checking
 
-    init(siteRootTransport: any MonasSiteRootCeremonyTransport) {
+    init(
+        siteRootTransport: any MonasSiteRootCeremonyTransport,
+        showInstallations: @escaping () -> Void = {}
+    ) {
         self.siteRootTransport = siteRootTransport
+        self.showInstallations = showInstallations
         _siteRootCeremony = StateObject(
             wrappedValue: SiteRootDelegationCoordinator(transport: siteRootTransport)
         )
@@ -113,7 +118,11 @@ struct ScanView: View {
             ApprovalView(request: request, coordinator: ceremony)
         }
         .sheet(item: siteRootReviewBinding) { review in
-            SiteRootDelegationReviewView(review: review, coordinator: siteRootCeremony)
+            SiteRootDelegationReviewView(
+                review: review,
+                coordinator: siteRootCeremony,
+                showInstallations: showInstallations
+            )
         }
     }
 
@@ -252,6 +261,7 @@ private struct ReadinessRow: View {
 private struct SiteRootDelegationReviewView: View {
     let review: SiteRootDelegationReview
     @ObservedObject var coordinator: SiteRootDelegationCoordinator
+    let showInstallations: () -> Void
     @Environment(\.dismiss) private var dismiss
 
     var body: some View {
@@ -308,26 +318,27 @@ private struct SiteRootDelegationReviewView: View {
                         MnStatusLabel(text: "Submitting device assertion", kind: .warning)
                     case .rewrappingCustody:
                         MnStatusLabel(text: "Waiting for custody Face ID", kind: .warning)
-                    case .submitted:
+                    case let .submitted(completion):
                         MnSectionHeading(
-                            "Site Root ceremony complete",
-                            orientation: "Monas accepted the Site Root proof and Pistis submitted the custody rewrap through the fixed authority route. A redacted local observation is now in History."
+                            completion.heading,
+                            orientation: completion.orientation
                         )
                         MnStatusLabel(text: "Verified by Monas", kind: .success)
                         MnPanel {
                             VStack(alignment: .leading, spacing: MnSpacing.x4) {
                                 MnEvidenceRow(label: "Site Root proof", value: "Accepted")
                                 Divider()
-                                MnEvidenceRow(label: "Custody rewrap", value: "Submitted")
+                                MnEvidenceRow(label: completion.evidenceLabel, value: completion.evidenceValue)
                                 Divider()
                                 MnEvidenceRow(label: "Local history", value: "Recorded")
                             }
                         }
-                        Text("The installation’s Monas audit remains the authoritative record. Pistis stores only this redacted device observation.")
+                        Text(completion.detail)
                             .font(.footnote)
-                        MnPrimaryButton("Done") {
+                        MnPrimaryButton(completion.actionTitle) {
                             coordinator.reset()
                             dismiss()
+                            showInstallations()
                         }
                     case let .failed(failure):
                         MnStatusLabel(text: "Proof was not submitted", kind: .danger)
@@ -346,15 +357,72 @@ private struct SiteRootDelegationReviewView: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") {
-                        coordinator.reset()
-                        dismiss()
+                    if !coordinator.phase.isSubmitted {
+                        Button("Cancel") {
+                            coordinator.reset()
+                            dismiss()
+                        }
+                        .frame(minHeight: MnMetrics.minimumTarget)
                     }
-                    .frame(minHeight: MnMetrics.minimumTarget)
                 }
             }
             .mnScreenBackground()
         }
+    }
+}
+
+extension SiteRootDelegationCoordinator.Completion {
+    var heading: String {
+        switch self {
+        case .siteTrustEstablished: "Site Trust established"
+        case .sessionEstablished: "Site Root ceremony complete"
+        }
+    }
+
+    var orientation: String {
+        switch self {
+        case .siteTrustEstablished:
+            "Monas accepted this first-device proof and created Site Trust and custody. This installation is recorded as setup in progress; identity enrolment is the next ceremony."
+        case .sessionEstablished:
+            "Monas accepted the Site Root proof and Pistis submitted the custody rewrap through the fixed authority route. A redacted local observation is now in History."
+        }
+    }
+
+    var evidenceLabel: String {
+        switch self {
+        case .siteTrustEstablished: "Setup state"
+        case .sessionEstablished: "Custody rewrap"
+        }
+    }
+
+    var evidenceValue: String {
+        switch self {
+        case .siteTrustEstablished: "Setup in progress"
+        case .sessionEstablished: "Submitted"
+        }
+    }
+
+    var detail: String {
+        switch self {
+        case .siteTrustEstablished:
+            "The installation’s Monas audit remains authoritative. Pistis stores only a redacted setup observation and cannot authenticate or approve work until identity enrolment completes."
+        case .sessionEstablished:
+            "The installation’s Monas audit remains the authoritative record. Pistis stores only this redacted device observation."
+        }
+    }
+
+    var actionTitle: String {
+        switch self {
+        case .siteTrustEstablished: "View setup progress"
+        case .sessionEstablished: "View installation"
+        }
+    }
+}
+
+private extension SiteRootDelegationCoordinator.Phase {
+    var isSubmitted: Bool {
+        if case .submitted = self { return true }
+        return false
     }
 }
 

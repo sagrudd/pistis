@@ -1,13 +1,22 @@
 import SwiftUI
 
 struct RootTabView: View {
+    private enum Tab: Hashable {
+        case identities
+        case installations
+        case scan
+        case history
+        case settings
+    }
+
     @Environment(\.scenePhase) private var scenePhase
     @StateObject private var enrollment = EnrollmentProjectionStore()
     @State private var reconciliationMessage: String?
+    @State private var selectedTab = Tab.identities
     let siteRootTransport: any MonasSiteRootCeremonyTransport
 
     var body: some View {
-        TabView {
+        TabView(selection: $selectedTab) {
             NavigationStack {
                 IdentitiesView(
                     identities: projection.identities,
@@ -18,6 +27,7 @@ struct RootTabView: View {
             .tabItem {
                 Label("Identities", systemImage: "person.text.rectangle")
             }
+            .tag(Tab.identities)
 
             NavigationStack {
                 InstallationsView(
@@ -31,13 +41,17 @@ struct RootTabView: View {
             .tabItem {
                 Label("Installations", systemImage: "building.2")
             }
+            .tag(Tab.installations)
 
             NavigationStack {
-                ScanView(siteRootTransport: siteRootTransport)
+                ScanView(siteRootTransport: siteRootTransport) {
+                    selectedTab = .installations
+                }
             }
             .tabItem {
                 Label("Scan", systemImage: "qrcode.viewfinder")
             }
+            .tag(Tab.scan)
 
             NavigationStack {
                 HistoryView(
@@ -48,6 +62,7 @@ struct RootTabView: View {
             .tabItem {
                 Label("History", systemImage: "clock.arrow.circlepath")
             }
+            .tag(Tab.history)
 
             NavigationStack {
                 SettingsView()
@@ -55,6 +70,7 @@ struct RootTabView: View {
             .tabItem {
                 Label("Settings", systemImage: "gearshape")
             }
+            .tag(Tab.settings)
         }
         .tint(MnColor.action)
         .task {

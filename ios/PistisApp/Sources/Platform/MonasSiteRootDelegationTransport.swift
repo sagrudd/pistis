@@ -138,6 +138,9 @@ struct MonasSiteRootDelegationTransport: MonasSiteRootCeremonyTransport,
     /// Submits one detached iPhone proof and accepts only the exact bootstrap
     /// response defined by Monas. The bootstrap remains a stack-local value and
     /// must immediately construct the separately pinned App Attest transport.
+    /// This method deliberately rejects the static initial-ceremony response:
+    /// accepting that response here would silently downgrade a live App Attest
+    /// ceremony into a proof-only completion.
     func submit(_ request: MonasSiteRootDelegationSubmissionRequestV1) async throws
         -> MonasAppAttestCeremonyBootstrap
     {
@@ -177,6 +180,54 @@ struct MonasSiteRootDelegationTransport: MonasSiteRootCeremonyTransport,
                 authorityOrigin: authorityOrigin,
                 nowUnixMillis: nowUnixMillis
             ).bootstrap
+        } catch let failure as PlatformFailure {
+            throw failure
+        } catch {
+            throw PlatformFailure.siteRootAuthorityUnavailable
+        }
+    }
+
+    /// Completes only the attended, first-device static Site Root ceremony.
+    ///
+    /// The fixed initial Monas route returns an empty ``204 No Content`` only
+    /// after it has atomically consumed the signed Site Root proof and created
+    /// the Site Trust authority/custody record.  This is not a bootstrap and
+    /// cannot start App Attest; it records an incomplete installation for the
+    /// later protected App Attest session ceremony. Any body, alternate 2xx
+    /// response, redirect, cookie or endpoint mismatch is terminal.
+    func submitInitialStaticCompletion(
+        _ request: MonasSiteRootDelegationSubmissionRequestV1
+    ) async throws {
+        guard Self.matchesAuthority(
+            request.endpoint,
+            origin: authorityOrigin,
+            expectedPath: MonasSiteRootDelegationEndpointV1.submitPath
+        ) else { throw PlatformFailure.siteRootAuthorityUnavailable }
+
+        let body: Data
+        do {
+            body = try JSONEncoder().encode(MonasSubmissionRequest(request.submission))
+        } catch {
+            throw PlatformFailure.invalidConfiguration
+        }
+        guard body.count <= Self.maximumSubmissionBytes else {
+            throw PlatformFailure.invalidConfiguration
+        }
+        var urlRequest = URLRequest(url: request.endpoint)
+        urlRequest.httpMethod = "POST"
+        urlRequest.httpBody = body
+        urlRequest.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        urlRequest.setValue("application/json", forHTTPHeaderField: "Accept")
+        urlRequest.setValue("no-store", forHTTPHeaderField: "Cache-Control")
+        urlRequest.timeoutInterval = 15
+        do {
+            let (data, response) = try await session.data(for: urlRequest)
+            guard let http = response as? HTTPURLResponse,
+                  http.statusCode == 204,
+                  http.url == request.endpoint,
+                  data.isEmpty,
+                  http.value(forHTTPHeaderField: "Set-Cookie") == nil
+            else { throw PlatformFailure.siteRootAuthorityUnavailable }
         } catch let failure as PlatformFailure {
             throw failure
         } catch {

@@ -92,7 +92,7 @@ and local identity. Registration accepts only an empty ``202 no-store``;
 assertion accepts only the exact pinned terminal custody-presentation response
 and never exposes a Monas session credential.
 
-The only Site Root submission success response is
+The ordinary Site Root submission success response is
 ``monas.pistis.site-trust-app-attest-bootstrap.v1``. Pistis rejects a coarse
 receipt, every missing or additional field, an expired response, non-canonical
 base64url, zero or incorrectly sized bootstrap material, and an origin other
@@ -125,9 +125,15 @@ or reuses the separate Secure Enclave Site Root key and Pistis sends only its
 typed public registration and the genuine App Attest registration through the
 compiled SPKI pin. Monas atomically returns the one-time canonical delegation
 bound to that same public key; Pistis then follows the ordinary detached proof
-flow. This first-device POST is the sole App Attest registration: the
-subsequent Site Root bootstrap is assertion-only, so Pistis must never submit
-the registration a second time.
+flow. This first-device POST is the sole App Attest registration. Its initial
+proof endpoint returns only an exact empty `204 No Content` after Monas has
+created Site Trust and custody; this is a successful, non-authorising
+incomplete-installation transition, not a bootstrap or session. Pistis retains
+the completion screen and records only a redacted `Setup in progress`
+Installation, then routes explicitly to that record. It must not reset the
+scanner or claim identity, session, custody-presentation, or approval
+completion. A later Site Root bootstrap is assertion-only, so Pistis must never
+submit the registration a second time.
 
 After a signed Site Root proof receives the short-lived bootstrap, Pistis
 constructs the existing SPKI-pinned App Attest transport. The terminal

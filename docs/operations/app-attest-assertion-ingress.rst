@@ -70,8 +70,9 @@ bounded definite CBOR assertion object containing exactly ``signature`` and
 * the authenticator RP-ID hash for the exact production App ID;
 * Apple's closed App Attest authenticator-data shape: the exact 37-byte form
   has no extension-data bit, while an extension-bearing form must have that
-  bit and the strict extension map. The user-present bit is advisory rather
-  than an App Attest acceptance criterion; all other flag bits are rejected;
+  bit and the strict extension map. The user-present and
+  attested-credential-data bits are advisory rather than App Attest acceptance
+  criteria; all other flag bits are rejected;
 * a non-zero counter strictly greater than the server-held previous counter;
 * for the iOS 27 form, the exact production distribution category (TestFlight,
   App Store, or enterprise/ad-hoc) and expected bundle version in Apple's

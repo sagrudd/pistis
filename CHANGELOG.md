@@ -4,10 +4,11 @@
 
 ### Changed
 
-- Validate App Attest assertion flags by contract shape: treat user presence as
-  advisory, require extension data only for the extension-bearing shape, deny
-  reserved bits and mixed shapes, and report redacted length, flag, RP-ID,
-  CBOR, validation-category, and bundle-version failure details.
+- Validate App Attest assertion flags by contract shape: treat user-presence
+  and attested-credential-data bits as advisory, require extension data only
+  for the extension-bearing shape, deny reserved bits and mixed shapes, and
+  report redacted length, flag, RP-ID, CBOR, validation-category, and
+  bundle-version failure details.
 - Accept Apple's closed 37-byte iOS 26 App Attest assertion authenticator data
   only with the exact registered application RP-ID hash, legacy flags, fresh
   counter, and valid signature, while retaining mandatory strict validation of

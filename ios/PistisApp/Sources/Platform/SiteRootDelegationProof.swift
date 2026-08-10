@@ -293,9 +293,19 @@ enum DetachedES256Cose {
         } else if count <= Int(UInt8.max) {
             result = Data([major << 5 | 24, UInt8(count)])
         } else if count <= Int(UInt16.max) {
-            result = Data([major << 5 | 25, UInt8(count >> 8), UInt8(count)])
+            result = Data([
+                major << 5 | 25,
+                UInt8(truncatingIfNeeded: count >> 8),
+                UInt8(truncatingIfNeeded: count),
+            ])
         } else {
-            result = Data([major << 5 | 26, UInt8(count >> 24), UInt8(count >> 16), UInt8(count >> 8), UInt8(count)])
+            result = Data([
+                major << 5 | 26,
+                UInt8(truncatingIfNeeded: count >> 24),
+                UInt8(truncatingIfNeeded: count >> 16),
+                UInt8(truncatingIfNeeded: count >> 8),
+                UInt8(truncatingIfNeeded: count),
+            ])
         }
         result.append(bytes)
         return result

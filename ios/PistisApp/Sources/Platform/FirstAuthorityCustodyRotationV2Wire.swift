@@ -5,6 +5,13 @@ enum FirstAuthorityCustodyRotationV2Wire {
     static let presentationSchema = "monas.first-authority-custody-rotation-presentation.v2"
     static let completeSchema = "monas.first-authority-custody-rotation-complete.v2"
     static let acceptedSchema = "monas.first-authority-custody-rotation-accepted.v2"
+    static let recoveryBeginSchema = "monas.first-authority-custody-recovery-begin.v2"
+    static let recoveryPresentationSchema =
+        "monas.first-authority-custody-recovery-presentation.v2"
+    static let recoveryCompleteSchema = "monas.first-authority-custody-recovery-complete.v2"
+    static let recoveryAcceptedSchema = "monas.first-authority-custody-recovery-accepted.v2"
+
+    struct RecoveryBegin: Encodable { let schema = recoveryBeginSchema }
 
     struct Begin: Encodable {
         let schema = beginSchema
@@ -49,6 +56,27 @@ enum FirstAuthorityCustodyRotationV2Wire {
             correlationB64URL = Self.base64URL(value.correlation)
             detachedCOSESign1B64URL = Self.base64URL(value.detachedCOSESign1)
             rewrappedSeedCiphertextB64URL = Self.base64URL(value.rewrappedSeedCiphertext)
+        }
+    }
+
+    struct RecoveryComplete: Encodable {
+        let schema = recoveryCompleteSchema
+        let correlationB64URL: String
+        let detachedCOSESign1B64URL: String
+        let rewrappedSeedCiphertextB64URL: String
+
+        enum CodingKeys: String, CodingKey {
+            case schema
+            case correlationB64URL = "correlation_b64url"
+            case detachedCOSESign1B64URL = "detached_cose_sign1_b64url"
+            case rewrappedSeedCiphertextB64URL = "rewrapped_seed_ciphertext_b64url"
+        }
+
+        init(_ value: FirstAuthorityCustodySubmissionV2) throws {
+            let rotation = try Complete(value)
+            correlationB64URL = rotation.correlationB64URL
+            detachedCOSESign1B64URL = rotation.detachedCOSESign1B64URL
+            rewrappedSeedCiphertextB64URL = rotation.rewrappedSeedCiphertextB64URL
         }
     }
 
@@ -112,12 +140,12 @@ enum FirstAuthorityCustodyRotationV2Wire {
     }
 
     static func accepted(
-        data: Data, expectedCorrelation: Data
+        data: Data, expectedCorrelation: Data, schema expectedSchema: String = acceptedSchema
     ) throws -> FirstAuthorityCustodyAcceptedV2 {
         let object = try exactObject(
             data, keys: ["schema", "correlation_b64url", "authority_descriptor_b64url"]
         )
-        guard string(object, "schema") == acceptedSchema,
+        guard string(object, "schema") == expectedSchema,
               let correlation = bytes(object, "correlation_b64url", count: 16),
               correlation == expectedCorrelation,
               let descriptor = bytes(object, "authority_descriptor_b64url", maximum: 16_384)
@@ -125,6 +153,58 @@ enum FirstAuthorityCustodyRotationV2Wire {
         return try FirstAuthorityCustodyAcceptedV2(
             correlation: correlation, authorityDescriptor: descriptor
         )
+    }
+
+    static func recoveryPresentation(
+        data: Data, expectedDeviceKeyID: String, expectedEnrolledPublicKey: Data,
+        expectedRecoveryCommitment: Data, nowUnixSeconds: UInt64
+    ) throws -> FirstAuthorityRecoveryPresentationV2 {
+        let expected = Set([
+            "schema", "purpose", "correlation_b64url", "canonical_transcript_b64url",
+            "site_trust_domain_id", "custody_generation", "device_key_id",
+            "enrolled_device_public_sec1_b64url",
+            "recovery_seed_ed25519_public_key_b64url", "revocation_generation",
+            "host_ephemeral_public_sec1_b64url", "encrypted_record_sha256_b64url",
+            "authority_context_sha256_b64url", "encrypted_record_b64url",
+            "delegation_serial", "expires_at_unix_seconds",
+        ])
+        let object = try exactObject(data, keys: expected)
+        guard string(object, "schema") == recoveryPresentationSchema,
+              string(object, "purpose") == FirstAuthorityCustodyPurposeV2.recovery,
+              let correlation = bytes(object, "correlation_b64url", count: 16),
+              let canonical = bytes(object, "canonical_transcript_b64url", maximum: 16_384),
+              let site = string(object, "site_trust_domain_id"),
+              let generation = string(object, "custody_generation"),
+              let deviceKeyID = string(object, "device_key_id"),
+              let enrolled = bytes(object, "enrolled_device_public_sec1_b64url", count: 33),
+              let commitment = bytes(
+                  object, "recovery_seed_ed25519_public_key_b64url", count: 32
+              ),
+              let revocation = uint64(object, "revocation_generation"),
+              let host = bytes(object, "host_ephemeral_public_sec1_b64url", count: 33),
+              let recordDigest = bytes(object, "encrypted_record_sha256_b64url", count: 32),
+              let contextDigest = bytes(object, "authority_context_sha256_b64url", count: 32),
+              let record = bytes(object, "encrypted_record_b64url", maximum: 4_096),
+              let serial = string(object, "delegation_serial"),
+              let expiry = uint64(object, "expires_at_unix_seconds"), expiry > nowUnixSeconds,
+              deviceKeyID == expectedDeviceKeyID,
+              enrolled == expectedEnrolledPublicKey,
+              commitment == expectedRecoveryCommitment
+        else { throw PlatformFailure.custodyRewrapUnavailable }
+        let identity = try FirstAuthorityCustodyIdentityV2(
+            siteTrustDomain: site, custodyGeneration: generation, deviceKeyID: deviceKeyID,
+            enrolledDevicePublicSEC1: enrolled,
+            recoverySeedEd25519PublicKey: commitment, revocationGeneration: revocation
+        )
+        let value = FirstAuthorityRecoveryPresentationV2(
+            correlation: correlation, identity: identity, hostEphemeralPublicSEC1: host,
+            encryptedRecordSHA256: recordDigest, authorityContextSHA256: contextDigest,
+            encryptedRecord: record, delegationSerial: serial, expiresAtUnixSeconds: expiry
+        )
+        guard try value.canonicalTranscript() == canonical else {
+            throw PlatformFailure.custodyRewrapUnavailable
+        }
+        return value
     }
 
     private static func exactObject(_ data: Data, keys: Set<String>) throws -> [String: Any] {

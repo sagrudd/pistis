@@ -15,6 +15,7 @@ struct RootTabView: View {
     @State private var selectedTab = Tab.identities
     @State private var providerEnrolmentRequested = false
     @State private var authorityCustodyContinuationHost: String?
+    @State private var authorityCustodyMode: FirstAuthorityCustodyModeV2 = .rotation
     let siteRootTransport: any MonasSiteRootCeremonyTransport
 
     var body: some View {
@@ -40,10 +41,7 @@ struct RootTabView: View {
                     recoverSiteRootInstallation: recoverSiteRootInstallation,
                     reconciliationMessage: reconciliationMessage,
                     startProviderEnrolment: startProviderEnrolment,
-                    continueAuthorityCustody: { installation in
-                        authorityCustodyContinuationHost = installation.localAlias
-                        selectedTab = .scan
-                    }
+                    continueAuthorityCustody: continueAuthorityCustody
                 )
             }
             .tabItem {
@@ -54,11 +52,14 @@ struct RootTabView: View {
             NavigationStack {
                 ScanView(
                     siteRootTransport: siteRootTransport,
-                    expectedSiteRootAuthorityHost: authorityCustodyContinuationHost
+                    expectedSiteRootAuthorityHost: authorityCustodyContinuationHost,
+                    authorityCustodyMode: authorityCustodyMode
                 ) {
                     authorityCustodyContinuationHost = nil
+                    authorityCustodyMode = .rotation
                     selectedTab = .installations
                 }
+                .id(authorityCustodyMode)
             }
             .tabItem {
                 Label("Scan", systemImage: "qrcode.viewfinder")
@@ -178,6 +179,35 @@ struct RootTabView: View {
         Task { @MainActor in
             await Task.yield()
             providerEnrolmentRequested = true
+        }
+    }
+
+    private func continueAuthorityCustody(_ installation: InstallationSummary) {
+        Task {
+            guard let transport = siteRootTransport as? MonasSiteRootDelegationTransport,
+                  transport.authorityHost == installation.localAlias
+            else {
+                reconciliationMessage = "The retained Site Root authority does not match."
+                return
+            }
+            do {
+                switch try await transport.authorityCustodyStatusV2() {
+                case .initialRotationRequired:
+                    authorityCustodyMode = .rotation
+                case .recoveryRequired:
+                    authorityCustodyMode = .recovery
+                case .ready:
+                    try SiteRootInstallationRepository.shared
+                        .recordAuthorityCustodyCompleted(authorityHost: installation.localAlias)
+                    await enrollment.refresh()
+                    startProviderEnrolment()
+                    return
+                }
+                authorityCustodyContinuationHost = installation.localAlias
+                selectedTab = .scan
+            } catch {
+                reconciliationMessage = "Authority custody status is unavailable; no recovery was attempted."
+            }
         }
     }
 

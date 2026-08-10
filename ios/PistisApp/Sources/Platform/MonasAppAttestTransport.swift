@@ -50,6 +50,10 @@ struct MonasAppAttestTransport: Sendable {
         "/v1/pistis/site-trust/authority-custody-rotation/v2/begin"
     private static let authorityCustodyRotationCompletePath =
         "/v1/pistis/site-trust/authority-custody-rotation/v2/complete"
+    private static let authorityCustodyRecoveryBeginPath =
+        "/v1/pistis/site-trust/authority-custody-recovery/v2/begin"
+    private static let authorityCustodyRecoveryCompletePath =
+        "/v1/pistis/site-trust/authority-custody-recovery/v2/complete"
     private let origin: URL
     private let session: URLSession
 
@@ -187,6 +191,47 @@ struct MonasAppAttestTransport: Sendable {
         _ = endpoint
         return try FirstAuthorityCustodyRotationV2Wire.accepted(
             data: data, expectedCorrelation: submission.correlation
+        )
+    }
+
+    func beginFirstAuthorityCustodyRecoveryV2(
+        expectedCommitment: FirstAuthorityCustodySeedCommitmentV2,
+        nowUnixSeconds: UInt64
+    ) async throws -> FirstAuthorityRecoveryPresentationV2 {
+        let body = try JSONEncoder.sorted.encode(
+            FirstAuthorityCustodyRotationV2Wire.RecoveryBegin()
+        )
+        let (data, response, _) = try await authorityCustodyRequest(
+            body: body, path: Self.authorityCustodyRecoveryBeginPath
+        )
+        guard response.statusCode == 200, !data.isEmpty,
+              response.value(forHTTPHeaderField: "Cache-Control")?
+                  .lowercased().contains("no-store") == true
+        else { throw PlatformFailure.custodyRewrapUnavailable }
+        return try FirstAuthorityCustodyRotationV2Wire.recoveryPresentation(
+            data: data, expectedDeviceKeyID: expectedCommitment.deviceKeyID,
+            expectedEnrolledPublicKey: expectedCommitment.enrolledDevicePublicSEC1,
+            expectedRecoveryCommitment: expectedCommitment.recoverySeedEd25519PublicKey,
+            nowUnixSeconds: nowUnixSeconds
+        )
+    }
+
+    func completeFirstAuthorityCustodyRecoveryV2(
+        _ submission: FirstAuthorityCustodySubmissionV2
+    ) async throws -> FirstAuthorityCustodyAcceptedV2 {
+        let body = try JSONEncoder.sorted.encode(
+            FirstAuthorityCustodyRotationV2Wire.RecoveryComplete(submission)
+        )
+        let (data, response, _) = try await authorityCustodyRequest(
+            body: body, path: Self.authorityCustodyRecoveryCompletePath
+        )
+        guard response.statusCode == 200, !data.isEmpty,
+              response.value(forHTTPHeaderField: "Cache-Control")?
+                  .lowercased().contains("no-store") == true
+        else { throw PlatformFailure.custodyRewrapUnavailable }
+        return try FirstAuthorityCustodyRotationV2Wire.accepted(
+            data: data, expectedCorrelation: submission.correlation,
+            schema: FirstAuthorityCustodyRotationV2Wire.recoveryAcceptedSchema
         )
     }
 

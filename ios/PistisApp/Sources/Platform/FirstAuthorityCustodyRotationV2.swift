@@ -7,6 +7,11 @@ enum FirstAuthorityCustodyPurposeV2 {
     static let recovery = "thesaurophylax.pistis-first-device-authority-recovery.v2"
 }
 
+enum FirstAuthorityCustodyModeV2: Equatable, Hashable, Sendable {
+    case rotation
+    case recovery
+}
+
 struct FirstAuthorityCustodyIdentityV2: Sendable {
     let siteTrustDomain: String
     let custodyGeneration: String
@@ -276,6 +281,22 @@ final class SecureEnclaveFirstAuthorityCustodyProducerV2: @unchecked Sendable {
         let encoder = JSONEncoder()
         encoder.outputFormatting = [.sortedKeys]
         try store.insert(try encoder.encode(envelope))
+        return FirstAuthorityCustodySeedCommitmentV2(
+            deviceKeyID: deviceKeyID, enrolledDevicePublicSEC1: device.compressedSEC1,
+            recoverySeedEd25519PublicKey: commitment
+        )
+    }
+
+    func retainedRecoveryCommitment() throws -> FirstAuthorityCustodySeedCommitmentV2 {
+        let device = try signer.publicKey()
+        let deviceKeyID = Self.deviceKeyID(device.compressedSEC1)
+        guard let data = try store.load() else {
+            throw PlatformFailure.custodyRewrapUnavailable
+        }
+        let envelope = try decodeEnvelope(data)
+        guard envelope.deviceKeyID == deviceKeyID,
+              let commitment = Self.decode(envelope.recoveryPublicKeyB64URL)
+        else { throw PlatformFailure.custodyRewrapUnavailable }
         return FirstAuthorityCustodySeedCommitmentV2(
             deviceKeyID: deviceKeyID, enrolledDevicePublicSEC1: device.compressedSEC1,
             recoverySeedEd25519PublicKey: commitment

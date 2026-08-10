@@ -17,13 +17,16 @@ struct ScanView: View {
     init(
         siteRootTransport: any MonasSiteRootCeremonyTransport,
         expectedSiteRootAuthorityHost: String? = nil,
+        authorityCustodyMode: FirstAuthorityCustodyModeV2 = .rotation,
         showInstallations: @escaping () -> Void = {}
     ) {
         self.siteRootTransport = siteRootTransport
         self.expectedSiteRootAuthorityHost = expectedSiteRootAuthorityHost
         self.showInstallations = showInstallations
         _siteRootCeremony = StateObject(
-            wrappedValue: SiteRootDelegationCoordinator(transport: siteRootTransport)
+            wrappedValue: SiteRootDelegationCoordinator(
+                transport: siteRootTransport, authorityCustodyMode: authorityCustodyMode
+            )
         )
     }
 

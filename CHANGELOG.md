@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.8.2] - 2026-08-10
+
+### Added
+
+- Add the distinct v2 restart-recovery begin, presentation, complete and
+  accepted schemas and fixed pinned routes. Recovery reuses only the existing
+  Secure-Enclave-protected seed envelope and validates the separate
+  Thesaurophylax recovery transcript before Face ID signing and host rewrap.
+- Select rotation, recovery, or ready exactly once from the fixed pinned
+  no-store authority-custody status endpoint when the retained Installation
+  continuation is selected. Unknown or unavailable state remains blocked;
+  Pistis never falls back between rotation and recovery.
+
 ## [0.8.1] - 2026-08-10
 
 ### Fixed

@@ -95,15 +95,19 @@ struct CustodyRotationAppAttestChallengeV2: Sendable {
     }
 
     private static func decode(_ value: String, count: Int) -> Data? {
-        guard !value.contains("="), value.utf8.allSatisfy({ byte in
+    guard !value.contains("="),
+      value.utf8.allSatisfy({ byte in
             (48...57).contains(byte) || (65...90).contains(byte)
                 || (97...122).contains(byte) || byte == 45 || byte == 95
-        }) else { return nil }
-        let standard = value.replacingOccurrences(of: "-", with: "+")
+      })
+    else { return nil }
+    let standard =
+      value.replacingOccurrences(of: "-", with: "+")
             .replacingOccurrences(of: "_", with: "/")
             + String(repeating: "=", count: (4 - value.count % 4) % 4)
         guard let data = Data(base64Encoded: standard), data.count == count,
-              !data.allSatisfy({ $0 == 0 }) else { return nil }
+      !data.allSatisfy({ $0 == 0 })
+    else { return nil }
         return data
     }
 }
@@ -135,15 +139,31 @@ struct MonasAppAttestTransport: Sendable {
         bootstrap: MonasAppAttestCeremonyBootstrap,
         configuration: URLSessionConfiguration = .ephemeral
     ) throws {
-        origin = bootstrap.httpsOrigin
+    try self.init(
+      authorityOrigin: bootstrap.httpsOrigin,
+      expectedSPKISHA256: bootstrap.tlsSPKISHA256,
+      configuration: configuration
+    )
+  }
+
+  init(
+    authorityOrigin: URL,
+    expectedSPKISHA256: Data,
+    configuration: URLSessionConfiguration = .ephemeral
+  ) throws {
+    guard authorityOrigin.scheme == "https", authorityOrigin.host != nil,
+      expectedSPKISHA256.count == 32,
+      !expectedSPKISHA256.allSatisfy({ $0 == 0 })
+    else { throw PlatformFailure.appAttestInvalidInput }
+    origin = authorityOrigin
         configuration.httpShouldSetCookies = false
         configuration.urlCache = nil
         configuration.requestCachePolicy = .reloadIgnoringLocalCacheData
         session = URLSession(
             configuration: configuration,
             delegate: try PinnedEnrolmentSessionDelegate(
-                origin: bootstrap.httpsOrigin,
-                expectedSPKISHA256: bootstrap.tlsSPKISHA256
+        origin: authorityOrigin,
+        expectedSPKISHA256: expectedSPKISHA256
             ),
             delegateQueue: nil
         )
@@ -168,7 +188,8 @@ struct MonasAppAttestTransport: Sendable {
     func fetchCustodyRotationAssertionChallengeV2(
         nowUnixSeconds: UInt64
     ) async throws -> CustodyRotationAppAttestChallengeV2 {
-        guard let endpoint = URL(
+    guard
+      let endpoint = URL(
             string: Self.authorityCustodyRotationChallengePath, relativeTo: origin
         )?.absoluteURL,
         endpoint.absoluteString == origin.absoluteString + Self.authorityCustodyRotationChallengePath
@@ -395,8 +416,8 @@ struct MonasAppAttestTransport: Sendable {
     }
 }
 
-private extension JSONEncoder {
-    static let sorted: JSONEncoder = {
+extension JSONEncoder {
+  fileprivate static let sorted: JSONEncoder = {
         let encoder = JSONEncoder()
         encoder.outputFormatting = [.sortedKeys, .withoutEscapingSlashes]
         return encoder

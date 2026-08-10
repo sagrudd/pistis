@@ -1,6 +1,7 @@
 import Foundation
 import PistisCore
 import XCTest
+
 @testable import Pistis
 
 @MainActor
@@ -19,7 +20,7 @@ final class EnrollmentProjectionTests: XCTestCase {
 
         await store.refresh()
 
-        guard case let .loaded(projection) = store.state else {
+    guard case .loaded(let projection) = store.state else {
             return XCTFail("verified enrollment was not loaded")
         }
         XCTAssertEqual(projection.identities.count, 1)
@@ -233,6 +234,23 @@ final class EnrollmentProjectionTests: XCTestCase {
             1
         )
     }
+
+  func testMatchingSetupProgressCoalescesWithAuthenticatedInstallation() throws {
+    let incomplete = try IncompleteSiteRootInstallation(
+      authorityHost: "PISTIS.EXAMPLE.TEST.", redactedReference: "abc123…def4",
+      setupPhase: .identityEnrolmentRequired
+    )
+    let projection = EnrollmentProjection(
+      enrollment: try fixtureEnrollment(),
+      incompleteSiteRootInstallations: [incomplete]
+    )
+
+    XCTAssertEqual(projection.installations.count, 1)
+    XCTAssertEqual(projection.identities.count, 1)
+    XCTAssertNil(projection.installations[0].setupPhase)
+    XCTAssertEqual(projection.installations[0].status, "Trusted")
+    XCTAssertEqual(InstallationDetailAction(installation: projection.installations[0]), .none)
+  }
 
     func testLegacySetupProgressRequiresAuthorityCustodyBeforeIdentity() throws {
         let installation = try IncompleteSiteRootInstallation(

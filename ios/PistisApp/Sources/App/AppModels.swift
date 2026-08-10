@@ -17,6 +17,30 @@ struct InstallationSummary: Identifiable, Hashable {
     let status: String
     let lastUsed: String
     let allowsLocalForget: Bool
+    /// The label for the non-secret fact shown in the installation detail.
+    /// Authenticated installations expose a public fingerprint; an incomplete
+    /// Site Root installation instead exposes its redacted ceremony reference.
+    let evidenceLabel: String
+
+    init(
+        id: UUID,
+        name: String,
+        localAlias: String,
+        fingerprint: String,
+        status: String,
+        lastUsed: String,
+        allowsLocalForget: Bool,
+        evidenceLabel: String = "Public fingerprint"
+    ) {
+        self.id = id
+        self.name = name
+        self.localAlias = localAlias
+        self.fingerprint = fingerprint
+        self.status = status
+        self.lastUsed = lastUsed
+        self.allowsLocalForget = allowsLocalForget
+        self.evidenceLabel = evidenceLabel
+    }
 }
 
 struct ApprovalRequest: Identifiable, Hashable {

@@ -187,6 +187,53 @@ final class EnrollmentProjectionTests: XCTestCase {
         XCTAssertEqual(projection.history, [event])
     }
 
+    func testCompletedSiteRootCeremonyProjectsAnIncompleteInstallationOnly() throws {
+        let installation = try IncompleteSiteRootInstallation(
+            id: UUID(uuidString: "00000000-0000-0000-0000-000000000001")!,
+            authorityHost: "monas.example.test",
+            redactedReference: "abc123…def4",
+            recordedAt: Date(timeIntervalSince1970: 1_000)
+        )
+
+        let projection = EnrollmentProjection(
+            retainedHistory: [],
+            incompleteSiteRootInstallations: [installation]
+        )
+
+        XCTAssertTrue(projection.identities.isEmpty)
+        XCTAssertEqual(projection.installations.count, 1)
+        XCTAssertEqual(projection.installations[0].name, "Monas Site Root")
+        XCTAssertEqual(projection.installations[0].status, "Setup in progress")
+        XCTAssertEqual(
+            projection.installations[0].evidenceLabel,
+            "Verified ceremony reference"
+        )
+        XCTAssertFalse(projection.installations[0].allowsLocalForget)
+        XCTAssertNotEqual(projection.installations[0].status, "Trusted")
+    }
+
+    func testIncompleteSiteRootInstallationDoesNotChangeTrustedEnrollment() throws {
+        let incomplete = try IncompleteSiteRootInstallation(
+            authorityHost: "monas.example.test",
+            redactedReference: "abc123…def4",
+            recordedAt: Date(timeIntervalSince1970: 1_000)
+        )
+        let projection = EnrollmentProjection(
+            enrollment: try fixtureEnrollment(),
+            incompleteSiteRootInstallations: [incomplete]
+        )
+
+        XCTAssertEqual(projection.installations.count, 2)
+        XCTAssertEqual(
+            projection.installations.filter { $0.status == "Trusted" }.count,
+            1
+        )
+        XCTAssertEqual(
+            projection.installations.filter { $0.status == "Setup in progress" }.count,
+            1
+        )
+    }
+
     func testLocalForgetPolicyNeverAllowsCurrentActiveTrust() {
         let now = Date(timeIntervalSince1970: 1_000)
 

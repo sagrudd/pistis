@@ -1,5 +1,15 @@
 # Changelog
 
+## [0.7.5] - 2026-08-10
+
+### Added
+
+- Record a completed first Site Root ceremony immediately as an explicit,
+  non-authorising `Setup in progress` Installation on the iPhone. The record
+  contains only a redacted Monas ceremony reference and next action; it cannot
+  become an identity, session, custody record, or trusted installation before
+  the separately signed provider enrolment completes.
+
 ## [0.7.4] - 2026-08-10
 
 ### Fixed

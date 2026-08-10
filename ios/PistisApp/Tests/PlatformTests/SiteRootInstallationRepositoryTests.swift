@@ -49,6 +49,31 @@ final class SiteRootInstallationRepositoryTests: XCTestCase {
         )
     }
 
+    func testLegacyRecordDefaultsToAuthorityCustodyAndTransitionsExactlyOnce() throws {
+        let suite = "pistis-site-root-phase-tests-\(UUID().uuidString)"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
+        defer { defaults.removePersistentDomain(forName: suite) }
+        let repository = SiteRootInstallationRepository(defaults: defaults)
+        try repository.recordRecoveredFirstCeremony(
+            authorityHost: "monas.example.test", redactedReference: "abc123…def4",
+            registeredAt: Date(timeIntervalSince1970: 1_000)
+        )
+        let key = "org.mnemosynebiosciences.pistis.site-root-installations.v1"
+        var objects = try XCTUnwrap(
+            JSONSerialization.jsonObject(with: try XCTUnwrap(defaults.data(forKey: key)))
+                as? [[String: Any]]
+        )
+        objects[0].removeValue(forKey: "setupPhase")
+        defaults.set(try JSONSerialization.data(withJSONObject: objects), forKey: key)
+
+        XCTAssertEqual(try repository.records().first?.setupPhase, .authorityCustodyRequired)
+        try repository.recordAuthorityCustodyCompleted(authorityHost: "monas.example.test")
+        XCTAssertEqual(try repository.records().first?.setupPhase, .identityEnrolmentRequired)
+        XCTAssertThrowsError(try repository.recordAuthorityCustodyCompleted(
+            authorityHost: "monas.example.test"
+        ))
+    }
+
     func testReconciliationResponseAcceptsOnlyProofConsumedOrCompleted() throws {
         let accepted = """
         {"schema":"monas.site-root-genesis-installation-status.v1","state":"proof-consumed","redacted_reference":"abc123…def4","registered_at_unix_millis":1000}

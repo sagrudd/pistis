@@ -234,7 +234,7 @@ final class EnrollmentProjectionTests: XCTestCase {
         )
     }
 
-    func testSetupInProgressInstallationOffersOnlyIdentitySetupContinuation() throws {
+    func testLegacySetupProgressRequiresAuthorityCustodyBeforeIdentity() throws {
         let installation = try IncompleteSiteRootInstallation(
             authorityHost: "monas.example.test",
             redactedReference: "abc123…def4",
@@ -245,6 +245,20 @@ final class EnrollmentProjectionTests: XCTestCase {
             incompleteSiteRootInstallations: [installation]
         )
 
+        XCTAssertEqual(
+            InstallationDetailAction(installation: try XCTUnwrap(projection.installations.first)),
+            .continueAuthorityCustody
+        )
+    }
+
+    func testCompletedAuthorityCustodyOffersIdentityContinuation() throws {
+        let installation = try IncompleteSiteRootInstallation(
+            authorityHost: "monas.example.test", redactedReference: "abc123…def4",
+            setupPhase: .identityEnrolmentRequired
+        )
+        let projection = EnrollmentProjection(
+            retainedHistory: [], incompleteSiteRootInstallations: [installation]
+        )
         XCTAssertEqual(
             InstallationDetailAction(installation: try XCTUnwrap(projection.installations.first)),
             .continueIdentitySetup

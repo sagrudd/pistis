@@ -14,6 +14,7 @@ struct RootTabView: View {
     @State private var reconciliationMessage: String?
     @State private var selectedTab = Tab.identities
     @State private var providerEnrolmentRequested = false
+    @State private var authorityCustodyContinuationHost: String?
     let siteRootTransport: any MonasSiteRootCeremonyTransport
 
     var body: some View {
@@ -38,7 +39,11 @@ struct RootTabView: View {
                     forgetExpired: forgetExpired,
                     recoverSiteRootInstallation: recoverSiteRootInstallation,
                     reconciliationMessage: reconciliationMessage,
-                    startProviderEnrolment: startProviderEnrolment
+                    startProviderEnrolment: startProviderEnrolment,
+                    continueAuthorityCustody: { installation in
+                        authorityCustodyContinuationHost = installation.localAlias
+                        selectedTab = .scan
+                    }
                 )
             }
             .tabItem {
@@ -47,7 +52,11 @@ struct RootTabView: View {
             .tag(Tab.installations)
 
             NavigationStack {
-                ScanView(siteRootTransport: siteRootTransport) {
+                ScanView(
+                    siteRootTransport: siteRootTransport,
+                    expectedSiteRootAuthorityHost: authorityCustodyContinuationHost
+                ) {
+                    authorityCustodyContinuationHost = nil
                     selectedTab = .installations
                 }
             }

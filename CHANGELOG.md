@@ -1,5 +1,15 @@
 # Changelog
 
+## [0.8.1] - 2026-08-10
+
+### Fixed
+
+- Model incomplete Site Root setup as two explicit phases. The existing
+  Installation continuation now opens the installation-bound Monas scanner
+  for required v2 authority custody first; only a typed accepted completion
+  advances the same record to signed identity enrolment. Legacy local records
+  safely default to the custody-required phase.
+
 ## [0.8.0] - 2026-08-10
 
 ### Added

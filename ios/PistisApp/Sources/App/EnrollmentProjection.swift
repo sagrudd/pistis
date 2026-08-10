@@ -184,7 +184,8 @@ struct EnrollmentProjection: Equatable {
                 status: "Setup in progress",
                 lastUsed: "Ceremony verified \(record.recordedAt.formatted(date: .abbreviated, time: .shortened))",
                 allowsLocalForget: false,
-                evidenceLabel: "Verified ceremony reference"
+                evidenceLabel: "Verified ceremony reference",
+                setupPhase: record.setupPhase
             )
         }
     }

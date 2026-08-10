@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.7.4] - 2026-08-10
+
+### Fixed
+
+- Generate a fresh Apple App Attest key for each new attended registration and
+  retain its opaque identifier only after Apple has returned attestation
+  evidence. Interrupted attempts can no longer re-attest a stale key, which
+  Apple correctly rejects.
+
 ## [0.7.3] - 2026-08-09
 
 ### Fixed

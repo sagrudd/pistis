@@ -121,13 +121,15 @@ strict ``monas.site-root-genesis-registration-presentation.v1`` QR. The QR
 must name that compiled authority's one fixed registration route, an unexpired
 reference, Site Trust Domain, and exact 16-byte App Attest ceremony plus
 pre-derived 32-byte client-data hash. After explicit review, Face ID creates
-or reuses the separate Secure Enclave Site Root key and Pistis sends only its
-typed public registration and the genuine App Attest registration through the
-compiled SPKI pin. Monas atomically returns the one-time canonical delegation
-bound to that same public key; Pistis then follows the ordinary detached proof
-flow. This first-device POST is the sole App Attest registration: the
-subsequent Site Root bootstrap is assertion-only, so Pistis must never submit
-the registration a second time.
+or reuses the separate Secure Enclave Site Root key. Pistis generates a fresh
+Apple App Attest key for this exact registration—Apple keys are attested once
+only—and retains its opaque identifier only after genuine Apple attestation
+succeeds. Pistis then sends only its typed public registration and the genuine
+App Attest registration through the compiled SPKI pin. Monas atomically
+returns the one-time canonical delegation bound to that same public key;
+Pistis then follows the ordinary detached proof flow. This first-device POST
+is the sole App Attest registration: the subsequent Site Root bootstrap is
+assertion-only, so Pistis must never submit the registration a second time.
 
 After a signed Site Root proof receives the short-lived bootstrap, Pistis
 constructs the existing SPKI-pinned App Attest transport. The terminal

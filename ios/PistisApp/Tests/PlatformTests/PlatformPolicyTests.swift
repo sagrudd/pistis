@@ -235,6 +235,14 @@ final class PlatformPolicyTests: XCTestCase {
         XCTAssertTrue(
             PlatformFailure.userVerificationLockedOut.safeUserMessage.contains("Face ID")
         )
+        XCTAssertTrue(
+            PlatformFailure.enrolmentReceiptInvalid.safeUserMessage
+                .contains("signed response did not verify")
+        )
+        XCTAssertTrue(
+            PlatformFailure.enrolmentStorageFailed.safeUserMessage
+                .contains("retain it securely")
+        )
     }
 
     func testPasswordlessReadinessRequiresEveryIndependentGate() {

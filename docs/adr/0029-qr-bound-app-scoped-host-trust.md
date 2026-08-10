@@ -70,10 +70,12 @@ phone presents:
 - a three-word verification phrase; and
 - an explicit statement that trust applies only inside Pistis.
 
-The terminal displays the same three words outside the QR. The user types the
-three words into separate fields on the phone. Only an exact match enables
-**Trust this host**. Scanning alone acquires the material; explicit comparison
-and confirmation establish the human decision.
+The terminal may display the same three words outside the QR as operator
+diagnostics. Following project-owner review on 10 August 2026, the phone does
+not require them to be retyped: the user instead starts enrolment only after
+Pistis has verified the purpose-separated authority signature, application
+digest, canonical HTTPS origin and complete TLS SPKI pin. Scanning alone never
+contacts the host.
 
 The phrase is a usability check over the authenticated binding. It is not a
 replacement for the authority signature, 256-bit TLS pin, one-use invitation,

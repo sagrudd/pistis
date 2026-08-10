@@ -253,7 +253,7 @@ struct ServerDrivenEnrolmentTransport: Sendable {
                 now: verificationTime()
             )
         } catch {
-            throw PlatformFailure.productionEnvelopeUnavailable
+            throw PlatformFailure.enrolmentReceiptInvalid
         }
     }
 

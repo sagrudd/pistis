@@ -18,6 +18,9 @@ final class SiteRootDelegationCoordinator: ObservableObject {
     }
 
     @Published private(set) var phase: Phase = .idle
+    /// Held independently of phase so Face ID transitions cannot dismiss the
+    /// review before its final success or failure evidence is visible.
+    @Published private(set) var presentedReview: SiteRootDelegationReview?
     private let transport: any MonasSiteRootCeremonyTransport
     private let appAttestClient: AppleAppAttestClient
     private var pending: PendingPresentation?
@@ -46,21 +49,28 @@ final class SiteRootDelegationCoordinator: ObservableObject {
                )
             {
                 pending = .firstDevice(firstDevice)
-                phase = .review(SiteRootDelegationReview(firstDevice: firstDevice))
+                let review = SiteRootDelegationReview(firstDevice: firstDevice)
+                presentedReview = review
+                phase = .review(review)
                 return
             }
             let scanned = try SiteRootDelegationQRPresentationV1(qrText: qrText)
             pending = .delegation(scanned)
-            phase = .review(SiteRootDelegationReview(presentation: scanned.presentation))
+            let review = SiteRootDelegationReview(presentation: scanned.presentation)
+            presentedReview = review
+            phase = .review(review)
         } catch let failure as PlatformFailure {
+            recordFailure(failure, review: nil)
             phase = .failed(failure)
         } catch {
+            recordFailure(.qrPayloadUnsupported, review: nil)
             phase = .failed(.qrPayloadUnsupported)
         }
     }
 
     func approve() async {
         guard let pending else {
+            recordFailure(.invalidConfiguration, review: presentedReview)
             phase = .failed(.invalidConfiguration)
             return
         }
@@ -97,14 +107,17 @@ final class SiteRootDelegationCoordinator: ObservableObject {
                 )
             }
         } catch let failure as PlatformFailure {
+            recordFailure(failure, review: presentedReview)
             phase = .failed(failure)
         } catch {
+            recordFailure(.productionEnvelopeUnavailable, review: presentedReview)
             phase = .failed(.productionEnvelopeUnavailable)
         }
     }
 
     func reset() {
         pending = nil
+        presentedReview = nil
         phase = .idle
     }
 
@@ -146,7 +159,51 @@ final class SiteRootDelegationCoordinator: ObservableObject {
         )
         let rewrapSubmission = try rewrap.produce(presentation: presentation)
         try await appAttestTransport.submitCustodyRewrap(rewrapSubmission)
+        recordCompletion(review: presentedReview)
         phase = .submitted
+    }
+
+    private func recordCompletion(review: SiteRootDelegationReview?) {
+        recordHistory(
+            review: review,
+            decision: "Verified",
+            signature: "Secure Enclave Site Root proof produced",
+            transfer: "Submitted to fixed Monas authority",
+            verification: "Site Root proof accepted; custody rewrap submission completed"
+        )
+    }
+
+    private func recordFailure(_ failure: PlatformFailure, review: SiteRootDelegationReview?) {
+        recordHistory(
+            review: review,
+            decision: "Not completed",
+            signature: "No completed Site Root proof retained",
+            transfer: "Ceremony did not complete",
+            verification: failure.safeUserMessage
+        )
+    }
+
+    private func recordHistory(
+        review: SiteRootDelegationReview?,
+        decision: String,
+        signature: String,
+        transfer: String,
+        verification: String
+    ) {
+        try? LocalHistoryRepository.shared.record(
+            HistoryEvent(
+                id: UUID(),
+                action: review?.isFirstDevice == true
+                    ? "First Site Root ceremony"
+                    : "Site Root delegation",
+                installation: review?.destination ?? "Monas Site Root authority",
+                occurredAt: Date().formatted(date: .abbreviated, time: .standard),
+                decision: decision,
+                signature: signature,
+                transfer: transfer,
+                verification: verification
+            )
+        )
     }
 
     private static func nowUnixSeconds() throws -> UInt64 {

@@ -1,5 +1,16 @@
 # Changelog
 
+## [0.7.4] - 2026-08-10
+
+### Fixed
+
+- Retain the attended Site Root review surface through every Face ID and
+  network transition, so the iPhone explicitly presents the final ceremony
+  outcome instead of returning ambiguously to the scanner.
+- Record a redacted local History event for each completed or failed Site Root
+  ceremony and refresh History immediately. This observation never grants
+  authority or substitutes for Monas’s authoritative audit record.
+
 ## [0.7.3] - 2026-08-10
 
 ### Fixed

@@ -5,6 +5,9 @@ import Foundation
 @MainActor
 final class LocalHistoryRepository {
     static let shared = LocalHistoryRepository()
+    static let historyDidChangeNotification = Notification.Name(
+        "org.mnemosynebiosciences.pistis.local-history-changed"
+    )
 
     private let defaults: UserDefaults
     private let key = "org.mnemosynebiosciences.pistis.local-history.v1"
@@ -32,5 +35,6 @@ final class LocalHistoryRepository {
             throw PlatformFailure.invalidConfiguration
         }
         defaults.set(encoded, forKey: key)
+        NotificationCenter.default.post(name: Self.historyDidChangeNotification, object: nil)
     }
 }

@@ -4,6 +4,12 @@
 
 ### Changed
 
+- Continue a server-committed first-device enrolment directly at the explicit
+  account-confirmation step when the bound provider identity is already
+  verified. Normal pending enrolments still display the one-use GitHub code;
+  recovery never repeats provider authentication or weakens Face ID receipt
+  signing.
+
 - Replace typed host-verification words in first-device enrolment with an
   explicit confirmation of the already verified, authority-signed
   installation identity, application digest, HTTPS origin and pinned TLS key.

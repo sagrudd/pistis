@@ -119,7 +119,7 @@ struct FirstDeviceEnrolmentView: View {
 }
 
 @MainActor
-private final class FirstDeviceEnrolmentFlow: ObservableObject {
+final class FirstDeviceEnrolmentFlow: ObservableObject {
     @Published private(set) var presentation: VerifiedFirstDevicePresentation?
     @Published private(set) var prompt: GitHubDeviceAuthorizationPrompt?
     @Published private(set) var verifiedSubject: UInt64?
@@ -195,8 +195,11 @@ private final class FirstDeviceEnrolmentFlow: ObservableObject {
             )
             self.handle = handle
             beginRetry.markAccepted()
-            prompt = handle.prompt
-            status = "Open GitHub and approve the displayed code"
+            let initialStatus = try await transport.status(handle)
+            await applyProviderStatus(
+                initialStatus,
+                pendingPrompt: handle.prompt
+            )
             failure = nil
         } catch {
             if retainExactAttempt {
@@ -219,42 +222,57 @@ private final class FirstDeviceEnrolmentFlow: ObservableObject {
         busy = true
         defer { busy = false }
         do {
-            switch try await transport.status(handle) {
-            case let .pending(pollAfter):
-                status = "GitHub approval is pending; retry in \(pollAfter / 1_000) seconds"
-            case let .verified(
-                subject,
-                login,
-                policyGeneration,
-                authorityChallenge,
-                challengeExpiry
-            ):
-                let approval = VerifiedProviderApproval(
-                    subject: subject,
-                    login: login,
-                    policyGeneration: policyGeneration,
-                    authorityChallenge: authorityChallenge,
-                    challengeExpiry: challengeExpiry
-                )
-                approvalGate.recordProviderVerification(approval)
-                verifiedSubject = subject
-                displayLogin = login
-                prompt = nil
-                status = "Review the verified GitHub account before enrolling"
-            case .denied:
-                status = "GitHub denied this request"
-                await discardUnenrolledKey(after: .denied)
-            case .cancelled:
-                status = "Enrolment was cancelled"
-                await discardUnenrolledKey(after: .cancelled)
-            case .expired:
-                status = "The enrolment request expired"
-                await discardUnenrolledKey(after: .expired)
-            case .consumed:
-                status = "Enrolment was consumed; retain this key and recover the receipt"
-            }
+            await applyProviderStatus(
+                try await transport.status(handle),
+                pendingPrompt: nil
+            )
         } catch {
             fail(error)
+        }
+    }
+
+    func applyProviderStatus(
+        _ providerStatus: ProviderVerificationStatus,
+        pendingPrompt: GitHubDeviceAuthorizationPrompt?
+    ) async {
+        switch providerStatus {
+        case let .pending(pollAfter):
+            if let pendingPrompt {
+                prompt = pendingPrompt
+                status = "Open GitHub and approve the displayed code"
+            } else {
+                status = "GitHub approval is pending; retry in \(pollAfter / 1_000) seconds"
+            }
+        case let .verified(
+            subject,
+            login,
+            policyGeneration,
+            authorityChallenge,
+            challengeExpiry
+        ):
+            let approval = VerifiedProviderApproval(
+                subject: subject,
+                login: login,
+                policyGeneration: policyGeneration,
+                authorityChallenge: authorityChallenge,
+                challengeExpiry: challengeExpiry
+            )
+            approvalGate.recordProviderVerification(approval)
+            verifiedSubject = subject
+            displayLogin = login
+            prompt = nil
+            status = "Review the verified GitHub account before enrolling"
+        case .denied:
+            status = "GitHub denied this request"
+            await discardUnenrolledKey(after: .denied)
+        case .cancelled:
+            status = "Enrolment was cancelled"
+            await discardUnenrolledKey(after: .cancelled)
+        case .expired:
+            status = "The enrolment request expired"
+            await discardUnenrolledKey(after: .expired)
+        case .consumed:
+            status = "Enrolment was consumed; retain this key and recover the receipt"
         }
     }
 

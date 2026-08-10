@@ -46,6 +46,10 @@ struct MonasAppAttestTransport: Sendable {
         "/v1/pistis/site-trust/app-attest/assertion"
     private static let custodyRewrapSubmissionPath =
         "/v1/pistis/site-trust/custody-rewrap/submit"
+    private static let authorityCustodyRotationBeginPath =
+        "/v1/pistis/site-trust/authority-custody-rotation/v2/begin"
+    private static let authorityCustodyRotationCompletePath =
+        "/v1/pistis/site-trust/authority-custody-rotation/v2/complete"
     private let origin: URL
     private let session: URLSession
 
@@ -140,6 +144,77 @@ struct MonasAppAttestTransport: Sendable {
             path: Self.custodyRewrapSubmissionPath,
             maximumRequestBytes: 16_384
         )
+    }
+
+    /// Begins the distinct v2 first-authority rotation only through the
+    /// already verified, SPKI-pinned App Attest session. No caller supplies a
+    /// URL, retained binding, credential, or alternate transport.
+    func beginFirstAuthorityCustodyRotationV2(
+        _ commitment: FirstAuthorityCustodySeedCommitmentV2,
+        nowUnixSeconds: UInt64
+    ) async throws -> FirstAuthorityRotationPresentationV2 {
+        let body = try JSONEncoder.sorted.encode(
+            FirstAuthorityCustodyRotationV2Wire.Begin(commitment)
+        )
+        let (data, response, endpoint) = try await authorityCustodyRequest(
+            body: body, path: Self.authorityCustodyRotationBeginPath
+        )
+        guard response.statusCode == 200, !data.isEmpty,
+              response.value(forHTTPHeaderField: "Cache-Control")?
+                  .lowercased().contains("no-store") == true
+        else { throw PlatformFailure.custodyRewrapUnavailable }
+        _ = endpoint
+        return try FirstAuthorityCustodyRotationV2Wire.presentation(
+            data: data, expectedCommitment: commitment, nowUnixSeconds: nowUnixSeconds
+        )
+    }
+
+    /// Completes exactly one retained v2 correlation and accepts success only
+    /// when Monas returns the matching typed authority descriptor.
+    func completeFirstAuthorityCustodyRotationV2(
+        _ submission: FirstAuthorityCustodySubmissionV2
+    ) async throws -> FirstAuthorityCustodyAcceptedV2 {
+        let body = try JSONEncoder.sorted.encode(
+            FirstAuthorityCustodyRotationV2Wire.Complete(submission)
+        )
+        let (data, response, endpoint) = try await authorityCustodyRequest(
+            body: body, path: Self.authorityCustodyRotationCompletePath
+        )
+        guard response.statusCode == 200, !data.isEmpty,
+              response.value(forHTTPHeaderField: "Cache-Control")?
+                  .lowercased().contains("no-store") == true
+        else { throw PlatformFailure.custodyRewrapUnavailable }
+        _ = endpoint
+        return try FirstAuthorityCustodyRotationV2Wire.accepted(
+            data: data, expectedCorrelation: submission.correlation
+        )
+    }
+
+    private func authorityCustodyRequest(
+        body: Data, path: String
+    ) async throws -> (Data, HTTPURLResponse, URL) {
+        guard !body.isEmpty, body.count <= 32_768,
+              let endpoint = URL(string: path, relativeTo: origin)?.absoluteURL,
+              endpoint.absoluteString == origin.absoluteString + path
+        else { throw PlatformFailure.custodyRewrapUnavailable }
+        var request = URLRequest(url: endpoint)
+        request.httpMethod = "POST"
+        request.httpBody = body
+        request.timeoutInterval = 15
+        request.setValue("application/json; charset=utf-8", forHTTPHeaderField: "Content-Type")
+        request.setValue("application/json", forHTTPHeaderField: "Accept")
+        request.setValue("no-store", forHTTPHeaderField: "Cache-Control")
+        do {
+            let (data, response) = try await session.data(for: request)
+            guard let http = response as? HTTPURLResponse, http.url == endpoint,
+                  data.count <= 32_768
+            else { throw PlatformFailure.custodyRewrapUnavailable }
+            return (data, http, endpoint)
+        } catch let failure as PlatformFailure {
+            throw failure
+        } catch {
+            throw PlatformFailure.custodyRewrapUnavailable
+        }
     }
 
     private func submit<T: Encodable>(

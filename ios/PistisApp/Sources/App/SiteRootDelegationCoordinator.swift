@@ -154,16 +154,19 @@ final class SiteRootDelegationCoordinator: ObservableObject {
             try await appAttestTransport.submitRegistration(registration)
         }
         let assertion = try await appAttestClient.prepareAssertion(bootstrap: bootstrap)
-        let presentation = try await appAttestTransport.submitAssertionForCustodyPresentation(
-            assertion,
-            nowUnixSeconds: Self.nowUnixSeconds()
-        )
+        try await appAttestTransport.submitAssertion(assertion)
         phase = .rewrappingCustody
-        let rewrap = try SecureEnclaveIphoneMediatedCustodyRewrapProducer(
-            authenticationReason: "Unlock and rewrap the exact Thesaurophylax custody record"
+        let rotation = try SecureEnclaveFirstAuthorityCustodyProducerV2(
+            authenticationReason: "Approve this exact first-authority custody rotation"
         )
-        let rewrapSubmission = try rewrap.produce(presentation: presentation)
-        try await appAttestTransport.submitCustodyRewrap(rewrapSubmission)
+        let commitment = try rotation.prepareInitialRotation()
+        let presentation = try await appAttestTransport.beginFirstAuthorityCustodyRotationV2(
+            commitment, nowUnixSeconds: Self.nowUnixSeconds()
+        )
+        let rotationSubmission = try rotation.completeInitialRotation(presentation)
+        _ = try await appAttestTransport.completeFirstAuthorityCustodyRotationV2(
+            rotationSubmission
+        )
         recordCompletion(review: presentedReview)
         phase = .submitted(.sessionEstablished)
     }
@@ -212,7 +215,7 @@ final class SiteRootDelegationCoordinator: ObservableObject {
             decision: "Verified",
             signature: "Secure Enclave Site Root proof produced",
             transfer: "Submitted to fixed Monas authority",
-            verification: "Site Root proof accepted; custody rewrap submission completed"
+            verification: "Site Root proof accepted; v2 authority custody rotation completed"
         )
     }
 

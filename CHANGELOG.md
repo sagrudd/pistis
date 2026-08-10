@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.8.0] - 2026-08-10
+
+### Added
+
+- Add the attended, purpose-separated v2 first-authority custody rotation to
+  the existing pinned Monas App Attest workflow. The iPhone generates a fresh
+  recovery seed, retains only a Secure-Enclave-protected AES-GCM envelope,
+  signs the exact Thesaurophylax transcript after Face ID, and returns the seed
+  only as an ECDH/HKDF/AES-GCM envelope to the presented host key.
+- Strictly encode and decode the frozen Monas v2 begin, presentation, complete,
+  and accepted schemas on their two fixed no-store routes. Unknown fields,
+  noncanonical base64url, stale presentations, transcript substitution,
+  device/commitment drift, and correlation replay all fail closed.
+
 ## [0.7.10] - 2026-08-10
 
 ### Fixed

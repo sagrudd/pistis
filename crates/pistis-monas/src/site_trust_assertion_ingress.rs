@@ -41,8 +41,8 @@ const ASSERTION_CLIENT_DATA_DOMAIN_V1: &[u8] =
 const REDACTED_VECTOR_DOMAIN_V1: &[u8] =
     b"mnemosyne.pistis.site-trust-app-attest-redacted-vector.v1\0";
 const AUTHENTICATOR_DATA_MINIMUM_BYTES: usize = 37;
-const USER_PRESENT_FLAGS: u8 = 0x01;
-const USER_PRESENT_AND_EXTENSION_FLAGS: u8 = 0x81;
+const LEGACY_ASSERTION_FLAGS: u8 = 0x00;
+const EXTENSION_ASSERTION_FLAGS: u8 = 0x80;
 const CUSTODY_ROTATION_CHALLENGE_DOMAIN_V1: &[u8] = b"MONASAC2\0";
 
 /// Narrow server-owned request for one genesis custody-rotation assertion.
@@ -533,10 +533,22 @@ pub enum CustodyRotationAppAttestFailureStageV1 {
     AssertionEncoding,
     /// The production application hash or authenticator flags did not match.
     ApplicationBinding,
+    /// Apple's authenticator data was shorter than the closed legacy form.
+    AuthenticatorDataLength,
+    /// Apple's RP-ID hash did not bind the reviewed application identifier.
+    RpIdHash,
+    /// The flags did not match a closed legacy or extension-bearing form.
+    AuthenticatorFlags,
     /// Apple's monotonic counter was malformed or stale.
     Counter,
     /// Apple's validation-category or bundle-version extensions did not match.
     AppleExtensions,
+    /// Apple's extension bytes were not the exact closed CBOR map.
+    AppleExtensionCbor,
+    /// Apple's launch-validation category was outside the reviewed policy.
+    AppleValidationCategory,
+    /// Apple's signed bundle version differed from the reviewed build.
+    AppleBundleVersion,
     /// The durable registered public key was unusable.
     RegisteredKey,
     /// Apple's assertion signature was not canonical DER.
@@ -572,25 +584,25 @@ pub fn verify_custody_rotation_app_attest_assertion_diagnostic_v1(
         .map_err(|_| CustodyRotationAppAttestFailureStageV1::AssertionEncoding)?;
     let application_hash: [u8; 32] =
         Sha256::digest(MONAS_PRODUCTION_APP_ATTEST_APP_IDENTIFIER_V1).into();
-    if decoded.authenticator_data.len() < AUTHENTICATOR_DATA_MINIMUM_BYTES
-        || decoded.authenticator_data[..32] != application_hash
-    {
-        return Err(CustodyRotationAppAttestFailureStageV1::ApplicationBinding);
+    if decoded.authenticator_data.len() < AUTHENTICATOR_DATA_MINIMUM_BYTES {
+        return Err(CustodyRotationAppAttestFailureStageV1::AuthenticatorDataLength);
+    }
+    if decoded.authenticator_data[..32] != application_hash {
+        return Err(CustodyRotationAppAttestFailureStageV1::RpIdHash);
     }
     match decoded.authenticator_data.len() {
         AUTHENTICATOR_DATA_MINIMUM_BYTES
-            if decoded.authenticator_data[32] == USER_PRESENT_FLAGS => {}
+            if decoded.authenticator_data[32] == LEGACY_ASSERTION_FLAGS => {}
         length if length > AUTHENTICATOR_DATA_MINIMUM_BYTES => {
-            if decoded.authenticator_data[32] != USER_PRESENT_AND_EXTENSION_FLAGS {
-                return Err(CustodyRotationAppAttestFailureStageV1::ApplicationBinding);
+            if decoded.authenticator_data[32] != EXTENSION_ASSERTION_FLAGS {
+                return Err(CustodyRotationAppAttestFailureStageV1::AuthenticatorFlags);
             }
-            validate_app_attest_extensions(
+            validate_app_attest_extensions_diagnostic(
                 &decoded.authenticator_data[AUTHENTICATOR_DATA_MINIMUM_BYTES..],
                 &acceptance.bundle_version,
-            )
-            .map_err(|_| CustodyRotationAppAttestFailureStageV1::AppleExtensions)?;
+            )?;
         }
-        _ => return Err(CustodyRotationAppAttestFailureStageV1::ApplicationBinding),
+        _ => return Err(CustodyRotationAppAttestFailureStageV1::AuthenticatorFlags),
     }
     let counter = MonotonicAppAttestCounterV1(u32::from_be_bytes(
         decoded.authenticator_data[33..37]
@@ -725,9 +737,9 @@ fn valid_assertion_flags_and_extensions(
     expected_bundle_version: &str,
 ) -> bool {
     match authenticator_data.len() {
-        AUTHENTICATOR_DATA_MINIMUM_BYTES => authenticator_data[32] == USER_PRESENT_FLAGS,
+        AUTHENTICATOR_DATA_MINIMUM_BYTES => authenticator_data[32] == LEGACY_ASSERTION_FLAGS,
         length if length > AUTHENTICATOR_DATA_MINIMUM_BYTES => {
-            authenticator_data[32] == USER_PRESENT_AND_EXTENSION_FLAGS
+            authenticator_data[32] == EXTENSION_ASSERTION_FLAGS
                 && validate_app_attest_extensions(
                     &authenticator_data[AUTHENTICATOR_DATA_MINIMUM_BYTES..],
                     expected_bundle_version,
@@ -769,6 +781,53 @@ fn validate_app_attest_extensions(
     Ok(())
 }
 
+fn validate_app_attest_extensions_diagnostic(
+    encoded: &[u8],
+    expected_bundle_version: &str,
+) -> Result<(), CustodyRotationAppAttestFailureStageV1> {
+    let mut cursor = CborCursor::new(encoded);
+    let entries = cursor
+        .map_len()
+        .map_err(|_| CustodyRotationAppAttestFailureStageV1::AppleExtensionCbor)?;
+    if entries != 2 {
+        return Err(CustodyRotationAppAttestFailureStageV1::AppleExtensionCbor);
+    }
+    let mut category = None;
+    let mut bundle_version = None;
+    for _ in 0..entries {
+        let key = cursor
+            .text()
+            .map_err(|_| CustodyRotationAppAttestFailureStageV1::AppleExtensionCbor)?;
+        match key.as_str() {
+            "apple_validation_category_01" if category.is_none() => {
+                category = Some(
+                    cursor
+                        .unsigned()
+                        .map_err(|_| CustodyRotationAppAttestFailureStageV1::AppleExtensionCbor)?,
+                );
+            }
+            "apple_bundle_version_01" if bundle_version.is_none() => {
+                bundle_version = Some(
+                    cursor
+                        .text()
+                        .map_err(|_| CustodyRotationAppAttestFailureStageV1::AppleExtensionCbor)?,
+                );
+            }
+            _ => return Err(CustodyRotationAppAttestFailureStageV1::AppleExtensionCbor),
+        }
+    }
+    if !cursor.exhausted() {
+        return Err(CustodyRotationAppAttestFailureStageV1::AppleExtensionCbor);
+    }
+    if !matches!(category, Some(2 | 4 | 5)) {
+        return Err(CustodyRotationAppAttestFailureStageV1::AppleValidationCategory);
+    }
+    if bundle_version.as_deref() != Some(expected_bundle_version) {
+        return Err(CustodyRotationAppAttestFailureStageV1::AppleBundleVersion);
+    }
+    Ok(())
+}
+
 struct DecodedAssertionV1 {
     signature: Vec<u8>,
     authenticator_data: Vec<u8>,
@@ -788,7 +847,7 @@ fn decode_assertion_object(
         match cursor.text()?.as_str() {
             "signature" if signature.is_none() => signature = Some(cursor.bytes(8, 128)?),
             "authenticatorData" if authenticator_data.is_none() => {
-                authenticator_data = Some(cursor.bytes(AUTHENTICATOR_DATA_MINIMUM_BYTES, 1024)?);
+                authenticator_data = Some(cursor.bytes(1, 1024)?);
             }
             _ => return Err(SiteTrustAppAttestAssertionIngressErrorV1::Denied),
         }
@@ -1090,7 +1149,7 @@ mod tests {
     fn legacy_authenticator_data(counter: u32) -> Vec<u8> {
         let mut data =
             Sha256::digest(MONAS_PRODUCTION_APP_ATTEST_APP_IDENTIFIER_V1.as_bytes()).to_vec();
-        data.push(USER_PRESENT_FLAGS);
+        data.push(LEGACY_ASSERTION_FLAGS);
         data.extend_from_slice(&counter.to_be_bytes());
         data
     }
@@ -1147,7 +1206,7 @@ mod tests {
     fn authenticator_data(_request: &SiteTrustAttestationRequestV1, counter: u32) -> Vec<u8> {
         let mut data =
             Sha256::digest(MONAS_PRODUCTION_APP_ATTEST_APP_IDENTIFIER_V1.as_bytes()).to_vec();
-        data.push(USER_PRESENT_AND_EXTENSION_FLAGS);
+        data.push(EXTENSION_ASSERTION_FLAGS);
         data.extend_from_slice(&counter.to_be_bytes());
         data.extend_from_slice(&cbor_extensions("1.0.0", 4));
         data
@@ -1309,6 +1368,68 @@ mod tests {
     }
 
     #[test]
+    fn custody_rotation_reports_redacted_authenticator_failure_stages() {
+        let signing_key = SigningKey::from_bytes((&[6; 32]).into()).unwrap();
+        let acceptance = custody_acceptance(&signing_key, 0);
+
+        let mut wrong_rp = legacy_authenticator_data(1);
+        wrong_rp[0] ^= 1;
+        let mut wrong_flags = legacy_authenticator_data(1);
+        wrong_flags[32] = 0x01;
+        let mut malformed_extensions =
+            Sha256::digest(MONAS_PRODUCTION_APP_ATTEST_APP_IDENTIFIER_V1.as_bytes()).to_vec();
+        malformed_extensions.push(EXTENSION_ASSERTION_FLAGS);
+        malformed_extensions.extend_from_slice(&1_u32.to_be_bytes());
+        malformed_extensions.extend_from_slice(&cbor_extensions("1.0.0", 4));
+        malformed_extensions.push(0x00);
+        let mut wrong_category =
+            Sha256::digest(MONAS_PRODUCTION_APP_ATTEST_APP_IDENTIFIER_V1.as_bytes()).to_vec();
+        wrong_category.push(EXTENSION_ASSERTION_FLAGS);
+        wrong_category.extend_from_slice(&1_u32.to_be_bytes());
+        wrong_category.extend_from_slice(&cbor_extensions("1.0.0", 1));
+        let mut wrong_bundle =
+            Sha256::digest(MONAS_PRODUCTION_APP_ATTEST_APP_IDENTIFIER_V1.as_bytes()).to_vec();
+        wrong_bundle.push(EXTENSION_ASSERTION_FLAGS);
+        wrong_bundle.extend_from_slice(&1_u32.to_be_bytes());
+        wrong_bundle.extend_from_slice(&cbor_extensions("2.0.0", 4));
+
+        for (auth_data, expected) in [
+            (
+                vec![0; 36],
+                CustodyRotationAppAttestFailureStageV1::AuthenticatorDataLength,
+            ),
+            (wrong_rp, CustodyRotationAppAttestFailureStageV1::RpIdHash),
+            (
+                wrong_flags,
+                CustodyRotationAppAttestFailureStageV1::AuthenticatorFlags,
+            ),
+            (
+                malformed_extensions,
+                CustodyRotationAppAttestFailureStageV1::AppleExtensionCbor,
+            ),
+            (
+                wrong_category,
+                CustodyRotationAppAttestFailureStageV1::AppleValidationCategory,
+            ),
+            (
+                wrong_bundle,
+                CustodyRotationAppAttestFailureStageV1::AppleBundleVersion,
+            ),
+        ] {
+            let assertion = custody_assertion(&signing_key, &acceptance, auth_data);
+            let submission = mobile_submission(acceptance.request.ceremony_id, assertion);
+            assert_eq!(
+                verify_custody_rotation_app_attest_assertion_diagnostic_v1(
+                    &acceptance,
+                    &submission,
+                    150,
+                ),
+                Err(expected)
+            );
+        }
+    }
+
+    #[test]
     fn ios26_legacy_form_rejects_wrong_rp_hash_counter_and_signature() {
         let signing_key = SigningKey::from_bytes((&[5; 32]).into()).unwrap();
         let acceptance = acceptance(&signing_key, 1);
@@ -1367,24 +1488,24 @@ mod tests {
         let mut store = AtomicStore::default();
 
         let mut legacy_with_extension_flag = legacy_authenticator_data(1);
-        legacy_with_extension_flag[32] = USER_PRESENT_AND_EXTENSION_FLAGS;
-        let mut legacy_without_user_present = legacy_authenticator_data(1);
-        legacy_without_user_present[32] = 0;
+        legacy_with_extension_flag[32] = EXTENSION_ASSERTION_FLAGS;
+        let mut legacy_with_user_present = legacy_authenticator_data(1);
+        legacy_with_user_present[32] = 0x01;
         let mut legacy_with_trailing_data = legacy_authenticator_data(1);
         legacy_with_trailing_data.push(0xa0);
         let mut extended_without_extension_flag = authenticator_data(&acceptance.request, 1);
-        extended_without_extension_flag[32] = USER_PRESENT_FLAGS;
+        extended_without_extension_flag[32] = LEGACY_ASSERTION_FLAGS;
         let mut extended_with_unknown_field = authenticator_data(&acceptance.request, 1);
         extended_with_unknown_field.push(0x00);
         let mut extended_with_wrong_bundle =
             Sha256::digest(MONAS_PRODUCTION_APP_ATTEST_APP_IDENTIFIER_V1.as_bytes()).to_vec();
-        extended_with_wrong_bundle.push(USER_PRESENT_AND_EXTENSION_FLAGS);
+        extended_with_wrong_bundle.push(EXTENSION_ASSERTION_FLAGS);
         extended_with_wrong_bundle.extend_from_slice(&1_u32.to_be_bytes());
         extended_with_wrong_bundle.extend_from_slice(&cbor_extensions("2.0.0", 4));
 
         for auth_data in [
             legacy_with_extension_flag,
-            legacy_without_user_present,
+            legacy_with_user_present,
             legacy_with_trailing_data,
             extended_without_extension_flag,
             extended_with_unknown_field,

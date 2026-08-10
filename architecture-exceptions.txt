@@ -4,3 +4,4 @@
 # Keep this list empty by default. Every entry requires explicit review and a
 # follow-up issue to restore normal modularity unless splitting is demonstrably
 # more harmful than the exception.
+crates/pistis-monas/src/site_trust_assertion_ingress.rs | Custody rotation deliberately reuses the reviewed strict CBOR, extension, counter, and signature verifier so the security-critical parser is not forked; follow-up modular extraction is required.

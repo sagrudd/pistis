@@ -156,7 +156,13 @@ final class SiteRootDelegationCoordinator: ObservableObject {
             )
             try await appAttestTransport.submitRegistration(registration)
         }
-        let assertion = try await appAttestClient.prepareAssertion(bootstrap: bootstrap)
+        let now = try Self.nowUnixSeconds()
+        let challenge = try await appAttestTransport.fetchCustodyRotationAssertionChallengeV2(
+            nowUnixSeconds: now
+        )
+        let assertion = try await appAttestClient.prepareCustodyRotationAssertion(
+            challenge: challenge
+        )
         try await appAttestTransport.submitAssertion(assertion)
         phase = .rewrappingCustody
         let rotation = try SecureEnclaveFirstAuthorityCustodyProducerV2(

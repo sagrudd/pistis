@@ -36,6 +36,78 @@ struct MonasAppAttestCeremonyBootstrap: Sendable {
     }
 }
 
+struct CustodyRotationAppAttestChallengeV2: Sendable {
+    static let schema = "monas.first-authority-custody-app-attest-challenge.v2"
+    let ceremonyID: Data
+    let clientDataHash: Data
+    let keyID: Data
+    let expiresAtUnixSeconds: UInt64
+
+    init(data: Data, nowUnixSeconds: UInt64) throws {
+        let object = try StrictJSONObject(data: data, maximumBytes: 8_192)
+        let keys: Set<String> = [
+            "schema", "installation_id_b64url", "site_trust_domain",
+            "ceremony_id_b64url", "client_data_hash_b64url", "app_identifier",
+            "key_id_b64url", "issued_at_unix_seconds", "expires_at_unix_seconds",
+        ]
+        guard Set(object.values.keys) == keys else {
+            throw PlatformFailure.productionEnvelopeUnavailable
+        }
+        let wire = try JSONDecoder().decode(Wire.self, from: data)
+        guard wire.schema == Self.schema,
+              wire.appIdentifier == AppleAppAttestRegistrationEnvelope.reviewedAppIdentifier,
+              !wire.siteTrustDomain.isEmpty, wire.siteTrustDomain.utf8.count <= 255,
+              Self.decode(wire.installationIDB64URL, count: 16) != nil,
+              let ceremony = Self.decode(wire.ceremonyIDB64URL, count: 16),
+              let hash = Self.decode(wire.clientDataHashB64URL, count: 32),
+              let key = Self.decode(wire.keyIDB64URL, count: 32),
+              wire.issuedAtUnixSeconds <= nowUnixSeconds,
+              nowUnixSeconds < wire.expiresAtUnixSeconds,
+              wire.expiresAtUnixSeconds - wire.issuedAtUnixSeconds <= 900
+        else { throw PlatformFailure.productionEnvelopeUnavailable }
+        ceremonyID = ceremony
+        clientDataHash = hash
+        keyID = key
+        expiresAtUnixSeconds = wire.expiresAtUnixSeconds
+    }
+
+    private struct Wire: Decodable {
+        let schema: String
+        let installationIDB64URL: String
+        let siteTrustDomain: String
+        let ceremonyIDB64URL: String
+        let clientDataHashB64URL: String
+        let appIdentifier: String
+        let keyIDB64URL: String
+        let issuedAtUnixSeconds: UInt64
+        let expiresAtUnixSeconds: UInt64
+        enum CodingKeys: String, CodingKey {
+            case schema
+            case installationIDB64URL = "installation_id_b64url"
+            case siteTrustDomain = "site_trust_domain"
+            case ceremonyIDB64URL = "ceremony_id_b64url"
+            case clientDataHashB64URL = "client_data_hash_b64url"
+            case appIdentifier = "app_identifier"
+            case keyIDB64URL = "key_id_b64url"
+            case issuedAtUnixSeconds = "issued_at_unix_seconds"
+            case expiresAtUnixSeconds = "expires_at_unix_seconds"
+        }
+    }
+
+    private static func decode(_ value: String, count: Int) -> Data? {
+        guard !value.contains("="), value.utf8.allSatisfy({ byte in
+            (48...57).contains(byte) || (65...90).contains(byte)
+                || (97...122).contains(byte) || byte == 45 || byte == 95
+        }) else { return nil }
+        let standard = value.replacingOccurrences(of: "-", with: "+")
+            .replacingOccurrences(of: "_", with: "/")
+            + String(repeating: "=", count: (4 - value.count % 4) % 4)
+        guard let data = Data(base64Encoded: standard), data.count == count,
+              !data.allSatisfy({ $0 == 0 }) else { return nil }
+        return data
+    }
+}
+
 /// Dedicated, pinned HTTPS JSON transport for App Attest. It cannot submit
 /// generic COSE or consume cookies, redirects, cache entries, browser state,
 /// endpoint hints, or local identity.
@@ -48,6 +120,8 @@ struct MonasAppAttestTransport: Sendable {
         "/v1/pistis/site-trust/custody-rewrap/submit"
     private static let authorityCustodyRotationBeginPath =
         "/v1/pistis/site-trust/authority-custody-rotation/v2/begin"
+    private static let authorityCustodyRotationChallengePath =
+        "/v1/pistis/site-trust/authority-custody-rotation/v2/assertion-challenge"
     private static let authorityCustodyRotationCompletePath =
         "/v1/pistis/site-trust/authority-custody-rotation/v2/complete"
     private static let authorityCustodyRecoveryBeginPath =
@@ -88,6 +162,30 @@ struct MonasAppAttestTransport: Sendable {
             envelope,
             path: Self.assertionPath,
             maximumRequestBytes: 32_768
+        )
+    }
+
+    func fetchCustodyRotationAssertionChallengeV2(
+        nowUnixSeconds: UInt64
+    ) async throws -> CustodyRotationAppAttestChallengeV2 {
+        guard let endpoint = URL(
+            string: Self.authorityCustodyRotationChallengePath, relativeTo: origin
+        )?.absoluteURL,
+        endpoint.absoluteString == origin.absoluteString + Self.authorityCustodyRotationChallengePath
+        else { throw PlatformFailure.productionEnvelopeUnavailable }
+        var request = URLRequest(url: endpoint)
+        request.httpMethod = "GET"
+        request.timeoutInterval = 15
+        request.setValue("application/json", forHTTPHeaderField: "Accept")
+        request.setValue("no-store", forHTTPHeaderField: "Cache-Control")
+        let (data, response) = try await session.data(for: request)
+        guard let http = response as? HTTPURLResponse, http.url == endpoint,
+              http.statusCode == 200,
+              http.value(forHTTPHeaderField: "Cache-Control")?
+                .lowercased().contains("no-store") == true
+        else { throw PlatformFailure.productionEnvelopeUnavailable }
+        return try CustodyRotationAppAttestChallengeV2(
+            data: data, nowUnixSeconds: nowUnixSeconds
         )
     }
 

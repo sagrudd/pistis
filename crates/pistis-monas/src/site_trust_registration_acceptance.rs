@@ -17,7 +17,8 @@ use sha2::{Digest as _, Sha256};
 use x509_parser::{parse_x509_certificate, pem::parse_x509_pem};
 
 use crate::{
-    MONAS_PRODUCTION_APP_ATTEST_APP_IDENTIFIER_V1, ServerHeldMonasAppAttestAcceptanceV1,
+    CustodyRotationAppAttestRequestV1, MONAS_PRODUCTION_APP_ATTEST_APP_IDENTIFIER_V1,
+    ServerHeldCustodyRotationAppAttestAcceptanceV1, ServerHeldMonasAppAttestAcceptanceV1,
     SiteTrustAttestationRequestV1,
 };
 
@@ -226,6 +227,51 @@ impl ProductionAppleAppAttestAcceptanceFactoryV1 {
                 expected_bundle_version.into(),
             ),
         )
+    }
+
+    /// Reconstruct narrow custody-rotation acceptance from durable registration.
+    ///
+    /// This continuation is intentionally narrower than registration verification:
+    /// it accepts no attestation object, trust root, application identity, session
+    /// identity, or caller-selected verifier. Monas supplies only its server-owned
+    /// custody-rotation request and fields read from the already verified durable
+    /// genesis registration. The packaged production manifest is revalidated when
+    /// the factory is created and its exact digest must match the durable row.
+    ///
+    /// The request contains no device, principal, human-authority fact, or session.
+    /// Its installation, Site Trust domain, ceremony, production key, TLS leaf,
+    /// genesis configuration, lifetime, and canonical challenge are already bound.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`SiteTrustAppAttestRegistrationErrorV1::Denied`] for any durable
+    /// binding mismatch, invalid key, unusable counter, or substituted request.
+    /// Package-manifest failure is reported only by [`Self::from_package`] as
+    /// unavailable.
+    pub fn resume_durable_registration_for_custody_rotation(
+        &self,
+        request: CustodyRotationAppAttestRequestV1,
+        registered_public_key_sec1: [u8; 65],
+        durable_manifest_sha256: [u8; 32],
+        expected_bundle_version: &str,
+        previous_counter: u32,
+    ) -> Result<ServerHeldCustodyRotationAppAttestAcceptanceV1, SiteTrustAppAttestRegistrationErrorV1>
+    {
+        let registered_key_digest: [u8; 32] = Sha256::digest(registered_public_key_sec1).into();
+        if !valid_bundle_version(expected_bundle_version)
+            || previous_counter == u32::MAX
+            || registered_key_digest != *request.key_id().as_bytes()
+            || PublicKey::from_sec1_bytes(&registered_public_key_sec1).is_err()
+            || durable_manifest_sha256 != self.manifest_digest
+        {
+            return Err(SiteTrustAppAttestRegistrationErrorV1::Denied);
+        }
+        Ok(ServerHeldCustodyRotationAppAttestAcceptanceV1::new(
+            request,
+            registered_public_key_sec1,
+            previous_counter,
+            expected_bundle_version.into(),
+        ))
     }
 }
 
@@ -542,6 +588,48 @@ fn valid_bundle_version(value: &str) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use p256::ecdsa::SigningKey;
+    use pistis_domain::{InstallationId, KeyId};
+
+    use crate::SiteTrustFactCeremonyIdV1;
+
+    fn rotation_request(key_id: KeyId) -> CustodyRotationAppAttestRequestV1 {
+        let installation = InstallationId::from_bytes([1; 16]);
+        let ceremony = SiteTrustFactCeremonyIdV1::from_bytes([3; 16]);
+        let mut canonical = Vec::new();
+        canonical.extend_from_slice(b"MONASAC2\0");
+        canonical.extend_from_slice(installation.as_bytes());
+        canonical.extend_from_slice(&9_u16.to_be_bytes());
+        canonical.extend_from_slice(b"site-demo");
+        canonical.extend_from_slice(ceremony.as_bytes());
+        canonical.extend_from_slice(key_id.as_bytes());
+        canonical.extend_from_slice(&100_u64.to_be_bytes());
+        canonical.extend_from_slice(&200_u64.to_be_bytes());
+        canonical.extend_from_slice(&[4; 32]);
+        canonical.extend_from_slice(&[5; 32]);
+        CustodyRotationAppAttestRequestV1::from_server_owned_challenge(
+            installation,
+            "site-demo".into(),
+            ceremony,
+            key_id,
+            Sha256::digest(canonical).into(),
+            [4; 32],
+            [5; 32],
+            100,
+            200,
+        )
+        .unwrap()
+    }
+
+    fn durable_key() -> ([u8; 65], KeyId) {
+        let signing_key = SigningKey::from_bytes((&[7; 32]).into()).unwrap();
+        let encoded = signing_key.verifying_key().to_encoded_point(false);
+        let public_key: [u8; 65] = encoded.as_bytes().try_into().unwrap();
+        (
+            public_key,
+            KeyId::from_bytes(Sha256::digest(public_key).into()),
+        )
+    }
 
     #[test]
     fn package_material_is_pinned_to_the_production_profile() {
@@ -568,6 +656,65 @@ mod tests {
         assert_eq!(
             verify_pinned_apple_registration(b"not-cbor", [0; 32], [0; 32], factory.root_pem),
             Err(SiteTrustAppAttestRegistrationErrorV1::Malformed)
+        );
+    }
+
+    #[test]
+    fn durable_restart_reconstructs_only_the_exact_rotation_acceptance() {
+        let factory = ProductionAppleAppAttestAcceptanceFactoryV1::from_package().unwrap();
+        let (public_key, key_id) = durable_key();
+        let request = rotation_request(key_id);
+        factory
+            .resume_durable_registration_for_custody_rotation(
+                request,
+                public_key,
+                factory.manifest_digest,
+                "1.0.0",
+                41,
+            )
+            .unwrap();
+    }
+
+    #[test]
+    fn durable_tamper_or_binding_mismatch_never_reconstructs_acceptance() {
+        let factory = ProductionAppleAppAttestAcceptanceFactoryV1::from_package().unwrap();
+        let (public_key, key_id) = durable_key();
+        let request = rotation_request(key_id);
+        let attempt = |request, key, manifest, bundle, counter| {
+            factory.resume_durable_registration_for_custody_rotation(
+                request, key, manifest, bundle, counter,
+            )
+        };
+        assert!(
+            attempt(
+                request.clone(),
+                [0; 65],
+                factory.manifest_digest,
+                "1.0.0",
+                41
+            )
+            .is_err()
+        );
+        assert!(attempt(request.clone(), public_key, [0; 32], "1.0.0", 41).is_err());
+        assert!(
+            attempt(
+                request.clone(),
+                public_key,
+                factory.manifest_digest,
+                "bad/version",
+                41
+            )
+            .is_err()
+        );
+        assert!(
+            attempt(
+                request,
+                public_key,
+                factory.manifest_digest,
+                "1.0.0",
+                u32::MAX
+            )
+            .is_err()
         );
     }
 }

@@ -17,6 +17,8 @@ use p256::{
 use serde::Deserialize;
 use sha2::{Digest as _, Sha256};
 
+use pistis_domain::{InstallationId, KeyId};
+
 use crate::site_trust::build_site_trust_human_authority_fact_from_verified_v1;
 use crate::{
     AppleAppAttestAssertionV1, SiteTrustAttestationRequestV1, SiteTrustFactCeremonyIdV1,
@@ -40,6 +42,150 @@ const REDACTED_VECTOR_DOMAIN_V1: &[u8] =
     b"mnemosyne.pistis.site-trust-app-attest-redacted-vector.v1\0";
 const AUTHENTICATOR_DATA_MINIMUM_BYTES: usize = 37;
 const USER_PRESENT_AND_EXTENSION_FLAGS: u8 = 0x81;
+const CUSTODY_ROTATION_CHALLENGE_DOMAIN_V1: &[u8] = b"MONASAC2\0";
+
+/// Narrow server-owned request for one genesis custody-rotation assertion.
+///
+/// It deliberately has no device, principal, human-authority, or session field.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct CustodyRotationAppAttestRequestV1 {
+    installation_id: InstallationId,
+    site_trust_domain: String,
+    ceremony_id: SiteTrustFactCeremonyIdV1,
+    key_id: KeyId,
+    client_data_hash: [u8; 32],
+    tls_leaf_spki_sha256: [u8; 32],
+    genesis_config_sha256: [u8; 32],
+    issued_at_unix_seconds: u64,
+    expires_at_unix_seconds: u64,
+}
+
+impl CustodyRotationAppAttestRequestV1 {
+    /// Constructs and validates the exact server-owned challenge binding.
+    ///
+    /// # Errors
+    ///
+    /// Denies malformed, zero, expired, overlong, or digest-substituted input.
+    #[allow(clippy::too_many_arguments)]
+    pub fn from_server_owned_challenge(
+        installation_id: InstallationId,
+        site_trust_domain: String,
+        ceremony_id: SiteTrustFactCeremonyIdV1,
+        key_id: KeyId,
+        client_data_hash: [u8; 32],
+        tls_leaf_spki_sha256: [u8; 32],
+        genesis_config_sha256: [u8; 32],
+        issued_at_unix_seconds: u64,
+        expires_at_unix_seconds: u64,
+    ) -> Result<Self, SiteTrustAppAttestAssertionIngressErrorV1> {
+        let request = Self {
+            installation_id,
+            site_trust_domain,
+            ceremony_id,
+            key_id,
+            client_data_hash,
+            tls_leaf_spki_sha256,
+            genesis_config_sha256,
+            issued_at_unix_seconds,
+            expires_at_unix_seconds,
+        };
+        request.validate()?;
+        Ok(request)
+    }
+
+    fn validate(&self) -> Result<(), SiteTrustAppAttestAssertionIngressErrorV1> {
+        let lifetime = self
+            .expires_at_unix_seconds
+            .checked_sub(self.issued_at_unix_seconds)
+            .filter(|value| (1..=900).contains(value));
+        let expected = custody_rotation_client_data_hash(self);
+        if self.installation_id.as_bytes() == &[0; 16]
+            || self.ceremony_id.as_bytes() == &[0; 16]
+            || self.key_id.as_bytes() == &[0; 32]
+            || self.tls_leaf_spki_sha256 == [0; 32]
+            || self.genesis_config_sha256 == [0; 32]
+            || self.site_trust_domain.is_empty()
+            || self.site_trust_domain.len() > 255
+            || !self
+                .site_trust_domain
+                .bytes()
+                .all(|b| (0x21..=0x7e).contains(&b))
+            || lifetime.is_none()
+            || expected != self.client_data_hash
+        {
+            return Err(SiteTrustAppAttestAssertionIngressErrorV1::Denied);
+        }
+        Ok(())
+    }
+
+    pub(crate) const fn key_id(&self) -> KeyId {
+        self.key_id
+    }
+}
+
+fn custody_rotation_client_data_hash(request: &CustodyRotationAppAttestRequestV1) -> [u8; 32] {
+    let mut canonical = Vec::new();
+    canonical.extend_from_slice(CUSTODY_ROTATION_CHALLENGE_DOMAIN_V1);
+    canonical.extend_from_slice(request.installation_id.as_bytes());
+    canonical.extend_from_slice(
+        &u16::try_from(request.site_trust_domain.len())
+            .unwrap_or(u16::MAX)
+            .to_be_bytes(),
+    );
+    canonical.extend_from_slice(request.site_trust_domain.as_bytes());
+    canonical.extend_from_slice(request.ceremony_id.as_bytes());
+    canonical.extend_from_slice(request.key_id.as_bytes());
+    canonical.extend_from_slice(&request.issued_at_unix_seconds.to_be_bytes());
+    canonical.extend_from_slice(&request.expires_at_unix_seconds.to_be_bytes());
+    canonical.extend_from_slice(&request.tls_leaf_spki_sha256);
+    canonical.extend_from_slice(&request.genesis_config_sha256);
+    Sha256::digest(canonical).into()
+}
+
+/// Opaque durable-registration acceptance for custody rotation only.
+pub struct ServerHeldCustodyRotationAppAttestAcceptanceV1 {
+    request: CustodyRotationAppAttestRequestV1,
+    registered_public_key_sec1: [u8; 65],
+    previous_counter: u32,
+    bundle_version: String,
+}
+
+impl ServerHeldCustodyRotationAppAttestAcceptanceV1 {
+    pub(crate) fn new(
+        request: CustodyRotationAppAttestRequestV1,
+        registered_public_key_sec1: [u8; 65],
+        previous_counter: u32,
+        bundle_version: String,
+    ) -> Self {
+        Self {
+            request,
+            registered_public_key_sec1,
+            previous_counter,
+            bundle_version,
+        }
+    }
+}
+
+/// Redacted proof that one narrow custody-rotation assertion verified.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct CustodyRotationAppAttestOutcomeV1 {
+    counter: MonotonicAppAttestCounterV1,
+    assertion_sha256: [u8; 32],
+}
+
+impl CustodyRotationAppAttestOutcomeV1 {
+    /// Returns the counter Monas must atomically persist while consuming the challenge.
+    #[must_use]
+    pub const fn counter(&self) -> MonotonicAppAttestCounterV1 {
+        self.counter
+    }
+
+    /// Returns only the assertion digest for retained audit evidence.
+    #[must_use]
+    pub const fn assertion_sha256(&self) -> [u8; 32] {
+        self.assertion_sha256
+    }
+}
 
 /// A monotonic App Attest assertion counter already structurally verified.
 #[derive(Clone, Copy, Debug, Eq, Ord, PartialEq, PartialOrd)]
@@ -347,6 +493,70 @@ pub fn issue_site_trust_human_authority_fact_from_server_held_app_attest_asserti
             verified_assertion,
         ),
         fact,
+    })
+}
+
+/// Verifies one assertion only for the narrow genesis custody-rotation gate.
+///
+/// This returns no human-authority fact, device identity, principal, or session.
+/// Monas must atomically advance the counter and consume the exact challenge
+/// before arming its separately typed v2 rotation state.
+///
+/// # Errors
+///
+/// Denies an expired request, ceremony mismatch, stale counter, wrong production
+/// application extension, malformed assertion, or invalid registered-key signature.
+pub fn verify_custody_rotation_app_attest_assertion_v1(
+    acceptance: &ServerHeldCustodyRotationAppAttestAcceptanceV1,
+    submission: &SiteTrustAppAttestMobileSubmissionV1,
+    now_unix_seconds: u64,
+) -> Result<CustodyRotationAppAttestOutcomeV1, SiteTrustAppAttestAssertionIngressErrorV1> {
+    acceptance.request.validate()?;
+    if submission.ceremony_id != acceptance.request.ceremony_id
+        || now_unix_seconds < acceptance.request.issued_at_unix_seconds
+        || now_unix_seconds >= acceptance.request.expires_at_unix_seconds
+        || <[u8; 32]>::from(Sha256::digest(acceptance.registered_public_key_sec1))
+            != *acceptance.request.key_id.as_bytes()
+    {
+        return Err(SiteTrustAppAttestAssertionIngressErrorV1::Denied);
+    }
+    let decoded = decode_assertion_object(submission.assertion.transient_bytes())?;
+    let application_hash: [u8; 32] =
+        Sha256::digest(MONAS_PRODUCTION_APP_ATTEST_APP_IDENTIFIER_V1).into();
+    if decoded.authenticator_data.len() <= AUTHENTICATOR_DATA_MINIMUM_BYTES
+        || decoded.authenticator_data[..32] != application_hash
+        || decoded.authenticator_data[32] != USER_PRESENT_AND_EXTENSION_FLAGS
+    {
+        return Err(SiteTrustAppAttestAssertionIngressErrorV1::Denied);
+    }
+    let counter = MonotonicAppAttestCounterV1(u32::from_be_bytes(
+        decoded.authenticator_data[33..37]
+            .try_into()
+            .map_err(|_| SiteTrustAppAttestAssertionIngressErrorV1::Denied)?,
+    ));
+    if !counter.strictly_after(acceptance.previous_counter) {
+        return Err(SiteTrustAppAttestAssertionIngressErrorV1::Denied);
+    }
+    validate_app_attest_extensions(
+        &decoded.authenticator_data[37..],
+        &acceptance.bundle_version,
+    )?;
+    let nonce = Sha256::digest(
+        [
+            decoded.authenticator_data.as_slice(),
+            acceptance.request.client_data_hash.as_slice(),
+        ]
+        .concat(),
+    );
+    let key = VerifyingKey::from_sec1_bytes(&acceptance.registered_public_key_sec1)
+        .map_err(|_| SiteTrustAppAttestAssertionIngressErrorV1::Unavailable)?;
+    let signature = Signature::from_der(&decoded.signature)
+        .map_err(|_| SiteTrustAppAttestAssertionIngressErrorV1::Denied)?;
+    key.verify(&nonce, &signature)
+        .map_err(|_| SiteTrustAppAttestAssertionIngressErrorV1::Denied)?;
+    Ok(CustodyRotationAppAttestOutcomeV1 {
+        counter,
+        assertion_sha256: Sha256::digest(submission.assertion.transient_bytes()).into(),
     })
 }
 

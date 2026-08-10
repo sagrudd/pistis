@@ -9,6 +9,12 @@ import Foundation
 enum MonasSiteRootDelegationEndpointV1 {
     static let readinessPath = "/auth/pistis/v1/site-root-delegation/readiness"
     static let submitPath = "/auth/pistis/site-root-delegations/v1/submit"
+    static let installationStatusPath = "/auth/pistis/site-root-genesis/v1/installation-status"
+}
+
+struct MonasSiteRootInstallationStatusV1: Sendable {
+    let redactedReference: String
+    let registeredAt: Date
 }
 
 enum MonasSiteRootDelegationReadinessStateV1: String, Decodable, Equatable, Sendable {
@@ -51,6 +57,7 @@ struct MonasSiteRootDelegationTransport: MonasSiteRootCeremonyTransport,
     private let session: URLSession
 
     var genesisAuthorityOrigin: URL? { authorityOrigin }
+    var authorityHost: String? { authorityOrigin.host }
 
     init(
         authorityOrigin: URL,
@@ -87,6 +94,42 @@ struct MonasSiteRootDelegationTransport: MonasSiteRootCeremonyTransport,
         let (data, _) = try await requestData(request, expectedURL: endpoint)
         do {
             return try JSONDecoder().decode(MonasReadinessResponse.self, from: data).value
+        } catch {
+            throw PlatformFailure.siteRootAuthorityUnavailable
+        }
+    }
+
+    /// Reads only a matching, already proof-consumed Site Root lifecycle
+    /// record. This is display reconciliation, never session or authority.
+    func installationStatus(
+        siteRootDeviceKeyID: String
+    ) async throws -> MonasSiteRootInstallationStatusV1? {
+        guard !siteRootDeviceKeyID.isEmpty,
+              siteRootDeviceKeyID.utf8.count <= 128,
+              siteRootDeviceKeyID.utf8.allSatisfy({
+                  ($0 >= 48 && $0 <= 57) || ($0 >= 65 && $0 <= 90)
+                      || ($0 >= 97 && $0 <= 122) || [45, 46, 58, 95].contains($0)
+              })
+        else { throw PlatformFailure.invalidConfiguration }
+        let endpoint = try endpoint(path: MonasSiteRootDelegationEndpointV1.installationStatusPath)
+        var request = URLRequest(url: endpoint)
+        request.httpMethod = "GET"
+        request.timeoutInterval = 15
+        request.setValue("application/json", forHTTPHeaderField: "Accept")
+        request.setValue("no-store", forHTTPHeaderField: "Cache-Control")
+        request.setValue(siteRootDeviceKeyID, forHTTPHeaderField: "X-Pistis-Site-Root-Key-ID")
+        do {
+            let (data, response) = try await session.data(for: request)
+            guard let http = response as? HTTPURLResponse, http.url == endpoint else {
+                throw PlatformFailure.siteRootAuthorityUnavailable
+            }
+            if http.statusCode == 404, data.isEmpty { return nil }
+            guard http.statusCode == 200, data.count <= Self.maximumResponseBytes else {
+                throw PlatformFailure.siteRootAuthorityUnavailable
+            }
+            return try MonasInstallationStatusResponse(data: data).value
+        } catch let failure as PlatformFailure {
+            throw failure
         } catch {
             throw PlatformFailure.siteRootAuthorityUnavailable
         }
@@ -234,6 +277,60 @@ struct MonasSiteRootDelegationTransport: MonasSiteRootCeremonyTransport,
         guard value.isFinite, value >= 0, value <= Double(UInt64.max) else { return nil }
         return UInt64(value)
     }
+}
+
+struct MonasInstallationStatusResponse: Decodable {
+    let schema: String
+    let state: String
+    let redactedReference: String
+    let registeredAtUnixMillis: UInt64
+
+    private enum CodingKeys: String, CodingKey, CaseIterable {
+        case schema, state
+        case redactedReference = "redacted_reference"
+        case registeredAtUnixMillis = "registered_at_unix_millis"
+    }
+
+    init(data: Data) throws {
+        let decoder = JSONDecoder()
+        let keys = try decoder.decode(StrictKeys.self, from: data)
+        guard keys.values == Set(CodingKeys.allCases.map(\.rawValue)) else {
+            throw PlatformFailure.siteRootAuthorityUnavailable
+        }
+        let decoded = try decoder.decode(Self.self, from: data)
+        self = decoded
+    }
+
+    var value: MonasSiteRootInstallationStatusV1 {
+        get throws {
+            guard schema == "monas.site-root-genesis-installation-status.v1",
+                  ["proof-consumed", "completed"].contains(state),
+                  !redactedReference.isEmpty, redactedReference.utf8.count <= 64,
+                  redactedReference.unicodeScalars.allSatisfy({
+                      CharacterSet.alphanumerics.contains($0)
+                          || $0 == "." || $0 == "-" || $0 == "…"
+                  })
+            else { throw PlatformFailure.siteRootAuthorityUnavailable }
+            return MonasSiteRootInstallationStatusV1(
+                redactedReference: redactedReference,
+                registeredAt: Date(timeIntervalSince1970: TimeInterval(registeredAtUnixMillis) / 1_000)
+            )
+        }
+    }
+
+    private struct StrictKeys: Decodable {
+        let values: Set<String>
+        init(from decoder: any Decoder) throws {
+            values = Set(try decoder.container(keyedBy: DynamicKey.self).allKeys.map(\.stringValue))
+        }
+    }
+}
+
+private struct DynamicKey: CodingKey {
+    let stringValue: String
+    let intValue: Int? = nil
+    init?(stringValue: String) { self.stringValue = stringValue }
+    init?(intValue: Int) { return nil }
 }
 
 private struct MonasReadinessResponse: Decodable {

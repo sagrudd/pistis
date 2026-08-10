@@ -3,6 +3,7 @@ import SwiftUI
 struct RootTabView: View {
     @Environment(\.scenePhase) private var scenePhase
     @StateObject private var enrollment = EnrollmentProjectionStore()
+    @State private var reconciliationMessage: String?
     let siteRootTransport: any MonasSiteRootCeremonyTransport
 
     var body: some View {
@@ -22,7 +23,9 @@ struct RootTabView: View {
                 InstallationsView(
                     installations: projection.installations,
                     loadFailure: enrollment.state == .failed,
-                    forgetExpired: forgetExpired
+                    forgetExpired: forgetExpired,
+                    recoverSiteRootInstallation: recoverSiteRootInstallation,
+                    reconciliationMessage: reconciliationMessage
                 )
             }
             .tabItem {
@@ -89,6 +92,53 @@ struct RootTabView: View {
             return projection
         }
         return .empty
+    }
+
+    private func recoverSiteRootInstallation() {
+        Task {
+            guard let transport = siteRootTransport as? MonasSiteRootDelegationTransport,
+                  let authorityHost = transport.authorityHost
+            else {
+                reconciliationMessage = "The fixed Monas Site Root authority is unavailable."
+                return
+            }
+            do {
+                let producer = try SecureEnclaveSiteRootProofProducer(
+                    authenticationReason: "Read this iPhone's Site Root setup progress"
+                )
+                guard let registration = try producer.existingRegistration() else {
+                    reconciliationMessage = "No Site Root key exists on this iPhone. Scan the signed Monas invitation first."
+                    return
+                }
+                guard let status = try await transport.installationStatus(
+                    siteRootDeviceKeyID: registration.deviceKeyID
+                ) else {
+                    reconciliationMessage = "Monas has no verified Site Root setup record for this iPhone."
+                    return
+                }
+                try SiteRootInstallationRepository.shared.recordRecoveredFirstCeremony(
+                    authorityHost: authorityHost,
+                    redactedReference: status.redactedReference,
+                    registeredAt: status.registeredAt
+                )
+                try? LocalHistoryRepository.shared.record(
+                    HistoryEvent(
+                        id: UUID(),
+                        action: "Site Root setup recovered",
+                        installation: authorityHost,
+                        occurredAt: Date().formatted(date: .abbreviated, time: .standard),
+                        decision: "Verified",
+                        signature: "No new proof produced",
+                        transfer: "Read from fixed Monas authority",
+                        verification: "Existing Site Root proof remains server-recorded"
+                    )
+                )
+                reconciliationMessage = nil
+                await enrollment.refresh()
+            } catch {
+                reconciliationMessage = "Pistis could not safely recover Site Root setup progress."
+            }
+        }
     }
 
     private func forgetExpired(_ installationID: UUID) async throws {

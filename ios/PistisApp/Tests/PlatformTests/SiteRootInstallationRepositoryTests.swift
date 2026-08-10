@@ -29,4 +29,22 @@ final class SiteRootInstallationRepositoryTests: XCTestCase {
             )
         )
     }
+
+    func testReconciliationResponseAcceptsOnlyProofConsumedOrCompleted() throws {
+        let accepted = """
+        {"schema":"monas.site-root-genesis-installation-status.v1","state":"proof-consumed","redacted_reference":"abc123…def4","registered_at_unix_millis":1000}
+        """
+        let value = try MonasInstallationStatusResponse(
+            data: try XCTUnwrap(accepted.data(using: .utf8))
+        ).value
+        XCTAssertEqual(value.redactedReference, "abc123…def4")
+        XCTAssertEqual(value.registeredAt, Date(timeIntervalSince1970: 1))
+
+        let rejected = accepted.replacingOccurrences(of: "proof-consumed", with: "registered")
+        XCTAssertThrowsError(
+            try MonasInstallationStatusResponse(
+                data: try XCTUnwrap(rejected.data(using: .utf8))
+            ).value
+        )
+    }
 }

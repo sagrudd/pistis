@@ -77,10 +77,29 @@ final class SiteRootInstallationRepository {
 
     func recordCompletedFirstCeremony(_ review: SiteRootDelegationReview) throws {
         guard review.isFirstDevice else { return }
-        let record = try IncompleteSiteRootInstallation(
+        try record(
+            IncompleteSiteRootInstallation(
             authorityHost: review.destination,
             redactedReference: review.reference
+            )
         )
+    }
+
+    func recordRecoveredFirstCeremony(
+        authorityHost: String,
+        redactedReference: String,
+        registeredAt: Date
+    ) throws {
+        try record(
+            IncompleteSiteRootInstallation(
+                authorityHost: authorityHost,
+                redactedReference: redactedReference,
+                recordedAt: registeredAt
+            )
+        )
+    }
+
+    private func record(_ record: IncompleteSiteRootInstallation) throws {
         var retained = try records()
         if let index = retained.firstIndex(where: {
             $0.authorityHost == record.authorityHost &&

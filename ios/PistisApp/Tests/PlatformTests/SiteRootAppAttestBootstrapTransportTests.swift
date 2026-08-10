@@ -21,12 +21,12 @@ final class SiteRootAppAttestBootstrapTransportTests: XCTestCase {
         }
     }
 
-    func testAcceptedAssertionTransitionsDirectlyToRecoveryWithoutChallengeRefetch() throws {
+    func testAcceptedAssertionTransitionsDirectlyToRotationWithoutChallengeRefetch() throws {
         let transition = try AuthorityCustodyAcceptedAssertionTransitionV2.next(
             after: .appAttestAssertionRequired
         )
 
-        XCTAssertEqual(transition.status, .recoveryRequired)
+        XCTAssertEqual(transition.status, .initialRotationRequired)
         XCTAssertEqual(transition.stage, .prepareCustody)
         XCTAssertNotEqual(transition.stage, .fetchChallenge)
         XCTAssertFalse(

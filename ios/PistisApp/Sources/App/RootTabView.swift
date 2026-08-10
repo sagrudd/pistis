@@ -17,7 +17,7 @@ enum AuthorityCustodyContinuationStage: String, CaseIterable {
 
 enum AuthorityCustodyAcceptedAssertionTransitionV2 {
     /// An empty 202 has consumed the one-use assertion challenge and armed the
-    /// retained recovery ceremony. A subsequent coarse 503 is not a new
+    /// retained initial-rotation ceremony. A subsequent coarse 503 is not a new
     /// challenge and must never send the client back to assertion generation.
     static func next(
         after status: MonasSiteRootDelegationTransport.AuthorityCustodyStatusV2
@@ -28,7 +28,7 @@ enum AuthorityCustodyAcceptedAssertionTransitionV2 {
         guard status == .appAttestAssertionRequired else {
             throw PlatformFailure.siteRootAuthorityUnavailable
         }
-        return (.recoveryRequired, .prepareCustody)
+        return (.initialRotationRequired, .prepareCustody)
     }
 }
 

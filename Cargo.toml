@@ -53,7 +53,7 @@ pistis-google = { version = "0.1.0", path = "crates/pistis-google" }
 pistis-identity = { version = "0.1.0", path = "crates/pistis-identity" }
 pistis-monas = { version = "0.7.0", path = "crates/pistis-monas" }
 pistis-agent = { version = "0.1.0", path = "crates/pistis-agent" }
-pistis-protocol = { version = "0.1.0", path = "crates/pistis-protocol" }
+pistis-protocol = { version = "0.2.0", path = "crates/pistis-protocol" }
 pistis-qr = { version = "0.1.1", path = "crates/pistis-qr" }
 pistis-recovery = { version = "0.1.0", path = "crates/pistis-recovery" }
 pistis-release = { version = "0.1.0", path = "crates/pistis-release" }

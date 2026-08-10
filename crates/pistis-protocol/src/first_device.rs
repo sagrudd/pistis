@@ -4,7 +4,7 @@ use crate::{HOST_TRUST_WORDS_VERSION, HostTrustWords, derive_host_trust_words};
 use pistis_canonical::{Value, from_slice_with_fields};
 use pistis_cose::verify_sign1;
 use pistis_crypto::{PublicKey, derive_key_id, sha256};
-use std::{error::Error, fmt};
+use std::{error::Error, fmt, net::IpAddr};
 use url::Url;
 
 const FRAME_FIELDS: &[u64] = &[0, 1, 2, 3];
@@ -16,6 +16,102 @@ const PRODUCT_AUDIENCES: &[&str] = &["dasobjectstore", "jenkins", "propylaion"];
 /// Maximum binary outer-frame bytes accepted from the protected pipe.
 pub const MAX_FIRST_DEVICE_FRAME_BYTES: usize = 1_792;
 const MAX_INVITATION_BYTES: usize = 512;
+
+/// Canonical host variant authenticated by a first-device endpoint identity.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub enum SiteTrustEndpointHostV1 {
+    /// Lower-case RFC-style DNS name.
+    DnsName(String),
+    /// Canonically rendered IPv4 address.
+    Ipv4(std::net::Ipv4Addr),
+    /// Canonically compressed IPv6 address.
+    Ipv6(std::net::Ipv6Addr),
+}
+
+/// Versioned Site Trust endpoint identity used before an installation has DNS.
+///
+/// An IP address is not a weaker trust mode: every variant requires the same
+/// non-zero, authority-signed leaf-SPKI commitment. Certificate verification
+/// then pins the contacted TLS endpoint to those exact bytes.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct SiteTrustEndpointIdentityV1 {
+    /// Exact canonical HTTPS origin authenticated by the presentation.
+    pub origin: String,
+    /// Typed canonical host extracted from that origin.
+    pub host: SiteTrustEndpointHostV1,
+    /// Mandatory leaf certificate SPKI commitment.
+    pub tls_spki_sha256: [u8; 32],
+}
+
+impl SiteTrustEndpointIdentityV1 {
+    /// Parse the exact signed endpoint identity without network or CA fallback.
+    pub fn parse(
+        origin: &str,
+        tls_spki_sha256: [u8; 32],
+    ) -> Result<Self, FirstDevicePresentationError> {
+        if tls_spki_sha256 == [0; 32]
+            || origin.is_empty()
+            || origin.len() > 255
+            || !origin.is_ascii()
+            || origin.contains('%')
+            || origin.trim() != origin
+        {
+            return Err(FirstDevicePresentationError::InvalidPresentation);
+        }
+        let parsed =
+            Url::parse(origin).map_err(|_| FirstDevicePresentationError::InvalidPresentation)?;
+        let host = match parsed.host() {
+            Some(url::Host::Domain(host)) if canonical_dns_name(host) => {
+                SiteTrustEndpointHostV1::DnsName(host.to_owned())
+            }
+            Some(url::Host::Ipv4(address)) => SiteTrustEndpointHostV1::Ipv4(address),
+            Some(url::Host::Ipv6(address)) => SiteTrustEndpointHostV1::Ipv6(address),
+            _ => return Err(FirstDevicePresentationError::InvalidPresentation),
+        };
+        if parsed.scheme() != "https"
+            || parsed.username() != ""
+            || parsed.password().is_some()
+            || parsed.path() != "/"
+            || parsed.query().is_some()
+            || parsed.fragment().is_some()
+            || parsed.port() == Some(443)
+            || parsed.origin().ascii_serialization() != origin
+        {
+            return Err(FirstDevicePresentationError::InvalidPresentation);
+        }
+        Ok(Self {
+            origin: origin.to_owned(),
+            host,
+            tls_spki_sha256,
+        })
+    }
+
+    /// Require the authority-side allowed-host value to name this exact host.
+    pub fn matches_allowed_host(&self, allowed_host: &str) -> bool {
+        match &self.host {
+            SiteTrustEndpointHostV1::DnsName(host) => allowed_host == host,
+            SiteTrustEndpointHostV1::Ipv4(host) => allowed_host == host.to_string(),
+            SiteTrustEndpointHostV1::Ipv6(host) => allowed_host == format!("[{host}]"),
+        }
+    }
+}
+
+fn canonical_dns_name(host: &str) -> bool {
+    !host.is_empty()
+        && host.len() <= 253
+        && !host.ends_with('.')
+        && host == host.to_ascii_lowercase()
+        && host.parse::<IpAddr>().is_err()
+        && host.split('.').all(|label| {
+            !label.is_empty()
+                && label.len() <= 63
+                && !label.starts_with('-')
+                && !label.ends_with('-')
+                && label
+                    .bytes()
+                    .all(|byte| byte.is_ascii_lowercase() || byte.is_ascii_digit() || byte == b'-')
+        })
+}
 
 /// One authenticated authority-key bootstrap descriptor.
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -284,7 +380,11 @@ struct HostBinding {
 fn decode_host_binding(
     payload: &mut CanonicalFields,
 ) -> Result<HostBinding, FirstDevicePresentationError> {
-    let https_origin = canonical_https_origin(payload.remove(&12))?;
+    let https_origin = bounded_trimmed_text(
+        payload.remove(&12),
+        255,
+        FirstDevicePresentationError::InvalidPresentation,
+    )?;
     let app_configuration_digest = fixed_bytes(
         payload.remove(&13),
         FirstDevicePresentationError::InvalidPresentation,
@@ -297,13 +397,14 @@ fn decode_host_binding(
         payload.remove(&15),
         FirstDevicePresentationError::InvalidPresentation,
     )?;
+    let endpoint = SiteTrustEndpointIdentityV1::parse(&https_origin, tls_spki_sha256)?;
     require_unsigned(
         payload.get(&16),
         HOST_TRUST_WORDS_VERSION,
         FirstDevicePresentationError::InvalidPresentation,
     )?;
     Ok(HostBinding {
-        https_origin,
+        https_origin: endpoint.origin,
         app_configuration_digest,
         descriptor_digest,
         tls_spki_sha256,
@@ -588,34 +689,43 @@ fn bounded_trimmed_text(
     }
 }
 
-fn canonical_https_origin(value: Option<Value>) -> Result<String, FirstDevicePresentationError> {
-    let origin = bounded_trimmed_text(
-        value,
-        255,
-        FirstDevicePresentationError::InvalidPresentation,
-    )?;
-    if !origin.is_ascii() || origin.contains('%') {
-        return Err(FirstDevicePresentationError::InvalidPresentation);
+#[cfg(test)]
+mod endpoint_identity_tests {
+    use super::*;
+
+    fn pin() -> [u8; 32] {
+        [7; 32]
     }
-    let parsed =
-        Url::parse(&origin).map_err(|_| FirstDevicePresentationError::InvalidPresentation)?;
-    let host = parsed
-        .host_str()
-        .ok_or(FirstDevicePresentationError::InvalidPresentation)?;
-    let default_port = parsed.port() == Some(443);
-    if parsed.scheme() != "https"
-        || parsed.username() != ""
-        || parsed.password().is_some()
-        || parsed.path() != "/"
-        || parsed.query().is_some()
-        || parsed.fragment().is_some()
-        || host != host.to_ascii_lowercase()
-        || host.ends_with('.')
-        || host.parse::<std::net::IpAddr>().is_ok()
-        || default_port
-        || parsed.origin().ascii_serialization() != origin
-    {
-        return Err(FirstDevicePresentationError::InvalidPresentation);
+
+    #[test]
+    fn accepts_canonical_dns_ipv4_and_ipv6_variants() {
+        let dns =
+            SiteTrustEndpointIdentityV1::parse("https://monas.example.test:8443", pin()).unwrap();
+        assert!(dns.matches_allowed_host("monas.example.test"));
+        let ipv4 = SiteTrustEndpointIdentityV1::parse("https://192.168.1.192:8443", pin()).unwrap();
+        assert!(ipv4.matches_allowed_host("192.168.1.192"));
+        let ipv6 = SiteTrustEndpointIdentityV1::parse("https://[2001:db8::1]:8443", pin()).unwrap();
+        assert!(ipv6.matches_allowed_host("[2001:db8::1]"));
     }
-    Ok(origin)
+
+    #[test]
+    fn rejects_unpinned_mismatched_and_noncanonical_endpoints() {
+        assert!(SiteTrustEndpointIdentityV1::parse("https://192.168.1.192:8443", [0; 32]).is_err());
+        let endpoint =
+            SiteTrustEndpointIdentityV1::parse("https://192.168.1.192:8443", pin()).unwrap();
+        assert!(!endpoint.matches_allowed_host("192.168.1.193"));
+        for invalid in [
+            "http://192.168.1.192:8443",
+            "https://192.168.001.192:8443",
+            "https://[2001:0db8:0:0:0:0:0:1]:8443",
+            "https://[fe80::1%25en0]:8443",
+            "https://monas.example.test:443",
+            "https://monas.example.test:8443/path",
+        ] {
+            assert!(
+                SiteTrustEndpointIdentityV1::parse(invalid, pin()).is_err(),
+                "{invalid}"
+            );
+        }
+    }
 }

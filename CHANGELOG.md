@@ -1,5 +1,15 @@
 # Changelog
 
+## [0.7.10] - 2026-08-10
+
+### Fixed
+
+- Implement ADR 0029's local-address endpoint support as the versioned
+  `SiteTrustEndpointIdentityV1` contract in both Rust and PistisCore. DNS,
+  canonical IPv4, and canonical bracketed IPv6 origins now share the same
+  HTTPS, exact-host, certificate-validity and mandatory non-zero TLS SPKI pin
+  rules. This adds no unpinned IP, CA bypass, password or local-authority path.
+
 ## [0.7.9] - 2026-08-10
 
 ### Fixed

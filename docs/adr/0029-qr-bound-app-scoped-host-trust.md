@@ -170,6 +170,23 @@ The accepted digest is stored in Keychain only as part of the fully verified
 mobile-enrolment receipt. Before completion it remains bounded, foreground,
 and ephemeral.
 
+### Versioned endpoint identity variants
+
+`SiteTrustEndpointIdentityV1` is the common producer and consumer validator
+for the signed HTTPS origin. Its host is exactly one typed variant: a canonical
+lower-case DNS name, a canonical IPv4 address, or a canonical bracketed IPv6
+address. The authority-side allowed-host value must exactly equal that
+variant's canonical host serialization. Expanded IPv4, expanded or uppercase
+IPv6, zone identifiers, DNS trailing dots, default-port aliases, credentials,
+paths, queries and fragments are rejected rather than normalised.
+
+Every variant requires the same non-zero 32-byte `tls_spki_sha256` commitment,
+certificate validity and TLS server suitability checks described above. An IP
+literal is therefore an addressing option for a local-only installation, not
+a CA fallback, hostname-verification exception, or weaker trust mode. The
+presentation signature, five-minute expiry and one-use authority transaction
+remain unchanged.
+
 ### Android app-scoped TLS authentication
 
 Android uses a dedicated client and trust manager scoped to the exact signed

@@ -173,7 +173,7 @@ struct ScanView: View {
 
     private var siteRootReviewBinding: Binding<SiteRootDelegationReview?> {
         Binding {
-            if case let .review(review) = siteRootCeremony.phase { review } else { nil }
+            siteRootCeremony.presentedReview
         } set: { value in
             if value == nil {
                 resetSiteRoot()
@@ -309,11 +309,22 @@ private struct SiteRootDelegationReviewView: View {
                     case .rewrappingCustody:
                         MnStatusLabel(text: "Waiting for custody Face ID", kind: .warning)
                     case .submitted:
-                        MnStatusLabel(
-                            text: "Monas retained the protected session",
-                            kind: .success
+                        MnSectionHeading(
+                            "Site Root ceremony complete",
+                            orientation: "Monas accepted the Site Root proof and Pistis submitted the custody rewrap through the fixed authority route. A redacted local observation is now in History."
                         )
-                        Text("The exact custody rewrap was submitted to Monas's fixed authority route.")
+                        MnStatusLabel(text: "Verified by Monas", kind: .success)
+                        MnPanel {
+                            VStack(alignment: .leading, spacing: MnSpacing.x4) {
+                                MnEvidenceRow(label: "Site Root proof", value: "Accepted")
+                                Divider()
+                                MnEvidenceRow(label: "Custody rewrap", value: "Submitted")
+                                Divider()
+                                MnEvidenceRow(label: "Local history", value: "Recorded")
+                            }
+                        }
+                        Text("The installation’s Monas audit remains the authoritative record. Pistis stores only this redacted device observation.")
+                            .font(.footnote)
                         MnPrimaryButton("Done") {
                             coordinator.reset()
                             dismiss()

@@ -19,6 +19,8 @@
 - Expose a bounded, non-secret App Attest custody-verification failure stage so
   Monas can diagnose a physical assertion without logging assertion material,
   keys, identifiers, counters, hashes, or caller text.
+- Export that diagnostic verifier and stage from the `pistis-monas` public
+  boundary consumed by Monas.
 - Add a production-only Pistis-to-Monas continuation that reconstructs opaque
   App Attest assertion acceptance after restart solely from the reviewed
   package manifest, an exact durable verified genesis registration, and the

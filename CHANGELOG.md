@@ -2,6 +2,13 @@
 
 ## [Unreleased]
 
+### Changed
+
+- Reconcile duplicate Site Root observations into one canonical installation,
+  retain bounded ceremony evidence, and preserve monotonic setup progress.
+- Continue custody through pinned fresh App Attest and v2 rotation/recovery,
+  surface progress and failures, and route completion to identity enrolment.
+
 ### Added
 
 - Add a production-only Pistis-to-Monas continuation that reconstructs opaque

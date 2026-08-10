@@ -135,15 +135,31 @@ struct MonasAppAttestTransport: Sendable {
         bootstrap: MonasAppAttestCeremonyBootstrap,
         configuration: URLSessionConfiguration = .ephemeral
     ) throws {
-        origin = bootstrap.httpsOrigin
+        try self.init(
+            authorityOrigin: bootstrap.httpsOrigin,
+            expectedSPKISHA256: bootstrap.tlsSPKISHA256,
+            configuration: configuration
+        )
+    }
+
+    init(
+        authorityOrigin: URL,
+        expectedSPKISHA256: Data,
+        configuration: URLSessionConfiguration = .ephemeral
+    ) throws {
+        guard authorityOrigin.scheme == "https", authorityOrigin.host != nil,
+              expectedSPKISHA256.count == 32,
+              !expectedSPKISHA256.allSatisfy({ $0 == 0 })
+        else { throw PlatformFailure.appAttestInvalidInput }
+        origin = authorityOrigin
         configuration.httpShouldSetCookies = false
         configuration.urlCache = nil
         configuration.requestCachePolicy = .reloadIgnoringLocalCacheData
         session = URLSession(
             configuration: configuration,
             delegate: try PinnedEnrolmentSessionDelegate(
-                origin: bootstrap.httpsOrigin,
-                expectedSPKISHA256: bootstrap.tlsSPKISHA256
+                origin: authorityOrigin,
+                expectedSPKISHA256: expectedSPKISHA256
             ),
             delegateQueue: nil
         )

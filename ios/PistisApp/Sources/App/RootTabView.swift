@@ -16,6 +16,7 @@ struct RootTabView: View {
     @State private var providerEnrolmentRequested = false
     @State private var authorityCustodyContinuationHost: String?
     @State private var authorityCustodyMode: FirstAuthorityCustodyModeV2 = .rotation
+  @State private var authorityCustodyAttempt: UUID?
     let siteRootTransport: any MonasSiteRootCeremonyTransport
 
     var body: some View {
@@ -40,6 +41,7 @@ struct RootTabView: View {
                     forgetExpired: forgetExpired,
                     recoverSiteRootInstallation: recoverSiteRootInstallation,
                     reconciliationMessage: reconciliationMessage,
+          authorityCustodyBusy: authorityCustodyAttempt != nil,
                     startProviderEnrolment: startProviderEnrolment,
                     continueAuthorityCustody: continueAuthorityCustody
                 )
@@ -117,13 +119,14 @@ struct RootTabView: View {
     }
 
     private var projection: EnrollmentProjection {
-        if case let .loaded(projection) = enrollment.state {
+    if case .loaded(let projection) = enrollment.state {
             return projection
         }
         return .empty
     }
 
     private func recoverSiteRootInstallation() {
+    reconciliationMessage = nil
         Task {
             guard let transport = siteRootTransport as? MonasSiteRootDelegationTransport,
                   let authorityHost = transport.authorityHost
@@ -136,12 +139,15 @@ struct RootTabView: View {
                     authenticationReason: "Read this iPhone's Site Root setup progress"
                 )
                 guard let registration = try producer.existingRegistration() else {
-                    reconciliationMessage = "No Site Root key exists on this iPhone. Scan the signed Monas invitation first."
+          reconciliationMessage =
+            "No Site Root key exists on this iPhone. Scan the signed Monas invitation first."
                     return
                 }
-                guard let status = try await transport.installationStatus(
+        guard
+          let status = try await transport.installationStatus(
                     siteRootDeviceKeyID: registration.deviceKeyID
-                ) else {
+          )
+        else {
                     reconciliationMessage = "Monas has no verified Site Root setup record for this iPhone."
                     return
                 }
@@ -171,6 +177,11 @@ struct RootTabView: View {
     }
 
     private func startProviderEnrolment() {
+    reconciliationMessage = nil
+    routeToProviderEnrolment()
+  }
+
+  private func routeToProviderEnrolment() {
         selectedTab = .identities
         // Let the Identities NavigationStack become visible before presenting
         // the existing signed-presentation flow. The redacted local Site Root
@@ -183,41 +194,105 @@ struct RootTabView: View {
     }
 
     private func continueAuthorityCustody(_ installation: InstallationSummary) {
+    guard authorityCustodyAttempt == nil else { return }
+    let attempt = UUID()
+    authorityCustodyAttempt = attempt
+    reconciliationMessage = "Continuing authority custody with fresh App Attest evidence…"
         Task {
+      defer {
+        if authorityCustodyAttempt == attempt { authorityCustodyAttempt = nil }
+      }
             guard let transport = siteRootTransport as? MonasSiteRootDelegationTransport,
-                  transport.authorityHost == installation.localAlias
+        let transportHost = transport.authorityHost,
+        (try? IncompleteSiteRootInstallation.canonicalHost(transportHost))
+          == (try? IncompleteSiteRootInstallation.canonicalHost(installation.localAlias))
             else {
                 reconciliationMessage = "The retained Site Root authority does not match."
                 return
             }
             do {
-                switch try await transport.authorityCustodyStatusV2() {
-                case .initialRotationRequired:
-                    authorityCustodyMode = .rotation
-                case .recoveryRequired:
-                    authorityCustodyMode = .recovery
+        let status = try await transport.authorityCustodyStatusV2()
+        switch status {
                 case .ready:
                     try SiteRootInstallationRepository.shared
                         .recordAuthorityCustodyCompleted(authorityHost: installation.localAlias)
                     await enrollment.refresh()
-                    startProviderEnrolment()
+          reconciliationMessage =
+            "Authority custody is ready. Continue identity setup for this installation."
+          routeToProviderEnrolment()
                     return
+        case .initialRotationRequired, .recoveryRequired:
+          break
+        }
+        let appAttestTransport = try transport.appAttestTransport()
+        let now = UInt64(Date().timeIntervalSince1970)
+        let challenge =
+          try await appAttestTransport
+          .fetchCustodyRotationAssertionChallengeV2(nowUnixSeconds: now)
+        let assertion = try await AppleAppAttestClient()
+          .prepareCustodyRotationAssertion(challenge: challenge)
+        try await appAttestTransport.submitAssertion(assertion)
+        let producer = try SecureEnclaveFirstAuthorityCustodyProducerV2(
+          authenticationReason: "Approve this exact first-authority custody continuation"
+        )
+        switch status {
+        case .initialRotationRequired:
+          let commitment = try producer.prepareInitialRotation()
+          let presentation =
+            try await appAttestTransport
+            .beginFirstAuthorityCustodyRotationV2(
+              commitment, nowUnixSeconds: UInt64(Date().timeIntervalSince1970)
+            )
+          let submission = try producer.completeInitialRotation(presentation)
+          _ = try await appAttestTransport.completeFirstAuthorityCustodyRotationV2(
+            submission
+          )
+        case .recoveryRequired:
+          let commitment = try producer.retainedRecoveryCommitment()
+          let presentation =
+            try await appAttestTransport
+            .beginFirstAuthorityCustodyRecoveryV2(
+              expectedCommitment: commitment,
+              nowUnixSeconds: UInt64(Date().timeIntervalSince1970)
+            )
+          let submission = try producer.completeRecovery(presentation)
+          _ = try await appAttestTransport.completeFirstAuthorityCustodyRecoveryV2(
+            submission
+          )
+        case .ready:
+          break
                 }
-                authorityCustodyContinuationHost = installation.localAlias
-                selectedTab = .scan
+        try SiteRootInstallationRepository.shared.recordAuthorityCustodyCompleted(
+          authorityHost: installation.localAlias
+        )
+        try? LocalHistoryRepository.shared.record(
+          HistoryEvent(
+            id: UUID(), action: "Authority custody continued",
+            installation: installation.localAlias,
+            occurredAt: Date().formatted(date: .abbreviated, time: .standard),
+            decision: "Verified", signature: "Fresh App Attest assertion accepted",
+            transfer: "Pinned Monas v2 custody flow completed",
+            verification: "Identity enrolment is now required"
+          ))
+        reconciliationMessage =
+          "Authority custody completed. Continue identity setup for this installation."
+        await enrollment.refresh()
+        routeToProviderEnrolment()
             } catch {
-                reconciliationMessage = "Authority custody status is unavailable; no recovery was attempted."
+        reconciliationMessage =
+          "Authority custody continuation failed safely. No setup evidence was discarded; retry this installation."
             }
         }
     }
 
     private func forgetExpired(_ installationID: UUID) async throws {
         let identifier = installationID.data
-        guard let inventory = try await InstallationTrustKeychain.shared
+    guard
+      let inventory = try await InstallationTrustKeychain.shared
             .enrollmentInventoryRecord()
         else { throw PlatformFailure.invalidConfiguration }
         switch inventory {
-        case let .current(stored):
+    case .current(let stored):
             guard stored.trust.installationID == identifier,
                   InstallationTrustKeychain.allowsLocalForget(
                       active: stored.trust.active,
@@ -231,7 +306,7 @@ struct RootTabView: View {
                 authenticationReason: "Forget this expired Pistis installation",
                 verification: "Expired trust and local device key removed"
             )
-        case let .legacy(stored):
+    case .legacy(let stored):
             guard stored.trust.installationID == identifier else {
                 throw PlatformFailure.invalidConfiguration
             }
@@ -245,11 +320,12 @@ struct RootTabView: View {
 
     private func forgetExpiredIdentity(_ externalIdentityID: UUID) async throws {
         let identifier = externalIdentityID.data
-        guard let inventory = try await InstallationTrustKeychain.shared
+    guard
+      let inventory = try await InstallationTrustKeychain.shared
             .enrollmentInventoryRecord()
         else { throw PlatformFailure.invalidConfiguration }
         switch inventory {
-        case let .current(stored):
+    case .current(let stored):
             guard stored.trust.externalIdentityID == identifier,
                   InstallationTrustKeychain.allowsLocalForget(
                       active: stored.trust.active,
@@ -263,7 +339,7 @@ struct RootTabView: View {
                 authenticationReason: "Forget this expired Pistis provider account",
                 verification: "Expired identity, trust and local device key removed"
             )
-        case let .legacy(stored):
+    case .legacy(let stored):
             guard stored.trust.externalIdentityID == identifier else {
                 throw PlatformFailure.invalidConfiguration
             }
@@ -381,8 +457,8 @@ enum LocalForgetTransaction {
     }
 }
 
-private extension UUID {
-    var data: Data {
+extension UUID {
+  fileprivate var data: Data {
         let value = uuid
         return Data([
             value.0, value.1, value.2, value.3,

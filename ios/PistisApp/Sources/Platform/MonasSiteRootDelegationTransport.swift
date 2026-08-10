@@ -54,6 +54,7 @@ struct MonasSiteRootDelegationTransport: MonasSiteRootCeremonyTransport,
     private static let maximumSubmissionBytes = 90_000
 
     private let authorityOrigin: URL
+    private let expectedSPKISHA256: Data
     private let session: URLSession
 
     var genesisAuthorityOrigin: URL? { authorityOrigin }
@@ -77,6 +78,7 @@ struct MonasSiteRootDelegationTransport: MonasSiteRootCeremonyTransport,
             throw PlatformFailure.invalidConfiguration
         }
         self.authorityOrigin = authorityOrigin
+        self.expectedSPKISHA256 = expectedSPKISHA256
         configuration.httpShouldSetCookies = false
         configuration.urlCache = nil
         configuration.requestCachePolicy = .reloadIgnoringLocalCacheData
@@ -87,6 +89,13 @@ struct MonasSiteRootDelegationTransport: MonasSiteRootCeremonyTransport,
                 expectedSPKISHA256: expectedSPKISHA256
             ),
             delegateQueue: nil
+        )
+    }
+
+    func appAttestTransport() throws -> MonasAppAttestTransport {
+        try MonasAppAttestTransport(
+            authorityOrigin: authorityOrigin,
+            expectedSPKISHA256: expectedSPKISHA256
         )
     }
 

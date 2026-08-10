@@ -10,7 +10,8 @@ enum InstallationDetailAction: Equatable {
             self = .none
             return
         }
-        self = installation.setupPhase == .identityEnrolmentRequired
+    self =
+      installation.setupPhase == .identityEnrolmentRequired
             ? .continueIdentitySetup : .continueAuthorityCustody
     }
 }
@@ -21,6 +22,7 @@ struct InstallationsView: View {
     let forgetExpired: (UUID) async throws -> Void
     let recoverSiteRootInstallation: () -> Void
     let reconciliationMessage: String?
+  let authorityCustodyBusy: Bool
     let startProviderEnrolment: () -> Void
     let continueAuthorityCustody: (InstallationSummary) -> Void
 
@@ -29,6 +31,8 @@ struct InstallationsView: View {
             NavigationLink {
                 InstallationDetailView(
                     installation: installation,
+          reconciliationMessage: reconciliationMessage,
+          authorityCustodyBusy: authorityCustodyBusy,
                     forgetExpired: forgetExpired,
                     startProviderEnrolment: startProviderEnrolment,
                     continueAuthorityCustody: continueAuthorityCustody
@@ -70,14 +74,16 @@ struct InstallationsView: View {
             if loadFailure {
                 MnEmptyState(
                     title: "Installation record unavailable",
-                    explanation: "Pistis could not safely read the protected enrolment record. Unlock this device and try again.",
+          explanation:
+            "Pistis could not safely read the protected enrolment record. Unlock this device and try again.",
                     actionTitle: nil
                 )
                 .padding(MnMetrics.screenGutter)
             } else if installations.isEmpty {
                 MnEmptyState(
                     title: "No paired installations",
-                    explanation: reconciliationMessage ?? "A verified pairing will record the installation and fingerprint here.",
+          explanation: reconciliationMessage
+            ?? "A verified pairing will record the installation and fingerprint here.",
                     actionTitle: "Recover Site Root setup",
                     action: recoverSiteRootInstallation
                 )
@@ -90,6 +96,8 @@ struct InstallationsView: View {
 
 private struct InstallationDetailView: View {
     let installation: InstallationSummary
+  let reconciliationMessage: String?
+  let authorityCustodyBusy: Bool
     let forgetExpired: (UUID) async throws -> Void
     let startProviderEnrolment: () -> Void
     let continueAuthorityCustody: (InstallationSummary) -> Void
@@ -105,6 +113,12 @@ private struct InstallationDetailView: View {
                     text: installation.status,
                     kind: installation.status == "Trusted" ? .success : .warning
                 )
+        if let reconciliationMessage {
+          MnPanel {
+            Text(reconciliationMessage)
+              .accessibilityLabel("Authority custody status: \(reconciliationMessage)")
+          }
+        }
                 MnPanel {
                     VStack(alignment: .leading, spacing: MnSpacing.x4) {
                         MnEvidenceRow(label: "Alias", value: installation.localAlias)
@@ -127,9 +141,11 @@ private struct InstallationDetailView: View {
                                     : "Next: enrol your identity",
                                 kind: .warning
                             )
-                            Text(action == .continueAuthorityCustody
+              Text(
+                action == .continueAuthorityCustody
                                 ? "The Site Root proof is recorded, but v2 authority custody must complete before identity enrolment. Continue with a fresh signed Monas presentation."
-                                : "Authority custody is ready, but this installation cannot authenticate or approve work yet. Continue only with a new authority-signed provider presentation.")
+                  : "Authority custody is ready, but this installation cannot authenticate or approve work yet. Continue only with a new authority-signed provider presentation."
+              )
                             MnPrimaryButton(
                                 action == .continueAuthorityCustody
                                     ? "Continue authority recovery" : "Continue identity setup",
@@ -142,6 +158,7 @@ private struct InstallationDetailView: View {
                                     startProviderEnrolment()
                                 }
                             }
+              .disabled(action == .continueAuthorityCustody && authorityCustodyBusy)
                             .accessibilityHint(
                                 action == .continueAuthorityCustody
                                     ? "Opens the signed Monas authority scanner"
@@ -153,7 +170,9 @@ private struct InstallationDetailView: View {
                     MnPanel {
                         VStack(alignment: .leading, spacing: MnSpacing.x2) {
                             MnStatusLabel(text: "Trust material requires review", kind: .warning)
-                            Text("Do not approve requests until you have compared the new fingerprint with the installation.")
+              Text(
+                "Do not approve requests until you have compared the new fingerprint with the installation."
+              )
                         }
                     }
                 }

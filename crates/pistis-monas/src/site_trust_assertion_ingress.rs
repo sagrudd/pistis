@@ -42,8 +42,10 @@ const REDACTED_VECTOR_DOMAIN_V1: &[u8] =
     b"mnemosyne.pistis.site-trust-app-attest-redacted-vector.v1\0";
 const AUTHENTICATOR_DATA_MINIMUM_BYTES: usize = 37;
 const USER_PRESENT_FLAG: u8 = 0x01;
+const ATTESTED_CREDENTIAL_DATA_FLAG: u8 = 0x40;
 const EXTENSION_DATA_FLAG: u8 = 0x80;
-const ALLOWED_ASSERTION_FLAGS: u8 = USER_PRESENT_FLAG | EXTENSION_DATA_FLAG;
+const ADVISORY_ASSERTION_FLAGS: u8 = USER_PRESENT_FLAG | ATTESTED_CREDENTIAL_DATA_FLAG;
+const ALLOWED_ASSERTION_FLAGS: u8 = ADVISORY_ASSERTION_FLAGS | EXTENSION_DATA_FLAG;
 const CUSTODY_ROTATION_CHALLENGE_DOMAIN_V1: &[u8] = b"MONASAC2\0";
 
 /// Narrow server-owned request for one genesis custody-rotation assertion.
@@ -605,7 +607,7 @@ pub fn verify_custody_rotation_app_attest_assertion_diagnostic_v1(
     }
     match decoded.authenticator_data.len() {
         AUTHENTICATOR_DATA_MINIMUM_BYTES
-            if decoded.authenticator_data[32] & !USER_PRESENT_FLAG == 0 => {}
+            if decoded.authenticator_data[32] & !ADVISORY_ASSERTION_FLAGS == 0 => {}
         length if length > AUTHENTICATOR_DATA_MINIMUM_BYTES => {
             let flags = decoded.authenticator_data[32];
             if flags & !ALLOWED_ASSERTION_FLAGS != 0 || flags & EXTENSION_DATA_FLAG == 0 {
@@ -759,7 +761,7 @@ fn valid_assertion_flags_and_extensions(
     expected_bundle_version: &str,
 ) -> bool {
     match authenticator_data.len() {
-        AUTHENTICATOR_DATA_MINIMUM_BYTES => authenticator_data[32] & !USER_PRESENT_FLAG == 0,
+        AUTHENTICATOR_DATA_MINIMUM_BYTES => authenticator_data[32] & !ADVISORY_ASSERTION_FLAGS == 0,
         length if length > AUTHENTICATOR_DATA_MINIMUM_BYTES => {
             authenticator_data[32] & !ALLOWED_ASSERTION_FLAGS == 0
                 && authenticator_data[32] & EXTENSION_DATA_FLAG != 0
@@ -1400,9 +1402,19 @@ mod tests {
         for (flags, extensions) in [
             (0x00, None),
             (USER_PRESENT_FLAG, None),
+            (ATTESTED_CREDENTIAL_DATA_FLAG, None),
+            (ATTESTED_CREDENTIAL_DATA_FLAG | USER_PRESENT_FLAG, None),
             (EXTENSION_DATA_FLAG, Some(cbor_extensions("1.0.0", 4))),
             (
                 EXTENSION_DATA_FLAG | USER_PRESENT_FLAG,
+                Some(cbor_extensions("1.0.0", 4)),
+            ),
+            (
+                EXTENSION_DATA_FLAG | ATTESTED_CREDENTIAL_DATA_FLAG,
+                Some(cbor_extensions("1.0.0", 4)),
+            ),
+            (
+                EXTENSION_DATA_FLAG | ATTESTED_CREDENTIAL_DATA_FLAG | USER_PRESENT_FLAG,
                 Some(cbor_extensions("1.0.0", 4)),
             ),
         ] {
@@ -1558,6 +1570,8 @@ mod tests {
         extended_without_extension_flag[32] = 0x00;
         let mut extended_with_unknown_field = authenticator_data(&acceptance.request, 1);
         extended_with_unknown_field.push(0x00);
+        let mut extended_with_reserved_flag = authenticator_data(&acceptance.request, 1);
+        extended_with_reserved_flag[32] |= 0x02;
         let mut extended_with_wrong_bundle =
             Sha256::digest(MONAS_PRODUCTION_APP_ATTEST_APP_IDENTIFIER_V1.as_bytes()).to_vec();
         extended_with_wrong_bundle.push(EXTENSION_DATA_FLAG);
@@ -1569,6 +1583,7 @@ mod tests {
             legacy_with_reserved_flag,
             legacy_with_trailing_data,
             extended_without_extension_flag,
+            extended_with_reserved_flag,
             extended_with_unknown_field,
             extended_with_wrong_bundle,
         ] {

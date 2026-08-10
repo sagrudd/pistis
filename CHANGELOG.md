@@ -4,6 +4,9 @@
 
 ### Changed
 
+- Continue directly from an accepted custody App Attest assertion into the
+  retained recovery begin/Face ID/complete ceremony; never re-fetch the
+  consumed one-use assertion challenge after its empty `202` acceptance.
 - Validate App Attest assertion flags by contract shape: treat user-presence
   and attested-credential-data bits as advisory, require extension data only
   for the extension-bearing shape, deny reserved bits and mixed shapes, and

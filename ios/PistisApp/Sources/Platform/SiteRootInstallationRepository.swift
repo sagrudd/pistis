@@ -1,5 +1,10 @@
 import Foundation
 
+enum SiteRootSetupPhase: String, Codable, Equatable {
+    case authorityCustodyRequired = "authority-custody-required"
+    case identityEnrolmentRequired = "identity-enrolment-required"
+}
+
 /// A non-authorising local lifecycle observation created after a completed
 /// first Site Root ceremony. It contains only redacted public presentation
 /// facts and must never be consumed as session, identity, or trust authority.
@@ -11,12 +16,14 @@ struct IncompleteSiteRootInstallation: Codable, Equatable, Identifiable {
     let authorityHost: String
     let redactedReference: String
     let recordedAt: Date
+    let setupPhase: SiteRootSetupPhase
 
     init(
         id: UUID = UUID(),
         authorityHost: String,
         redactedReference: String,
-        recordedAt: Date = Date()
+        recordedAt: Date = Date(),
+        setupPhase: SiteRootSetupPhase = .authorityCustodyRequired
     ) throws {
         guard Self.isSafeHost(authorityHost),
               Self.isSafeReference(redactedReference)
@@ -28,6 +35,26 @@ struct IncompleteSiteRootInstallation: Codable, Equatable, Identifiable {
         self.authorityHost = authorityHost
         self.redactedReference = redactedReference
         self.recordedAt = recordedAt
+        self.setupPhase = setupPhase
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case storageProfile, id, authorityHost, redactedReference, recordedAt, setupPhase
+    }
+
+    init(from decoder: Decoder) throws {
+        let values = try decoder.container(keyedBy: CodingKeys.self)
+        try self.init(
+            id: values.decode(UUID.self, forKey: .id),
+            authorityHost: values.decode(String.self, forKey: .authorityHost),
+            redactedReference: values.decode(String.self, forKey: .redactedReference),
+            recordedAt: values.decode(Date.self, forKey: .recordedAt),
+            setupPhase: values.decodeIfPresent(SiteRootSetupPhase.self, forKey: .setupPhase)
+                ?? .authorityCustodyRequired
+        )
+        guard try values.decode(Int.self, forKey: .storageProfile) == Self.storageProfile else {
+            throw PlatformFailure.invalidConfiguration
+        }
     }
 
     private static func isSafeHost(_ value: String) -> Bool {
@@ -99,6 +126,21 @@ final class SiteRootInstallationRepository {
         )
     }
 
+    func recordAuthorityCustodyCompleted(authorityHost: String) throws {
+        var retained = try records()
+        guard let index = retained.lastIndex(where: {
+            $0.authorityHost == authorityHost
+                && $0.setupPhase == .authorityCustodyRequired
+        }) else { throw PlatformFailure.invalidConfiguration }
+        let current = retained[index]
+        retained[index] = try IncompleteSiteRootInstallation(
+            id: current.id, authorityHost: current.authorityHost,
+            redactedReference: current.redactedReference, recordedAt: current.recordedAt,
+            setupPhase: .identityEnrolmentRequired
+        )
+        try persist(retained)
+    }
+
     private func record(_ record: IncompleteSiteRootInstallation) throws {
         var retained = try records()
         if let index = retained.firstIndex(where: {
@@ -109,7 +151,10 @@ final class SiteRootInstallationRepository {
         } else {
             retained.append(record)
         }
-        retained = Array(retained.suffix(maximumRecords))
+        try persist(Array(retained.suffix(maximumRecords)))
+    }
+
+    private func persist(_ retained: [IncompleteSiteRootInstallation]) throws {
         let encoded = try JSONEncoder().encode(retained)
         guard encoded.count <= maximumEncodedBytes else {
             throw PlatformFailure.invalidConfiguration

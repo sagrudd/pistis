@@ -167,6 +167,11 @@ final class SiteRootDelegationCoordinator: ObservableObject {
         _ = try await appAttestTransport.completeFirstAuthorityCustodyRotationV2(
             rotationSubmission
         )
+        if let review = presentedReview {
+            try SiteRootInstallationRepository.shared.recordAuthorityCustodyCompleted(
+                authorityHost: review.destination
+            )
+        }
         recordCompletion(review: presentedReview)
         phase = .submitted(.sessionEstablished)
     }

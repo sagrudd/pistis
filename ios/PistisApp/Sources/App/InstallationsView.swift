@@ -1,13 +1,17 @@
 import SwiftUI
 
 enum InstallationDetailAction: Equatable {
+    case continueAuthorityCustody
     case continueIdentitySetup
     case none
 
     init(installation: InstallationSummary) {
-        self = installation.status == "Setup in progress"
-            ? .continueIdentitySetup
-            : .none
+        guard installation.status == "Setup in progress" else {
+            self = .none
+            return
+        }
+        self = installation.setupPhase == .identityEnrolmentRequired
+            ? .continueIdentitySetup : .continueAuthorityCustody
     }
 }
 
@@ -18,6 +22,7 @@ struct InstallationsView: View {
     let recoverSiteRootInstallation: () -> Void
     let reconciliationMessage: String?
     let startProviderEnrolment: () -> Void
+    let continueAuthorityCustody: (InstallationSummary) -> Void
 
     var body: some View {
         List(installations) { installation in
@@ -25,7 +30,8 @@ struct InstallationsView: View {
                 InstallationDetailView(
                     installation: installation,
                     forgetExpired: forgetExpired,
-                    startProviderEnrolment: startProviderEnrolment
+                    startProviderEnrolment: startProviderEnrolment,
+                    continueAuthorityCustody: continueAuthorityCustody
                 )
             } label: {
                 VStack(alignment: .leading, spacing: MnSpacing.x2) {
@@ -86,6 +92,7 @@ private struct InstallationDetailView: View {
     let installation: InstallationSummary
     let forgetExpired: (UUID) async throws -> Void
     let startProviderEnrolment: () -> Void
+    let continueAuthorityCustody: (InstallationSummary) -> Void
 
     private var action: InstallationDetailAction {
         InstallationDetailAction(installation: installation)
@@ -111,19 +118,34 @@ private struct InstallationDetailView: View {
                         MnEvidenceRow(label: "Last used", value: installation.lastUsed)
                     }
                 }
-                if action == .continueIdentitySetup {
+                if action == .continueIdentitySetup || action == .continueAuthorityCustody {
                     MnPanel {
                         VStack(alignment: .leading, spacing: MnSpacing.x2) {
-                            MnStatusLabel(text: "Next: enrol your identity", kind: .warning)
-                            Text("The Site Root ceremony is recorded, but this installation cannot authenticate or approve work yet. Continue only with a new authority-signed provider presentation.")
+                            MnStatusLabel(
+                                text: action == .continueAuthorityCustody
+                                    ? "Next: recover authority custody"
+                                    : "Next: enrol your identity",
+                                kind: .warning
+                            )
+                            Text(action == .continueAuthorityCustody
+                                ? "The Site Root proof is recorded, but v2 authority custody must complete before identity enrolment. Continue with a fresh signed Monas presentation."
+                                : "Authority custody is ready, but this installation cannot authenticate or approve work yet. Continue only with a new authority-signed provider presentation.")
                             MnPrimaryButton(
-                                "Continue identity setup",
-                                systemImage: "person.badge.key"
+                                action == .continueAuthorityCustody
+                                    ? "Continue authority recovery" : "Continue identity setup",
+                                systemImage: action == .continueAuthorityCustody
+                                    ? "key.viewfinder" : "person.badge.key"
                             ) {
-                                startProviderEnrolment()
+                                if action == .continueAuthorityCustody {
+                                    continueAuthorityCustody(installation)
+                                } else {
+                                    startProviderEnrolment()
+                                }
                             }
                             .accessibilityHint(
-                                "Opens the signed identity-enrolment scanner"
+                                action == .continueAuthorityCustody
+                                    ? "Opens the signed Monas authority scanner"
+                                    : "Opens the signed identity-enrolment scanner"
                             )
                         }
                     }

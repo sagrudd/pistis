@@ -21,6 +21,7 @@ struct InstallationSummary: Identifiable, Hashable {
     /// Authenticated installations expose a public fingerprint; an incomplete
     /// Site Root installation instead exposes its redacted ceremony reference.
     let evidenceLabel: String
+    let setupPhase: SiteRootSetupPhase?
 
     init(
         id: UUID,
@@ -30,7 +31,8 @@ struct InstallationSummary: Identifiable, Hashable {
         status: String,
         lastUsed: String,
         allowsLocalForget: Bool,
-        evidenceLabel: String = "Public fingerprint"
+        evidenceLabel: String = "Public fingerprint",
+        setupPhase: SiteRootSetupPhase? = nil
     ) {
         self.id = id
         self.name = name
@@ -40,6 +42,7 @@ struct InstallationSummary: Identifiable, Hashable {
         self.lastUsed = lastUsed
         self.allowsLocalForget = allowsLocalForget
         self.evidenceLabel = evidenceLabel
+        self.setupPhase = setupPhase
     }
 }
 

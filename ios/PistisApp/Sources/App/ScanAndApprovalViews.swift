@@ -8,6 +8,7 @@ struct ScanView: View {
     @StateObject private var ceremony = ProductionCeremonyCoordinator()
     @StateObject private var siteRootCeremony: SiteRootDelegationCoordinator
     private let siteRootTransport: any MonasSiteRootCeremonyTransport
+    private let expectedSiteRootAuthorityHost: String?
     private let showInstallations: () -> Void
     @State private var scanning = true
     @State private var scanFailure: PlatformFailure?
@@ -15,9 +16,11 @@ struct ScanView: View {
 
     init(
         siteRootTransport: any MonasSiteRootCeremonyTransport,
+        expectedSiteRootAuthorityHost: String? = nil,
         showInstallations: @escaping () -> Void = {}
     ) {
         self.siteRootTransport = siteRootTransport
+        self.expectedSiteRootAuthorityHost = expectedSiteRootAuthorityHost
         self.showInstallations = showInstallations
         _siteRootCeremony = StateObject(
             wrappedValue: SiteRootDelegationCoordinator(transport: siteRootTransport)
@@ -134,6 +137,13 @@ struct ScanView: View {
             scanFailure = nil
             if payload.text.hasPrefix("{") {
                 siteRootCeremony.accept(qrText: payload.text)
+                if let expectedSiteRootAuthorityHost,
+                   siteRootCeremony.presentedReview?.destination != expectedSiteRootAuthorityHost
+                {
+                    siteRootCeremony.reset()
+                    scanFailure = .siteRootAuthorityUnavailable
+                    return
+                }
                 if case let .failed(failure) = siteRootCeremony.phase {
                     scanFailure = failure
                 }

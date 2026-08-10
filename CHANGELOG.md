@@ -1,5 +1,18 @@
 # Changelog
 
+## [Unreleased]
+
+### Added
+
+- Add a production-only Pistis-to-Monas continuation that reconstructs opaque
+  App Attest assertion acceptance after restart solely from the reviewed
+  package manifest, an exact durable verified genesis registration, and the
+  server-owned custody-rotation request. It revalidates ceremony, Site Trust,
+  installation, Site Trust domain, key, P-256 certificate, TLS leaf, genesis
+  configuration, expiry, package manifest, and monotonic counter bindings. The
+  distinct result cannot carry a device, principal, human-authority fact, session
+  identity, replayed Apple registration object, raw acceptance, or fallback.
+
 ## [0.8.2] - 2026-08-10
 
 ### Added

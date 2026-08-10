@@ -41,6 +41,17 @@ facts:
 * the reviewed Apple trust-anchor manifest digest; and
 * the expected distributed application bundle version.
 
+After a process restart, Monas may reconstruct that same opaque acceptance only
+through ``resume_durable_registration_for_custody_rotation``.  Its input is
+limited to the server-owned custody-rotation request and the already verified
+durable genesis-registration fields.  Pistis revalidates the canonical ceremony,
+Site Trust domain, Monas-local admission purpose, installation and key, the
+uncompressed P-256 certificate public key, exact packaged manifest digest,
+bundle version, and retained counter.  No raw Apple registration object is
+accepted or replayed, and the resumed value carries no browser/session identity
+or authority.  A stale counter is still rejected by the existing assertion
+verifier and Monas atomic transaction after restart.
+
 No HTTP client, browser, local Unix user, PAM helper, CLI, cookie, raw Apple
 object, or operating-system identity can substitute for that factory.  If the
 registration, trust material, or atomic Monas store is unavailable, the

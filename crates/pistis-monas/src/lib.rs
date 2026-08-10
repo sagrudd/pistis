@@ -64,13 +64,16 @@ pub use site_trust::{
     issue_site_trust_human_authority_fact_v1,
 };
 pub use site_trust_assertion_ingress::{
+    CustodyRotationAppAttestOutcomeV1, CustodyRotationAppAttestRequestV1,
     MONAS_PRODUCTION_APP_ATTEST_APP_IDENTIFIER_V1, MonasSiteTrustAppAttestAtomicStoreV1,
     MonotonicAppAttestCounterV1, ProductionAppleAppAttestAssertionVerifierV1,
-    SITE_TRUST_APP_ATTEST_ASSERTION_INGRESS_PROFILE_V1, ServerHeldMonasAppAttestAcceptanceV1,
+    SITE_TRUST_APP_ATTEST_ASSERTION_INGRESS_PROFILE_V1,
+    ServerHeldCustodyRotationAppAttestAcceptanceV1, ServerHeldMonasAppAttestAcceptanceV1,
     SiteTrustAppAttestAssertionIngressErrorV1, SiteTrustAppAttestAssertionIngressOutcomeV1,
     SiteTrustAppAttestAssertionRedactedVectorV1, SiteTrustAppAttestMobileSubmissionV1,
     decode_site_trust_app_attest_mobile_submission_v1,
     issue_site_trust_human_authority_fact_from_server_held_app_attest_assertion_v1,
+    verify_custody_rotation_app_attest_assertion_v1,
 };
 pub use site_trust_registration_acceptance::{
     MONAS_APP_ATTEST_REVIEWED_MANIFEST_PROFILE_V1, PISTIS_APP_ATTEST_REGISTRATION_PROFILE_V1,

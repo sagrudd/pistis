@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.7.6] - 2026-08-10
+
+### Added
+
+- Recover an already verified, incomplete Site Root installation from the
+  fixed SPKI-pinned Monas authority after an app update. The recovery action
+  reads only a matching public Site Root key and a redacted lifecycle record;
+  it cannot create identity, session, custody, token, or trusted authority.
+
 ## [0.7.5] - 2026-08-10
 
 ### Added

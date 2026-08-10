@@ -229,6 +229,21 @@ final class SecureEnclaveSiteRootProofProducer: @unchecked Sendable {
         )
     }
 
+    /// Loads an already registered Site Root public key without creating a
+    /// new key or producing a proof. This supports only non-authorising local
+    /// lifecycle reconciliation after an application update.
+    func existingRegistration() throws -> SiteRootKeyRegistrationV1? {
+        guard try signer.hasExistingKey() else { return nil }
+        let publicKey = try signer.publicKey()
+        let digest = SHA256.hash(data: publicKey.compressedSEC1)
+        return SiteRootKeyRegistrationV1(
+            schema: SiteRootKeyRegistrationV1.schema,
+            deviceKeyID: "site-root-" + Data(digest).hexadecimalString,
+            publicKeyCompressedSEC1: publicKey.compressedSEC1,
+            secureEnclaveAttestation: "not-asserted"
+        )
+    }
+
     func prove(_ presentation: SiteRootDelegationPresentationV1) throws
         -> SiteRootDelegationSubmissionV1
     {

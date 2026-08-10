@@ -4,6 +4,8 @@ struct InstallationsView: View {
     let installations: [InstallationSummary]
     let loadFailure: Bool
     let forgetExpired: (UUID) async throws -> Void
+    let recoverSiteRootInstallation: () -> Void
+    let reconciliationMessage: String?
 
     var body: some View {
         List(installations) { installation in
@@ -56,8 +58,9 @@ struct InstallationsView: View {
             } else if installations.isEmpty {
                 MnEmptyState(
                     title: "No paired installations",
-                    explanation: "A verified pairing will record the installation and fingerprint here.",
-                    actionTitle: nil
+                    explanation: reconciliationMessage ?? "A verified pairing will record the installation and fingerprint here.",
+                    actionTitle: "Recover Site Root setup",
+                    action: recoverSiteRootInstallation
                 )
                 .padding(MnMetrics.screenGutter)
             }

@@ -68,10 +68,10 @@ bounded definite CBOR assertion object containing exactly ``signature`` and
 * the registered P-256 key's DER signature over
   ``SHA-256(authenticatorData || SHA-256(clientData))``;
 * the authenticator RP-ID hash for the exact production App ID;
-* Apple's closed App Attest authenticator-data flags and shape: ``0x00`` for
-  the exact 37-byte extension-free form emitted through iOS 26, or ``0x80``
-  for the extension-bearing iOS 27 form. App Attest is not WebAuthn user
-  authentication, so the WebAuthn user-present bit is rejected;
+* Apple's closed App Attest authenticator-data shape: the exact 37-byte form
+  has no extension-data bit, while an extension-bearing form must have that
+  bit and the strict extension map. The user-present bit is advisory rather
+  than an App Attest acceptance criterion; all other flag bits are rejected;
 * a non-zero counter strictly greater than the server-held previous counter;
 * for the iOS 27 form, the exact production distribution category (TestFlight,
   App Store, or enterprise/ad-hoc) and expected bundle version in Apple's

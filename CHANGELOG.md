@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.7.3] - 2026-08-10
+
+### Fixed
+
+- Encode the Site Root detached COSE payload length with explicit truncating
+  byte extraction. Valid canonical delegation payloads longer than 255 bytes
+  now produce their required CBOR two-byte length rather than trapping the
+  iPhone application after a successful App Attest registration.
+
 ## [0.7.2] - 2026-08-09
 
 ### Added

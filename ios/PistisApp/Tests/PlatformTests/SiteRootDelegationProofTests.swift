@@ -47,6 +47,20 @@ final class SiteRootDelegationProofTests: XCTestCase {
         XCTAssertThrowsError(try DetachedES256Cose.envelope(protected: protected, signature: highS))
     }
 
+    func testDetachedCoseEncodesDelegationPayloadLongerThanOneByte() throws {
+        let protected = try DetachedES256Cose.protectedHeaders(kid: "site-root-fixture")
+        let payload = Data(repeating: 0x61, count: 256)
+        let structure = try DetachedES256Cose.signatureStructure(
+            protected: protected,
+            payload: payload
+        )
+        let prefixOffset = structure.count - payload.count - 3
+        XCTAssertEqual(structure[prefixOffset], 0x59)
+        XCTAssertEqual(structure[prefixOffset + 1], 0x01)
+        XCTAssertEqual(structure[prefixOffset + 2], 0x00)
+        XCTAssertEqual(structure.suffix(payload.count), payload)
+    }
+
     func testQRPresentationAcceptsOnlyExactWrapperAndPreservesDelegationBytes() throws {
         let delegation = Data("{\"device_key_id\":\"site-root-fixture\",\"proof_profile\":\"pistis-secure-enclave-es256-cose-v1\",\"schema\":\"monas.site-root-delegation.v1\",\"secure_enclave_attestation\":\"not-asserted\",\"site_trust_domain\":\"site-demo-1\"}".utf8)
         let base64URL = delegation.base64EncodedString()

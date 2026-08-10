@@ -100,11 +100,7 @@ final class SiteRootDelegationCoordinator: ObservableObject {
                         appAttestRegistration: registration
                     )
                 )
-                try await completeDelegation(
-                    delegation,
-                    producer: producer,
-                    registerAppAttest: false
-                )
+                try await completeInitialStaticDelegation(delegation, producer: producer)
             }
         } catch let failure as PlatformFailure {
             recordFailure(failure, review: presentedReview)
@@ -160,6 +156,36 @@ final class SiteRootDelegationCoordinator: ObservableObject {
         let rewrapSubmission = try rewrap.produce(presentation: presentation)
         try await appAttestTransport.submitCustodyRewrap(rewrapSubmission)
         recordCompletion(review: presentedReview)
+        phase = .submitted
+    }
+
+    /// Completes the attended initial Site Root ceremony.  It has a separate
+    /// terminal response from the later App Attest bootstrap transaction: the
+    /// server has created custody and Site Trust authority, but no retained
+    /// Monas session exists yet.  Record that real, incomplete installation
+    /// rather than presenting a successful proof as an unavailable authority.
+    private func completeInitialStaticDelegation(
+        _ delegation: SiteRootDelegationPresentationV1,
+        producer: SecureEnclaveSiteRootProofProducer
+    ) async throws {
+        phase = .signing
+        let submission = try producer.prove(delegation)
+        try await transport.submitInitialStaticCompletion(
+            MonasSiteRootDelegationSubmissionRequestV1(
+                endpoint: delegation.submitURL,
+                submission: submission
+            )
+        )
+        if let review = presentedReview {
+            try? SiteRootInstallationRepository.shared.recordCompletedFirstCeremony(review)
+        }
+        recordHistory(
+            review: presentedReview,
+            decision: "Verified — setup continues",
+            signature: "Secure Enclave Site Root proof produced",
+            transfer: "Accepted by fixed Monas Site Root authority",
+            verification: "Site Trust and custody were created; App Attest session setup remains"
+        )
         phase = .submitted
     }
 

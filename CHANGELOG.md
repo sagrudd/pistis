@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.7.7] - 2026-08-10
+
+### Fixed
+
+- Treat the empty `204 No Content` response from the attended initial Monas
+  Site Root ceremony as its distinct, successful incomplete-installation
+  transition. The normal App Attest bootstrap path remains strict and accepts
+  only its exact `200` response.
+
 ## [0.7.6] - 2026-08-10
 
 ### Added

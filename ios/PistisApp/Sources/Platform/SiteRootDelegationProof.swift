@@ -179,12 +179,19 @@ struct MonasSiteRootDelegationSubmissionRequestV1: Sendable {
 /// Boundary for the separately reviewed Monas Site Root submission transport.
 ///
 /// The UI depends on this protocol rather than treating QR text as a network
-/// capability. A successful response is the exact, short-lived bootstrap that
-/// must be consumed immediately by the separately pinned App Attest transport;
-/// it is not a receipt, fact, session, or browser credential.
+/// capability. A successful normal response is the exact, short-lived
+/// bootstrap that must be consumed immediately by the separately pinned App
+/// Attest transport; it is not a receipt, fact, session, or browser
+/// credential. The attended initial Site Root ceremony has a distinct,
+/// terminal completion response because it establishes the Site Trust
+/// authority before the later App Attest session ceremony exists.
 protocol MonasSiteRootDelegationSubmitting: Sendable {
     func submit(_ request: MonasSiteRootDelegationSubmissionRequestV1) async throws
         -> MonasAppAttestCeremonyBootstrap
+
+    func submitInitialStaticCompletion(
+        _ request: MonasSiteRootDelegationSubmissionRequestV1
+    ) async throws
 }
 
 struct UnavailableMonasSiteRootDelegationTransport: MonasSiteRootCeremonyTransport {
@@ -193,6 +200,10 @@ struct UnavailableMonasSiteRootDelegationTransport: MonasSiteRootCeremonyTranspo
     func submit(_: MonasSiteRootDelegationSubmissionRequestV1) async throws
         -> MonasAppAttestCeremonyBootstrap
     {
+        throw PlatformFailure.productionEnvelopeUnavailable
+    }
+
+    func submitInitialStaticCompletion(_: MonasSiteRootDelegationSubmissionRequestV1) async throws {
         throw PlatformFailure.productionEnvelopeUnavailable
     }
 

@@ -76,6 +76,42 @@ final class SiteRootAppAttestBootstrapTransportTests: XCTestCase {
         try await assertSubmissionDenied(response: extended)
     }
 
+    func testInitialStaticCeremonyAcceptsOnlyAnEmpty204Completion() async throws {
+        BootstrapURLProtocol.configure(response: Data(), status: 204)
+        let configuration = URLSessionConfiguration.ephemeral
+        configuration.protocolClasses = [BootstrapURLProtocol.self]
+        let transport = try MonasSiteRootDelegationTransport(
+            authorityOrigin: try XCTUnwrap(URL(string: "https://monas.example.test")),
+            expectedSPKISHA256: Data(repeating: 0x11, count: 32),
+            configuration: configuration
+        )
+
+        try await transport.submitInitialStaticCompletion(submissionRequest())
+
+        let requests = BootstrapURLProtocol.requests()
+        XCTAssertEqual(requests.count, 1)
+        XCTAssertEqual(requests[0].url?.path, MonasSiteRootDelegationEndpointV1.submitPath)
+        XCTAssertNil(requests[0].value(forHTTPHeaderField: "Cookie"))
+        XCTAssertNil(requests[0].value(forHTTPHeaderField: "Authorization"))
+    }
+
+    func testInitialStaticCeremonyRejectsBootstrapAndNonempty204() async throws {
+        try await assertInitialStaticCompletionDenied(
+            response: responseJSON(
+                origin: "https://monas.example.test",
+                spki: Data(repeating: 0x11, count: 32),
+                ceremonyID: Data(repeating: 0x22, count: 16),
+                challenge: Data(repeating: 0x33, count: 32),
+                expiresAt: nowMillis() + 60_000
+            ),
+            status: 200
+        )
+        try await assertInitialStaticCompletionDenied(
+            response: Data("unexpected".utf8),
+            status: 204
+        )
+    }
+
     func testAlternateOriginNoncanonicalOrExpiredBootstrapIsTerminal() async throws {
         let alternateOrigin = responseJSON(
             origin: "https://other.example.test",
@@ -118,6 +154,23 @@ final class SiteRootAppAttestBootstrapTransportTests: XCTestCase {
         do {
             _ = try await transport.submit(submissionRequest())
             XCTFail("only the exact bootstrap response may be accepted")
+        } catch {
+            XCTAssertEqual(error as? PlatformFailure, .siteRootAuthorityUnavailable)
+        }
+    }
+
+    private func assertInitialStaticCompletionDenied(response: Data, status: Int) async throws {
+        BootstrapURLProtocol.configure(response: response, status: status)
+        let configuration = URLSessionConfiguration.ephemeral
+        configuration.protocolClasses = [BootstrapURLProtocol.self]
+        let transport = try MonasSiteRootDelegationTransport(
+            authorityOrigin: try XCTUnwrap(URL(string: "https://monas.example.test")),
+            expectedSPKISHA256: Data(repeating: 0x11, count: 32),
+            configuration: configuration
+        )
+        do {
+            try await transport.submitInitialStaticCompletion(submissionRequest())
+            XCTFail("only an empty static completion may be accepted")
         } catch {
             XCTAssertEqual(error as? PlatformFailure, .siteRootAuthorityUnavailable)
         }

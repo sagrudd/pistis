@@ -136,6 +136,33 @@ final class PinnedEnrolmentSessionDelegate:
             URLCredential?
         ) -> Void
     ) {
+        resolveServerTrustChallenge(challenge, completionHandler: completionHandler)
+    }
+
+    /// URLSession delivers server-trust challenges for data tasks through the
+    /// task delegate on current iOS releases. Keep the exact same verifier at
+    /// both delegate scopes so the fixed, self-pinned Monas authority is never
+    /// silently delegated to the system trust store or rejected before the
+    /// pinned verifier sees it.
+    func urlSession(
+        _: URLSession,
+        task _: URLSessionTask,
+        didReceive challenge: URLAuthenticationChallenge,
+        completionHandler: @escaping (
+            URLSession.AuthChallengeDisposition,
+            URLCredential?
+        ) -> Void
+    ) {
+        resolveServerTrustChallenge(challenge, completionHandler: completionHandler)
+    }
+
+    private func resolveServerTrustChallenge(
+        _ challenge: URLAuthenticationChallenge,
+        completionHandler: @escaping (
+            URLSession.AuthChallengeDisposition,
+            URLCredential?
+        ) -> Void
+    ) {
         guard challenge.protectionSpace.authenticationMethod
                 == NSURLAuthenticationMethodServerTrust,
               challenge.protectionSpace.host == host,

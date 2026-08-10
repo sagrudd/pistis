@@ -29,6 +29,40 @@ final class PinnedServerTrustTests: XCTestCase {
         XCTAssertThrowsError(try CertificateSPKI.extract(from: nonMinimal))
     }
 
+    func testTaskScopedChallengeUsesThePinnedVerifier() throws {
+        let delegate = try PinnedEnrolmentSessionDelegate(
+            origin: try XCTUnwrap(URL(string: "https://monas.example.test")),
+            expectedSPKISHA256: Data(repeating: 0x11, count: 32)
+        )
+        let protectionSpace = URLProtectionSpace(
+            host: "monas.example.test",
+            port: 443,
+            protocol: "https",
+            realm: nil,
+            authenticationMethod: NSURLAuthenticationMethodHTTPBasic
+        )
+        let challenge = URLAuthenticationChallenge(
+            protectionSpace: protectionSpace,
+            proposedCredential: nil,
+            previousFailureCount: 0,
+            failureResponse: nil,
+            error: nil,
+            sender: nil
+        )
+        let task = URLSession(configuration: .ephemeral)
+            .dataTask(with: URL(string: "https://monas.example.test")!)
+        let expectation = expectation(description: "task challenge completed")
+
+        delegate.urlSession(URLSession.shared, task: task, didReceive: challenge) {
+            disposition, credential in
+            XCTAssertEqual(disposition, .cancelAuthenticationChallenge)
+            XCTAssertNil(credential)
+            expectation.fulfill()
+        }
+
+        wait(for: [expectation], timeout: 1)
+    }
+
     private func fixture() throws -> Data {
         let url = URL(fileURLWithPath: #filePath)
             .deletingLastPathComponent()

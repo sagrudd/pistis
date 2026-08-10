@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.7.5] - 2026-08-10
+
+### Fixed
+
+- Apply the exact Monas SPKI verifier to both session- and task-scoped iOS
+  TLS challenges. The configured self-pinned authority can now reach its one
+  fixed registration route without falling back to system certificate trust.
+
 ## [0.7.4] - 2026-08-10
 
 ### Fixed

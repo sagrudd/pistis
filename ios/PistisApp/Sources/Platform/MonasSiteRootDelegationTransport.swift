@@ -54,7 +54,7 @@ struct MonasSiteRootDelegationTransport: MonasSiteRootCeremonyTransport,
     private static let maximumSubmissionBytes = 90_000
 
     private let authorityOrigin: URL
-  private let expectedSPKISHA256: Data
+    private let expectedSPKISHA256: Data
     private let session: URLSession
 
     var genesisAuthorityOrigin: URL? { authorityOrigin }
@@ -78,7 +78,7 @@ struct MonasSiteRootDelegationTransport: MonasSiteRootCeremonyTransport,
             throw PlatformFailure.invalidConfiguration
         }
         self.authorityOrigin = authorityOrigin
-    self.expectedSPKISHA256 = expectedSPKISHA256
+        self.expectedSPKISHA256 = expectedSPKISHA256
         configuration.httpShouldSetCookies = false
         configuration.urlCache = nil
         configuration.requestCachePolicy = .reloadIgnoringLocalCacheData
@@ -92,12 +92,12 @@ struct MonasSiteRootDelegationTransport: MonasSiteRootCeremonyTransport,
         )
     }
 
-  func appAttestTransport() throws -> MonasAppAttestTransport {
-    try MonasAppAttestTransport(
-      authorityOrigin: authorityOrigin,
-      expectedSPKISHA256: expectedSPKISHA256
-    )
-  }
+    func appAttestTransport() throws -> MonasAppAttestTransport {
+        try MonasAppAttestTransport(
+            authorityOrigin: authorityOrigin,
+            expectedSPKISHA256: expectedSPKISHA256
+        )
+    }
 
     func readiness() async throws -> MonasSiteRootDelegationReadinessV1 {
         let endpoint = try endpoint(path: MonasSiteRootDelegationEndpointV1.readinessPath)
@@ -187,13 +187,11 @@ struct MonasSiteRootDelegationTransport: MonasSiteRootCeremonyTransport,
     func submit(_ request: MonasSiteRootDelegationSubmissionRequestV1) async throws
         -> MonasAppAttestCeremonyBootstrap
     {
-    guard
-      Self.matchesAuthority(
+        guard Self.matchesAuthority(
             request.endpoint,
             origin: authorityOrigin,
             expectedPath: MonasSiteRootDelegationEndpointV1.submitPath
-      )
-    else { throw PlatformFailure.siteRootAuthorityUnavailable }
+        ) else { throw PlatformFailure.siteRootAuthorityUnavailable }
 
         let body: Data
         do {
@@ -243,13 +241,11 @@ struct MonasSiteRootDelegationTransport: MonasSiteRootCeremonyTransport,
     func submitInitialStaticCompletion(
         _ request: MonasSiteRootDelegationSubmissionRequestV1
     ) async throws {
-    guard
-      Self.matchesAuthority(
+        guard Self.matchesAuthority(
             request.endpoint,
             origin: authorityOrigin,
             expectedPath: MonasSiteRootDelegationEndpointV1.submitPath
-      )
-    else { throw PlatformFailure.siteRootAuthorityUnavailable }
+        ) else { throw PlatformFailure.siteRootAuthorityUnavailable }
 
         let body: Data
         do {
@@ -288,13 +284,11 @@ struct MonasSiteRootDelegationTransport: MonasSiteRootCeremonyTransport,
     func registerGenesis(_ request: SiteRootGenesisRegistrationRequestV1) async throws
         -> SiteRootDelegationPresentationV1
     {
-    guard
-      Self.matchesAuthority(
+        guard Self.matchesAuthority(
             request.presentation.registrationURL,
             origin: authorityOrigin,
             expectedPath: MonasSiteRootGenesisEndpointV1.registrationPath
-      )
-    else { throw PlatformFailure.siteRootAuthorityUnavailable }
+        ) else { throw PlatformFailure.siteRootAuthorityUnavailable }
         let body: Data
         do {
             body = try JSONEncoder().encode(MonasSiteRootGenesisRegistrationRequest(request))
@@ -451,9 +445,7 @@ private struct MonasReadinessResponse: Decodable {
     init(from decoder: any Decoder) throws {
         let untyped = try decoder.container(keyedBy: MonasSiteRootWireKey.self)
         guard Set(untyped.allKeys.map(\.stringValue)) == Set(CodingKeys.allCases.map(\.rawValue)) else {
-      throw DecodingError.dataCorruptedError(
-        forKey: .schema, in: try decoder.container(keyedBy: CodingKeys.self),
-        debugDescription: "unexpected readiness fields")
+            throw DecodingError.dataCorruptedError(forKey: .schema, in: try decoder.container(keyedBy: CodingKeys.self), debugDescription: "unexpected readiness fields")
         }
         let values = try decoder.container(keyedBy: CodingKeys.self)
         schema = try values.decode(String.self, forKey: .schema)
@@ -464,16 +456,11 @@ private struct MonasReadinessResponse: Decodable {
         reasons = try values.decode([String].self, forKey: .reasons)
         guard schema == "monas.site-root-delegation-readiness.v1", reasons.count <= 8,
               reasons.allSatisfy({ !$0.isEmpty && $0.utf8.count <= 96 })
-    else {
-      throw DecodingError.dataCorruptedError(
-        forKey: .schema, in: values, debugDescription: "invalid readiness response")
-    }
+        else { throw DecodingError.dataCorruptedError(forKey: .schema, in: values, debugDescription: "invalid readiness response") }
     }
 
     var value: MonasSiteRootDelegationReadinessV1 {
-    .init(
-      state: state, liveCeremony: liveCeremony, registeredDevice: registeredDevice,
-      appAttestBindingPresent: appAttestBindingPresent)
+        .init(state: state, liveCeremony: liveCeremony, registeredDevice: registeredDevice, appAttestBindingPresent: appAttestBindingPresent)
     }
 }
 
@@ -483,10 +470,7 @@ private struct MonasSubmissionRequest: Encodable {
     let delegation: JSONValue
     let coseSign1Base64URL: String
 
-  enum CodingKeys: String, CodingKey {
-    case schema, reference, delegation
-    case coseSign1Base64URL = "cose_sign1_base64url"
-  }
+    enum CodingKeys: String, CodingKey { case schema, reference, delegation, coseSign1Base64URL = "cose_sign1_base64url" }
 
     init(_ submission: SiteRootDelegationSubmissionV1) throws {
         schema = submission.schema
@@ -566,8 +550,7 @@ private struct MonasAppAttestBootstrapResponse {
 
         init(from decoder: any Decoder) throws {
             let untyped = try decoder.container(keyedBy: MonasSiteRootWireKey.self)
-      guard
-        Set(untyped.allKeys.map(\.stringValue))
+            guard Set(untyped.allKeys.map(\.stringValue))
                 == Set(CodingKeys.allCases.map(\.rawValue))
             else {
                 throw DecodingError.dataCorruptedError(
@@ -595,8 +578,7 @@ private struct MonasAppAttestBootstrapResponse {
               value.count % 4 != 1
         else { return nil }
         let padding = String(repeating: "=", count: (4 - value.count % 4) % 4)
-    let standard =
-      value.replacingOccurrences(of: "-", with: "+")
+        let standard = value.replacingOccurrences(of: "-", with: "+")
             .replacingOccurrences(of: "_", with: "/") + padding
         guard let decoded = Data(base64Encoded: standard),
               decoded.count == exactLength,
@@ -618,37 +600,18 @@ private struct MonasSiteRootWireKey: CodingKey {
 }
 
 private enum JSONValue: Codable {
-  case object([String: JSONValue])
-  case array([JSONValue])
-  case string(String)
-  case number(Double)
-  case bool(Bool)
-  case null
+    case object([String: JSONValue]), array([JSONValue]), string(String), number(Double), bool(Bool), null
     init(from decoder: any Decoder) throws {
         let single = try decoder.singleValueContainer()
-    if single.decodeNil() {
-      self = .null
-    } else if let value = try? single.decode(Bool.self) {
-      self = .bool(value)
-    } else if let value = try? single.decode(Double.self) {
-      self = .number(value)
-    } else if let value = try? single.decode(String.self) {
-      self = .string(value)
-    } else if let values = try? single.decode([String: JSONValue].self) {
-      self = .object(values)
-    } else {
-      self = .array(try single.decode([JSONValue].self))
-    }
+        if single.decodeNil() { self = .null }
+        else if let value = try? single.decode(Bool.self) { self = .bool(value) }
+        else if let value = try? single.decode(Double.self) { self = .number(value) }
+        else if let value = try? single.decode(String.self) { self = .string(value) }
+        else if let values = try? single.decode([String: JSONValue].self) { self = .object(values) }
+        else { self = .array(try single.decode([JSONValue].self)) }
     }
     func encode(to encoder: any Encoder) throws {
         var single = encoder.singleValueContainer()
-    switch self {
-    case .object(let value): try single.encode(value)
-    case .array(let value): try single.encode(value)
-    case .string(let value): try single.encode(value)
-    case .number(let value): try single.encode(value)
-    case .bool(let value): try single.encode(value)
-    case .null: try single.encodeNil()
-    }
+        switch self { case let .object(value): try single.encode(value); case let .array(value): try single.encode(value); case let .string(value): try single.encode(value); case let .number(value): try single.encode(value); case let .bool(value): try single.encode(value); case .null: try single.encodeNil() }
     }
 }

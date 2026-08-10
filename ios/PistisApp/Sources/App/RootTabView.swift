@@ -5,7 +5,6 @@ enum AuthorityCustodyContinuationStage: String, CaseIterable {
     case fetchChallenge = "fetch-challenge"
     case generateAssertion = "generate-assertion"
     case submitAssertion = "submit-assertion"
-    case armedStatus = "armed-status"
     case prepareCustody = "prepare-custody"
     case beginCustody = "begin-custody"
     case completeCustody = "complete-custody"
@@ -13,6 +12,23 @@ enum AuthorityCustodyContinuationStage: String, CaseIterable {
 
     var failureMessage: String {
         "Authority custody stopped safely at \(rawValue). No setup evidence was discarded."
+    }
+}
+
+enum AuthorityCustodyAcceptedAssertionTransitionV2 {
+    /// An empty 202 has consumed the one-use assertion challenge and armed the
+    /// retained initial-rotation ceremony. A subsequent coarse 503 is not a new
+    /// challenge and must never send the client back to assertion generation.
+    static func next(
+        after status: MonasSiteRootDelegationTransport.AuthorityCustodyStatusV2
+    ) throws -> (
+        status: MonasSiteRootDelegationTransport.AuthorityCustodyStatusV2,
+        stage: AuthorityCustodyContinuationStage
+    ) {
+        guard status == .appAttestAssertionRequired else {
+            throw PlatformFailure.siteRootAuthorityUnavailable
+        }
+        return (.initialRotationRequired, .prepareCustody)
     }
 }
 
@@ -253,11 +269,11 @@ struct RootTabView: View {
             .prepareCustodyRotationAssertion(challenge: challenge)
           failureStage = .submitAssertion
           try await appAttestTransport.submitAssertion(assertion)
-          failureStage = .armedStatus
-          status = try await transport.authorityCustodyStatusV2()
-          guard status != .appAttestAssertionRequired else {
-            throw PlatformFailure.siteRootAuthorityUnavailable
-          }
+          let transition = try AuthorityCustodyAcceptedAssertionTransitionV2.next(
+            after: status
+          )
+          status = transition.status
+          failureStage = transition.stage
         }
         failureStage = .prepareCustody
         let producer = try SecureEnclaveFirstAuthorityCustodyProducerV2(

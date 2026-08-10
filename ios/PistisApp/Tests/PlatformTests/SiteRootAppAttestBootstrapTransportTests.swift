@@ -9,7 +9,7 @@ final class SiteRootAppAttestBootstrapTransportTests: XCTestCase {
             AuthorityCustodyContinuationStage.allCases.map(\.rawValue),
             [
                 "initial-status", "fetch-challenge", "generate-assertion",
-                "submit-assertion", "armed-status", "prepare-custody",
+                "submit-assertion", "prepare-custody",
                 "begin-custody", "complete-custody", "retain-completion",
             ]
         )
@@ -19,6 +19,21 @@ final class SiteRootAppAttestBootstrapTransportTests: XCTestCase {
             XCTAssertFalse(stage.failureMessage.contains("key"))
             XCTAssertFalse(stage.failureMessage.contains("token"))
         }
+    }
+
+    func testAcceptedAssertionTransitionsDirectlyToRotationWithoutChallengeRefetch() throws {
+        let transition = try AuthorityCustodyAcceptedAssertionTransitionV2.next(
+            after: .appAttestAssertionRequired
+        )
+
+        XCTAssertEqual(transition.status, .initialRotationRequired)
+        XCTAssertEqual(transition.stage, .prepareCustody)
+        XCTAssertNotEqual(transition.stage, .fetchChallenge)
+        XCTAssertFalse(
+            AuthorityCustodyContinuationStage.allCases.contains(where: {
+                $0.rawValue == "armed-status"
+            })
+        )
     }
 
     override func tearDown() {

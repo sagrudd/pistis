@@ -4,6 +4,10 @@
 
 ### Changed
 
+- Align the first-authority host envelope with the accepted Thesaurophylax
+  portable ECDH key-wrap profile. The previous Swift-only HKDF domain produced
+  ciphertext that the fixed custody runtime correctly refused to open.
+
 - Continue directly from an accepted custody App Attest assertion into the
   retained initial-rotation begin/Face ID/complete ceremony; never re-fetch the
   consumed one-use assertion challenge after its empty `202` acceptance.

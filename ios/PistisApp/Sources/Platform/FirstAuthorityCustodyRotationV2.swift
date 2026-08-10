@@ -221,7 +221,11 @@ private struct FirstAuthorityRecoverySeedEnvelopeV2: Codable {
 
 final class SecureEnclaveFirstAuthorityCustodyProducerV2: @unchecked Sendable {
     private static let localEnvelopeInfo = Data("pistis:first-authority-recovery-envelope:v2".utf8)
-    private static let hostEnvelopeInfo = Data("pistis:first-authority-host-envelope:v2".utf8)
+    /// The accepted portable ECDH key-wrap profile shared with Thesaurophylax.
+    /// This must remain byte-for-byte identical to PORTABLE_ECDH_KEY_WRAP_V1.
+    static let hostEnvelopeInfo = Data(
+        "mnemosyne:thesaurophylax:portable-wrap:v1".utf8
+    )
     private let signer: SecureEnclaveSigner
     private let store: any FirstAuthorityRecoveryEnvelopeStoring
 

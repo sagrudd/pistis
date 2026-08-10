@@ -4,6 +4,13 @@ import XCTest
 @testable import Pistis
 
 final class FirstAuthorityCustodyRotationV2Tests: XCTestCase {
+    func testHostEnvelopeUsesAcceptedThesaurophylaxPortableWrapProfile() {
+        XCTAssertEqual(
+            SecureEnclaveFirstAuthorityCustodyProducerV2.hostEnvelopeInfo,
+            Data("mnemosyne:thesaurophylax:portable-wrap:v1".utf8)
+        )
+    }
+
     func testRotationTranscriptMatchesThesaurophylaxFixture() throws {
         let presentation = try fixturePresentation()
         let transcript = try presentation.canonicalTranscript()

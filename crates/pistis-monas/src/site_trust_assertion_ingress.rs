@@ -41,6 +41,7 @@ const ASSERTION_CLIENT_DATA_DOMAIN_V1: &[u8] =
 const REDACTED_VECTOR_DOMAIN_V1: &[u8] =
     b"mnemosyne.pistis.site-trust-app-attest-redacted-vector.v1\0";
 const AUTHENTICATOR_DATA_MINIMUM_BYTES: usize = 37;
+const USER_PRESENT_FLAGS: u8 = 0x01;
 const USER_PRESENT_AND_EXTENSION_FLAGS: u8 = 0x81;
 const CUSTODY_ROTATION_CHALLENGE_DOMAIN_V1: &[u8] = b"MONASAC2\0";
 
@@ -571,11 +572,25 @@ pub fn verify_custody_rotation_app_attest_assertion_diagnostic_v1(
         .map_err(|_| CustodyRotationAppAttestFailureStageV1::AssertionEncoding)?;
     let application_hash: [u8; 32] =
         Sha256::digest(MONAS_PRODUCTION_APP_ATTEST_APP_IDENTIFIER_V1).into();
-    if decoded.authenticator_data.len() <= AUTHENTICATOR_DATA_MINIMUM_BYTES
+    if decoded.authenticator_data.len() < AUTHENTICATOR_DATA_MINIMUM_BYTES
         || decoded.authenticator_data[..32] != application_hash
-        || decoded.authenticator_data[32] != USER_PRESENT_AND_EXTENSION_FLAGS
     {
         return Err(CustodyRotationAppAttestFailureStageV1::ApplicationBinding);
+    }
+    match decoded.authenticator_data.len() {
+        AUTHENTICATOR_DATA_MINIMUM_BYTES
+            if decoded.authenticator_data[32] == USER_PRESENT_FLAGS => {}
+        length if length > AUTHENTICATOR_DATA_MINIMUM_BYTES => {
+            if decoded.authenticator_data[32] != USER_PRESENT_AND_EXTENSION_FLAGS {
+                return Err(CustodyRotationAppAttestFailureStageV1::ApplicationBinding);
+            }
+            validate_app_attest_extensions(
+                &decoded.authenticator_data[AUTHENTICATOR_DATA_MINIMUM_BYTES..],
+                &acceptance.bundle_version,
+            )
+            .map_err(|_| CustodyRotationAppAttestFailureStageV1::AppleExtensions)?;
+        }
+        _ => return Err(CustodyRotationAppAttestFailureStageV1::ApplicationBinding),
     }
     let counter = MonotonicAppAttestCounterV1(u32::from_be_bytes(
         decoded.authenticator_data[33..37]
@@ -585,11 +600,6 @@ pub fn verify_custody_rotation_app_attest_assertion_diagnostic_v1(
     if !counter.strictly_after(acceptance.previous_counter) {
         return Err(CustodyRotationAppAttestFailureStageV1::Counter);
     }
-    validate_app_attest_extensions(
-        &decoded.authenticator_data[37..],
-        &acceptance.bundle_version,
-    )
-    .map_err(|_| CustodyRotationAppAttestFailureStageV1::AppleExtensions)?;
     let nonce = Sha256::digest(
         [
             decoded.authenticator_data.as_slice(),
@@ -687,9 +697,8 @@ fn validate_authenticator_data(
 ) -> Result<MonotonicAppAttestCounterV1, SiteTrustAppAttestAssertionIngressErrorV1> {
     let application_rp_id_hash: [u8; 32] =
         Sha256::digest(MONAS_PRODUCTION_APP_ATTEST_APP_IDENTIFIER_V1.as_bytes()).into();
-    if authenticator_data.len() <= AUTHENTICATOR_DATA_MINIMUM_BYTES
+    if authenticator_data.len() < AUTHENTICATOR_DATA_MINIMUM_BYTES
         || authenticator_data[..32] != application_rp_id_hash
-        || authenticator_data[32] != USER_PRESENT_AND_EXTENSION_FLAGS
     {
         return Err(SiteTrustAppAttestAssertionIngressErrorV1::Denied);
     }
@@ -701,8 +710,32 @@ fn validate_authenticator_data(
     if !counter.strictly_after(acceptance.previous_counter) {
         return Err(SiteTrustAppAttestAssertionIngressErrorV1::Denied);
     }
-    validate_app_attest_extensions(&authenticator_data[37..], &acceptance.bundle_version)?;
+    if !valid_assertion_flags_and_extensions(authenticator_data, &acceptance.bundle_version) {
+        return Err(SiteTrustAppAttestAssertionIngressErrorV1::Denied);
+    }
     Ok(counter)
+}
+
+/// iOS 26 and earlier emit the closed 37-byte App Attest assertion form with
+/// no extensions. iOS 27 adds an extension map and sets the user-present and
+/// extension-data bits. Length, flags and extension presence are treated as a
+/// single closed shape so a caller cannot downgrade or mix the two profiles.
+fn valid_assertion_flags_and_extensions(
+    authenticator_data: &[u8],
+    expected_bundle_version: &str,
+) -> bool {
+    match authenticator_data.len() {
+        AUTHENTICATOR_DATA_MINIMUM_BYTES => authenticator_data[32] == USER_PRESENT_FLAGS,
+        length if length > AUTHENTICATOR_DATA_MINIMUM_BYTES => {
+            authenticator_data[32] == USER_PRESENT_AND_EXTENSION_FLAGS
+                && validate_app_attest_extensions(
+                    &authenticator_data[AUTHENTICATOR_DATA_MINIMUM_BYTES..],
+                    expected_bundle_version,
+                )
+                .is_ok()
+        }
+        _ => false,
+    }
 }
 
 fn validate_app_attest_extensions(
@@ -755,8 +788,7 @@ fn decode_assertion_object(
         match cursor.text()?.as_str() {
             "signature" if signature.is_none() => signature = Some(cursor.bytes(8, 128)?),
             "authenticatorData" if authenticator_data.is_none() => {
-                authenticator_data =
-                    Some(cursor.bytes(AUTHENTICATOR_DATA_MINIMUM_BYTES + 1, 1024)?);
+                authenticator_data = Some(cursor.bytes(AUTHENTICATOR_DATA_MINIMUM_BYTES, 1024)?);
             }
             _ => return Err(SiteTrustAppAttestAssertionIngressErrorV1::Denied),
         }
@@ -1028,9 +1060,83 @@ mod tests {
         counter: u32,
     ) -> Vec<u8> {
         let auth_data = authenticator_data(request, counter);
+        assertion_for_authenticator_data(signing_key, request, auth_data)
+    }
+
+    fn legacy_assertion(
+        signing_key: &SigningKey,
+        request: &SiteTrustAttestationRequestV1,
+        counter: u32,
+    ) -> Vec<u8> {
+        let auth_data = legacy_authenticator_data(counter);
+        assertion_for_authenticator_data(signing_key, request, auth_data)
+    }
+
+    fn assertion_for_authenticator_data(
+        signing_key: &SigningKey,
+        request: &SiteTrustAttestationRequestV1,
+        auth_data: Vec<u8>,
+    ) -> Vec<u8> {
         let challenge = request.verification_request().challenge_digest;
         let client_data_hash = Sha256::digest(assertion_client_data_v1(challenge.as_bytes()));
         let nonce = Sha256::digest([auth_data.as_slice(), &client_data_hash].concat());
+        let signature: Signature = signing_key.sign(&nonce);
+        cbor_map_bytes(&[
+            ("signature", signature.to_der().as_bytes()),
+            ("authenticatorData", auth_data.as_slice()),
+        ])
+    }
+
+    fn legacy_authenticator_data(counter: u32) -> Vec<u8> {
+        let mut data =
+            Sha256::digest(MONAS_PRODUCTION_APP_ATTEST_APP_IDENTIFIER_V1.as_bytes()).to_vec();
+        data.push(USER_PRESENT_FLAGS);
+        data.extend_from_slice(&counter.to_be_bytes());
+        data
+    }
+
+    fn custody_acceptance(
+        signing_key: &SigningKey,
+        prior_counter: u32,
+    ) -> ServerHeldCustodyRotationAppAttestAcceptanceV1 {
+        let public_key: [u8; 65] = signing_key
+            .verifying_key()
+            .to_encoded_point(false)
+            .as_bytes()
+            .try_into()
+            .unwrap();
+        let mut request = CustodyRotationAppAttestRequestV1 {
+            installation_id: InstallationId::from_bytes([0x11; 16]),
+            site_trust_domain: "site-demo".into(),
+            ceremony_id: SiteTrustFactCeremonyIdV1::from_bytes([0x22; 16]),
+            key_id: KeyId::from_bytes(Sha256::digest(public_key).into()),
+            client_data_hash: [0x33; 32],
+            tls_leaf_spki_sha256: [0x44; 32],
+            genesis_config_sha256: [0x55; 32],
+            issued_at_unix_seconds: 100,
+            expires_at_unix_seconds: 200,
+        };
+        request.client_data_hash = custody_rotation_client_data_hash(&request);
+        ServerHeldCustodyRotationAppAttestAcceptanceV1::new(
+            request,
+            public_key,
+            prior_counter,
+            "1.0.0".into(),
+        )
+    }
+
+    fn custody_assertion(
+        signing_key: &SigningKey,
+        acceptance: &ServerHeldCustodyRotationAppAttestAcceptanceV1,
+        auth_data: Vec<u8>,
+    ) -> Vec<u8> {
+        let nonce = Sha256::digest(
+            [
+                auth_data.as_slice(),
+                acceptance.request.client_data_hash.as_slice(),
+            ]
+            .concat(),
+        );
         let signature: Signature = signing_key.sign(&nonce);
         cbor_map_bytes(&[
             ("signature", signature.to_der().as_bytes()),
@@ -1163,6 +1269,140 @@ mod tests {
         );
         assert_eq!(outcome.vector().counter().get(), 1);
         assert_eq!(outcome.into_fact().key_id(), acceptance.request.key_id);
+    }
+
+    #[test]
+    fn verifies_ios26_legacy_assertion_and_issues_atomically() {
+        let signing_key = SigningKey::from_bytes((&[6; 32]).into()).unwrap();
+        let acceptance = acceptance(&signing_key, 0);
+        let assertion = legacy_assertion(&signing_key, &acceptance.request, 1);
+        let submission = mobile_submission(acceptance.request.ceremony_id, assertion);
+        let mut store = AtomicStore::default();
+
+        let outcome =
+            issue_site_trust_human_authority_fact_from_server_held_app_attest_assertion_v1(
+                &mut store,
+                &acceptance,
+                &submission,
+            )
+            .unwrap();
+
+        assert_eq!(store.calls, 1);
+        assert_eq!(outcome.vector().counter().get(), 1);
+    }
+
+    #[test]
+    fn custody_rotation_accepts_exact_ios26_legacy_assertion() {
+        let signing_key = SigningKey::from_bytes((&[3; 32]).into()).unwrap();
+        let acceptance = custody_acceptance(&signing_key, 0);
+        let assertion = custody_assertion(&signing_key, &acceptance, legacy_authenticator_data(1));
+        let submission = mobile_submission(acceptance.request.ceremony_id, assertion);
+
+        let outcome = verify_custody_rotation_app_attest_assertion_diagnostic_v1(
+            &acceptance,
+            &submission,
+            150,
+        )
+        .unwrap();
+
+        assert_eq!(outcome.counter().get(), 1);
+    }
+
+    #[test]
+    fn ios26_legacy_form_rejects_wrong_rp_hash_counter_and_signature() {
+        let signing_key = SigningKey::from_bytes((&[5; 32]).into()).unwrap();
+        let acceptance = acceptance(&signing_key, 1);
+        let mut store = AtomicStore::default();
+
+        let mut wrong_rp = legacy_authenticator_data(2);
+        wrong_rp[0] ^= 1;
+        let assertion =
+            assertion_for_authenticator_data(&signing_key, &acceptance.request, wrong_rp);
+        let submission = mobile_submission(acceptance.request.ceremony_id, assertion);
+        assert!(
+            issue_site_trust_human_authority_fact_from_server_held_app_attest_assertion_v1(
+                &mut store,
+                &acceptance,
+                &submission
+            )
+            .is_err()
+        );
+
+        let assertion = legacy_assertion(&signing_key, &acceptance.request, 1);
+        let submission = mobile_submission(acceptance.request.ceremony_id, assertion);
+        assert!(
+            issue_site_trust_human_authority_fact_from_server_held_app_attest_assertion_v1(
+                &mut store,
+                &acceptance,
+                &submission
+            )
+            .is_err()
+        );
+
+        let assertion = legacy_assertion(&signing_key, &acceptance.request, 2);
+        let decoded = decode_assertion_object(&assertion).unwrap();
+        let mut signature = decoded.signature;
+        let last = signature.len() - 1;
+        signature[last] ^= 1;
+        let assertion = cbor_map_bytes(&[
+            ("signature", signature.as_slice()),
+            ("authenticatorData", decoded.authenticator_data.as_slice()),
+        ]);
+        let submission = mobile_submission(acceptance.request.ceremony_id, assertion);
+        assert!(
+            issue_site_trust_human_authority_fact_from_server_held_app_attest_assertion_v1(
+                &mut store,
+                &acceptance,
+                &submission
+            )
+            .is_err()
+        );
+        assert_eq!(store.calls, 0);
+    }
+
+    #[test]
+    fn denies_mixed_or_malformed_ios26_and_ios27_authenticator_forms() {
+        let signing_key = SigningKey::from_bytes((&[4; 32]).into()).unwrap();
+        let acceptance = acceptance(&signing_key, 0);
+        let mut store = AtomicStore::default();
+
+        let mut legacy_with_extension_flag = legacy_authenticator_data(1);
+        legacy_with_extension_flag[32] = USER_PRESENT_AND_EXTENSION_FLAGS;
+        let mut legacy_without_user_present = legacy_authenticator_data(1);
+        legacy_without_user_present[32] = 0;
+        let mut legacy_with_trailing_data = legacy_authenticator_data(1);
+        legacy_with_trailing_data.push(0xa0);
+        let mut extended_without_extension_flag = authenticator_data(&acceptance.request, 1);
+        extended_without_extension_flag[32] = USER_PRESENT_FLAGS;
+        let mut extended_with_unknown_field = authenticator_data(&acceptance.request, 1);
+        extended_with_unknown_field.push(0x00);
+        let mut extended_with_wrong_bundle =
+            Sha256::digest(MONAS_PRODUCTION_APP_ATTEST_APP_IDENTIFIER_V1.as_bytes()).to_vec();
+        extended_with_wrong_bundle.push(USER_PRESENT_AND_EXTENSION_FLAGS);
+        extended_with_wrong_bundle.extend_from_slice(&1_u32.to_be_bytes());
+        extended_with_wrong_bundle.extend_from_slice(&cbor_extensions("2.0.0", 4));
+
+        for auth_data in [
+            legacy_with_extension_flag,
+            legacy_without_user_present,
+            legacy_with_trailing_data,
+            extended_without_extension_flag,
+            extended_with_unknown_field,
+            extended_with_wrong_bundle,
+        ] {
+            let assertion =
+                assertion_for_authenticator_data(&signing_key, &acceptance.request, auth_data);
+            let submission = mobile_submission(acceptance.request.ceremony_id, assertion);
+            assert!(
+                issue_site_trust_human_authority_fact_from_server_held_app_attest_assertion_v1(
+                    &mut store,
+                    &acceptance,
+                    &submission
+                )
+                .is_err()
+            );
+        }
+        assert_eq!(store.calls, 0);
     }
 
     #[test]

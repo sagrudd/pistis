@@ -68,10 +68,13 @@ bounded definite CBOR assertion object containing exactly ``signature`` and
 * the registered P-256 key's DER signature over
   ``SHA-256(authenticatorData || SHA-256(clientData))``;
 * the authenticator RP-ID hash for the exact production App ID;
-* user-present plus extension flags;
+* the user-present flag and a closed authenticator-data shape: the exact
+  37-byte extension-free form emitted through iOS 26, or the extension-bearing
+  iOS 27 form with its extension-data flag;
 * a non-zero counter strictly greater than the server-held previous counter;
-* the exact production distribution category (TestFlight, App Store, or
-  enterprise/ad-hoc) and expected bundle version in Apple's extension map; and
+* for the iOS 27 form, the exact production distribution category (TestFlight,
+  App Store, or enterprise/ad-hoc) and expected bundle version in Apple's
+  extension map; and
 * the exact server-held challenge binding.
 
 ``clientData`` is never accepted from the client.  It is defined as the bytes

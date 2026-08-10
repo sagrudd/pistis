@@ -32,11 +32,11 @@ review and the evidence gates in that ADR.
    environment value, file, URL, clipboard, ticket, log, or retained
    screenshot.
 5. On the phone, scan the QR, check the displayed installation and origin,
-   type the three words shown independently by the CLI, and select **Trust
-   this host**. No certificate profile, Certificate Trust Settings change,
-   browser warning, or public certificate authority is required. A mismatch
-   is a stop condition: do not retry with words supplied by the phone or the
-   network host.
+   and select **Begin secure enrolment** only after Pistis reports that the
+   signed host identity and certificate key were verified. No certificate
+   profile, Certificate Trust Settings change, browser warning, or public
+   certificate authority is required. A signature, application-digest,
+   origin, or TLS-key mismatch is a stop condition.
 6. Have the user complete the foreground GitHub App Device Flow. The phone
    calls only the signed-origin begin/status/cancel/confirm routes. The
    installation-local adapter owns GitHub polling and clears its transient

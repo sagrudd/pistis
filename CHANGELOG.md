@@ -4,6 +4,13 @@
 
 ### Changed
 
+- Replace typed host-verification words in first-device enrolment with an
+  explicit confirmation of the already verified, authority-signed
+  installation identity, application digest, HTTPS origin and pinned TLS key.
+  Report signed-receipt verification separately from secure local persistence
+  so a committed server response can be retried without repeating identity
+  proof.
+
 - Align the first-authority host envelope with the accepted Thesaurophylax
   portable ECDH key-wrap profile. The previous Swift-only HKDF domain produced
   ciphertext that the fixed custody runtime correctly refused to open.

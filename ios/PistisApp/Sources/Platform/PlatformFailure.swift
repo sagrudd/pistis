@@ -28,6 +28,8 @@ enum PlatformFailure: Error, Equatable, Sendable {
     case enrolmentBeginRetryRequired
     case enrolmentRequired
     case existingEnrolmentMustBeRemoved
+    case enrolmentReceiptInvalid
+    case enrolmentStorageFailed
     case appAttestUnavailable
     case appAttestInvalidInput
     case appAttestKeyCreationFailed
@@ -55,6 +57,10 @@ extension PlatformFailure {
             "The host did not return a verifiable enrolment response. This exact attempt was retained; retry once or cancel and scan a fresh invitation."
         case .existingEnrolmentMustBeRemoved:
             "An existing Pistis identity already occupies this device. Remove or revoke it before beginning a new enrolment."
+        case .enrolmentReceiptInvalid:
+            "The host committed enrolment, but its signed response did not verify. The exact attempt was retained for safe retry."
+        case .enrolmentStorageFailed:
+            "The signed enrolment response verified, but Pistis could not retain it securely on this iPhone."
         case .siteRootAuthorityUnavailable:
             "The Monas Site Root authority is unavailable. No proof was submitted."
         case .secureHardwareUnavailable:

@@ -320,11 +320,12 @@ rerun the full ceremony rather than interpreting readiness as acceptance.
 
 The Identities screen exposes only the accepted server-driven first-device
 surface. It scans and verifies the ADR 0029 version-4 presentation before
-network use. The app then asks “Do you really trust this host?” and requires
-the three words displayed independently beside the CLI QR to be typed into
-three separate fields. It does not create a URL session, contact the host, or
-create the Face-ID-protected Secure Enclave key until those words match and
-the user selects **Trust this host**.
+network use. The app displays the verified installation and enables **Begin
+secure enrolment** only after the authority signature, application digest,
+canonical HTTPS origin and complete TLS SPKI pin verify. It does not contact
+the host or create the Face-ID-protected Secure Enclave key before that
+attended action. The derived words remain optional operator diagnostics, not
+authority input.
 
 The resulting ephemeral URL session accepts only the exact signed host and
 port, refuses redirects, extracts the leaf certificate's exact DER

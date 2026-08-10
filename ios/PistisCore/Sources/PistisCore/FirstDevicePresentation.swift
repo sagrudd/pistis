@@ -151,7 +151,10 @@ public enum FirstDevicePresentationV4 {
         guard issued < expires, nowMilliseconds >= issued,
               nowMilliseconds < expires, expires <= invitation.expires
         else { throw FirstDevicePresentationError.expired }
-        let origin = try canonicalOrigin(originText)
+        let endpoint = try SiteTrustEndpointIdentityV1(
+            origin: originText,
+            tlsSPKISHA256: tlsSPKISHA256
+        )
         let trustWords = try HostTrustWordsV1.derive(
             authorityID: authorityID,
             installationID: installationID,
@@ -171,7 +174,7 @@ public enum FirstDevicePresentationV4 {
             installationName: installationName,
             audience: audience,
             authorisedProductAudiences: authorisedProductAudiences,
-            httpsOrigin: origin,
+            httpsOrigin: endpoint.origin,
             appConfigurationDigest: appDigest,
             tlsSPKISHA256: tlsSPKISHA256,
             trustWords: trustWords,
@@ -319,23 +322,4 @@ public enum FirstDevicePresentationV4 {
             }
     }
 
-    private static func canonicalOrigin(_ text: String) throws -> URL {
-        guard text == text.lowercased(), text.unicodeScalars.allSatisfy(\.isASCII),
-              !text.contains("%"), let url = URL(string: text),
-              let components = URLComponents(url: url, resolvingAgainstBaseURL: false),
-              components.scheme == "https", components.user == nil,
-              components.password == nil, components.path.isEmpty,
-              components.query == nil, components.fragment == nil,
-              let host = components.host, components.percentEncodedHost == host,
-              !host.hasSuffix("."), !host.contains(":"),
-              !host.split(separator: ".", omittingEmptySubsequences: false).contains(where: {
-                  $0.isEmpty || $0.first == "-" || $0.last == "-"
-                      || !$0.utf8.allSatisfy {
-                          (48 ... 57).contains($0) || (97 ... 122).contains($0) || $0 == 45
-                      }
-              }),
-              components.port != 443, components.string == text
-        else { throw FirstDevicePresentationError.malformed }
-        return url
-    }
 }

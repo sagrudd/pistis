@@ -9,7 +9,7 @@ mod host_trust;
 pub use first_device::{
     AuthorityDescriptor, FirstDeviceAuthorityBundle, FirstDevicePresentation,
     FirstDevicePresentationError, MAX_FIRST_DEVICE_FRAME_BYTES, MobileEnrolmentInvitation,
-    verify_first_device_presentation,
+    SiteTrustEndpointHostV1, SiteTrustEndpointIdentityV1, verify_first_device_presentation,
 };
 pub use host_trust::{HOST_TRUST_WORDS_VERSION, HostTrustWords, derive_host_trust_words};
 pub use pistis_domain::ChallengeId;

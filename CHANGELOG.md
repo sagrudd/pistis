@@ -4,6 +4,10 @@
 
 ### Changed
 
+- Accept Apple's closed 37-byte iOS 26 App Attest assertion authenticator data
+  only with the exact registered application RP-ID hash, legacy flags, fresh
+  counter, and valid signature, while retaining mandatory strict validation of
+  the iOS 27 extension-bearing form and denying mixed or unknown encodings.
 - Retain and display the exact redacted custody-continuation stage whenever a
   fail-closed physical-device attempt does not complete.
 - Treat Monas's empty, no-store `503` custody status as the explicit

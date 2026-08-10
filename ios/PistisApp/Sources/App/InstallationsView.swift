@@ -82,7 +82,7 @@ private struct InstallationDetailView: View {
                         MnEvidenceRow(label: "Alias", value: installation.localAlias)
                         Divider()
                         MnEvidenceRow(
-                            label: "Public fingerprint",
+                            label: installation.evidenceLabel,
                             value: installation.fingerprint,
                             monospaced: true
                         )
@@ -90,7 +90,14 @@ private struct InstallationDetailView: View {
                         MnEvidenceRow(label: "Last used", value: installation.lastUsed)
                     }
                 }
-                if installation.status != "Trusted" {
+                if installation.status == "Setup in progress" {
+                    MnPanel {
+                        VStack(alignment: .leading, spacing: MnSpacing.x2) {
+                            MnStatusLabel(text: "Next: enrol your identity", kind: .warning)
+                            Text("The Site Root ceremony is recorded, but this installation cannot authenticate or approve work yet. Open Identities and select + to complete the signed provider enrolment.")
+                        }
+                    }
+                } else if installation.status != "Trusted" {
                     MnPanel {
                         VStack(alignment: .leading, spacing: MnSpacing.x2) {
                             MnStatusLabel(text: "Trust material requires review", kind: .warning)

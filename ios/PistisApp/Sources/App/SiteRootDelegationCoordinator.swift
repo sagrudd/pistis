@@ -164,6 +164,14 @@ final class SiteRootDelegationCoordinator: ObservableObject {
     }
 
     private func recordCompletion(review: SiteRootDelegationReview?) {
+        if let review {
+            // This record intentionally captures setup progress only. It is
+            // never an input to authentication, Site Trust, custody or a
+            // Monas session; the server remains authoritative for all of
+            // those states.
+            try? SiteRootInstallationRepository.shared
+                .recordCompletedFirstCeremony(review)
+        }
         recordHistory(
             review: review,
             decision: "Verified",

@@ -24,6 +24,7 @@ struct EnrollmentProjection: Equatable {
     init(
         enrollment: AuthenticatedEnrollmentOutput,
         retainedHistory: [HistoryEvent] = [],
+        incompleteSiteRootInstallations: [IncompleteSiteRootInstallation] = [],
         now: Date = Date()
     ) {
         let trust = enrollment.trust
@@ -53,7 +54,7 @@ struct EnrollmentProjection: Equatable {
                 lastUsed: "Not used yet",
                 allowsLocalForget: !isCurrent
             ),
-        ]
+        ] + Self.incompleteInstallations(incompleteSiteRootInstallations)
         let enrolmentEvent = HistoryEvent(
             id: Self.uuid(enrollment.responseContext.deviceID),
             action: "Device enrolled",
@@ -69,7 +70,8 @@ struct EnrollmentProjection: Equatable {
 
     init(
         legacyEnrollment: LegacyAuthenticatedEnrollmentOutput,
-        retainedHistory: [HistoryEvent] = []
+        retainedHistory: [HistoryEvent] = [],
+        incompleteSiteRootInstallations: [IncompleteSiteRootInstallation] = []
     ) {
         let trust = legacyEnrollment.trust
         let externalIdentityID = Self.uuid(trust.externalIdentityID)
@@ -97,7 +99,7 @@ struct EnrollmentProjection: Equatable {
                 lastUsed: "Unavailable",
                 allowsLocalForget: true
             ),
-        ]
+        ] + Self.incompleteInstallations(incompleteSiteRootInstallations)
         let event = HistoryEvent(
             id: Self.uuid(legacyEnrollment.responseContext.deviceID),
             action: "Legacy enrolment detected",
@@ -114,6 +116,7 @@ struct EnrollmentProjection: Equatable {
     init(
         inventory: EnrollmentInventoryRecord,
         retainedHistory: [HistoryEvent] = [],
+        incompleteSiteRootInstallations: [IncompleteSiteRootInstallation] = [],
         now: Date = Date()
     ) {
         switch inventory {
@@ -121,19 +124,24 @@ struct EnrollmentProjection: Equatable {
             self.init(
                 enrollment: enrollment,
                 retainedHistory: retainedHistory,
+                incompleteSiteRootInstallations: incompleteSiteRootInstallations,
                 now: now
             )
         case let .legacy(enrollment):
             self.init(
                 legacyEnrollment: enrollment,
-                retainedHistory: retainedHistory
+                retainedHistory: retainedHistory,
+                incompleteSiteRootInstallations: incompleteSiteRootInstallations
             )
         }
     }
 
-    init(retainedHistory: [HistoryEvent]) {
+    init(
+        retainedHistory: [HistoryEvent],
+        incompleteSiteRootInstallations: [IncompleteSiteRootInstallation] = []
+    ) {
         identities = []
-        installations = []
+        installations = Self.incompleteInstallations(incompleteSiteRootInstallations)
         history = Self.mergeHistory(retainedHistory)
     }
 
@@ -164,6 +172,23 @@ struct EnrollmentProjection: Equatable {
         }.joined(separator: " ")
     }
 
+    private static func incompleteInstallations(
+        _ records: [IncompleteSiteRootInstallation]
+    ) -> [InstallationSummary] {
+        records.map { record in
+            InstallationSummary(
+                id: record.id,
+                name: "Monas Site Root",
+                localAlias: record.authorityHost,
+                fingerprint: record.redactedReference,
+                status: "Setup in progress",
+                lastUsed: "Ceremony verified \(record.recordedAt.formatted(date: .abbreviated, time: .shortened))",
+                allowsLocalForget: false,
+                evidenceLabel: "Verified ceremony reference"
+            )
+        }
+    }
+
     private static func mergeHistory(_ events: [HistoryEvent]) -> [HistoryEvent] {
         var seen = Set<UUID>()
         return events.reversed().filter { seen.insert($0.id).inserted }
@@ -181,15 +206,18 @@ final class EnrollmentProjectionStore: ObservableObject {
     @Published private(set) var state: State = .loading
     private let loadEnrollment: () async throws -> EnrollmentInventoryRecord?
     private let loadHistory: () async throws -> [HistoryEvent]
+    private let loadIncompleteSiteRootInstallations: () async throws -> [IncompleteSiteRootInstallation]
     private let recordHistory: (HistoryEvent) async throws -> Void
 
     init(
         loadEnrollment: @escaping () async throws -> EnrollmentInventoryRecord?,
         loadHistory: @escaping () async throws -> [HistoryEvent] = { [] },
+        loadIncompleteSiteRootInstallations: @escaping () async throws -> [IncompleteSiteRootInstallation] = { [] },
         recordHistory: @escaping (HistoryEvent) async throws -> Void = { _ in }
     ) {
         self.loadEnrollment = loadEnrollment
         self.loadHistory = loadHistory
+        self.loadIncompleteSiteRootInstallations = loadIncompleteSiteRootInstallations
         self.recordHistory = recordHistory
     }
 
@@ -198,6 +226,8 @@ final class EnrollmentProjectionStore: ObservableObject {
             try await InstallationTrustKeychain.shared.enrollmentInventoryRecord()
         } loadHistory: {
             try LocalHistoryRepository.shared.records()
+        } loadIncompleteSiteRootInstallations: {
+            try SiteRootInstallationRepository.shared.records()
         } recordHistory: {
             try LocalHistoryRepository.shared.record($0)
         }
@@ -212,9 +242,17 @@ final class EnrollmentProjectionStore: ObservableObject {
                 try await recordHistory(event)
             }
             let history = try await loadHistory()
+            let incomplete = try await loadIncompleteSiteRootInstallations()
             let projection = stored.map {
-                EnrollmentProjection(inventory: $0, retainedHistory: history)
-            } ?? EnrollmentProjection(retainedHistory: history)
+                EnrollmentProjection(
+                    inventory: $0,
+                    retainedHistory: history,
+                    incompleteSiteRootInstallations: incomplete
+                )
+            } ?? EnrollmentProjection(
+                retainedHistory: history,
+                incompleteSiteRootInstallations: incomplete
+            )
             state = .loaded(projection)
         } catch {
             state = .failed

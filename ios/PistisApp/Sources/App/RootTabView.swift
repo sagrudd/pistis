@@ -75,6 +75,13 @@ struct RootTabView: View {
         ) { _ in
             Task { await enrollment.refresh() }
         }
+        .onReceive(
+            NotificationCenter.default.publisher(
+                for: SiteRootInstallationRepository.installationsDidChangeNotification
+            )
+        ) { _ in
+            Task { await enrollment.refresh() }
+        }
     }
 
     private var projection: EnrollmentProjection {

@@ -61,6 +61,7 @@ struct MonasSiteRootDelegationTransport: MonasSiteRootCeremonyTransport,
     var authorityHost: String? { authorityOrigin.host }
 
     enum AuthorityCustodyStatusV2: Equatable {
+        case appAttestAssertionRequired
         case initialRotationRequired
         case recoveryRequired
         case ready
@@ -123,12 +124,25 @@ struct MonasSiteRootDelegationTransport: MonasSiteRootCeremonyTransport,
         request.setValue("application/json", forHTTPHeaderField: "Accept")
         request.setValue("no-store", forHTTPHeaderField: "Cache-Control")
         request.timeoutInterval = 15
-        let (data, response) = try await requestData(
-            request, expectedURL: endpoint, expectedStatus: 200
-        )
+        let (data, response): (Data, URLResponse)
+        do {
+            (data, response) = try await session.data(for: request)
+        } catch {
+            throw PlatformFailure.siteRootAuthorityUnavailable
+        }
+        guard let http = response as? HTTPURLResponse,
+              http.url == endpoint,
+              data.count <= 1_024,
+              http.value(forHTTPHeaderField: "Cache-Control")?
+                .lowercased().contains("no-store") == true
+        else { throw PlatformFailure.siteRootAuthorityUnavailable }
+        if http.statusCode == 503, data.isEmpty {
+            return .appAttestAssertionRequired
+        }
+        guard http.statusCode == 200 else {
+            throw PlatformFailure.siteRootAuthorityUnavailable
+        }
         guard data.count <= 1_024,
-              (response as? HTTPURLResponse)?.value(forHTTPHeaderField: "Cache-Control")?
-                  .lowercased().contains("no-store") == true,
               let object = try JSONSerialization.jsonObject(with: data) as? [String: Any],
               Set(object.keys) == ["schema", "state"],
               object["schema"] as? String == "monas.first-authority-custody-status.v2",

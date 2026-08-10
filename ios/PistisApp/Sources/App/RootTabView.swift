@@ -211,7 +211,7 @@ struct RootTabView: View {
                 return
             }
             do {
-        let status = try await transport.authorityCustodyStatusV2()
+        var status = try await transport.authorityCustodyStatusV2()
         switch status {
                 case .ready:
                     try SiteRootInstallationRepository.shared
@@ -221,21 +221,29 @@ struct RootTabView: View {
             "Authority custody is ready. Continue identity setup for this installation."
           routeToProviderEnrolment()
                     return
-        case .initialRotationRequired, .recoveryRequired:
+        case .appAttestAssertionRequired, .initialRotationRequired, .recoveryRequired:
           break
         }
         let appAttestTransport = try transport.appAttestTransport()
-        let now = UInt64(Date().timeIntervalSince1970)
-        let challenge =
-          try await appAttestTransport
-          .fetchCustodyRotationAssertionChallengeV2(nowUnixSeconds: now)
-        let assertion = try await AppleAppAttestClient()
-          .prepareCustodyRotationAssertion(challenge: challenge)
-        try await appAttestTransport.submitAssertion(assertion)
+        if status == .appAttestAssertionRequired {
+          let now = UInt64(Date().timeIntervalSince1970)
+          let challenge =
+            try await appAttestTransport
+            .fetchCustodyRotationAssertionChallengeV2(nowUnixSeconds: now)
+          let assertion = try await AppleAppAttestClient()
+            .prepareCustodyRotationAssertion(challenge: challenge)
+          try await appAttestTransport.submitAssertion(assertion)
+          status = try await transport.authorityCustodyStatusV2()
+          guard status != .appAttestAssertionRequired else {
+            throw PlatformFailure.siteRootAuthorityUnavailable
+          }
+        }
         let producer = try SecureEnclaveFirstAuthorityCustodyProducerV2(
           authenticationReason: "Approve this exact first-authority custody continuation"
         )
         switch status {
+        case .appAttestAssertionRequired:
+          throw PlatformFailure.siteRootAuthorityUnavailable
         case .initialRotationRequired:
           let commitment = try producer.prepareInitialRotation()
           let presentation =

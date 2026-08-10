@@ -4,6 +4,9 @@
 
 ### Changed
 
+- Treat Monas's empty, no-store `503` custody status as the explicit
+  pre-assertion state, then submit fresh App Attest evidence and re-read the
+  authoritative rotation/recovery state before continuing.
 - Reconcile duplicate Site Root observations into one canonical installation,
   retain bounded ceremony evidence, and preserve monotonic setup progress.
 - Continue custody through pinned fresh App Attest and v2 rotation/recovery,

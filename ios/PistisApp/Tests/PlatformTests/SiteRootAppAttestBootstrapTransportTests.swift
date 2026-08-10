@@ -111,6 +111,38 @@ final class SiteRootAppAttestBootstrapTransportTests: XCTestCase {
         }
     }
 
+    func testAuthorityCustodyStatusTreatsEmptyNoStore503AsAssertionRequired() async throws {
+        BootstrapURLProtocol.configure(response: Data(), status: 503)
+        let configuration = URLSessionConfiguration.ephemeral
+        configuration.protocolClasses = [BootstrapURLProtocol.self]
+        let transport = try MonasSiteRootDelegationTransport(
+            authorityOrigin: try XCTUnwrap(URL(string: "https://monas.example.test")),
+            expectedSPKISHA256: Data(repeating: 0x11, count: 32),
+            configuration: configuration
+        )
+
+        let status = try await transport.authorityCustodyStatusV2()
+        XCTAssertEqual(status, .appAttestAssertionRequired)
+    }
+
+    func testAuthorityCustodyStatusRejects503WithBody() async throws {
+        BootstrapURLProtocol.configure(response: Data("unexpected".utf8), status: 503)
+        let configuration = URLSessionConfiguration.ephemeral
+        configuration.protocolClasses = [BootstrapURLProtocol.self]
+        let transport = try MonasSiteRootDelegationTransport(
+            authorityOrigin: try XCTUnwrap(URL(string: "https://monas.example.test")),
+            expectedSPKISHA256: Data(repeating: 0x11, count: 32),
+            configuration: configuration
+        )
+
+        do {
+            _ = try await transport.authorityCustodyStatusV2()
+            XCTFail("non-empty unavailable response selected an assertion state")
+        } catch {
+            XCTAssertEqual(error as? PlatformFailure, .siteRootAuthorityUnavailable)
+        }
+    }
+
     func testInitialStaticCeremonyAcceptsOnlyAnEmpty204Completion() async throws {
         BootstrapURLProtocol.configure(response: Data(), status: 204)
         let configuration = URLSessionConfiguration.ephemeral

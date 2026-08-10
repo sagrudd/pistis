@@ -316,8 +316,9 @@ the user selects **Trust this host**.
 The resulting ephemeral URL session accepts only the exact signed host and
 port, refuses redirects, extracts the leaf certificate's exact DER
 SubjectPublicKeyInfo, and compares its complete SHA-256 digest with the signed
-pin. It evaluates TLS server policy, hostname, and certificate validity with
-the leaf as an app-scoped anchor. A mismatch cancels the authentication
+pin. It requires a presented non-leaf CA root and evaluates TLS server policy,
+hostname, and certificate validity against that root only. A self-signed CA
+acting as the server leaf is rejected. A mismatch cancels the authentication
 challenge; there is no platform-trust fallback. `NSAllowsLocalNetworking`
 enables local HTTPS without enabling arbitrary loads.
 

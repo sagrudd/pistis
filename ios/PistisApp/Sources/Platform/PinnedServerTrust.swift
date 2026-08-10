@@ -168,7 +168,11 @@ final class PinnedEnrolmentSessionDelegate:
               challenge.protectionSpace.host == host,
               challenge.protectionSpace.port == port,
               let trust = challenge.protectionSpace.serverTrust,
-              let leaf = SecTrustGetCertificateAtIndex(trust, 0)
+              let leaf = SecTrustGetCertificateAtIndex(trust, 0),
+              let chain = SecTrustCopyCertificateChain(trust) as? [SecCertificate],
+              chain.count >= 2,
+              let root = chain.last,
+              SecCertificateCopyData(root) != SecCertificateCopyData(leaf)
         else {
             completionHandler(.cancelAuthenticationChallenge, nil)
             return
@@ -184,7 +188,7 @@ final class PinnedEnrolmentSessionDelegate:
                   ) == errSecSuccess,
                   SecTrustSetAnchorCertificates(
                       trust,
-                      [leaf] as CFArray
+                      [root] as CFArray
                   ) == errSecSuccess,
                   SecTrustSetAnchorCertificatesOnly(trust, true) == errSecSuccess,
                   SecTrustEvaluateWithError(trust, nil)

@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.7.6] - 2026-08-10
+
+### Fixed
+
+- Require a proper presented CA chain for the Monas pinned TLS authority:
+  Pistis pins the leaf SubjectPublicKeyInfo and evaluates it against the
+  presented non-leaf root, never against a self-signed CA acting as a server
+  leaf.
+
 ## [0.7.5] - 2026-08-10
 
 ### Fixed

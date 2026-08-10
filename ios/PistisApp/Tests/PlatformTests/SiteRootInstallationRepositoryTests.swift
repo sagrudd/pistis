@@ -4,6 +4,25 @@ import XCTest
 
 @MainActor
 final class SiteRootInstallationRepositoryTests: XCTestCase {
+    func testInitialSiteTrustCompletionRoutesToRecordedSetupProgress() {
+        let completion = SiteRootDelegationCoordinator.Completion.siteTrustEstablished
+
+        XCTAssertEqual(completion.heading, "Site Trust established")
+        XCTAssertEqual(completion.evidenceLabel, "Setup state")
+        XCTAssertEqual(completion.evidenceValue, "Setup in progress")
+        XCTAssertEqual(completion.actionTitle, "View setup progress")
+        XCTAssertTrue(completion.detail.contains("cannot authenticate or approve work"))
+    }
+
+    func testCompletedSessionRoutesToItsInstallationWithoutClaimingSetupProgress() {
+        let completion = SiteRootDelegationCoordinator.Completion.sessionEstablished
+
+        XCTAssertEqual(completion.heading, "Site Root ceremony complete")
+        XCTAssertEqual(completion.evidenceLabel, "Custody rewrap")
+        XCTAssertEqual(completion.evidenceValue, "Submitted")
+        XCTAssertEqual(completion.actionTitle, "View installation")
+    }
+
     func testRecordsRejectUnknownStorageProfile() throws {
         let suite = "pistis-site-root-installation-tests-\(UUID().uuidString)"
         let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))

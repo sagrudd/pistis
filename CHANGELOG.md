@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.7.8] - 2026-08-10
+
+### Fixed
+
+- Keep a verified first-device Site Root ceremony on a truthful completion
+  screen. It now routes explicitly to its retained `Setup in progress`
+  Installation instead of resetting the Scan tab; the later App Attest/custody
+  completion retains its distinct, fully-completed evidence.
+
 ## [0.7.7] - 2026-08-10
 
 ### Fixed

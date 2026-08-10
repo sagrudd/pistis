@@ -6,6 +6,15 @@ import Foundation
 /// v2 Pistis authentication must not acquire Site Root semantics by accident.
 @MainActor
 final class SiteRootDelegationCoordinator: ObservableObject {
+    /// The confirmed server state shown after an attended ceremony.  This is
+    /// deliberately distinct from the action phase: the initial Site Root
+    /// proof establishes setup progress, whereas a later delegation has also
+    /// completed the App Attest and custody hand-off.
+    enum Completion: Equatable {
+        case siteTrustEstablished
+        case sessionEstablished
+    }
+
     enum Phase: Equatable {
         case idle
         case review(SiteRootDelegationReview)
@@ -13,7 +22,7 @@ final class SiteRootDelegationCoordinator: ObservableObject {
         case signing
         case attesting
         case rewrappingCustody
-        case submitted
+        case submitted(Completion)
         case failed(PlatformFailure)
     }
 
@@ -156,7 +165,7 @@ final class SiteRootDelegationCoordinator: ObservableObject {
         let rewrapSubmission = try rewrap.produce(presentation: presentation)
         try await appAttestTransport.submitCustodyRewrap(rewrapSubmission)
         recordCompletion(review: presentedReview)
-        phase = .submitted
+        phase = .submitted(.sessionEstablished)
     }
 
     /// Completes the attended initial Site Root ceremony.  It has a separate
@@ -186,7 +195,7 @@ final class SiteRootDelegationCoordinator: ObservableObject {
             transfer: "Accepted by fixed Monas Site Root authority",
             verification: "Site Trust and custody were created; App Attest session setup remains"
         )
-        phase = .submitted
+        phase = .submitted(.siteTrustEstablished)
     }
 
     private func recordCompletion(review: SiteRootDelegationReview?) {

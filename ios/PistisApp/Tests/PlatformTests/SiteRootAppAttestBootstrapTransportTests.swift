@@ -4,6 +4,23 @@ import XCTest
 @testable import Pistis
 
 final class SiteRootAppAttestBootstrapTransportTests: XCTestCase {
+    func testCustodyFailureStagesAreStableAndRedacted() {
+        XCTAssertEqual(
+            AuthorityCustodyContinuationStage.allCases.map(\.rawValue),
+            [
+                "initial-status", "fetch-challenge", "generate-assertion",
+                "submit-assertion", "armed-status", "prepare-custody",
+                "begin-custody", "complete-custody", "retain-completion",
+            ]
+        )
+        for stage in AuthorityCustodyContinuationStage.allCases {
+            XCTAssertTrue(stage.failureMessage.contains(stage.rawValue))
+            XCTAssertFalse(stage.failureMessage.contains("https://"))
+            XCTAssertFalse(stage.failureMessage.contains("key"))
+            XCTAssertFalse(stage.failureMessage.contains("token"))
+        }
+    }
+
     override func tearDown() {
         BootstrapURLProtocol.reset()
         super.tearDown()

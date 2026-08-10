@@ -1,5 +1,21 @@
 import SwiftUI
 
+enum AuthorityCustodyContinuationStage: String, CaseIterable {
+    case initialStatus = "initial-status"
+    case fetchChallenge = "fetch-challenge"
+    case generateAssertion = "generate-assertion"
+    case submitAssertion = "submit-assertion"
+    case armedStatus = "armed-status"
+    case prepareCustody = "prepare-custody"
+    case beginCustody = "begin-custody"
+    case completeCustody = "complete-custody"
+    case retainCompletion = "retain-completion"
+
+    var failureMessage: String {
+        "Authority custody stopped safely at \(rawValue). No setup evidence was discarded."
+    }
+}
+
 struct RootTabView: View {
     private enum Tab: Hashable {
         case identities
@@ -210,6 +226,7 @@ struct RootTabView: View {
                 reconciliationMessage = "The retained Site Root authority does not match."
                 return
             }
+            var failureStage = AuthorityCustodyContinuationStage.initialStatus
             do {
         var status = try await transport.authorityCustodyStatusV2()
         switch status {
@@ -226,18 +243,23 @@ struct RootTabView: View {
         }
         let appAttestTransport = try transport.appAttestTransport()
         if status == .appAttestAssertionRequired {
+          failureStage = .fetchChallenge
           let now = UInt64(Date().timeIntervalSince1970)
           let challenge =
             try await appAttestTransport
             .fetchCustodyRotationAssertionChallengeV2(nowUnixSeconds: now)
+          failureStage = .generateAssertion
           let assertion = try await AppleAppAttestClient()
             .prepareCustodyRotationAssertion(challenge: challenge)
+          failureStage = .submitAssertion
           try await appAttestTransport.submitAssertion(assertion)
+          failureStage = .armedStatus
           status = try await transport.authorityCustodyStatusV2()
           guard status != .appAttestAssertionRequired else {
             throw PlatformFailure.siteRootAuthorityUnavailable
           }
         }
+        failureStage = .prepareCustody
         let producer = try SecureEnclaveFirstAuthorityCustodyProducerV2(
           authenticationReason: "Approve this exact first-authority custody continuation"
         )
@@ -246,17 +268,20 @@ struct RootTabView: View {
           throw PlatformFailure.siteRootAuthorityUnavailable
         case .initialRotationRequired:
           let commitment = try producer.prepareInitialRotation()
+          failureStage = .beginCustody
           let presentation =
             try await appAttestTransport
             .beginFirstAuthorityCustodyRotationV2(
               commitment, nowUnixSeconds: UInt64(Date().timeIntervalSince1970)
             )
           let submission = try producer.completeInitialRotation(presentation)
+          failureStage = .completeCustody
           _ = try await appAttestTransport.completeFirstAuthorityCustodyRotationV2(
             submission
           )
         case .recoveryRequired:
           let commitment = try producer.retainedRecoveryCommitment()
+          failureStage = .beginCustody
           let presentation =
             try await appAttestTransport
             .beginFirstAuthorityCustodyRecoveryV2(
@@ -264,12 +289,14 @@ struct RootTabView: View {
               nowUnixSeconds: UInt64(Date().timeIntervalSince1970)
             )
           let submission = try producer.completeRecovery(presentation)
+          failureStage = .completeCustody
           _ = try await appAttestTransport.completeFirstAuthorityCustodyRecoveryV2(
             submission
           )
         case .ready:
           break
                 }
+        failureStage = .retainCompletion
         try SiteRootInstallationRepository.shared.recordAuthorityCustodyCompleted(
           authorityHost: installation.localAlias
         )
@@ -287,8 +314,17 @@ struct RootTabView: View {
         await enrollment.refresh()
         routeToProviderEnrolment()
             } catch {
-        reconciliationMessage =
-          "Authority custody continuation failed safely. No setup evidence was discarded; retry this installation."
+        let message = failureStage.failureMessage
+        reconciliationMessage = message
+        try? LocalHistoryRepository.shared.record(
+          HistoryEvent(
+            id: UUID(), action: "Authority custody continuation",
+            installation: installation.localAlias,
+            occurredAt: Date().formatted(date: .abbreviated, time: .standard),
+            decision: "Not completed", signature: "No authority change retained",
+            transfer: "Pinned Monas v2 custody flow",
+            verification: message
+          ))
             }
         }
     }

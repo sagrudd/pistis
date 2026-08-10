@@ -4,6 +4,8 @@
 
 ### Changed
 
+- Retain and display the exact redacted custody-continuation stage whenever a
+  fail-closed physical-device attempt does not complete.
 - Treat Monas's empty, no-store `503` custody status as the explicit
   pre-assertion state, then submit fresh App Attest evidence and re-read the
   authoritative rotation/recovery state before continuing.

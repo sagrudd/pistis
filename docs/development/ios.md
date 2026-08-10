@@ -135,6 +135,13 @@ scanner or claim identity, session, custody-presentation, or approval
 completion. A later Site Root bootstrap is assertion-only, so Pistis must never
 submit the registration a second time.
 
+That incomplete Installation now has one explicit next action: it switches to
+the existing first-device provider-enrolment scanner. The scanner still
+requires a new authority-signed presentation before it contacts Monas. The
+redacted local Site Root record never chooses the authority, TLS pin,
+invitation, provider identity or credential, and cannot turn setup progress
+into a session or enrolment.
+
 After a signed Site Root proof receives the short-lived bootstrap, Pistis
 constructs the existing SPKI-pinned App Attest transport. The terminal
 assertion response is accepted only as the retained-session custody

@@ -1,18 +1,31 @@
 import SwiftUI
 
+enum InstallationDetailAction: Equatable {
+    case continueIdentitySetup
+    case none
+
+    init(installation: InstallationSummary) {
+        self = installation.status == "Setup in progress"
+            ? .continueIdentitySetup
+            : .none
+    }
+}
+
 struct InstallationsView: View {
     let installations: [InstallationSummary]
     let loadFailure: Bool
     let forgetExpired: (UUID) async throws -> Void
     let recoverSiteRootInstallation: () -> Void
     let reconciliationMessage: String?
+    let startProviderEnrolment: () -> Void
 
     var body: some View {
         List(installations) { installation in
             NavigationLink {
                 InstallationDetailView(
                     installation: installation,
-                    forgetExpired: forgetExpired
+                    forgetExpired: forgetExpired,
+                    startProviderEnrolment: startProviderEnrolment
                 )
             } label: {
                 VStack(alignment: .leading, spacing: MnSpacing.x2) {
@@ -72,6 +85,11 @@ struct InstallationsView: View {
 private struct InstallationDetailView: View {
     let installation: InstallationSummary
     let forgetExpired: (UUID) async throws -> Void
+    let startProviderEnrolment: () -> Void
+
+    private var action: InstallationDetailAction {
+        InstallationDetailAction(installation: installation)
+    }
 
     var body: some View {
         ScrollView {
@@ -93,11 +111,20 @@ private struct InstallationDetailView: View {
                         MnEvidenceRow(label: "Last used", value: installation.lastUsed)
                     }
                 }
-                if installation.status == "Setup in progress" {
+                if action == .continueIdentitySetup {
                     MnPanel {
                         VStack(alignment: .leading, spacing: MnSpacing.x2) {
                             MnStatusLabel(text: "Next: enrol your identity", kind: .warning)
-                            Text("The Site Root ceremony is recorded, but this installation cannot authenticate or approve work yet. Open Identities and select + to complete the signed provider enrolment.")
+                            Text("The Site Root ceremony is recorded, but this installation cannot authenticate or approve work yet. Continue only with a new authority-signed provider presentation.")
+                            MnPrimaryButton(
+                                "Continue identity setup",
+                                systemImage: "person.badge.key"
+                            ) {
+                                startProviderEnrolment()
+                            }
+                            .accessibilityHint(
+                                "Opens the signed identity-enrolment scanner"
+                            )
                         }
                     }
                 } else if installation.status != "Trusted" {

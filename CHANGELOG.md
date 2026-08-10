@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.7.9] - 2026-08-10
+
+### Fixed
+
+- Give a retained incomplete Site Root Installation an explicit route into the
+  existing server-driven GitHub first-device enrolment scanner. The local
+  record remains redacted and non-authorising: it never supplies a server,
+  TLS pin, invitation, provider credential or authority to that flow.
+
 ## [0.7.8] - 2026-08-10
 
 ### Fixed

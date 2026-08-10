@@ -1065,7 +1065,7 @@ dependencies = [
 
 [[package]]
 name = "pistis-monas"
-version = "0.8.3"
+version = "0.8.4"
 dependencies = [
  "base64",
  "ciborium",

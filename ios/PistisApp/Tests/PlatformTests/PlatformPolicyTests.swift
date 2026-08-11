@@ -468,6 +468,23 @@ final class PlatformPolicyTests: XCTestCase {
         )
     }
 
+    func testCanonicalHTTPSHostAcceptsOnlyUnambiguousPinnedIPv4() {
+        XCTAssertEqual(
+            CanonicalHTTPSHost.parse("192.168.1.192"),
+            "192.168.1.192"
+        )
+        for rejected in [
+            "192.168.1", "192.168.001.192", "192.168.1.256",
+            "0x7f.0.0.1", "0177.0.0.1", "+192.168.1.192",
+            "192.168.1.192.", "2001:db8::1",
+        ] {
+            XCTAssertNil(CanonicalHTTPSHost.parse(rejected), rejected)
+        }
+        XCTAssertNoThrow(
+            try AuthenticationResponseTransport(allowedHosts: ["192.168.1.192"])
+        )
+    }
+
     func testTransportRejectsNonCanonicalAllowedHosts() {
         for host in [
             "Jenkins.mnemosyne.test",
@@ -475,7 +492,6 @@ final class PlatformPolicyTests: XCTestCase {
             "jenkins..mnemosyne.test",
             "jenkins.mnemosyne.test/path",
             "jënkins.mnemosyne.test",
-            "127.0.0.1",
             "2130706433",
             "0x7f000001",
             "0177.0.0.1",

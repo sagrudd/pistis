@@ -59,8 +59,10 @@ enum CanonicalHTTPSHost {
         guard value == value.lowercased(),
               value.utf8.count <= 253,
               value.unicodeScalars.allSatisfy(\.isASCII),
-              !value.hasSuffix("."),
-              !isNumericIPAddressForm(value),
+              !value.hasSuffix(".")
+        else { return nil }
+        if isCanonicalIPv4Address(value) { return value }
+        guard !isNumericIPAddressForm(value),
               value.split(separator: ".", omittingEmptySubsequences: false).allSatisfy({
                   !$0.isEmpty && $0.utf8.count <= 63
                       && $0.first != "-" && $0.last != "-"
@@ -71,6 +73,23 @@ enum CanonicalHTTPSHost {
               })
         else { return nil }
         return value
+    }
+
+    /// Local Monas appliances may be enrolled before site DNS exists. The
+    /// signed presentation and TLS SPKI pin still bind the endpoint; accepting
+    /// only the unique dotted-decimal spelling prevents address ambiguity.
+    private static func isCanonicalIPv4Address(_ host: String) -> Bool {
+        let components = host.split(separator: ".", omittingEmptySubsequences: false)
+        guard components.count == 4 else { return false }
+        return components.allSatisfy { component in
+            let bytes = Array(component.utf8)
+            guard !bytes.isEmpty, bytes.count <= 3,
+                  bytes.allSatisfy({ (48 ... 57).contains($0) }),
+                  bytes.count == 1 || bytes[0] != 48,
+                  let octet = UInt16(component), octet <= 255
+            else { return false }
+            return true
+        }
     }
 
     static func from(_ endpoint: URL) -> String? {

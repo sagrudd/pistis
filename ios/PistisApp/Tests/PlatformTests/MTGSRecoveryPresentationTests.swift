@@ -1,6 +1,6 @@
 import Foundation
 import XCTest
-@testable import PistisApp
+@testable import Pistis
 
 final class MTGSRecoveryPresentationTests: XCTestCase {
     private let origin = URL(string: "https://monas.example.test")!

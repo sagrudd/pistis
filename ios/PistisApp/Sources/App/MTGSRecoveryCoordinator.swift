@@ -105,7 +105,7 @@ final class MTGSRecoveryCoordinator: ObservableObject {
     private func record(failure: PlatformFailure) {
         try? history(event(
             decision: "Not completed",
-            signature: "No accepted recovery assertion retained",
+            signature: "No recovery assertion retained",
             transfer: "Recovery dispatch was not confirmed",
             verification: failure.safeUserMessage
         ))

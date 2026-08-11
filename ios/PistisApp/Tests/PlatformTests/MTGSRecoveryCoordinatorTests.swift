@@ -1,6 +1,6 @@
 import Foundation
 import XCTest
-@testable import PistisApp
+@testable import Pistis
 
 private struct MTGSRecoveryServiceStub: MTGSRecoveryExecuting {
     let failure: PlatformFailure?

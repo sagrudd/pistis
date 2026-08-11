@@ -95,3 +95,7 @@ can issue until a reviewed Apple trust-bundle verifier is available.
 [ADR 0035](0035-retained-iphone-custody-presentation-relay.md) accepts the
 one terminal, SPKI-pinned App Attest response that can carry a custody-owned
 iPhone rewrap presentation after Monas retains the matching session.
+
+[ADR 0038](0038-attended-site-root-x509-convergence.md) accepts the strict
+THBR, atomic fresh root/issuer provision, PXAK registration and PXRA/v2
+acknowledgement sequence for owner-operated private-IP HTTPS convergence.

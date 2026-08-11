@@ -23,7 +23,7 @@ resume envelope and attempt exactly one fixed-socket dispatch.
 
 - A substituted installation, device, key, manifest, bundle, request audience,
   ceremony or counter denies before an acceptance exists.
-- The audience cannot authorize normal login, product access, enrolment,
+- The audience cannot authorise normal login, product access, enrolment,
   custody rotation or generic Site Trust mutation.
 - Counter advancement and fact retention remain atomic; replay or an ambiguous
   write fails closed.

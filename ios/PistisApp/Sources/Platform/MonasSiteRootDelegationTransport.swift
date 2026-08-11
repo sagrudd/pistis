@@ -100,6 +100,13 @@ struct MonasSiteRootDelegationTransport: MonasSiteRootCeremonyTransport,
         )
     }
 
+    func siteRootConvergenceTransport() throws -> MonasSiteRootConvergenceTransport {
+        try MonasSiteRootConvergenceTransport(
+            authorityOrigin: authorityOrigin,
+            expectedSPKISHA256: expectedSPKISHA256
+        )
+    }
+
     func readiness() async throws -> MonasSiteRootDelegationReadinessV1 {
         let endpoint = try endpoint(path: MonasSiteRootDelegationEndpointV1.readinessPath)
         var request = URLRequest(url: endpoint)

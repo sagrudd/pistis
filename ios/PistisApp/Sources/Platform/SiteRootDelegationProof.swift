@@ -291,6 +291,15 @@ enum DetachedES256Cose {
         return Data([0xa2, 0x01, 0x26, 0x04]) + cborByteString(bytes)
     }
 
+    static func protectedHeaders(kid: Data, contentType: String) throws -> Data {
+        guard !kid.isEmpty, kid.count <= 128,
+              !contentType.isEmpty, contentType.utf8.count <= 128
+        else { throw PlatformFailure.invalidConfiguration }
+        // Canonical protected map: alg (-7), content type, key identifier.
+        return Data([0xa3, 0x01, 0x26, 0x03]) + cborText(contentType)
+            + Data([0x04]) + cborByteString(kid)
+    }
+
     static func signatureStructure(protected: Data, payload: Data) throws -> Data {
         guard !payload.isEmpty, payload.count <= SiteRootDelegationPresentationV1.maximumPayloadLength else {
             throw PlatformFailure.invalidConfiguration

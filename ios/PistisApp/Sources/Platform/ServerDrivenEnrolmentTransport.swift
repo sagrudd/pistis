@@ -239,7 +239,7 @@ struct ServerDrivenEnrolmentTransport: Sendable {
                 response["mobile_enrolment_receipt_cose"],
                 maximum: 8_192
             )
-        else { throw PlatformFailure.productionEnvelopeUnavailable }
+        else { throw PlatformFailure.enrolmentReceiptInvalid }
         do {
             return try MobileEnrolmentReceiptV2.verify(
                 returnedAuthorityBundle: bundle,

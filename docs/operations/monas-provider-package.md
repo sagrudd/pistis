@@ -17,7 +17,7 @@ validated its protected configuration, Site Trust, custody and Pistis evidence.
 
 ## Required Monas package boundary
 
-The `monas` Debian archive is the smallest provider lifecycle artifact.  It
+The `monas` Debian archive is the smallest provider lifecycle artefact.  It
 must contain:
 
 - `lib/systemd/system/monas-pistis.service`, running as

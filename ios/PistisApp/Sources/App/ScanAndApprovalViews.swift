@@ -8,6 +8,7 @@ struct ScanView: View {
     @StateObject private var ceremony = ProductionCeremonyCoordinator()
     @StateObject private var siteRootCeremony: SiteRootDelegationCoordinator
     @StateObject private var mtgsRecovery: MTGSRecoveryCoordinator
+    @StateObject private var siteRootConvergence: SiteRootConvergenceCoordinator
     private let siteRootTransport: any MonasSiteRootCeremonyTransport
     private let expectedSiteRootAuthorityHost: String?
     private let showInstallations: () -> Void
@@ -40,6 +41,11 @@ struct ScanView: View {
         _mtgsRecovery = StateObject(wrappedValue: MTGSRecoveryCoordinator(
             authorityOrigin: siteRootTransport.genesisAuthorityOrigin,
             service: recoveryService
+        ))
+        let convergenceTransport = (siteRootTransport as? MonasSiteRootDelegationTransport)
+            .flatMap { try? $0.siteRootConvergenceTransport() }
+        _siteRootConvergence = StateObject(wrappedValue: SiteRootConvergenceCoordinator(
+            transport: convergenceTransport
         ))
     }
 
@@ -146,6 +152,9 @@ struct ScanView: View {
         .sheet(item: mtgsRecoveryReviewBinding) { review in
             MTGSRecoveryReviewView(review: review, coordinator: mtgsRecovery)
         }
+        .sheet(item: siteRootConvergenceReviewBinding) { review in
+            SiteRootConvergenceReviewView(review: review, coordinator: siteRootConvergence)
+        }
     }
 
     @MainActor
@@ -155,6 +164,16 @@ struct ScanView: View {
         case let .success(payload):
             scanFailure = nil
             if payload.text.hasPrefix("{") {
+                if payload.text.contains(SiteRootConvergenceProfileV2.x509ProvisionSchema)
+                    || payload.text.contains(SiteRootConvergenceProfileV2.provisionSchema)
+                    || payload.text.contains(SiteRootConvergenceProfileV2.ackSchema)
+                {
+                    siteRootConvergence.accept(qrText: payload.text)
+                    if case let .failed(failure) = siteRootConvergence.phase {
+                        scanFailure = failure
+                    }
+                    return
+                }
                 if payload.text.contains("\"schema\":\"")
                     && payload.text.contains(MTGSRecoveryPresentationV1.schema)
                 {
@@ -240,6 +259,17 @@ struct ScanView: View {
         }
     }
 
+    private var siteRootConvergenceReviewBinding: Binding<SiteRootConvergenceReview?> {
+        Binding {
+            siteRootConvergence.presentedReview
+        } set: { value in
+            if value == nil {
+                siteRootConvergence.reset()
+                startScanning()
+            }
+        }
+    }
+
     private var statusText: String {
         switch ceremony.phase {
         case .verifying: "Verifying enrolled installation"
@@ -269,7 +299,7 @@ private struct MTGSRecoveryReviewView: View {
                 VStack(alignment: .leading, spacing: MnSpacing.x4) {
                     MnSectionHeading(
                         "Recover retained Site Trust setup",
-                        orientation: "Confirm the fixed authority before Face ID authorizes one fresh App Attest assertion."
+                        orientation: "Confirm the fixed authority before Face ID authorises one fresh App Attest assertion."
                     )
                     MnPanel {
                         VStack(alignment: .leading, spacing: MnSpacing.x3) {

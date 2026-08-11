@@ -4,6 +4,17 @@
 
 ### Added
 
+- Add the attended Site Root HTTPS convergence sequence for iPhone: strict
+  THBR receipt-key provision, purpose-separated Secure Enclave acknowledgement
+  registration, canonical low-S PXRA/v2 signing, and atomic two-role Site
+  X.509 first provision. Each QR and route is bound to the signed Monas origin;
+  unknown fields, stale/replayed input, endpoint drift, prompt loops,
+  re-enrolment and password fallback fail closed.
+- Share one fresh Face ID `LAContext` only across the acknowledgement key
+  registration and exact acknowledgement signature, and separately across the
+  atomic Site X.509 root/issuer approval. Receipt provision remains its own
+  attended ceremony and all role keys retain distinct namespaces and purposes.
+
 - Add the strict iPhone MTGS-recovery invitation parser and its dedicated,
   fixed pinned Monas assertion transport. Invitations are bound to the exact
   recovery audience, production App Attest key, authority origin, ceremony,

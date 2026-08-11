@@ -17,6 +17,18 @@ final class MTGSRecoveryPresentationTests: XCTestCase {
         XCTAssertEqual(value.keyID, Data(repeating: 3, count: 32))
     }
 
+    func testAcceptsExactMonasConformanceFixture() throws {
+        let url = URL(fileURLWithPath: #filePath).deletingLastPathComponent()
+            .appendingPathComponent("../../../../fixtures/mtgs-recovery/presentation-v1.json")
+        let text = try String(contentsOf: url, encoding: .utf8)
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        let value = try MTGSRecoveryPresentationV1(
+            qrText: text, pinnedAuthorityOrigin: origin, nowUnixSeconds: 1_050
+        )
+        XCTAssertEqual(value.siteTrustDomain, "site-00000001")
+        XCTAssertEqual(value.reference, "mtgs-recovery-fixture")
+    }
+
     func testRejectsWrongAudienceEndpointOriginExpiryAndUnknownFields() {
         let mutations = [
             invitation().replacingOccurrences(

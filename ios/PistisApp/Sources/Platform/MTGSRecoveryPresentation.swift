@@ -59,13 +59,13 @@ struct MTGSRecoveryPresentationV1: Sendable, Equatable {
               let expires = UInt64(expiresText), nowUnixSeconds < expires,
               expires >= issued, expires - issued <= Self.maximumLifetimeSeconds
         else { throw PlatformFailure.qrPayloadUnsupported }
-        reference = reference
-        siteTrustDomain = domain
-        authorityOrigin = origin
-        ceremonyID = ceremony
-        challengeDigest = hash
-        keyID = key
-        expiresAtUnixSeconds = expires
+        self.reference = reference
+        self.siteTrustDomain = domain
+        self.authorityOrigin = origin
+        self.ceremonyID = ceremony
+        self.challengeDigest = hash
+        self.keyID = key
+        self.expiresAtUnixSeconds = expires
     }
 
     private static func sameCanonicalOrigin(_ candidate: URL, _ pinned: URL) -> Bool {

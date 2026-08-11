@@ -249,7 +249,10 @@ final class EnrollmentProjectionTests: XCTestCase {
     XCTAssertEqual(projection.identities.count, 1)
     XCTAssertNil(projection.installations[0].setupPhase)
     XCTAssertEqual(projection.installations[0].status, "Trusted")
-    XCTAssertEqual(InstallationDetailAction(installation: projection.installations[0]), .none)
+    XCTAssertEqual(
+      InstallationDetailAction(installation: projection.installations[0]),
+      .reconcileAuthorityCustody
+    )
   }
 
     func testLegacySetupProgressRequiresAuthorityCustodyBeforeIdentity() throws {
@@ -283,12 +286,12 @@ final class EnrollmentProjectionTests: XCTestCase {
         )
     }
 
-    func testTrustedInstallationDoesNotOfferIdentitySetupContinuation() throws {
+    func testTrustedInstallationOffersLiveAuthorityCustodyReconciliation() throws {
         let projection = EnrollmentProjection(enrollment: try fixtureEnrollment())
 
         XCTAssertEqual(
             InstallationDetailAction(installation: try XCTUnwrap(projection.installations.first)),
-            .none
+            .reconcileAuthorityCustody
         )
     }
 

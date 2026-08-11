@@ -247,8 +247,10 @@ struct RootTabView: View {
         var status = try await transport.authorityCustodyStatusV2()
         switch status {
                 case .ready:
-                    try SiteRootInstallationRepository.shared
-                        .recordAuthorityCustodyCompleted(authorityHost: installation.localAlias)
+                    if installation.status != "Trusted" {
+                        try SiteRootInstallationRepository.shared
+                            .recordAuthorityCustodyCompleted(authorityHost: installation.localAlias)
+                    }
                     await enrollment.refresh()
           reconciliationMessage =
             "Authority custody is ready. Continue identity setup for this installation."
@@ -313,9 +315,11 @@ struct RootTabView: View {
           break
                 }
         failureStage = .retainCompletion
-        try SiteRootInstallationRepository.shared.recordAuthorityCustodyCompleted(
-          authorityHost: installation.localAlias
-        )
+        if installation.status != "Trusted" {
+          try SiteRootInstallationRepository.shared.recordAuthorityCustodyCompleted(
+            authorityHost: installation.localAlias
+          )
+        }
         try? LocalHistoryRepository.shared.record(
           HistoryEvent(
             id: UUID(), action: "Authority custody continued",

@@ -2,6 +2,13 @@
 
 ## [Unreleased]
 
+### Added
+
+- Add the owner-approved, purpose-bound
+  `monas:site-trust:mtgs-recovery:v1` App Attest continuation. It reconstructs
+  only an opaque process-local acceptance from an exact verified durable
+  registration; it neither re-enrols a device nor serializes acceptance state.
+
 ### Changed
 
 - Retain authority-signed local-appliance enrolment receipts whose pinned HTTPS

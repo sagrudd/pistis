@@ -288,10 +288,11 @@ actor InstallationTrustKeychain: InstallationTrustStoring {
     }
 
     func installAuthenticated(_ output: AuthenticatedEnrollmentOutput) throws {
-        if try Self.firstInstallDisposition(
+        let disposition = try Self.firstInstallDisposition(
             existing: existingCurrentForInstall(),
             proposed: output
-        ) == .idempotent {
+        )
+        if disposition == .idempotent {
             NotificationCenter.default.post(
                 name: Self.enrollmentDidChangeNotification,
                 object: nil
@@ -301,14 +302,25 @@ actor InstallationTrustKeychain: InstallationTrustStoring {
         let data = try JSONEncoder().encode(output)
         guard data.count <= 16_384 else { throw PlatformFailure.invalidConfiguration }
         #if canImport(Security)
-        let query = baseQuery()
         let attributes: [String: Any] = [
             kSecValueData as String: data,
             kSecAttrAccessible as String: kSecAttrAccessibleWhenUnlockedThisDeviceOnly,
         ]
-        var insertion = query
-        attributes.forEach { insertion[$0.key] = $0.value }
-        guard SecItemAdd(insertion as CFDictionary, nil) == errSecSuccess else {
+        let status: OSStatus
+        switch disposition {
+        case .create:
+            var insertion = baseQuery()
+            attributes.forEach { insertion[$0.key] = $0.value }
+            status = SecItemAdd(insertion as CFDictionary, nil)
+        case .replace:
+            status = SecItemUpdate(
+                baseQuery() as CFDictionary,
+                attributes as CFDictionary
+            )
+        case .idempotent:
+            return
+        }
+        guard status == errSecSuccess else {
             throw PlatformFailure.invalidConfiguration
         }
         NotificationCenter.default.post(
@@ -323,6 +335,7 @@ actor InstallationTrustKeychain: InstallationTrustStoring {
     enum FirstInstallDisposition: Equatable {
         case create
         case idempotent
+        case replace
     }
 
     static func firstInstallDisposition(
@@ -330,10 +343,46 @@ actor InstallationTrustKeychain: InstallationTrustStoring {
         proposed: AuthenticatedEnrollmentOutput
     ) throws -> FirstInstallDisposition {
         guard let existing else { return .create }
-        guard existing == proposed else {
+        if existing == proposed { return .idempotent }
+        guard Self.isAuthorisedReplacement(existing: existing, proposed: proposed) else {
             throw PlatformFailure.invalidConfiguration
         }
-        return .idempotent
+        return .replace
+    }
+
+    /// Accept only the narrow, authority-signed replacement transition. The
+    /// installation and human authority remain fixed while the server advances
+    /// revocation state and binds a fresh physical-device key.
+    static func isAuthorisedReplacement(
+        existing: AuthenticatedEnrollmentOutput,
+        proposed: AuthenticatedEnrollmentOutput
+    ) -> Bool {
+        let old = existing.trust
+        let new = proposed.trust
+        guard old.installationID == new.installationID,
+              old.displayName == new.displayName,
+              old.audience == new.audience,
+              old.authorisedProductAudiences == new.authorisedProductAudiences,
+              old.userID == new.userID,
+              old.externalIdentityID == new.externalIdentityID,
+              old.fingerprint == new.fingerprint,
+              old.installationKeyID == new.installationKeyID,
+              old.installationPublicKey == new.installationPublicKey,
+              old.authorityKeyID == new.authorityKeyID,
+              old.policyGeneration == new.policyGeneration,
+              old.revocationGeneration < UInt64.max,
+              new.revocationGeneration == old.revocationGeneration + 1,
+              new.expiresAt >= old.expiresAt,
+              new.active,
+              existing.allowedHosts == proposed.allowedHosts,
+              existing.responseContext.userID == proposed.responseContext.userID,
+              existing.responseContext.externalIdentityID
+                  == proposed.responseContext.externalIdentityID,
+              existing.responseContext.deviceID != proposed.responseContext.deviceID,
+              existing.responseContext.deviceKeyID != proposed.responseContext.deviceKeyID,
+              old.authorityReceipt != new.authorityReceipt
+        else { return false }
+        return true
     }
 
     func revoke(installationID: Data) throws {

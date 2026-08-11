@@ -4,6 +4,11 @@
 
 ### Changed
 
+- Retain an authority-signed, generation-advanced mobile device replacement
+  atomically in the iPhone Keychain. Exact receipt replay remains idempotent;
+  installation, identity, authority, audience, host, generation and device-key
+  substitutions continue to fail closed.
+
 - Continue a server-committed first-device enrolment directly at the explicit
   account-confirmation step when the bound provider identity is already
   verified. Normal pending enrolments still display the one-use GitHub code;

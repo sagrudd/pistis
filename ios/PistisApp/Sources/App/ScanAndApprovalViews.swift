@@ -7,6 +7,7 @@ import PistisCore
 struct ScanView: View {
     @StateObject private var ceremony = ProductionCeremonyCoordinator()
     @StateObject private var siteRootCeremony: SiteRootDelegationCoordinator
+    @StateObject private var mtgsRecovery: MTGSRecoveryCoordinator
     private let siteRootTransport: any MonasSiteRootCeremonyTransport
     private let expectedSiteRootAuthorityHost: String?
     private let showInstallations: () -> Void
@@ -28,6 +29,18 @@ struct ScanView: View {
                 transport: siteRootTransport, authorityCustodyMode: authorityCustodyMode
             )
         )
+        let recoveryService: any MTGSRecoveryExecuting
+        if let pinned = siteRootTransport as? MonasSiteRootDelegationTransport,
+           let production = try? ProductionMTGSRecoveryService(siteRootTransport: pinned)
+        {
+            recoveryService = production
+        } else {
+            recoveryService = UnavailableMTGSRecoveryService()
+        }
+        _mtgsRecovery = StateObject(wrappedValue: MTGSRecoveryCoordinator(
+            authorityOrigin: siteRootTransport.genesisAuthorityOrigin,
+            service: recoveryService
+        ))
     }
 
     var body: some View {
@@ -130,6 +143,9 @@ struct ScanView: View {
                 showInstallations: showInstallations
             )
         }
+        .sheet(item: mtgsRecoveryReviewBinding) { review in
+            MTGSRecoveryReviewView(review: review, coordinator: mtgsRecovery)
+        }
     }
 
     @MainActor
@@ -139,6 +155,15 @@ struct ScanView: View {
         case let .success(payload):
             scanFailure = nil
             if payload.text.hasPrefix("{") {
+                if payload.text.contains("\"schema\":\"")
+                    && payload.text.contains(MTGSRecoveryPresentationV1.schema)
+                {
+                    mtgsRecovery.accept(qrText: payload.text)
+                    if case let .failed(failure) = mtgsRecovery.phase {
+                        scanFailure = failure
+                    }
+                    return
+                }
                 siteRootCeremony.accept(qrText: payload.text)
                 if let expectedSiteRootAuthorityHost,
                    siteRootCeremony.presentedReview?.destination != expectedSiteRootAuthorityHost
@@ -204,6 +229,17 @@ struct ScanView: View {
         }
     }
 
+    private var mtgsRecoveryReviewBinding: Binding<MTGSRecoveryReview?> {
+        Binding {
+            mtgsRecovery.presentedReview
+        } set: { value in
+            if value == nil {
+                mtgsRecovery.reset()
+                startScanning()
+            }
+        }
+    }
+
     private var statusText: String {
         switch ceremony.phase {
         case .verifying: "Verifying enrolled installation"
@@ -220,6 +256,58 @@ struct ScanView: View {
         }
     }
 
+}
+
+private struct MTGSRecoveryReviewView: View {
+    let review: MTGSRecoveryReview
+    @ObservedObject var coordinator: MTGSRecoveryCoordinator
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        NavigationStack {
+            ScrollView {
+                VStack(alignment: .leading, spacing: MnSpacing.x4) {
+                    MnSectionHeading(
+                        "Recover retained Site Trust setup",
+                        orientation: "Confirm the fixed authority before Face ID authorizes one fresh App Attest assertion."
+                    )
+                    MnPanel {
+                        VStack(alignment: .leading, spacing: MnSpacing.x3) {
+                            MnEvidenceRow(label: "Authority", value: review.destination)
+                            Divider()
+                            MnEvidenceRow(label: "Site Trust domain", value: review.siteTrustDomain)
+                            Divider()
+                            MnEvidenceRow(label: "Recovery reference", value: review.reference)
+                        }
+                    }
+                    switch coordinator.phase {
+                    case .review:
+                        MnPrimaryButton("Approve recovery with Face ID", systemImage: "faceid") {
+                            Task { await coordinator.approve() }
+                        }
+                        Button("Deny") { coordinator.reset(); dismiss() }
+                            .font(.headline)
+                            .foregroundStyle(MnColor.danger)
+                            .frame(maxWidth: .infinity, minHeight: MnMetrics.minimumTarget)
+                    case .attending:
+                        MnStatusLabel(text: "Waiting for Face ID and device assertion", kind: .warning)
+                    case .submitted:
+                        MnStatusLabel(text: "Recovery assertion accepted by Monas", kind: .success)
+                        Button("Done") { coordinator.reset(); dismiss() }
+                    case let .failed(failure):
+                        MnStatusLabel(text: "Recovery not completed", kind: .danger)
+                        Text(failure.safeUserMessage)
+                        Button("Close") { coordinator.reset(); dismiss() }
+                    case .idle:
+                        EmptyView()
+                    }
+                }
+                .padding(MnMetrics.screenGutter)
+            }
+            .navigationTitle("Site Trust recovery")
+            .mnScreenBackground()
+        }
+    }
 }
 
 private struct ReadinessRow: View {

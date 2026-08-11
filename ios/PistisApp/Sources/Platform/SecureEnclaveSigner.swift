@@ -381,6 +381,47 @@ final class SecureEnclaveSigner: @unchecked Sendable {
         return secret
     }
 
+    /// Derive through one already evaluated, operation-scoped Face ID context.
+    /// This is used only when one reviewed ceremony must sign and rewrap one
+    /// exact record under a single, visibly named user approval.
+    func deriveECDHSharedSecret(
+        peerPublicCompressedSEC1: Data,
+        using ceremony: FaceIDCeremonyContext
+    ) throws -> Data {
+        guard SecureEnclaveSigner.secureEnclaveIsAvailable,
+              let peerPublicKey = try? P256.KeyAgreement.PublicKey(
+                  compressedRepresentation: peerPublicCompressedSEC1
+              )
+        else { throw PlatformFailure.secureHardwareUnavailable }
+        guard let privateKey = try findPrivateKey(
+            authenticationContext: ceremony.value
+        ) else { throw PlatformFailure.keyNotFound }
+        guard SecKeyIsAlgorithmSupported(
+            privateKey, .keyExchange, SecKeyAlgorithm.ecdhKeyExchangeStandard
+        ) else { throw PlatformFailure.secureHardwareUnavailable }
+        let attributes: [CFString: Any] = [
+            kSecAttrKeyType: kSecAttrKeyTypeECSECPrimeRandom,
+            kSecAttrKeyClass: kSecAttrKeyClassPublic,
+            kSecAttrKeySizeInBits: 256,
+        ]
+        var publicKeyError: Unmanaged<CFError>?
+        guard let peer = SecKeyCreateWithData(
+            peerPublicKey.x963Representation as CFData,
+            attributes as CFDictionary,
+            &publicKeyError
+        ) else { throw PlatformFailure.invalidConfiguration }
+        var exchangeError: Unmanaged<CFError>?
+        guard let secret = SecKeyCopyKeyExchangeResult(
+            privateKey,
+            SecKeyAlgorithm.ecdhKeyExchangeStandard,
+            peer,
+            [:] as CFDictionary,
+            &exchangeError
+        ) as Data?, secret.count == 32, !secret.allSatisfy({ $0 == 0 })
+        else { throw mapSecurityError(exchangeError?.takeRetainedValue()) }
+        return secret
+    }
+
     /// Exercise the real Secure Enclave and local-biometry path for an exact
     /// precomputed COSE `Sig_structure`.
     ///

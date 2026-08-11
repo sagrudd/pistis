@@ -56,11 +56,10 @@ struct SiteRootConvergenceReviewView: View {
             MnPrimaryButton(buttonTitle, systemImage: "faceid") {
                 Task { await coordinator.approve() }
             }
-        case .authenticating, .submitting:
+        case .authenticating, .submitting, .unlockingBundleReceipt:
             HStack(spacing: MnSpacing.x3) {
                 ProgressView()
-                Text(coordinator.phase == .authenticating
-                    ? "Waiting for Face ID" : "Submitting exact proof")
+                Text(phaseLabel)
             }
         case .completed:
             MnPanel {
@@ -110,6 +109,15 @@ struct SiteRootConvergenceReviewView: View {
 
     private var isBusy: Bool {
         coordinator.phase == .authenticating || coordinator.phase == .submitting
+            || coordinator.phase == .unlockingBundleReceipt
+    }
+
+    private var phaseLabel: String {
+        switch coordinator.phase {
+        case .authenticating: "Waiting for Face ID"
+        case .unlockingBundleReceipt: "Unlocking the Site Root receipt authority"
+        default: "Submitting exact proof"
+        }
     }
 }
 

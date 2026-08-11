@@ -9,7 +9,6 @@
   recovery audience, production App Attest key, authority origin, ceremony,
   challenge digest and a maximum 15-minute lifetime; QR-selected endpoints,
   unknown fields and transport fallback are denied.
-
 - Add the owner-approved, purpose-bound
   `monas:site-trust:mtgs-recovery:v1` App Attest continuation. It reconstructs
   only an opaque process-local acceptance from an exact verified durable

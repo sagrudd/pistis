@@ -99,3 +99,7 @@ iPhone rewrap presentation after Monas retains the matching session.
 [ADR 0038](0038-attended-site-root-x509-convergence.md) accepts the strict
 THBR, atomic fresh root/issuer provision, PXAK registration and PXRA/v2
 acknowledgement sequence for owner-operated private-IP HTTPS convergence.
+
+[ADR 0039](0039-das-replacement-receipt-attended-ceremony.md) accepts the
+one-use purpose-four iPhone ceremony that completes receipt signing and
+delivery on one retained Monas/Thesaurophylax stream before bootstrap advances.

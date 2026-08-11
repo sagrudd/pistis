@@ -25,6 +25,7 @@ final class SiteRootDelegationCoordinator: ObservableObject {
         case unlockingX509Root
         case unlockingX509Issuer
         case approvingInitialX509Leaves
+        case signingDasReplacementReceipt
         case submitted(Completion)
         case failed(PlatformFailure)
     }
@@ -216,6 +217,23 @@ final class SiteRootDelegationCoordinator: ObservableObject {
             .produce(leafPresentation)
         try await appAttestTransport.submitSiteX509LeafApprovalV1(
             leafSubmission, presentation: leafPresentation
+        )
+        // Purpose four is part of the same attended bootstrap. Reuse only this
+        // bounded, already evaluated Face ID context and the same pinned Monas
+        // transport; no additional QR, prompt, URL or fallback is permitted.
+        phase = .signingDasReplacementReceipt
+        let dasPresentation = try await appAttestTransport.beginDasReplacementReceiptV1(
+            nowUnixSeconds: Self.nowUnixSeconds()
+        )
+        guard dasPresentation.delegationSerial == rootUnlock.delegationSerial,
+              dasPresentation.expiresAtUnixSeconds == rootUnlock.expiresAtUnixSeconds,
+              dasPresentation.siteTrustDomainID == rootUnlock.siteTrustDomain else {
+            throw PlatformFailure.siteRootAuthorityUnavailable
+        }
+        let dasSubmission = try SecureEnclaveDasReplacementReceiptProducerV1()
+            .produce(dasPresentation, using: x509Ceremony)
+        _ = try await appAttestTransport.submitDasReplacementReceiptV1(
+            dasSubmission, expectedCorrelation: dasPresentation.correlation
         )
         if let review = presentedReview {
             try SiteRootInstallationRepository.shared.recordAuthorityCustodyCompleted(

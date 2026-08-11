@@ -455,6 +455,11 @@ private struct SiteRootDelegationReviewView: View {
                         MnStatusLabel(text: "Waiting for Site X.509 issuer Face ID", kind: .warning)
                     case .approvingInitialX509Leaves:
                         MnStatusLabel(text: "Waiting for HTTPS certificate approval", kind: .warning)
+                    case .signingDasReplacementReceipt:
+                        MnStatusLabel(
+                            text: "Signing DAS authority replacement receipt",
+                            kind: .warning
+                        )
                     case let .submitted(completion):
                         MnSectionHeading(
                             completion.heading,

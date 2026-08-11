@@ -130,6 +130,10 @@ struct MonasAppAttestTransport: Sendable {
         "/v1/pistis/site-trust/authority-custody-recovery/v2/begin"
     private static let authorityCustodyRecoveryCompletePath =
         "/v1/pistis/site-trust/authority-custody-recovery/v2/complete"
+    private static let dasReplacementPresentationPath =
+        DasReplacementReceiptAttendedProfileV1.presentationPath
+    private static let dasReplacementSubmissionPath =
+        DasReplacementReceiptAttendedProfileV1.submissionPath
     private let origin: URL
     private let session: URLSession
 
@@ -333,6 +337,49 @@ struct MonasAppAttestTransport: Sendable {
         }
     }
 
+    /// Begins the fixed purpose-four receipt ceremony. The body carries only
+    /// its closed schema; delegation, expiry and custody bindings are retained
+    /// server facts and can never be supplied by the iPhone.
+    func beginDasReplacementReceiptV1(
+        nowUnixSeconds: UInt64
+    ) async throws -> DasReplacementReceiptPresentationV1 {
+        let body = try JSONEncoder.sorted.encode(DasReplacementReceiptBeginV1())
+        let (data, response, _) = try await siteX509Request(
+            body: body, method: "POST", path: Self.dasReplacementPresentationPath,
+            contentType: "application/json"
+        )
+        guard response.statusCode == 200, !data.isEmpty,
+              response.mimeType == "application/json",
+              response.value(forHTTPHeaderField: "Cache-Control")?
+                .lowercased().contains("no-store") == true
+        else { throw PlatformFailure.custodyRewrapUnavailable }
+        return try DasReplacementReceiptPresentationV1(
+            data: data, nowUnixSeconds: nowUnixSeconds
+        )
+    }
+
+    /// Submits one purpose-four proof/rewrap. Success is returned only after
+    /// Monas completes the same retained UDS stream through receipt signing
+    /// and delivery, not merely after the custody proof was accepted.
+    func submitDasReplacementReceiptV1(
+        _ submission: DasReplacementReceiptSubmissionV1,
+        expectedCorrelation: Data
+    ) async throws -> DasReplacementReceiptAcceptedV1 {
+        let body = try JSONEncoder.sorted.encode(submission)
+        let (data, response, _) = try await siteX509Request(
+            body: body, method: "POST", path: Self.dasReplacementSubmissionPath,
+            contentType: "application/json"
+        )
+        guard response.statusCode == 200, !data.isEmpty,
+              response.mimeType == "application/json",
+              response.value(forHTTPHeaderField: "Cache-Control")?
+                .lowercased().contains("no-store") == true
+        else { throw PlatformFailure.custodyRewrapUnavailable }
+        return try DasReplacementReceiptAcceptedV1(
+            data: data, expectedCorrelation: expectedCorrelation
+        )
+    }
+
     func beginSiteX509LeafApprovalV1(
         delegationSerial: String,
         delegationExpiresAt: UInt64,
@@ -375,7 +422,8 @@ struct MonasAppAttestTransport: Sendable {
     }
 
     private func siteX509Request(
-        body: Data?, method: String, path: String
+        body: Data?, method: String, path: String,
+        contentType: String = "application/json; charset=utf-8"
     ) async throws -> (Data, HTTPURLResponse, URL) {
         guard (method == "GET" && body == nil) || (method == "POST" && body != nil),
               body?.count ?? 0 <= 16_384,
@@ -389,7 +437,7 @@ struct MonasAppAttestTransport: Sendable {
         request.setValue("application/json", forHTTPHeaderField: "Accept")
         request.setValue("no-store", forHTTPHeaderField: "Cache-Control")
         if body != nil {
-            request.setValue("application/json; charset=utf-8", forHTTPHeaderField: "Content-Type")
+            request.setValue(contentType, forHTTPHeaderField: "Content-Type")
         }
         do {
             let (data, response) = try await session.data(for: request)

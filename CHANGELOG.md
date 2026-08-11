@@ -4,6 +4,12 @@
 
 ### Added
 
+- Add the one-use attended DAS local-authority replacement receipt ceremony.
+  The iPhone accepts only the fixed purpose-four presentation from the pinned
+  Monas origin, reconstructs the full Thesaurophylax challenge, rewraps the
+  verified P-256 receipt scalar after one existing Face ID ceremony, and
+  advances only after the same server-held stream signs and delivers the
+  receipt. There is no new QR, route input, password, trust bypass or fallback.
 - Add the dedicated THESXIR2 Site X.509 attended-unlock client. Pistis accepts
   only role-fixed root then issuer presentations from the protected Monas
   origin, verifies each exact P-256 transcript and prior record, reuses one

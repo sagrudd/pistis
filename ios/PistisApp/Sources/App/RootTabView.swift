@@ -5,6 +5,7 @@ enum AuthorityCustodyContinuationStage: String, CaseIterable {
     case fetchChallenge = "fetch-challenge"
     case generateAssertion = "generate-assertion"
     case submitAssertion = "submit-assertion"
+    case resolveCustodyLifecycle = "resolve-custody-lifecycle"
     case prepareCustody = "prepare-custody"
     case beginCustody = "begin-custody"
     case completeCustody = "complete-custody"
@@ -16,11 +17,11 @@ enum AuthorityCustodyContinuationStage: String, CaseIterable {
 }
 
 enum AuthorityCustodyAcceptedAssertionTransitionV2 {
-    /// An empty 202 has consumed the one-use assertion challenge and armed the
-    /// retained initial-rotation ceremony. A subsequent coarse 503 is not a new
-    /// challenge and must never send the client back to assertion generation.
+    /// An empty 202 consumes the challenge, but only the subsequent exact
+    /// server-owned lifecycle decides whether Pistis may rotate or recover.
     static func next(
-        after status: MonasSiteRootDelegationTransport.AuthorityCustodyStatusV2
+        after status: MonasSiteRootDelegationTransport.AuthorityCustodyStatusV2,
+        observedLifecycle: MonasSiteRootDelegationTransport.AuthorityCustodyStatusV2
     ) throws -> (
         status: MonasSiteRootDelegationTransport.AuthorityCustodyStatusV2,
         stage: AuthorityCustodyContinuationStage
@@ -28,7 +29,10 @@ enum AuthorityCustodyAcceptedAssertionTransitionV2 {
         guard status == .appAttestAssertionRequired else {
             throw PlatformFailure.siteRootAuthorityUnavailable
         }
-        return (.initialRotationRequired, .prepareCustody)
+        guard observedLifecycle == .initialRotationRequired
+                || observedLifecycle == .recoveryRequired
+        else { throw PlatformFailure.siteRootAuthorityUnavailable }
+        return (observedLifecycle, .prepareCustody)
     }
 }
 
@@ -247,12 +251,19 @@ struct RootTabView: View {
         var status = try await transport.authorityCustodyStatusV2()
         switch status {
                 case .ready:
-                    try SiteRootInstallationRepository.shared
-                        .recordAuthorityCustodyCompleted(authorityHost: installation.localAlias)
+                    if installation.status != "Trusted" {
+                        try SiteRootInstallationRepository.shared
+                            .recordAuthorityCustodyCompleted(authorityHost: installation.localAlias)
+                    }
                     await enrollment.refresh()
-          reconciliationMessage =
-            "Authority custody is ready. Continue identity setup for this installation."
-          routeToProviderEnrolment()
+          if installation.status == "Trusted" {
+            reconciliationMessage = "Authority custody is ready. No re-enrolment is required."
+            selectedTab = .installations
+          } else {
+            reconciliationMessage =
+              "Authority custody is ready. Continue identity setup for this installation."
+            routeToProviderEnrolment()
+          }
                     return
         case .appAttestAssertionRequired, .initialRotationRequired, .recoveryRequired:
           break
@@ -269,8 +280,10 @@ struct RootTabView: View {
             .prepareCustodyRotationAssertion(challenge: challenge)
           failureStage = .submitAssertion
           try await appAttestTransport.submitAssertion(assertion)
+          failureStage = .resolveCustodyLifecycle
+          let observedLifecycle = try await transport.authorityCustodyStatusV2()
           let transition = try AuthorityCustodyAcceptedAssertionTransitionV2.next(
-            after: status
+            after: status, observedLifecycle: observedLifecycle
           )
           status = transition.status
           failureStage = transition.stage
@@ -313,9 +326,11 @@ struct RootTabView: View {
           break
                 }
         failureStage = .retainCompletion
-        try SiteRootInstallationRepository.shared.recordAuthorityCustodyCompleted(
-          authorityHost: installation.localAlias
-        )
+        if installation.status != "Trusted" {
+          try SiteRootInstallationRepository.shared.recordAuthorityCustodyCompleted(
+            authorityHost: installation.localAlias
+          )
+        }
         try? LocalHistoryRepository.shared.record(
           HistoryEvent(
             id: UUID(), action: "Authority custody continued",
@@ -325,10 +340,15 @@ struct RootTabView: View {
             transfer: "Pinned Monas v2 custody flow completed",
             verification: "Identity enrolment is now required"
           ))
-        reconciliationMessage =
-          "Authority custody completed. Continue identity setup for this installation."
+        reconciliationMessage = installation.status == "Trusted"
+          ? "Authority custody recovered and ready. No re-enrolment is required."
+          : "Authority custody completed. Continue identity setup for this installation."
         await enrollment.refresh()
-        routeToProviderEnrolment()
+        if installation.status == "Trusted" {
+          selectedTab = .installations
+        } else {
+          routeToProviderEnrolment()
+        }
             } catch {
         let message = failureStage.failureMessage
         reconciliationMessage = message

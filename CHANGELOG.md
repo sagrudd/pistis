@@ -16,6 +16,9 @@
 
 ### Changed
 
+- Fix the MTGS recovery invitation initializer so the production iPhone target
+  compiles the parsed reference and binding fields into the presentation.
+
 - Retain authority-signed local-appliance enrolment receipts whose pinned HTTPS
   endpoint is a canonical dotted-decimal IPv4 address. Abbreviated, octal,
   hexadecimal, leading-zero, overflow and other ambiguous address forms remain

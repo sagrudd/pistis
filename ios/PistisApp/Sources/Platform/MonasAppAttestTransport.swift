@@ -149,9 +149,22 @@ struct MonasAppAttestTransport: Sendable {
         expectedSPKISHA256: Data,
         configuration: URLSessionConfiguration = .ephemeral
     ) throws {
-        guard authorityOrigin.scheme == "https", authorityOrigin.host != nil,
-              expectedSPKISHA256.count == 32,
+        guard expectedSPKISHA256.count == 32,
               !expectedSPKISHA256.allSatisfy({ $0 == 0 })
+        else { throw PlatformFailure.appAttestInvalidInput }
+        try self.init(
+            authorityOrigin: authorityOrigin,
+            trustPolicy: .bootstrapLeafSPKI(expectedSPKISHA256),
+            configuration: configuration
+        )
+    }
+
+    init(
+        authorityOrigin: URL,
+        trustPolicy: MonasServerTrustPolicy,
+        configuration: URLSessionConfiguration = .ephemeral
+    ) throws {
+        guard authorityOrigin.scheme == "https", authorityOrigin.host != nil
         else { throw PlatformFailure.appAttestInvalidInput }
         origin = authorityOrigin
         configuration.httpShouldSetCookies = false
@@ -161,7 +174,7 @@ struct MonasAppAttestTransport: Sendable {
             configuration: configuration,
             delegate: try PinnedEnrolmentSessionDelegate(
                 origin: authorityOrigin,
-                expectedSPKISHA256: expectedSPKISHA256
+                trustPolicy: trustPolicy
             ),
             delegateQueue: nil
         )

@@ -35,9 +35,17 @@ struct MonasSiteRootConvergenceTransport: MonasSiteRootConvergenceSubmitting, Se
     private let session: URLSession
 
     init(authorityOrigin: URL, expectedSPKISHA256: Data) throws {
-        guard authorityOrigin.scheme == "https", authorityOrigin.host != nil,
-              expectedSPKISHA256.count == 32,
+        guard expectedSPKISHA256.count == 32,
               !expectedSPKISHA256.allSatisfy({ $0 == 0 })
+        else { throw PlatformFailure.invalidConfiguration }
+        try self.init(
+            authorityOrigin: authorityOrigin,
+            trustPolicy: .bootstrapLeafSPKI(expectedSPKISHA256)
+        )
+    }
+
+    init(authorityOrigin: URL, trustPolicy: MonasServerTrustPolicy) throws {
+        guard authorityOrigin.scheme == "https", authorityOrigin.host != nil
         else { throw PlatformFailure.invalidConfiguration }
         self.authorityOrigin = authorityOrigin
         let configuration = URLSessionConfiguration.ephemeral
@@ -47,7 +55,7 @@ struct MonasSiteRootConvergenceTransport: MonasSiteRootConvergenceSubmitting, Se
         session = URLSession(
             configuration: configuration,
             delegate: try PinnedEnrolmentSessionDelegate(
-                origin: authorityOrigin, expectedSPKISHA256: expectedSPKISHA256
+                origin: authorityOrigin, trustPolicy: trustPolicy
             ),
             delegateQueue: nil
         )

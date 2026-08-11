@@ -72,8 +72,13 @@ remain the separately verified native installer responsibility.
 
 ## Consequences
 
-Ordinary Monas leaf renewal under the acknowledged Site root does not require
-an app rebuild or device re-enrolment. Root replacement requires a new governed
-transaction. Physical-iPhone acceptance must retain exact-revision evidence for
-one Face ID per bounded ceremony, successful relaunch/recovery, and the final
-authenticated Monas session without retaining QR or proof material.
+The bootstrap build retains its one exact leaf pin only through PXFP. Before
+the formal leaf becomes active, the PXFP root DER, fingerprint and generation
+are compiled into a replacement signed build. That migrated build validates
+normal TLS exclusively to that Site root and contains no bootstrap pin or dual
+fallback. Ordinary Monas leaf renewal under the acknowledged Site root does
+not require an app rebuild or device re-enrolment. Root replacement requires a
+new governed transaction and replacement build. Physical-iPhone acceptance
+must retain exact-revision evidence for one Face ID per bounded ceremony,
+successful relaunch/recovery, and the final authenticated Monas session without
+retaining QR or proof material.

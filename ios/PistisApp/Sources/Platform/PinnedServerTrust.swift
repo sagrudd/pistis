@@ -2,6 +2,30 @@ import CryptoKit
 import Foundation
 import Security
 
+/// One exclusive app-scoped TLS trust mode for the fixed Monas origin.
+///
+/// Bootstrap builds pin the exact temporary leaf SPKI. Migrated builds carry
+/// the authenticated Site root object and generation instead; they never
+/// retain or fall back to the bootstrap leaf.
+enum MonasServerTrustPolicy: Sendable, Equatable {
+    case bootstrapLeafSPKI(Data)
+    case siteRootGeneration(rootDER: Data, fingerprintSHA256: Data, generation: UInt64)
+
+    init(siteRootDER: Data, fingerprintSHA256: Data, generation: UInt64) throws {
+        guard !siteRootDER.isEmpty, siteRootDER.count <= 64 * 1_024,
+              fingerprintSHA256.count == 32,
+              !fingerprintSHA256.allSatisfy({ $0 == 0 }), generation > 0,
+              Data(SHA256.hash(data: siteRootDER)) == fingerprintSHA256,
+              SecCertificateCreateWithData(nil, siteRootDER as CFData) != nil
+        else { throw PlatformFailure.invalidConfiguration }
+        self = .siteRootGeneration(
+            rootDER: siteRootDER,
+            fingerprintSHA256: fingerprintSHA256,
+            generation: generation
+        )
+    }
+}
+
 /// Extracts the exact DER SubjectPublicKeyInfo TLV from one DER certificate.
 ///
 /// The parser accepts only definite, minimally encoded DER lengths and the
@@ -107,15 +131,22 @@ final class PinnedEnrolmentSessionDelegate:
 {
     private let host: String
     private let port: Int
-    private let expectedSPKISHA256: Data
+    private let trustPolicy: MonasServerTrustPolicy
 
-    init(origin: URL, expectedSPKISHA256: Data) throws {
-        guard let host = origin.host, expectedSPKISHA256.count == 32 else {
+    convenience init(origin: URL, expectedSPKISHA256: Data) throws {
+        guard expectedSPKISHA256.count == 32,
+              !expectedSPKISHA256.allSatisfy({ $0 == 0 })
+        else { throw PlatformFailure.invalidConfiguration }
+        try self.init(origin: origin, trustPolicy: .bootstrapLeafSPKI(expectedSPKISHA256))
+    }
+
+    init(origin: URL, trustPolicy: MonasServerTrustPolicy) throws {
+        guard let host = origin.host else {
             throw PlatformFailure.invalidConfiguration
         }
         self.host = host
         port = origin.port ?? 443
-        self.expectedSPKISHA256 = expectedSPKISHA256
+        self.trustPolicy = trustPolicy
     }
 
     func urlSession(
@@ -141,24 +172,38 @@ final class PinnedEnrolmentSessionDelegate:
               challenge.protectionSpace.host == host,
               challenge.protectionSpace.port == port,
               let trust = challenge.protectionSpace.serverTrust,
-              let leaf = SecTrustGetCertificateAtIndex(trust, 0)
+              let chain = SecTrustCopyCertificateChain(trust) as? [SecCertificate],
+              let leaf = chain.first
         else {
             completionHandler(.cancelAuthenticationChallenge, nil)
             return
         }
         do {
-            let certificateDER = SecCertificateCopyData(leaf) as Data
-            let spki = try CertificateSPKI.extract(from: certificateDER)
-            let digest = Data(SHA256.hash(data: spki))
-            guard digest == expectedSPKISHA256,
-                  SecTrustSetPolicies(
-                      trust,
-                      SecPolicyCreateSSL(true, host as CFString)
-                  ) == errSecSuccess,
-                  SecTrustSetAnchorCertificates(
-                      trust,
-                      [leaf] as CFArray
-                  ) == errSecSuccess,
+            let anchor: SecCertificate
+            switch trustPolicy {
+            case let .bootstrapLeafSPKI(expectedSPKISHA256):
+                let certificateDER = SecCertificateCopyData(leaf) as Data
+                let spki = try CertificateSPKI.extract(from: certificateDER)
+                guard Data(SHA256.hash(data: spki)) == expectedSPKISHA256 else {
+                    completionHandler(.cancelAuthenticationChallenge, nil)
+                    return
+                }
+                anchor = leaf
+            case let .siteRootGeneration(rootDER, fingerprintSHA256, generation):
+                guard generation > 0,
+                      Data(SHA256.hash(data: rootDER)) == fingerprintSHA256,
+                      let root = SecCertificateCreateWithData(nil, rootDER as CFData)
+                else {
+                    completionHandler(.cancelAuthenticationChallenge, nil)
+                    return
+                }
+                anchor = root
+            }
+            guard SecTrustSetPolicies(
+                trust,
+                SecPolicyCreateSSL(true, host as CFString)
+            ) == errSecSuccess,
+                  SecTrustSetAnchorCertificates(trust, [anchor] as CFArray) == errSecSuccess,
                   SecTrustSetAnchorCertificatesOnly(trust, true) == errSecSuccess,
                   SecTrustEvaluateWithError(trust, nil)
             else {

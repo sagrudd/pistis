@@ -109,14 +109,30 @@ session credential.
 
 The signed Pistis build supplies exactly one public
 ``PistisMonasSiteRootAuthorityOrigin`` value through the Xcode
-``PISTIS_MONAS_SITE_ROOT_AUTHORITY_ORIGIN`` build setting and its exact
-``PistisMonasSiteRootAuthoritySPKISHA256`` value through
-``PISTIS_MONAS_SITE_ROOT_AUTHORITY_SPKI_SHA256``. The origin must be exact
-HTTPS without path, query, fragment, or credentials; the pin must be a
-canonical non-zero 32-byte base64url digest. Neither is a secret, but together
-they are a deployment commitment: QR, browser, local-network and user input
-cannot override them. An absent or unresolved setting leaves the Site Root
-authority unavailable.
+``PISTIS_MONAS_SITE_ROOT_AUTHORITY_ORIGIN`` build setting and one exclusive
+trust mode through ``PISTIS_MONAS_SITE_ROOT_AUTHORITY_TRUST_MODE``. Before
+PXFP, ``bootstrap-leaf-spki-v1`` requires the exact canonical non-zero
+32-byte base64url leaf digest in
+``PISTIS_MONAS_SITE_ROOT_AUTHORITY_SPKI_SHA256`` and requires every Site-root
+field to be empty.
+
+After PXFP, the replacement Release build uses
+``site-root-generation-v1``. It requires the exact canonical root DER and its
+SHA-256 digest in
+``PISTIS_MONAS_SITE_ROOT_AUTHORITY_ROOT_DER_B64URL`` and
+``PISTIS_MONAS_SITE_ROOT_AUTHORITY_ROOT_SHA256_B64URL``, plus the positive
+``PISTIS_MONAS_SITE_ROOT_AUTHORITY_ROOT_GENERATION``. The SPKI setting must be
+empty. Pistis validates the digest and certificate object before constructing
+the transport, then applies normal TLS hostname/private-IP and validity policy
+while allowing a chain only to that exact root. It does not accept the prior
+leaf, platform roots, another Site generation, or a dual fallback.
+
+These fields are not secret, but together they are a signed deployment
+commitment: QR, browser, local-network and user input cannot override them. An
+absent, mixed, unresolved or inconsistent setting leaves the Site Root
+authority unavailable. The PXFP public root artefact may be encoded for the
+Release build with ``openssl base64 -A | tr '+/' '-_' | tr -d '='``; the
+independently recorded root generation and SHA-256 digest remain mandatory.
 
 For the first Site Root device only, the existing unified scanner accepts the
 strict ``monas.site-root-genesis-registration-presentation.v1`` QR. The QR

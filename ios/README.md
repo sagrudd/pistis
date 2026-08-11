@@ -72,3 +72,9 @@ fresh P-256 keys and are approved atomically; Pistis neither receives nor
 imports their private material. No flow installs an operating-system trust
 anchor, retries another endpoint, falls back to a password, or enrols a new
 device.
+
+The pre-PXFP Release build uses only the compiled bootstrap-leaf SPKI mode.
+The post-PXFP Release build instead contains the exact authenticated Site root
+DER, SHA-256 fingerprint and generation. It applies the normal IP-hostname TLS
+policy and accepts a server chain only to that root; the migrated build cannot
+fall back to the bootstrap leaf or to platform trust.

@@ -4,6 +4,10 @@
 
 ### Added
 
+- Add the exclusive post-convergence Site-root-generation TLS mode. A migrated
+  Release build compiles the exact authenticated root DER, SHA-256 fingerprint
+  and positive generation, validates the private-IP hostname and server chain
+  to only that root, and contains no bootstrap leaf pin or trust fallback.
 - Add the attended Site Root HTTPS convergence sequence for iPhone: strict
   THBR receipt-key provision, purpose-separated Secure Enclave acknowledgement
   registration, canonical low-S PXRA/v2 signing, and atomic two-role Site

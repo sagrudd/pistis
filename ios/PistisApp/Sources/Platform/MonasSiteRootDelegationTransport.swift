@@ -54,7 +54,7 @@ struct MonasSiteRootDelegationTransport: MonasSiteRootCeremonyTransport,
     private static let maximumSubmissionBytes = 90_000
 
     private let authorityOrigin: URL
-    private let expectedSPKISHA256: Data
+    private let trustPolicy: MonasServerTrustPolicy
     private let session: URLSession
 
     var genesisAuthorityOrigin: URL? { authorityOrigin }
@@ -72,14 +72,26 @@ struct MonasSiteRootDelegationTransport: MonasSiteRootCeremonyTransport,
         expectedSPKISHA256: Data,
         configuration: URLSessionConfiguration = .ephemeral
     ) throws {
-        guard Self.isValidOrigin(authorityOrigin),
-              expectedSPKISHA256.count == 32,
+        guard expectedSPKISHA256.count == 32,
               !expectedSPKISHA256.allSatisfy({ $0 == 0 })
-        else {
+        else { throw PlatformFailure.invalidConfiguration }
+        try self.init(
+            authorityOrigin: authorityOrigin,
+            trustPolicy: .bootstrapLeafSPKI(expectedSPKISHA256),
+            configuration: configuration
+        )
+    }
+
+    init(
+        authorityOrigin: URL,
+        trustPolicy: MonasServerTrustPolicy,
+        configuration: URLSessionConfiguration = .ephemeral
+    ) throws {
+        guard Self.isValidOrigin(authorityOrigin) else {
             throw PlatformFailure.invalidConfiguration
         }
         self.authorityOrigin = authorityOrigin
-        self.expectedSPKISHA256 = expectedSPKISHA256
+        self.trustPolicy = trustPolicy
         configuration.httpShouldSetCookies = false
         configuration.urlCache = nil
         configuration.requestCachePolicy = .reloadIgnoringLocalCacheData
@@ -87,7 +99,7 @@ struct MonasSiteRootDelegationTransport: MonasSiteRootCeremonyTransport,
             configuration: configuration,
             delegate: try PinnedEnrolmentSessionDelegate(
                 origin: authorityOrigin,
-                expectedSPKISHA256: expectedSPKISHA256
+                trustPolicy: trustPolicy
             ),
             delegateQueue: nil
         )
@@ -96,14 +108,14 @@ struct MonasSiteRootDelegationTransport: MonasSiteRootCeremonyTransport,
     func appAttestTransport() throws -> MonasAppAttestTransport {
         try MonasAppAttestTransport(
             authorityOrigin: authorityOrigin,
-            expectedSPKISHA256: expectedSPKISHA256
+            trustPolicy: trustPolicy
         )
     }
 
     func siteRootConvergenceTransport() throws -> MonasSiteRootConvergenceTransport {
         try MonasSiteRootConvergenceTransport(
             authorityOrigin: authorityOrigin,
-            expectedSPKISHA256: expectedSPKISHA256
+            trustPolicy: trustPolicy
         )
     }
 

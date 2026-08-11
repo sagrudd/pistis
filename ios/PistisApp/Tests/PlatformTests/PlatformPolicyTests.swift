@@ -1,3 +1,4 @@
+import CryptoKit
 import Foundation
 import PistisCore
 import XCTest
@@ -152,6 +153,8 @@ final class PlatformPolicyTests: XCTestCase {
             infoDictionary: [
                 MonasSiteRootAuthorityConfiguration.infoDictionaryKey:
                     "https://monas.example.test",
+                MonasSiteRootAuthorityConfiguration.trustModeInfoDictionaryKey:
+                    MonasSiteRootAuthorityConfiguration.bootstrapTrustMode,
                 MonasSiteRootAuthorityConfiguration.spkiInfoDictionaryKey:
                     "ERERERERERERERERERERERERERERERERERERERERERE",
             ]
@@ -171,6 +174,51 @@ final class PlatformPolicyTests: XCTestCase {
                 rawValue: invalid,
                 spkiB64URL: "ERERERERERERERERERERERERERERERERERERERERERE"
             ))
+        }
+    }
+
+    func testMonasSiteRootAuthorityConfigurationAcceptsOnlyOneRootGeneration() throws {
+        let fixture = URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent()
+            .appendingPathComponent("../Fixtures/pistis-example-test.der")
+            .standardizedFileURL
+        let rootDER = try Data(contentsOf: fixture)
+        let fingerprint = Data(SHA256.hash(data: rootDER))
+        let root = policyBase64URL(rootDER)
+        let digest = policyBase64URL(fingerprint)
+        let valid: [String: Any] = [
+            MonasSiteRootAuthorityConfiguration.infoDictionaryKey:
+                "https://192.168.1.192:8443",
+            MonasSiteRootAuthorityConfiguration.trustModeInfoDictionaryKey:
+                MonasSiteRootAuthorityConfiguration.siteRootTrustMode,
+            MonasSiteRootAuthorityConfiguration.spkiInfoDictionaryKey: "",
+            MonasSiteRootAuthorityConfiguration.rootDERInfoDictionaryKey: root,
+            MonasSiteRootAuthorityConfiguration.rootFingerprintInfoDictionaryKey: digest,
+            MonasSiteRootAuthorityConfiguration.rootGenerationInfoDictionaryKey: "7",
+        ]
+        let configuration = try MonasSiteRootAuthorityConfiguration(infoDictionary: valid)
+        XCTAssertEqual(
+            configuration.trustPolicy,
+            .siteRootGeneration(
+                rootDER: rootDER,
+                fingerprintSHA256: fingerprint,
+                generation: 7
+            )
+        )
+        XCTAssertNoThrow(try configuration.makeTransport())
+
+        for mutation in [
+            [MonasSiteRootAuthorityConfiguration.spkiInfoDictionaryKey:
+                "ERERERERERERERERERERERERERERERERERERERERERE"],
+            [MonasSiteRootAuthorityConfiguration.rootGenerationInfoDictionaryKey: "0"],
+            [MonasSiteRootAuthorityConfiguration.rootFingerprintInfoDictionaryKey:
+                policyBase64URL(Data(repeating: 0x44, count: 32))],
+        ] {
+            var hostile = valid
+            hostile.merge(mutation) { _, changed in changed }
+            XCTAssertThrowsError(
+                try MonasSiteRootAuthorityConfiguration(infoDictionary: hostile)
+            )
         }
     }
 
@@ -793,6 +841,13 @@ final class PlatformPolicyTests: XCTestCase {
         }
         XCTAssertFalse(authorized)
     }
+}
+
+private func policyBase64URL(_ data: Data) -> String {
+    data.base64EncodedString()
+        .replacingOccurrences(of: "+", with: "-")
+        .replacingOccurrences(of: "/", with: "_")
+        .replacingOccurrences(of: "=", with: "")
 }
 
 private func enrollmentOutput(marker: UInt8)

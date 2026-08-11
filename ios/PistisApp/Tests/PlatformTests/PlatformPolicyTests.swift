@@ -585,6 +585,38 @@ final class PlatformPolicyTests: XCTestCase {
         }
     }
 
+    func testFirstDeviceInstallAcceptsOnlyGenerationAdvancedReplacement() throws {
+        let first = try enrollmentOutput(marker: 1)
+        let replacement = try replacementOutput(for: first, marker: 20)
+        XCTAssertEqual(
+            try InstallationTrustKeychain.firstInstallDisposition(
+                existing: first,
+                proposed: replacement
+            ),
+            .replace
+        )
+
+        let wrongIdentity = try enrollmentOutput(marker: 2)
+        XCTAssertThrowsError(
+            try InstallationTrustKeychain.firstInstallDisposition(
+                existing: first,
+                proposed: wrongIdentity
+            )
+        )
+
+        let generationJump = try replacementOutput(
+            for: first,
+            marker: 21,
+            revocationGeneration: first.trust.revocationGeneration + 2
+        )
+        XCTAssertThrowsError(
+            try InstallationTrustKeychain.firstInstallDisposition(
+                existing: first,
+                proposed: generationJump
+            )
+        )
+    }
+
     func testUnenrolledKeyCleanupRetainsRetriesAndNeverDeletesActiveKey() {
         XCTAssertTrue(
             UnenrolledKeyLifecycle.shouldDiscard(
@@ -777,6 +809,41 @@ private func enrollmentOutput(marker: UInt8)
             externalIdentityID: trust.externalIdentityID
         ),
         allowedHosts: ["pistis.example.test"]
+    )
+}
+
+private func replacementOutput(
+    for existing: AuthenticatedEnrollmentOutput,
+    marker: UInt8,
+    revocationGeneration: UInt64? = nil
+) throws -> AuthenticatedEnrollmentOutput {
+    let old = existing.trust
+    let trust = try InstallationTrustRecord(
+        installationID: old.installationID,
+        displayName: old.displayName,
+        audience: old.audience,
+        authorisedProductAudiences: old.authorisedProductAudiences,
+        userID: old.userID,
+        externalIdentityID: old.externalIdentityID,
+        fingerprint: old.fingerprint,
+        installationKeyID: old.installationKeyID,
+        installationPublicKey: old.installationPublicKey,
+        authorityKeyID: old.authorityKeyID,
+        authorityReceipt: Data([marker]),
+        policyGeneration: old.policyGeneration,
+        revocationGeneration: revocationGeneration ?? old.revocationGeneration + 1,
+        expiresAt: old.expiresAt.addingTimeInterval(3_600),
+        active: true
+    )
+    return try AuthenticatedEnrollmentOutput(
+        trust: trust,
+        responseContext: DeviceResponseContext(
+            deviceID: Data(repeating: marker, count: 16),
+            deviceKeyID: Data(repeating: marker &+ 1, count: 32),
+            userID: trust.userID,
+            externalIdentityID: trust.externalIdentityID
+        ),
+        allowedHosts: existing.allowedHosts
     )
 }
 

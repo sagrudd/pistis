@@ -28,6 +28,11 @@ protocol MonasSiteRootConvergenceSubmitting: Sendable {
     func registerAckKey(_ registration: SiteRootConvergenceAckRegistrationV2) async throws
         -> SiteRootConvergenceAckRegistrationResultV2
     func submitAck(_ signedPXRA: Data, endpoint: URL) async throws
+    func fetchBundleReceiptUnlock(nowUnixSeconds: UInt64) async throws
+        -> IphoneMediatedCustodyRewrapPresentationV1
+    func submitBundleReceiptUnlock(
+        _ submission: IphoneMediatedCustodyRewrapSubmissionV1
+    ) async throws
 }
 
 struct MonasSiteRootConvergenceTransport: MonasSiteRootConvergenceSubmitting, Sendable {
@@ -182,6 +187,58 @@ struct MonasSiteRootConvergenceTransport: MonasSiteRootConvergenceSubmitting, Se
         _ = try await response(request, endpoint: endpoint, maximum: 1_024)
     }
 
+    func fetchBundleReceiptUnlock(nowUnixSeconds: UInt64) async throws
+        -> IphoneMediatedCustodyRewrapPresentationV1
+    {
+        let endpoint = try fixedEndpoint(
+            "/v1/pistis/site-root-bundle-receipt-unlock/presentation"
+        )
+        var request = URLRequest(url: endpoint)
+        request.httpMethod = "GET"
+        request.timeoutInterval = 15
+        request.setValue("application/json", forHTTPHeaderField: "Accept")
+        request.setValue("no-store", forHTTPHeaderField: "Cache-Control")
+        let data = try await response(request, endpoint: endpoint, maximum: 16_384)
+        guard !data.isEmpty else { throw PlatformFailure.siteRootAuthorityUnavailable }
+        return try MonasRetainedCustodyPresentationResponseV1(
+            data: data,
+            nowUnixSeconds: nowUnixSeconds,
+            expectedChallengeSchema: SiteRootBundleReceiptRewrapV1.challengeSchema,
+            requiredGenerationPrefix: "site-root-bundle-receipt-"
+        ).presentation
+    }
+
+    func submitBundleReceiptUnlock(
+        _ submission: IphoneMediatedCustodyRewrapSubmissionV1
+    ) async throws {
+        guard submission.purpose == SiteRootBundleReceiptRewrapV1.purpose else {
+            throw PlatformFailure.siteRootAuthorityUnavailable
+        }
+        let endpoint = try fixedEndpoint(
+            "/v1/pistis/site-root-bundle-receipt-unlock/submit"
+        )
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = [.sortedKeys, .withoutEscapingSlashes]
+        let body = try encoder.encode(MonasRetainedCustodyRewrapSubmissionV1(submission))
+        guard body.count <= 16_384 else { throw PlatformFailure.invalidConfiguration }
+        var request = URLRequest(url: endpoint)
+        request.httpMethod = "POST"
+        request.timeoutInterval = 15
+        request.httpBody = body
+        request.setValue("application/json; charset=utf-8", forHTTPHeaderField: "Content-Type")
+        request.setValue("application/json", forHTTPHeaderField: "Accept")
+        request.setValue("no-store", forHTTPHeaderField: "Cache-Control")
+        do {
+            let (data, rawResponse) = try await session.data(for: request)
+            guard let http = rawResponse as? HTTPURLResponse, http.url == endpoint,
+                  http.statusCode == 202, data.isEmpty,
+                  http.value(forHTTPHeaderField: "Cache-Control")?
+                    .lowercased().contains("no-store") == true
+            else { throw PlatformFailure.siteRootAuthorityUnavailable }
+        } catch let failure as PlatformFailure { throw failure }
+        catch { throw PlatformFailure.siteRootAuthorityUnavailable }
+    }
+
     private func postJSON(
         _ object: [String: Any], endpoint: URL, maximum: Int
     ) async throws -> Data {
@@ -258,6 +315,15 @@ final class SiteRootConvergenceAckStoreV2: @unchecked Sendable {
         }
     }
 
+    /// Loads the exact enrolled acknowledgement signer binding. This exposes
+    /// public identifiers only and never creates or repairs a signer.
+    func current() throws -> SiteRootConvergenceAckRecordV2 {
+        guard let record = try load(), record.generation > 0 else {
+            throw PlatformFailure.siteRootAuthorityUnavailable
+        }
+        return record
+    }
+
     private func load() throws -> SiteRootConvergenceAckRecordV2? {
         let query: [CFString: Any] = [
             kSecClass: kSecClassGenericPassword,
@@ -292,8 +358,10 @@ struct SiteRootConvergenceServiceV2: Sendable {
         self.store = store
     }
 
+    @MainActor
     func provisionBundleReceipt(
-        _ presentation: SiteRootBundleReceiptProvisionPresentationV1
+        _ presentation: SiteRootBundleReceiptProvisionPresentationV1,
+        didProvision: () -> Void = {}
     ) async throws {
         let ceremony = try await FaceIDCeremonyContext.authenticate(
             reason: "Approve this exact Site Root receipt key provision"
@@ -313,6 +381,13 @@ struct SiteRootConvergenceServiceV2: Sendable {
         let signature = try siteRoot.sign(message: structure, using: ceremony)
         let cose = try DetachedES256Cose.envelope(protected: protected, signature: signature)
         _ = try await transport.submitBundleReceiptProvision(presentation, detachedCOSE: cose)
+        didProvision()
+        let unlock = try await transport.fetchBundleReceiptUnlock(
+            nowUnixSeconds: Self.nowUnixSeconds()
+        )
+        let rewrap = try SecureEnclaveSiteRootBundleReceiptRewrapProducerV1()
+            .produce(unlock, using: ceremony)
+        try await transport.submitBundleReceiptUnlock(rewrap)
     }
 
     func provisionSiteX509(_ presentation: SiteX509FirstProvisionPresentationV1) async throws {
@@ -408,5 +483,13 @@ struct SiteRootConvergenceServiceV2: Sendable {
         "site-root-" + Data(SHA256.hash(data: publicKey)).map {
             String(format: "%02x", $0)
         }.joined()
+    }
+
+    private static func nowUnixSeconds() throws -> UInt64 {
+        let value = Date().timeIntervalSince1970
+        guard value >= 0, value <= TimeInterval(UInt64.max) else {
+            throw PlatformFailure.invalidConfiguration
+        }
+        return UInt64(value)
     }
 }

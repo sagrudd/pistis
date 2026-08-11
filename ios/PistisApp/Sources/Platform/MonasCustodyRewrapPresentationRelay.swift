@@ -13,7 +13,12 @@ struct MonasRetainedCustodyPresentationResponseV1 {
 
     let presentation: IphoneMediatedCustodyRewrapPresentationV1
 
-    init(data: Data, nowUnixSeconds: UInt64) throws {
+    init(
+        data: Data,
+        nowUnixSeconds: UInt64,
+        expectedChallengeSchema: Data? = nil,
+        requiredGenerationPrefix: String? = nil
+    ) throws {
         let response: WireResponse
         do {
             response = try JSONDecoder().decode(WireResponse.self, from: data)
@@ -40,7 +45,8 @@ struct MonasRetainedCustodyPresentationResponseV1 {
                   response.existingEncryptedRecordB64URL, range: 28 ... 4_096
               ),
               let freshHostPublic = Self.decodeCanonicalBase64URL(
-                  response.freshHostPublicSEC1B64URL, exact: 33)
+                  response.freshHostPublicSEC1B64URL, exact: 33),
+              requiredGenerationPrefix.map(response.keyGeneration.hasPrefix) ?? true
         else { throw PlatformFailure.custodyRewrapUnavailable }
         presentation = try IphoneMediatedCustodyRewrapPresentationV1(
             correlation: correlation,
@@ -55,7 +61,8 @@ struct MonasRetainedCustodyPresentationResponseV1 {
             expiresAtUnixSeconds: response.expiresAtUnixSeconds,
             existingHostEphemeralPublicSEC1: existingHostPublic,
             existingEncryptedRecord: encryptedRecord,
-            freshHostEphemeralPublicSEC1: freshHostPublic
+            freshHostEphemeralPublicSEC1: freshHostPublic,
+            expectedChallengeSchema: expectedChallengeSchema
         )
     }
 

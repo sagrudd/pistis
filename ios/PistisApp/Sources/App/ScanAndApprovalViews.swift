@@ -449,6 +449,12 @@ private struct SiteRootDelegationReviewView: View {
                         MnStatusLabel(text: "Submitting device assertion", kind: .warning)
                     case .rewrappingCustody:
                         MnStatusLabel(text: "Waiting for custody Face ID", kind: .warning)
+                    case .unlockingX509Root:
+                        MnStatusLabel(text: "Waiting for Site X.509 root Face ID", kind: .warning)
+                    case .unlockingX509Issuer:
+                        MnStatusLabel(text: "Waiting for Site X.509 issuer Face ID", kind: .warning)
+                    case .approvingInitialX509Leaves:
+                        MnStatusLabel(text: "Waiting for HTTPS certificate approval", kind: .warning)
                     case let .submitted(completion):
                         MnSectionHeading(
                             completion.heading,

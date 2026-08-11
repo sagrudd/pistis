@@ -20,6 +20,7 @@ final class SiteRootConvergenceCoordinator: ObservableObject {
         case idle
         case review(SiteRootConvergenceReview)
         case authenticating
+        case unlockingBundleReceipt
         case submitting
         case completed
         case failed(PlatformFailure)
@@ -109,7 +110,10 @@ final class SiteRootConvergenceCoordinator: ObservableObject {
         phase = .authenticating
         do {
             switch pending {
-            case let .provision(value): try await service.provisionBundleReceipt(value)
+            case let .provision(value):
+                try await service.provisionBundleReceipt(value) {
+                    self.phase = .unlockingBundleReceipt
+                }
             case let .siteX509(value): try await service.provisionSiteX509(value)
             case let .acknowledgement(value): try await service.acknowledge(value)
             }

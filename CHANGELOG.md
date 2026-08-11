@@ -4,6 +4,20 @@
 
 ### Added
 
+- Add the dedicated THESXIR2 Site X.509 attended-unlock client. Pistis accepts
+  only role-fixed root then issuer presentations from the protected Monas
+  origin, verifies each exact P-256 transcript and prior record, reuses one
+  immediate Face ID context across the distinct root and issuer proofs, and
+  submits no generic custody, Ed25519, alternate-route, single-role, password
+  or trust fallback.
+- Add the single exact post-unlock PXLA approval for the initial DASObjectStore
+  and Monas private-IP leaves. The app parses every fixed TLV, service order,
+  digest, serial, validity, transaction, nonce and generation, then signs with
+  only the enrolled PXRA acknowledgement key using canonical padded Base64.
+- Complete THBR provision with its immediate, dedicated Ed25519 receipt
+  authority unlock. The second purpose-bound proof reuses only the
+  operation-scoped Face ID context, validates the reconstructed receipt public
+  key, and has no generic rewrap or alternate endpoint fallback.
 - Add the exclusive post-convergence Site-root-generation TLS mode. A migrated
   Release build compiles the exact authenticated root DER, SHA-256 fingerprint
   and positive generation, validates the private-IP hostname and server chain

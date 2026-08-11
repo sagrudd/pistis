@@ -22,6 +22,9 @@ final class SiteRootDelegationCoordinator: ObservableObject {
         case signing
         case attesting
         case rewrappingCustody
+        case unlockingX509Root
+        case unlockingX509Issuer
+        case approvingInitialX509Leaves
         case submitted(Completion)
         case failed(PlatformFailure)
     }
@@ -184,6 +187,36 @@ final class SiteRootDelegationCoordinator: ObservableObject {
             let submission = try rotation.completeRecovery(presentation)
             _ = try await appAttestTransport.completeFirstAuthorityCustodyRecoveryV2(submission)
         }
+        // Site X.509 is a separate P-256 custody domain. Both role-fixed
+        // ceremonies must complete, in order, on this protected Monas origin;
+        // neither the older Ed25519 rewrap nor a single-role fallback applies.
+        phase = .unlockingX509Root
+        let x509Ceremony = try await FaceIDCeremonyContext.authenticate(
+            reason: "Unlock the Site X.509 root and issuer authorities"
+        )
+        let rootUnlock = try await unlockSiteX509(
+            .root, ceremony: x509Ceremony, transport: appAttestTransport
+        )
+        phase = .unlockingX509Issuer
+        let issuerUnlock = try await unlockSiteX509(
+            .issuer, ceremony: x509Ceremony, transport: appAttestTransport
+        )
+        guard rootUnlock.delegationSerial == issuerUnlock.delegationSerial,
+              rootUnlock.expiresAtUnixSeconds == issuerUnlock.expiresAtUnixSeconds,
+              rootUnlock.siteTrustDomain == issuerUnlock.siteTrustDomain else {
+            throw PlatformFailure.siteRootAuthorityUnavailable
+        }
+        phase = .approvingInitialX509Leaves
+        let leafPresentation = try await appAttestTransport.beginSiteX509LeafApprovalV1(
+            delegationSerial: rootUnlock.delegationSerial,
+            delegationExpiresAt: rootUnlock.expiresAtUnixSeconds,
+            nowUnixSeconds: Self.nowUnixSeconds()
+        )
+        let leafSubmission = try await SecureEnclaveSiteX509LeafApprovalProducerV1()
+            .produce(leafPresentation)
+        try await appAttestTransport.submitSiteX509LeafApprovalV1(
+            leafSubmission, presentation: leafPresentation
+        )
         if let review = presentedReview {
             try SiteRootInstallationRepository.shared.recordAuthorityCustodyCompleted(
                 authorityHost: review.destination
@@ -191,6 +224,20 @@ final class SiteRootDelegationCoordinator: ObservableObject {
         }
         recordCompletion(review: presentedReview)
         phase = .submitted(.sessionEstablished)
+    }
+
+    private func unlockSiteX509(
+        _ role: SiteX509AttendedUnlockRoleV2,
+        ceremony: FaceIDCeremonyContext,
+        transport: MonasAppAttestTransport
+    ) async throws -> SiteX509AttendedUnlockPresentationV2 {
+        let presentation = try await transport.fetchSiteX509AttendedUnlockV2(
+            role: role, nowUnixSeconds: Self.nowUnixSeconds()
+        )
+        let producer = try SecureEnclaveSiteX509AttendedUnlockProducerV2(role: role)
+        let submission = try producer.produce(presentation, using: ceremony)
+        try await transport.submitSiteX509AttendedUnlockV2(submission, role: role)
+        return presentation
     }
 
     /// Completes the attended initial Site Root ceremony.  It has a separate

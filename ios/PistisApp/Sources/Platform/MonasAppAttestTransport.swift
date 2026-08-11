@@ -291,6 +291,119 @@ struct MonasAppAttestTransport: Sendable {
         )
     }
 
+    /// Fetches one role-fixed THESXIR2 presentation from the protected Monas
+    /// origin. The request is bodyless and carries no cookie, bearer, browser
+    /// state, endpoint hint or retry/fallback authority.
+    func fetchSiteX509AttendedUnlockV2(
+        role: SiteX509AttendedUnlockRoleV2,
+        nowUnixSeconds: UInt64
+    ) async throws -> SiteX509AttendedUnlockPresentationV2 {
+        let (data, response, _) = try await siteX509Request(
+            body: nil, method: "GET", path: role.presentationPath
+        )
+        guard response.statusCode == 200, !data.isEmpty,
+              response.value(forHTTPHeaderField: "Cache-Control")?
+                .lowercased().contains("no-store") == true
+        else { throw PlatformFailure.custodyRewrapUnavailable }
+        return try SiteX509AttendedUnlockPresentationV2(
+            data: data, expectedRole: role, nowUnixSeconds: nowUnixSeconds
+        )
+    }
+
+    /// Submits one exact role-bound P-256 scalar rewrap and accepts only the
+    /// corresponding role/purpose acknowledgement from the same fixed route.
+    func submitSiteX509AttendedUnlockV2(
+        _ submission: SiteX509AttendedUnlockSubmissionV2,
+        role: SiteX509AttendedUnlockRoleV2
+    ) async throws {
+        guard submission.role == role.rawValue, submission.purpose == role.purpose else {
+            throw PlatformFailure.custodyRewrapUnavailable
+        }
+        let body = try JSONEncoder.sorted.encode(submission)
+        let (data, response, _) = try await siteX509Request(
+            body: body, method: "POST", path: role.submissionPath
+        )
+        guard response.statusCode == 200, !data.isEmpty,
+              response.value(forHTTPHeaderField: "Cache-Control")?
+                .lowercased().contains("no-store") == true
+        else { throw PlatformFailure.custodyRewrapUnavailable }
+        let accepted = try SiteX509AttendedUnlockAcceptedV2(data: data)
+        guard accepted.role == role.rawValue, accepted.purpose == role.purpose else {
+            throw PlatformFailure.custodyRewrapUnavailable
+        }
+    }
+
+    func beginSiteX509LeafApprovalV1(
+        delegationSerial: String,
+        delegationExpiresAt: UInt64,
+        nowUnixSeconds: UInt64
+    ) async throws -> SiteX509LeafApprovalPresentationV1 {
+        let body = try JSONEncoder.sorted.encode(SiteX509LeafApprovalBeginV1(
+            delegationSerial: delegationSerial,
+            delegationExpiresAt: delegationExpiresAt
+        ))
+        let (data, response, _) = try await siteX509Request(
+            body: body, method: "POST", path: SiteX509LeafApprovalProfileV1.presentationPath
+        )
+        guard response.statusCode == 200, !data.isEmpty,
+              response.value(forHTTPHeaderField: "Cache-Control")?
+                .lowercased().contains("no-store") == true
+        else { throw PlatformFailure.siteRootAuthorityUnavailable }
+        let presentation = try SiteX509LeafApprovalPresentationV1(
+            data: data, nowUnixSeconds: nowUnixSeconds
+        )
+        guard presentation.delegationSerial == delegationSerial,
+              presentation.delegationExpiresAt == delegationExpiresAt else {
+            throw PlatformFailure.siteRootAuthorityUnavailable
+        }
+        return presentation
+    }
+
+    func submitSiteX509LeafApprovalV1(
+        _ submission: SiteX509LeafApprovalSubmissionV1,
+        presentation: SiteX509LeafApprovalPresentationV1
+    ) async throws {
+        let body = try JSONEncoder.sorted.encode(submission)
+        let (data, response, _) = try await siteX509Request(
+            body: body, method: "POST", path: SiteX509LeafApprovalProfileV1.submitPath
+        )
+        guard response.statusCode == 200, !data.isEmpty,
+              response.value(forHTTPHeaderField: "Cache-Control")?
+                .lowercased().contains("no-store") == true
+        else { throw PlatformFailure.siteRootAuthorityUnavailable }
+        _ = try SiteX509LeafApprovalAcceptedV1(data: data, expected: presentation)
+    }
+
+    private func siteX509Request(
+        body: Data?, method: String, path: String
+    ) async throws -> (Data, HTTPURLResponse, URL) {
+        guard (method == "GET" && body == nil) || (method == "POST" && body != nil),
+              body?.count ?? 0 <= 16_384,
+              let endpoint = URL(string: path, relativeTo: origin)?.absoluteURL,
+              endpoint.absoluteString == origin.absoluteString + path
+        else { throw PlatformFailure.custodyRewrapUnavailable }
+        var request = URLRequest(url: endpoint)
+        request.httpMethod = method
+        request.httpBody = body
+        request.timeoutInterval = 15
+        request.setValue("application/json", forHTTPHeaderField: "Accept")
+        request.setValue("no-store", forHTTPHeaderField: "Cache-Control")
+        if body != nil {
+            request.setValue("application/json; charset=utf-8", forHTTPHeaderField: "Content-Type")
+        }
+        do {
+            let (data, response) = try await session.data(for: request)
+            guard let http = response as? HTTPURLResponse, http.url == endpoint,
+                  data.count <= 16_384
+            else { throw PlatformFailure.custodyRewrapUnavailable }
+            return (data, http, endpoint)
+        } catch let failure as PlatformFailure {
+            throw failure
+        } catch {
+            throw PlatformFailure.custodyRewrapUnavailable
+        }
+    }
+
     /// Begins the distinct v2 first-authority rotation only through the
     /// already verified, SPKI-pinned App Attest session. No caller supplies a
     /// URL, retained binding, credential, or alternate transport.

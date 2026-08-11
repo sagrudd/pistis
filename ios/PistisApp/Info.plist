@@ -41,8 +41,16 @@
 	<string>Iv23lievHWZTGyot0BXa</string>
 	<key>PistisMonasSiteRootAuthorityOrigin</key>
 	<string>$(PISTIS_MONAS_SITE_ROOT_AUTHORITY_ORIGIN)</string>
+	<key>PistisMonasSiteRootAuthorityTrustMode</key>
+	<string>$(PISTIS_MONAS_SITE_ROOT_AUTHORITY_TRUST_MODE)</string>
 	<key>PistisMonasSiteRootAuthoritySPKISHA256</key>
 	<string>$(PISTIS_MONAS_SITE_ROOT_AUTHORITY_SPKI_SHA256)</string>
+	<key>PistisMonasSiteRootAuthorityRootDERB64URL</key>
+	<string>$(PISTIS_MONAS_SITE_ROOT_AUTHORITY_ROOT_DER_B64URL)</string>
+	<key>PistisMonasSiteRootAuthorityRootSHA256B64URL</key>
+	<string>$(PISTIS_MONAS_SITE_ROOT_AUTHORITY_ROOT_SHA256_B64URL)</string>
+	<key>PistisMonasSiteRootAuthorityRootGeneration</key>
+	<string>$(PISTIS_MONAS_SITE_ROOT_AUTHORITY_ROOT_GENERATION)</string>
 	<key>NSCameraUsageDescription</key>
 	<string>Pistis scans authentication and approval challenges. Camera frames are not retained.</string>
 	<key>NSAppTransportSecurity</key>

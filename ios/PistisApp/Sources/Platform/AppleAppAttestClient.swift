@@ -333,6 +333,25 @@ final class AppleAppAttestClient: @unchecked Sendable {
         )
     }
 
+    /// Produces one fresh assertion for the exact, purpose-separated MTGS
+    /// recovery challenge carried by a strictly validated Monas invitation.
+    func prepareMTGSRecoveryAssertion(
+        presentation: MTGSRecoveryPresentationV1
+    ) async throws -> AppleAppAttestAssertionEnvelope {
+        guard service.isSupported, let keyID = existingKeyID(),
+              let decodedKeyID = Data(base64Encoded: keyID),
+              decodedKeyID == presentation.keyID
+        else { throw PlatformFailure.appAttestUnavailable }
+        let clientData = Self.assertionClientDataPrefix + presentation.challengeDigest
+        let assertionClientDataHash = Data(SHA256.hash(data: clientData))
+        let assertion = try await service.generateAssertion(
+            keyID, clientDataHash: assertionClientDataHash
+        )
+        return try AppleAppAttestAssertionEnvelope(
+            ceremonyID: presentation.ceremonyID, assertion: assertion
+        )
+    }
+
     private func existingOrNewKeyID() async throws -> String {
         if let existing = existingKeyID() {
             return existing

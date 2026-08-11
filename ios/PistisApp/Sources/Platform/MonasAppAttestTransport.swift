@@ -116,6 +116,8 @@ struct MonasAppAttestTransport: Sendable {
         "/v1/pistis/site-trust/app-attest/registration"
     private static let assertionPath =
         "/v1/pistis/site-trust/app-attest/assertion"
+    private static let mtgsRecoveryAssertionPath =
+        "/v1/pistis/site-trust/mtgs-recovery/v1/assertion"
     private static let custodyRewrapSubmissionPath =
         "/v1/pistis/site-trust/custody-rewrap/submit"
     private static let authorityCustodyRotationBeginPath =
@@ -177,6 +179,18 @@ struct MonasAppAttestTransport: Sendable {
         try await submit(
             envelope,
             path: Self.assertionPath,
+            maximumRequestBytes: 32_768
+        )
+    }
+
+    /// Submits one recovery assertion to the fixed, purpose-separated Monas route.
+    /// The QR cannot override this path and no retry or fallback is attempted.
+    func submitMTGSRecoveryAssertion(
+        _ envelope: AppleAppAttestAssertionEnvelope
+    ) async throws {
+        try await submit(
+            envelope,
+            path: Self.mtgsRecoveryAssertionPath,
             maximumRequestBytes: 32_768
         )
     }

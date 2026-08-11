@@ -4,6 +4,11 @@
 
 ### Changed
 
+- Retain authority-signed local-appliance enrolment receipts whose pinned HTTPS
+  endpoint is a canonical dotted-decimal IPv4 address. Abbreviated, octal,
+  hexadecimal, leading-zero, overflow and other ambiguous address forms remain
+  denied.
+
 - Retain an authority-signed, generation-advanced mobile device replacement
   atomically in the iPhone Keychain. Exact receipt replay remains idempotent;
   installation, identity, authority, audience, host, generation and device-key

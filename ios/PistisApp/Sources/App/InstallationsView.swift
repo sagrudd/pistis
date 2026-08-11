@@ -2,10 +2,15 @@ import SwiftUI
 
 enum InstallationDetailAction: Equatable {
     case continueAuthorityCustody
+    case reconcileAuthorityCustody
     case continueIdentitySetup
     case none
 
     init(installation: InstallationSummary) {
+        if installation.status == "Trusted" {
+            self = .reconcileAuthorityCustody
+            return
+        }
         guard installation.status == "Setup in progress" else {
             self = .none
             return
@@ -132,37 +137,44 @@ private struct InstallationDetailView: View {
                         MnEvidenceRow(label: "Last used", value: installation.lastUsed)
                     }
                 }
-                if action == .continueIdentitySetup || action == .continueAuthorityCustody {
+                if action != .none {
                     MnPanel {
                         VStack(alignment: .leading, spacing: MnSpacing.x2) {
                             MnStatusLabel(
-                                text: action == .continueAuthorityCustody
-                                    ? "Next: recover authority custody"
-                                    : "Next: enrol your identity",
+                                text: action == .continueIdentitySetup
+                                    ? "Next: enrol your identity"
+                                    : action == .continueAuthorityCustody
+                                        ? "Next: recover authority custody"
+                                        : "Verify live authority custody",
                                 kind: .warning
                             )
               Text(
-                action == .continueAuthorityCustody
-                                ? "The Site Root proof is recorded, but v2 authority custody must complete before identity enrolment. Continue with a fresh signed Monas presentation."
-                  : "Authority custody is ready, but this installation cannot authenticate or approve work yet. Continue only with a new authority-signed provider presentation."
+                action == .continueIdentitySetup
+                  ? "Authority custody is ready, but this installation cannot authenticate or approve work yet. Continue only with a new authority-signed provider presentation."
+                  : action == .continueAuthorityCustody
+                    ? "The Site Root proof is recorded, but v2 authority custody must complete before identity enrolment. Continue with fresh App Attest evidence."
+                    : "Local trust is retained. Check Monas's live custody state and perform attended recovery only if its protected authority requires it."
               )
                             MnPrimaryButton(
-                                action == .continueAuthorityCustody
-                                    ? "Continue authority recovery" : "Continue identity setup",
-                                systemImage: action == .continueAuthorityCustody
-                                    ? "key.viewfinder" : "person.badge.key"
+                                action == .continueIdentitySetup
+                                    ? "Continue identity setup"
+                                    : action == .continueAuthorityCustody
+                                        ? "Continue authority recovery"
+                                        : "Check authority custody",
+                                systemImage: action == .continueIdentitySetup
+                                    ? "person.badge.key" : "key.viewfinder"
                             ) {
-                                if action == .continueAuthorityCustody {
-                                    continueAuthorityCustody(installation)
-                                } else {
+                                if action == .continueIdentitySetup {
                                     startProviderEnrolment()
+                                } else {
+                                    continueAuthorityCustody(installation)
                                 }
                             }
-              .disabled(action == .continueAuthorityCustody && authorityCustodyBusy)
+              .disabled(action != .continueIdentitySetup && authorityCustodyBusy)
                             .accessibilityHint(
-                                action == .continueAuthorityCustody
-                                    ? "Opens the signed Monas authority scanner"
-                                    : "Opens the signed identity-enrolment scanner"
+                                action == .continueIdentitySetup
+                                    ? "Opens the signed identity-enrolment scanner"
+                                    : "Checks the pinned Monas authority and recovers custody if required"
                             )
                         }
                     }

@@ -9,7 +9,7 @@ final class SiteRootAppAttestBootstrapTransportTests: XCTestCase {
             AuthorityCustodyContinuationStage.allCases.map(\.rawValue),
             [
                 "initial-status", "fetch-challenge", "generate-assertion",
-                "submit-assertion", "prepare-custody",
+                "submit-assertion", "resolve-custody-lifecycle", "prepare-custody",
                 "begin-custody", "complete-custody", "retain-completion",
             ]
         )
@@ -21,18 +21,20 @@ final class SiteRootAppAttestBootstrapTransportTests: XCTestCase {
         }
     }
 
-    func testAcceptedAssertionTransitionsDirectlyToRotationWithoutChallengeRefetch() throws {
+    func testAcceptedAssertionUsesExactObservedRecoveryLifecycle() throws {
         let transition = try AuthorityCustodyAcceptedAssertionTransitionV2.next(
-            after: .appAttestAssertionRequired
+            after: .appAttestAssertionRequired,
+            observedLifecycle: .recoveryRequired
         )
 
-        XCTAssertEqual(transition.status, .initialRotationRequired)
+        XCTAssertEqual(transition.status, .recoveryRequired)
         XCTAssertEqual(transition.stage, .prepareCustody)
         XCTAssertNotEqual(transition.stage, .fetchChallenge)
-        XCTAssertFalse(
-            AuthorityCustodyContinuationStage.allCases.contains(where: {
-                $0.rawValue == "armed-status"
-            })
+        XCTAssertThrowsError(
+            try AuthorityCustodyAcceptedAssertionTransitionV2.next(
+                after: .appAttestAssertionRequired,
+                observedLifecycle: .appAttestAssertionRequired
+            )
         )
     }
 

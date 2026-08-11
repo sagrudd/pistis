@@ -16,6 +16,10 @@
 
 ### Changed
 
+- After App Attest acceptance, dispatch only the exact live Monas custody
+  lifecycle instead of assuming initial rotation, and keep already trusted
+  installations out of first-device enrolment after successful recovery.
+
 - Expose live Monas authority-custody reconciliation for an installation that
   is already trusted locally, so protected recovery requirements cannot be
   hidden by a stale terminal UI label.

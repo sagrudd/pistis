@@ -17,9 +17,9 @@ use sha2::{Digest as _, Sha256};
 use x509_parser::{parse_x509_certificate, pem::parse_x509_pem};
 
 use crate::{
-    CustodyRotationAppAttestRequestV1, MONAS_PRODUCTION_APP_ATTEST_APP_IDENTIFIER_V1,
-    ServerHeldCustodyRotationAppAttestAcceptanceV1, ServerHeldMonasAppAttestAcceptanceV1,
-    SiteTrustAttestationRequestV1,
+    CustodyRotationAppAttestRequestV1, MONAS_MTGS_RECOVERY_AUDIENCE_V1,
+    MONAS_PRODUCTION_APP_ATTEST_APP_IDENTIFIER_V1, ServerHeldCustodyRotationAppAttestAcceptanceV1,
+    ServerHeldMonasAppAttestAcceptanceV1, SiteTrustAttestationRequestV1,
 };
 
 /// Exact iPhone registration wire profile accepted by this factory.
@@ -272,6 +272,48 @@ impl ProductionAppleAppAttestAcceptanceFactoryV1 {
             previous_counter,
             expected_bundle_version.into(),
         ))
+    }
+
+    /// Reconstructs an opaque assertion acceptance for one owner-approved MTGS recovery.
+    ///
+    /// Monas must supply a fresh server-owned request for the exact recovery
+    /// audience together with fields read from its already verified durable
+    /// registration. No registration object, trust selector, mobile identity,
+    /// or serialized acceptance is accepted by this continuation.
+    ///
+    /// # Errors
+    ///
+    /// Any request, key, manifest, bundle, counter, or audience mismatch is denied.
+    pub fn resume_durable_registration_for_mtgs_recovery(
+        &self,
+        request: SiteTrustAttestationRequestV1,
+        registered_public_key_sec1: [u8; 65],
+        durable_manifest_sha256: [u8; 32],
+        expected_bundle_version: &str,
+        previous_counter: u32,
+    ) -> Result<ServerHeldMonasAppAttestAcceptanceV1, SiteTrustAppAttestRegistrationErrorV1> {
+        request
+            .validate()
+            .map_err(|_| SiteTrustAppAttestRegistrationErrorV1::Denied)?;
+        let registered_key_digest: [u8; 32] = Sha256::digest(registered_public_key_sec1).into();
+        if request.canonical_payload.audience() != MONAS_MTGS_RECOVERY_AUDIENCE_V1
+            || !valid_bundle_version(expected_bundle_version)
+            || previous_counter == u32::MAX
+            || registered_key_digest != *request.key_id.as_bytes()
+            || PublicKey::from_sec1_bytes(&registered_public_key_sec1).is_err()
+            || durable_manifest_sha256 != self.manifest_digest
+        {
+            return Err(SiteTrustAppAttestRegistrationErrorV1::Denied);
+        }
+        Ok(
+            ServerHeldMonasAppAttestAcceptanceV1::from_verified_durable_registration(
+                request,
+                registered_public_key_sec1,
+                previous_counter,
+                self.manifest_digest,
+                expected_bundle_version.into(),
+            ),
+        )
     }
 }
 
@@ -589,9 +631,10 @@ fn valid_bundle_version(value: &str) -> bool {
 mod tests {
     use super::*;
     use p256::ecdsa::SigningKey;
-    use pistis_domain::{InstallationId, KeyId};
+    use pistis_domain::{DeviceId, InstallationId, KeyId};
+    use pistis_protocol::UnixTimeMillis;
 
-    use crate::SiteTrustFactCeremonyIdV1;
+    use crate::{SiteTrustCanonicalPayloadV1, SiteTrustFactCeremonyIdV1, SiteTrustPistisIntentV1};
 
     fn rotation_request(key_id: KeyId) -> CustodyRotationAppAttestRequestV1 {
         let installation = InstallationId::from_bytes([1; 16]);
@@ -629,6 +672,45 @@ mod tests {
             public_key,
             KeyId::from_bytes(Sha256::digest(public_key).into()),
         )
+    }
+
+    fn recovery_request(key_id: KeyId, audience: &str) -> SiteTrustAttestationRequestV1 {
+        let fields = [
+            "mnemosyne.proxenos.std.v1",
+            "1",
+            "request-pending",
+            "site-demo",
+            "tenant-demo",
+            "installation-demo",
+            "request-demo",
+            audience,
+            "trust-admission",
+            "2026-01-01T00:00:00Z",
+            "2026-01-01T01:00:00Z",
+            "none",
+            "intent-demo",
+        ];
+        let payload = fields
+            .iter()
+            .enumerate()
+            .fold(Vec::new(), |mut output, (index, field)| {
+                output.push(u8::try_from(index + 1).unwrap());
+                output.extend_from_slice(&(field.len() as u32).to_be_bytes());
+                output.extend_from_slice(field.as_bytes());
+                output
+            });
+        SiteTrustAttestationRequestV1 {
+            installation_id: InstallationId::from_bytes([1; 16]),
+            device_id: DeviceId::from_bytes([2; 16]),
+            key_id,
+            ceremony_id: SiteTrustFactCeremonyIdV1::from_bytes([3; 16]),
+            canonical_payload: SiteTrustCanonicalPayloadV1::parse(payload).unwrap(),
+            pistis_intent: SiteTrustPistisIntentV1::parse(
+                "mnemosyne.pistis.intent.v1:intent-demo".into(),
+            )
+            .unwrap(),
+            issued_at: UnixTimeMillis::new(42),
+        }
     }
 
     #[test]
@@ -715,6 +797,34 @@ mod tests {
                 u32::MAX
             )
             .is_err()
+        );
+    }
+
+    #[test]
+    fn mtgs_recovery_reconstructs_only_the_exact_durable_audience() {
+        let factory = ProductionAppleAppAttestAcceptanceFactoryV1::from_package().unwrap();
+        let (public_key, key_id) = durable_key();
+        assert!(
+            factory
+                .resume_durable_registration_for_mtgs_recovery(
+                    recovery_request(key_id, MONAS_MTGS_RECOVERY_AUDIENCE_V1),
+                    public_key,
+                    factory.manifest_digest,
+                    "1.0.0",
+                    41
+                )
+                .is_ok()
+        );
+        assert!(
+            factory
+                .resume_durable_registration_for_mtgs_recovery(
+                    recovery_request(key_id, "monas-local"),
+                    public_key,
+                    factory.manifest_digest,
+                    "1.0.0",
+                    41
+                )
+                .is_err()
         );
     }
 }

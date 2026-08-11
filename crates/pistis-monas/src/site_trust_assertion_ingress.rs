@@ -33,6 +33,8 @@ pub const SITE_TRUST_APP_ATTEST_ASSERTION_INGRESS_PROFILE_V1: &str =
 /// The only production App ID accepted by this reviewed Monas profile.
 pub const MONAS_PRODUCTION_APP_ATTEST_APP_IDENTIFIER_V1: &str =
     "C7A6NQTSY4.org.mnemosynebiosciences.pistis";
+/// Exact authority audience for a fresh physical-iPhone MTGS recovery assertion.
+pub const MONAS_MTGS_RECOVERY_AUDIENCE_V1: &str = "monas:site-trust:mtgs-recovery:v1";
 
 const MAXIMUM_MOBILE_SUBMISSION_BYTES: usize = 32 * 1024;
 const MAXIMUM_APP_ATTEST_BUNDLE_VERSION_BYTES: usize = 96;
@@ -347,6 +349,22 @@ impl ServerHeldMonasAppAttestAcceptanceV1 {
             request,
             registered_public_key_sec1,
             previous_counter: 0,
+            trust_anchor_manifest_digest,
+            bundle_version,
+        }
+    }
+
+    pub(crate) fn from_verified_durable_registration(
+        request: SiteTrustAttestationRequestV1,
+        registered_public_key_sec1: [u8; 65],
+        previous_counter: u32,
+        trust_anchor_manifest_digest: [u8; 32],
+        bundle_version: String,
+    ) -> Self {
+        Self {
+            request,
+            registered_public_key_sec1,
+            previous_counter,
             trust_anchor_manifest_digest,
             bundle_version,
         }

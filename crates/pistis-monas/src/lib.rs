@@ -65,9 +65,9 @@ pub use site_trust::{
 };
 pub use site_trust_assertion_ingress::{
     CustodyRotationAppAttestFailureStageV1, CustodyRotationAppAttestOutcomeV1,
-    CustodyRotationAppAttestRequestV1, MONAS_PRODUCTION_APP_ATTEST_APP_IDENTIFIER_V1,
-    MonasSiteTrustAppAttestAtomicStoreV1, MonotonicAppAttestCounterV1,
-    ProductionAppleAppAttestAssertionVerifierV1,
+    CustodyRotationAppAttestRequestV1, MONAS_MTGS_RECOVERY_AUDIENCE_V1,
+    MONAS_PRODUCTION_APP_ATTEST_APP_IDENTIFIER_V1, MonasSiteTrustAppAttestAtomicStoreV1,
+    MonotonicAppAttestCounterV1, ProductionAppleAppAttestAssertionVerifierV1,
     SITE_TRUST_APP_ATTEST_ASSERTION_INGRESS_PROFILE_V1,
     ServerHeldCustodyRotationAppAttestAcceptanceV1, ServerHeldMonasAppAttestAcceptanceV1,
     SiteTrustAppAttestAssertionIngressErrorV1, SiteTrustAppAttestAssertionIngressOutcomeV1,

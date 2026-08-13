@@ -14,6 +14,7 @@ mod mobile_enrolment_receipt;
 mod physical_iphone_vector;
 mod readiness;
 mod session;
+mod site_origin_relocation_approval;
 mod site_root_genesis_device_binding;
 mod site_trust;
 mod site_trust_assertion_ingress;
@@ -48,6 +49,12 @@ pub use session::{
     AuditCorrelationId, HostSessionError, HostSessionIssuer, HostSessionOutcome,
     HostSessionRequest, SessionIdDigest,
 };
+pub use site_origin_relocation_approval::{
+    PISTIS_SITE_ORIGIN_RELOCATION_AUDIENCE_V1, PROXENOS_SITE_ORIGIN_RELOCATION_PURPOSE_V1,
+    SiteOriginRelocationAppAttestAcceptanceV1, SiteOriginRelocationAppAttestOutcomeV1,
+    SiteOriginRelocationAppAttestRequestV1, SiteOriginRelocationApprovalErrorV1,
+    SiteOriginRelocationProposalV1, site_origin_relocation_client_data_hash_v1,
+};
 pub use site_root_genesis_device_binding::{
     ExpectedSiteRootGenesisDeviceBindingV1, SITE_ROOT_GENESIS_DEVICE_BINDING_PROFILE_V1,
     SiteRootGenesisBindingContextV1, SiteRootGenesisDeviceBindingErrorV1,
@@ -76,6 +83,7 @@ pub use site_trust_assertion_ingress::{
     issue_site_trust_human_authority_fact_from_server_held_app_attest_assertion_v1,
     verify_custody_rotation_app_attest_assertion_diagnostic_v1,
     verify_custody_rotation_app_attest_assertion_v1,
+    verify_site_origin_relocation_app_attest_assertion_v1,
 };
 pub use site_trust_registration_acceptance::{
     MONAS_APP_ATTEST_REVIEWED_MANIFEST_PROFILE_V1, PISTIS_APP_ATTEST_REGISTRATION_PROFILE_V1,

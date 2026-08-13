@@ -541,6 +541,76 @@ pub fn verify_custody_rotation_app_attest_assertion_v1(
     .map_err(|_| SiteTrustAppAttestAssertionIngressErrorV1::Denied)
 }
 
+/// Verifies one Face-ID-authorised, purpose-separated Site-origin relocation assertion.
+///
+/// The caller must durably advance the App Attest counter before invoking the
+/// byte-identical Proxenos approval transition, and must observe Proxenos after
+/// any ambiguous completion. A consumed counter is never rolled back or used
+/// to repeat Face ID. This function returns no raw assertion, approval
+/// signature or session authority.
+///
+/// # Errors
+/// Denies expiry, ceremony/key/application mismatch, stale counters,
+/// malformed assertions and any signature over substituted client data.
+pub fn verify_site_origin_relocation_app_attest_assertion_v1(
+    acceptance: &crate::SiteOriginRelocationAppAttestAcceptanceV1,
+    submission: &SiteTrustAppAttestMobileSubmissionV1,
+    now_unix_seconds: u64,
+) -> Result<crate::SiteOriginRelocationAppAttestOutcomeV1, SiteTrustAppAttestAssertionIngressErrorV1>
+{
+    if crate::site_origin_relocation_client_data_hash_v1(&acceptance.request)
+        != acceptance.request.client_data_hash
+        || submission.ceremony_id != acceptance.request.proposal.ceremony_id()
+        || now_unix_seconds < acceptance.request.proposal.issued_at_unix_seconds()
+        || now_unix_seconds >= acceptance.request.proposal.expires_at_unix_seconds()
+    {
+        return Err(SiteTrustAppAttestAssertionIngressErrorV1::Denied);
+    }
+    let registered_digest: [u8; 32] = Sha256::digest(acceptance.registered_public_key_sec1).into();
+    if registered_digest != *acceptance.request.key_id.as_bytes() {
+        return Err(SiteTrustAppAttestAssertionIngressErrorV1::Denied);
+    }
+    let decoded = decode_assertion_object(submission.assertion.transient_bytes())?;
+    let application_hash: [u8; 32] =
+        Sha256::digest(MONAS_PRODUCTION_APP_ATTEST_APP_IDENTIFIER_V1).into();
+    if decoded.authenticator_data.len() < AUTHENTICATOR_DATA_MINIMUM_BYTES
+        || decoded.authenticator_data[..32] != application_hash
+        || !valid_assertion_flags_and_extensions(
+            &decoded.authenticator_data,
+            &acceptance.bundle_version,
+        )
+    {
+        return Err(SiteTrustAppAttestAssertionIngressErrorV1::Denied);
+    }
+    let counter = MonotonicAppAttestCounterV1(u32::from_be_bytes(
+        decoded.authenticator_data[33..37]
+            .try_into()
+            .map_err(|_| SiteTrustAppAttestAssertionIngressErrorV1::Denied)?,
+    ));
+    if !counter.strictly_after(acceptance.previous_counter) {
+        return Err(SiteTrustAppAttestAssertionIngressErrorV1::Denied);
+    }
+    let nonce = Sha256::digest(
+        [
+            decoded.authenticator_data.as_slice(),
+            acceptance.request.client_data_hash.as_slice(),
+        ]
+        .concat(),
+    );
+    let key = VerifyingKey::from_sec1_bytes(&acceptance.registered_public_key_sec1)
+        .map_err(|_| SiteTrustAppAttestAssertionIngressErrorV1::Unavailable)?;
+    let signature = Signature::from_der(&decoded.signature)
+        .map_err(|_| SiteTrustAppAttestAssertionIngressErrorV1::Denied)?;
+    key.verify(&nonce, &signature)
+        .map_err(|_| SiteTrustAppAttestAssertionIngressErrorV1::Denied)?;
+    Ok(crate::SiteOriginRelocationAppAttestOutcomeV1 {
+        proposal_digest: acceptance.request.proposal.digest(),
+        assertion_sha256: Sha256::digest(submission.assertion.transient_bytes()).into(),
+        detached_cose_sha256: acceptance.request.detached_cose_sha256,
+        counter,
+    })
+}
+
 /// Redacted, non-secret failure stage for production custody assertion audit.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum CustodyRotationAppAttestFailureStageV1 {
@@ -589,6 +659,10 @@ pub enum CustodyRotationAppAttestFailureStageV1 {
 /// Verifies the same fail-closed assertion while preserving only its safe
 /// failure stage for a protected service journal. No assertion bytes, keys,
 /// identifiers, counters, hashes, or caller text are exposed by the error.
+///
+/// # Errors
+/// Returns only the redacted stage at which the closed assertion contract was
+/// denied or unavailable.
 pub fn verify_custody_rotation_app_attest_assertion_diagnostic_v1(
     acceptance: &ServerHeldCustodyRotationAppAttestAcceptanceV1,
     submission: &SiteTrustAppAttestMobileSubmissionV1,
@@ -1246,6 +1320,82 @@ mod tests {
         ])
     }
 
+    fn relocation_proposal() -> crate::SiteOriginRelocationProposalV1 {
+        let fields: Vec<Vec<u8>> = vec![
+            b"proxenos.site-origin-relocation.v1".to_vec(),
+            b"proxenos.site-origin-relocation.v1".to_vec(),
+            b"pistis:site-origin-relocation:v1".to_vec(),
+            vec![1; 16],
+            b"site-demo".to_vec(),
+            b"https://192.168.1.192:8443/".to_vec(),
+            b"https://192.168.0.193:8443/".to_vec(),
+            1_u64.to_be_bytes().to_vec(),
+            2_u64.to_be_bytes().to_vec(),
+            b"authority-1".to_vec(),
+            b"custody-1".to_vec(),
+            b"root-1".to_vec(),
+            b"issuer-1".to_vec(),
+            b"service-monas-web".to_vec(),
+            b"192.168.0.193".to_vec(),
+            vec![2; 16],
+            vec![3; 32],
+            100_u64.to_be_bytes().to_vec(),
+            200_u64.to_be_bytes().to_vec(),
+            vec![4; 32],
+        ];
+        let mut canonical = b"PXSR/v1\0".to_vec();
+        for (index, field) in fields.iter().enumerate() {
+            canonical.push(u8::try_from(index + 1).unwrap());
+            canonical.extend_from_slice(&u16::try_from(field.len()).unwrap().to_be_bytes());
+            canonical.extend_from_slice(field);
+        }
+        crate::SiteOriginRelocationProposalV1::parse(canonical).unwrap()
+    }
+
+    fn relocation_acceptance(
+        signing_key: &SigningKey,
+        prior_counter: u32,
+    ) -> crate::SiteOriginRelocationAppAttestAcceptanceV1 {
+        let public_key: [u8; 65] = signing_key
+            .verifying_key()
+            .to_encoded_point(false)
+            .as_bytes()
+            .try_into()
+            .unwrap();
+        let key_id = KeyId::from_bytes(Sha256::digest(public_key).into());
+        let proposal = relocation_proposal();
+        let detached_cose_sha256 = [5; 32];
+        let mut request = crate::SiteOriginRelocationAppAttestRequestV1 {
+            installation_id: InstallationId::from_bytes([6; 16]),
+            key_id,
+            proposal,
+            detached_cose_sha256,
+            client_data_hash: [0; 32],
+        };
+        request.client_data_hash = crate::site_origin_relocation_client_data_hash_v1(&request);
+        crate::SiteOriginRelocationAppAttestAcceptanceV1::new(
+            request,
+            public_key,
+            prior_counter,
+            "1.0.0".into(),
+        )
+        .unwrap()
+    }
+
+    fn relocation_assertion(
+        signing_key: &SigningKey,
+        acceptance: &crate::SiteOriginRelocationAppAttestAcceptanceV1,
+        auth_data: &[u8],
+    ) -> Vec<u8> {
+        let nonce =
+            Sha256::digest([auth_data, acceptance.request.client_data_hash.as_slice()].concat());
+        let signature: Signature = signing_key.sign(&nonce);
+        cbor_map_bytes(&[
+            ("signature", signature.to_der().as_bytes()),
+            ("authenticatorData", auth_data),
+        ])
+    }
+
     fn authenticator_data(_request: &SiteTrustAttestationRequestV1, counter: u32) -> Vec<u8> {
         let mut data =
             Sha256::digest(MONAS_PRODUCTION_APP_ATTEST_APP_IDENTIFIER_V1.as_bytes()).to_vec();
@@ -1408,6 +1558,96 @@ mod tests {
         .unwrap();
 
         assert_eq!(outcome.counter().get(), 1);
+    }
+
+    #[test]
+    fn relocation_accepts_only_exact_fresh_registered_assertion() {
+        let signing_key = SigningKey::from_bytes((&[10; 32]).into()).unwrap();
+        let acceptance = relocation_acceptance(&signing_key, 7);
+        let assertion =
+            relocation_assertion(&signing_key, &acceptance, &legacy_authenticator_data(8));
+        let submission = mobile_submission(acceptance.request.proposal.ceremony_id(), assertion);
+
+        let outcome =
+            verify_site_origin_relocation_app_attest_assertion_v1(&acceptance, &submission, 150)
+                .unwrap();
+
+        assert_eq!(
+            outcome.proposal_digest(),
+            acceptance.request.proposal.digest()
+        );
+        assert_eq!(outcome.site_authority_detached_cose_sha256(), [5; 32]);
+        assert_eq!(outcome.counter().get(), 8);
+    }
+
+    #[test]
+    fn relocation_denies_expiry_replay_wrong_ceremony_app_key_and_substitution() {
+        let signing_key = SigningKey::from_bytes((&[11; 32]).into()).unwrap();
+        let acceptance = relocation_acceptance(&signing_key, 7);
+        let exact = relocation_assertion(&signing_key, &acceptance, &legacy_authenticator_data(8));
+        let exact_submission =
+            mobile_submission(acceptance.request.proposal.ceremony_id(), exact.clone());
+        assert!(
+            verify_site_origin_relocation_app_attest_assertion_v1(
+                &acceptance,
+                &exact_submission,
+                200,
+            )
+            .is_err()
+        );
+
+        let stale = relocation_assertion(&signing_key, &acceptance, &legacy_authenticator_data(7));
+        assert!(
+            verify_site_origin_relocation_app_attest_assertion_v1(
+                &acceptance,
+                &mobile_submission(acceptance.request.proposal.ceremony_id(), stale),
+                150,
+            )
+            .is_err()
+        );
+        assert!(
+            verify_site_origin_relocation_app_attest_assertion_v1(
+                &acceptance,
+                &mobile_submission(SiteTrustFactCeremonyIdV1::from_bytes([9; 16]), exact),
+                150,
+            )
+            .is_err()
+        );
+
+        let mut wrong_app = legacy_authenticator_data(8);
+        wrong_app[0] ^= 1;
+        let wrong_app = relocation_assertion(&signing_key, &acceptance, &wrong_app);
+        assert!(
+            verify_site_origin_relocation_app_attest_assertion_v1(
+                &acceptance,
+                &mobile_submission(acceptance.request.proposal.ceremony_id(), wrong_app),
+                150,
+            )
+            .is_err()
+        );
+
+        let other_key = SigningKey::from_bytes((&[12; 32]).into()).unwrap();
+        let wrong_key =
+            relocation_assertion(&other_key, &acceptance, &legacy_authenticator_data(8));
+        assert!(
+            verify_site_origin_relocation_app_attest_assertion_v1(
+                &acceptance,
+                &mobile_submission(acceptance.request.proposal.ceremony_id(), wrong_key),
+                150,
+            )
+            .is_err()
+        );
+
+        let mut substituted = relocation_acceptance(&signing_key, 7);
+        substituted.request.detached_cose_sha256[0] ^= 1;
+        assert!(
+            verify_site_origin_relocation_app_attest_assertion_v1(
+                &substituted,
+                &exact_submission,
+                150,
+            )
+            .is_err()
+        );
     }
 
     #[test]

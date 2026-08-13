@@ -9,6 +9,7 @@ struct ScanView: View {
     @StateObject private var siteRootCeremony: SiteRootDelegationCoordinator
     @StateObject private var mtgsRecovery: MTGSRecoveryCoordinator
     @StateObject private var siteRootConvergence: SiteRootConvergenceCoordinator
+    @StateObject private var siteOriginRelocation: SiteOriginRelocationCoordinator
     private let siteRootTransport: any MonasSiteRootCeremonyTransport
     private let expectedSiteRootAuthorityHost: String?
     private let showInstallations: () -> Void
@@ -46,6 +47,9 @@ struct ScanView: View {
             .flatMap { try? $0.siteRootConvergenceTransport() }
         _siteRootConvergence = StateObject(wrappedValue: SiteRootConvergenceCoordinator(
             transport: convergenceTransport
+        ))
+        _siteOriginRelocation = StateObject(wrappedValue: SiteOriginRelocationCoordinator(
+            authorityTransport: siteRootTransport as? MonasSiteRootDelegationTransport
         ))
     }
 
@@ -155,6 +159,9 @@ struct ScanView: View {
         .sheet(item: siteRootConvergenceReviewBinding) { review in
             SiteRootConvergenceReviewView(review: review, coordinator: siteRootConvergence)
         }
+        .sheet(item: siteOriginRelocationReviewBinding) { review in
+            SiteOriginRelocationReviewView(review: review, coordinator: siteOriginRelocation)
+        }
     }
 
     @MainActor
@@ -164,6 +171,13 @@ struct ScanView: View {
         case let .success(payload):
             scanFailure = nil
             if payload.text.hasPrefix("{") {
+                if payload.text.contains(SiteOriginRelocationProfileV1.presentationSchema) {
+                    siteOriginRelocation.accept(qrText: payload.text)
+                    if case .failed = siteOriginRelocation.phase {
+                        scanFailure = .siteRootAuthorityUnavailable
+                    }
+                    return
+                }
                 if payload.text.contains(SiteRootConvergenceProfileV2.x509ProvisionSchema)
                     || payload.text.contains(SiteRootConvergenceProfileV2.provisionSchema)
                     || payload.text.contains(SiteRootConvergenceProfileV2.ackSchema)
@@ -270,6 +284,14 @@ struct ScanView: View {
         }
     }
 
+    private var siteOriginRelocationReviewBinding: Binding<SiteOriginRelocationReview?> {
+        Binding {
+            siteOriginRelocation.presentedReview
+        } set: { value in
+            if value == nil { siteOriginRelocation.reset(); startScanning() }
+        }
+    }
+
     private var statusText: String {
         switch ceremony.phase {
         case .verifying: "Verifying enrolled installation"
@@ -286,6 +308,62 @@ struct ScanView: View {
         }
     }
 
+}
+
+private struct SiteOriginRelocationReviewView: View {
+    let review: SiteOriginRelocationReview
+    @ObservedObject var coordinator: SiteOriginRelocationCoordinator
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        NavigationStack {
+            ScrollView {
+                VStack(alignment: .leading, spacing: MnSpacing.x4) {
+                    MnSectionHeading(
+                        "Move this Site authority",
+                        orientation: "Verify both private-IP HTTPS origins before Face ID authorises one forward-only move."
+                    )
+                    MnPanel {
+                        VStack(alignment: .leading, spacing: MnSpacing.x3) {
+                            MnEvidenceRow(label: "Site identity", value: review.siteIdentity)
+                            Divider()
+                            MnEvidenceRow(label: "Current origin", value: review.sourceOrigin)
+                            Divider()
+                            MnEvidenceRow(label: "Proposed origin", value: review.targetOrigin)
+                            Divider()
+                            MnEvidenceRow(label: "Generations", value: review.generations)
+                        }
+                    }
+                    Text(review.warning).font(.headline).foregroundStyle(MnColor.danger)
+                    switch coordinator.phase {
+                    case .review:
+                        MnPrimaryButton("Approve move with Face ID", systemImage: "faceid") {
+                            Task { await coordinator.approve() }
+                        }
+                        Button("Cancel prepared move") { Task { await coordinator.cancel() } }
+                            .font(.headline).foregroundStyle(MnColor.danger)
+                    case .approving:
+                        ProgressView("Waiting for Face ID and App Attest…")
+                    case .reconciling:
+                        ProgressView("Reconciling authoritative Monas status…")
+                    case .completed:
+                        MnStatusLabel(text: "Site authority move approved", kind: .success)
+                        Button("Done") { dismiss() }.font(.headline)
+                    case .cancelled:
+                        MnStatusLabel(text: "Prepared move cancelled", kind: .neutral)
+                        Button("Done") { dismiss() }.font(.headline)
+                    case .failed:
+                        MnStatusLabel(text: "Move stopped safely", kind: .danger)
+                        Text("No trust exception, replacement enrolment or repeated approval was attempted.")
+                    case .idle: EmptyView()
+                    }
+                }.padding(MnMetrics.screenGutter)
+            }
+            .navigationTitle("Site authority move")
+            .mnScreenBackground()
+        }
+        .interactiveDismissDisabled(coordinator.phase == .approving || coordinator.phase == .reconciling)
+    }
 }
 
 private struct MTGSRecoveryReviewView: View {

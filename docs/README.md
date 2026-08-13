@@ -15,6 +15,8 @@ and Jenkins sends only successful, pre-rendered `main` HTML to GitHub Pages.
 - `development/`: contributor and testing guidance.
 - `operations/`: deployment, recovery, and security operations.
 - `protocol/`: protocol and encoding specifications.
+- `protocol/site-origin-relocation-approval-v1.md`: the attended iPhone
+  approval and interruption-reconciliation profile for Proxenos ADR-0013.
 - `security/`: threat model and security review material.
 
 Empty subject directories contain a README describing the documentation that

@@ -4,6 +4,15 @@
 
 ### Added
 
+- Add the attended Site-origin relocation approval profile. Pistis parses and
+  displays the byte-exact Proxenos PXSR/v1 old/new private-IP origins and all
+  authority generations, releases the existing Site-authority key after one
+  Face ID evaluation, binds the detached proof into the registered production
+  App Attest assertion, and reconciles ambiguous delivery through fixed
+  Site-root-trusted Monas status without reapproval or first-device enrolment.
+  Trust exceptions, bootstrap-pin copying, DNS, generic URLs and rollback are
+  not available.
+
 - Add the one-use attended DAS local-authority replacement receipt ceremony.
   The iPhone accepts only the fixed purpose-four presentation from the pinned
   Monas origin, reconstructs the full Thesaurophylax challenge, rewraps the

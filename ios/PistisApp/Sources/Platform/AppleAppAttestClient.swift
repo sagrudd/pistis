@@ -352,6 +352,24 @@ final class AppleAppAttestClient: @unchecked Sendable {
         )
     }
 
+    /// Produces only the assertion for a locally parsed PXSR/v1 proposal after
+    /// its Site-authority signature has been included in the server-compatible
+    /// client-data hash. The registered key must be byte-identical; this path
+    /// never enrols a replacement device.
+    func prepareSiteOriginRelocationAssertion(
+        ceremonyID: Data,
+        expectedKeyID: Data,
+        clientDataHash: Data
+    ) async throws -> AppleAppAttestAssertionEnvelope {
+        guard service.isSupported, ceremonyID.count == 16,
+              expectedKeyID.count == 32, clientDataHash.count == 32,
+              let keyID = existingKeyID(), let decodedKeyID = Data(base64Encoded: keyID),
+              decodedKeyID == expectedKeyID
+        else { throw PlatformFailure.appAttestUnavailable }
+        let assertion = try await service.generateAssertion(keyID, clientDataHash: clientDataHash)
+        return try AppleAppAttestAssertionEnvelope(ceremonyID: ceremonyID, assertion: assertion)
+    }
+
     private func existingOrNewKeyID() async throws -> String {
         if let existing = existingKeyID() {
             return existing

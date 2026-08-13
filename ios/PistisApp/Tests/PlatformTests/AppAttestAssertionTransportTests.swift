@@ -64,6 +64,30 @@ final class AppAttestAssertionTransportTests: XCTestCase {
         }
     }
 
+    func testRelocationAssertionUsesExactRegisteredKeyAndServerCompatibleHash() async throws {
+        let key = Data(repeating: 0x11, count: 32)
+        let keyID = key.base64EncodedString()
+        let service = RecordingAppAttestService(keyID: keyID)
+        let client = AppleAppAttestClient(
+            service: service, keyIDStore: FixedKeyIDStore(keyID: keyID)
+        )
+        let hash = Data(repeating: 0x44, count: 32)
+        _ = try await client.prepareSiteOriginRelocationAssertion(
+            ceremonyID: Data(repeating: 0x22, count: 16),
+            expectedKeyID: key, clientDataHash: hash
+        )
+        XCTAssertEqual(service.assertionHash, hash)
+        do {
+            _ = try await client.prepareSiteOriginRelocationAssertion(
+                ceremonyID: Data(repeating: 0x22, count: 16),
+                expectedKeyID: Data(repeating: 0x12, count: 32), clientDataHash: hash
+            )
+            XCTFail("substituted App Attest key unexpectedly accepted")
+        } catch {
+            XCTAssertEqual(error as? PlatformFailure, .appAttestUnavailable)
+        }
+    }
+
     func testAssertionEnvelopeRejectsZeroOrOversizedInputs() {
         XCTAssertThrowsError(try AppleAppAttestAssertionEnvelope(
             ceremonyID: Data(repeating: 0, count: 16), assertion: Data([1])

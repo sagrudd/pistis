@@ -119,6 +119,20 @@ struct MonasSiteRootDelegationTransport: MonasSiteRootCeremonyTransport,
         )
     }
 
+    /// Creates the relocation transport for the proposal-derived target while
+    /// preserving this installation's authenticated Site-root trust policy.
+    /// It never copies the obsolete source leaf pin to a different origin.
+    func siteOriginRelocationTransport(
+        targetOrigin: URL
+    ) throws -> MonasSiteOriginRelocationTransportV1 {
+        guard case .siteRootGeneration = trustPolicy else {
+            throw PlatformFailure.siteRootAuthorityUnavailable
+        }
+        return try MonasSiteOriginRelocationTransportV1(
+            targetOrigin: targetOrigin, trustPolicy: trustPolicy
+        )
+    }
+
     func readiness() async throws -> MonasSiteRootDelegationReadinessV1 {
         let endpoint = try endpoint(path: MonasSiteRootDelegationEndpointV1.readinessPath)
         var request = URLRequest(url: endpoint)

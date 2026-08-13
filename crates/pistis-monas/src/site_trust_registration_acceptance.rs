@@ -274,6 +274,35 @@ impl ProductionAppleAppAttestAcceptanceFactoryV1 {
         ))
     }
 
+    /// Reconstructs one opaque relocation assertion acceptance from the durable
+    /// Apple-verified registration.
+    ///
+    /// # Errors
+    /// Denies a wrong registered key, manifest, bundle version or exhausted
+    /// counter. It accepts no mobile assertion or caller-selected verifier.
+    pub fn resume_durable_registration_for_site_origin_relocation(
+        &self,
+        request: crate::SiteOriginRelocationAppAttestRequestV1,
+        registered_public_key_sec1: [u8; 65],
+        durable_manifest_sha256: [u8; 32],
+        expected_bundle_version: &str,
+        previous_counter: u32,
+    ) -> Result<
+        crate::SiteOriginRelocationAppAttestAcceptanceV1,
+        SiteTrustAppAttestRegistrationErrorV1,
+    > {
+        if durable_manifest_sha256 != self.manifest_digest {
+            return Err(SiteTrustAppAttestRegistrationErrorV1::Denied);
+        }
+        crate::SiteOriginRelocationAppAttestAcceptanceV1::new(
+            request,
+            registered_public_key_sec1,
+            previous_counter,
+            expected_bundle_version.to_owned(),
+        )
+        .map_err(|_| SiteTrustAppAttestRegistrationErrorV1::Denied)
+    }
+
     /// Reconstructs an opaque assertion acceptance for one owner-approved MTGS recovery.
     ///
     /// Monas must supply a fresh server-owned request for the exact recovery

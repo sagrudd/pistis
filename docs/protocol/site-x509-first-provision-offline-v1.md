@@ -1,4 +1,4 @@
-# Site X.509 first-provision offline response v1
+# Site X.509 first-provision offline response v2
 
 This additive Pistis capability implements accepted Proxenos ADR-0014 using
 the canonical carrier owned by Thesaurophylax 0.67.0 at exact merge revision
@@ -18,7 +18,7 @@ registration projected in the carrier context. The newly prepared X.509 root
 and issuer keys in the challenge are distinct certificate outputs; neither is
 an iPhone approval key. Pistis creates the existing detached ES256
 `application/vnd.mnemosyne.pxfp.v1` approval, computes
-the shared `PXAT/v1` client-data hash, and asks only the already registered
+the shared `PXAT/v2` client-data hash, and asks only the already registered
 production App Attest key for an assertion. It emits the strict `PXFP2:R:` QR
 text or the same canonical response bytes as a file. The response contains no
 private key, custody handle, authority token, origin override, certificate,

@@ -103,6 +103,7 @@ struct ScanView: View {
                         Text("Only bounded Pistis v2 and Monas Site Root v1 envelopes are acquired. Each reaches its own mandatory protocol validator before facts are shown.")
                             .font(.footnote)
                             .foregroundStyle(MnColor.textPrimary)
+                            .background(MnColor.raised)
                             .fixedSize(horizontal: false, vertical: true)
                     }
                 }
@@ -114,6 +115,9 @@ struct ScanView: View {
                 }
                 .font(.headline)
                 .frame(maxWidth: .infinity, minHeight: MnMetrics.minimumTarget)
+                .buttonStyle(.borderedProminent)
+                .tint(MnColor.action)
+                .foregroundStyle(MnColor.onBrand)
 
                 MnPanel {
                     VStack(alignment: .leading, spacing: MnSpacing.x4) {
@@ -129,6 +133,8 @@ struct ScanView: View {
                         if !readiness.approvalEnabled {
                             Text("Approve remains disabled until every capability and trust check is ready.")
                                 .font(.footnote.weight(.semibold))
+                                .foregroundStyle(MnColor.textPrimary)
+                                .background(MnColor.raised)
                         }
                     }
                 }
@@ -138,6 +144,8 @@ struct ScanView: View {
                         VStack(alignment: .leading, spacing: MnSpacing.x3) {
                             MnStatusLabel(text: "Scan failed", kind: .danger)
                             Text(scanFailure.safeUserMessage)
+                                .foregroundStyle(MnColor.textPrimary)
+                                .background(MnColor.raised)
                             if scanFailure == .cameraPermissionDenied {
                                 Button("Open Settings") { openCameraSettings() }
                                     .font(.headline)
@@ -149,6 +157,7 @@ struct ScanView: View {
 
             }
             .padding(MnMetrics.screenGutter)
+            .padding(.bottom, MnSpacing.x8 * 3)
         }
         .navigationTitle("Scan")
         .mnScreenBackground()

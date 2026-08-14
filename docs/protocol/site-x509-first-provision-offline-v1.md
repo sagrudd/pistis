@@ -12,9 +12,12 @@ authority/custody/revocation/root/issuer generations, enrolled installation,
 device and App Attest application, protected target kind and identifier, every
 ordered service/private-IP set, and exclusive expiry.
 
-One Face ID evaluation releases the existing enrolled Site-root key only after
-its compressed public key exactly matches the challenge. Pistis creates the
-existing detached ES256 `application/vnd.mnemosyne.pxfp.v1` approval, computes
+One Face ID evaluation releases the existing enrolled Site-root approval key
+only after its identifier and compressed public key exactly match the protected
+registration projected in the carrier context. The newly prepared X.509 root
+and issuer keys in the challenge are distinct certificate outputs; neither is
+an iPhone approval key. Pistis creates the existing detached ES256
+`application/vnd.mnemosyne.pxfp.v1` approval, computes
 the shared `PXAT/v1` client-data hash, and asks only the already registered
 production App Attest key for an assertion. It emits the strict `PXFP1:R:` QR
 text or the same canonical response bytes as a file. The response contains no

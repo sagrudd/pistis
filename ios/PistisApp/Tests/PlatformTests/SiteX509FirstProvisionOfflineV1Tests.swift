@@ -82,11 +82,27 @@ final class SiteX509FirstProvisionOfflineV1Tests: XCTestCase {
         ))
     }
 
-    private func presentation() throws -> Data {
+    func testChallengeRejectsInvalidOrIdenticalRoleKeys() throws {
+        XCTAssertThrowsError(try SiteX509FirstProvisionOfflinePresentationV1(
+            fileBytes: presentation(invalidRootKey: true), nowUnixSeconds: 1_001
+        ))
+        XCTAssertThrowsError(try SiteX509FirstProvisionOfflinePresentationV1(
+            fileBytes: presentation(identicalRoleKeys: true), nowUnixSeconds: 1_001
+        ))
+    }
+
+    private func presentation(
+        invalidRootKey: Bool = false,
+        identicalRoleKeys: Bool = false
+    ) throws -> Data {
         let root = try P256.Signing.PrivateKey(rawRepresentation: Data(repeating: 3, count: 32))
         let issuer = try P256.Signing.PrivateKey(rawRepresentation: Data(repeating: 4, count: 32))
-        let rootKey = compress(root.publicKey.x963Representation)
-        let issuerKey = compress(issuer.publicKey.x963Representation)
+        let rootKey = invalidRootKey
+            ? Data([2]) + Data(repeating: 0xff, count: 32)
+            : compress(root.publicKey.x963Representation)
+        let issuerKey = identicalRoleKeys
+            ? rootKey
+            : compress(issuer.publicKey.x963Representation)
         let challenge = tlv(
             magic: SiteX509FirstProvisionOfflineProfileV1.challengeMagic,
             fields: [

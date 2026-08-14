@@ -107,10 +107,8 @@ struct SiteX509FirstProvisionOfflinePresentationV1: Equatable, Sendable {
         let rootPublicKey: Data; let issuerPublicKey: Data; let expiresAt: UInt64
         init(_ bytes: Data, now: UInt64) throws {
             let f = try TLV.parse(bytes, magic: SiteX509FirstProvisionOfflineProfileV1.challengeMagic, tags: 1 ... 14)
-            let rootPrefix = f[5].first
-            let issuerPrefix = f[9].first
-            let roleKeysAreCompressed = (rootPrefix == 2 || rootPrefix == 3)
-                && (issuerPrefix == 2 || issuerPrefix == 3)
+            let rootKey = try? P256.Signing.PublicKey(compressedRepresentation: f[5])
+            let issuerKey = try? P256.Signing.PublicKey(compressedRepresentation: f[9])
             guard TLV.text(f[0]) == "site-x509-first-provision", f[1].count == 16,
                   f[2].count == 16, let generation = SiteX509FirstProvisionOfflinePresentationV1.u64(f[3]), generation > 0,
                   TLV.text(f[4]) == "site-x509-root-first-provision", f[5].count == 33,
@@ -118,7 +116,7 @@ struct SiteX509FirstProvisionOfflinePresentationV1: Equatable, Sendable {
                   TLV.text(f[8]) == "site-x509-issuer-first-provision", f[9].count == 33,
                   let expiry = SiteX509FirstProvisionOfflinePresentationV1.u64(f[12]), now < expiry,
                   f[13].count == 32, !f[13].allSatisfy({ $0 == 0 }),
-                  roleKeysAreCompressed
+                  rootKey != nil, issuerKey != nil, f[5] != f[9]
             else { throw PlatformFailure.qrPayloadUnsupported }
             siteUUID = f[1]; transactionUUID = f[2]; self.generation = generation
             rootPublicKey = f[5]; issuerPublicKey = f[9]; expiresAt = expiry

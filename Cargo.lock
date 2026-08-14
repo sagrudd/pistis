@@ -1539,8 +1539,8 @@ dependencies = [
 
 [[package]]
 name = "thesaurophylax-api"
-version = "0.67.0"
-source = "git+https://github.com/sagrudd/thesaurophylax.git?rev=547fa11acd657b862e0f42cbf477843e7cbfffb3#547fa11acd657b862e0f42cbf477843e7cbfffb3"
+version = "0.68.0"
+source = "git+https://github.com/sagrudd/thesaurophylax.git?rev=e357078731d3fd9fad914bc0acb859cc20097fd4#e357078731d3fd9fad914bc0acb859cc20097fd4"
 dependencies = [
  "base64",
  "ciborium",
@@ -1557,21 +1557,21 @@ dependencies = [
 
 [[package]]
 name = "thesaurophylax-core"
-version = "0.67.0"
-source = "git+https://github.com/sagrudd/thesaurophylax.git?rev=547fa11acd657b862e0f42cbf477843e7cbfffb3#547fa11acd657b862e0f42cbf477843e7cbfffb3"
+version = "0.68.0"
+source = "git+https://github.com/sagrudd/thesaurophylax.git?rev=e357078731d3fd9fad914bc0acb859cc20097fd4#e357078731d3fd9fad914bc0acb859cc20097fd4"
 
 [[package]]
 name = "thesaurophylax-policy"
-version = "0.67.0"
-source = "git+https://github.com/sagrudd/thesaurophylax.git?rev=547fa11acd657b862e0f42cbf477843e7cbfffb3#547fa11acd657b862e0f42cbf477843e7cbfffb3"
+version = "0.68.0"
+source = "git+https://github.com/sagrudd/thesaurophylax.git?rev=e357078731d3fd9fad914bc0acb859cc20097fd4#e357078731d3fd9fad914bc0acb859cc20097fd4"
 dependencies = [
  "thesaurophylax-core",
 ]
 
 [[package]]
 name = "thesaurophylax-store"
-version = "0.67.0"
-source = "git+https://github.com/sagrudd/thesaurophylax.git?rev=547fa11acd657b862e0f42cbf477843e7cbfffb3#547fa11acd657b862e0f42cbf477843e7cbfffb3"
+version = "0.68.0"
+source = "git+https://github.com/sagrudd/thesaurophylax.git?rev=e357078731d3fd9fad914bc0acb859cc20097fd4#e357078731d3fd9fad914bc0acb859cc20097fd4"
 dependencies = [
  "thesaurophylax-core",
 ]

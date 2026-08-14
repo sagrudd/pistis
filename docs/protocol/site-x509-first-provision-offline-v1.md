@@ -1,8 +1,8 @@
 # Site X.509 first-provision offline response v2
 
 This additive Pistis capability implements accepted Proxenos ADR-0014 using
-the canonical carrier owned by Thesaurophylax 0.67.0 at exact merge revision
-`547fa11acd657b862e0f42cbf477843e7cbfffb3`. Pistis does not define a parallel
+the canonical V2 carrier owned by Thesaurophylax 0.68.0 at exact merge revision
+`e357078731d3fd9fad914bc0acb859cc20097fd4`. Pistis does not define a parallel
 wire format.
 
 The Scan view admits only the strict `PXFP2:P:` unpadded-Base64url text form;

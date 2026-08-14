@@ -28,7 +28,7 @@ enum QRPayloadProfile: Sendable {
         // narrow acquisition check prevents the legacy scanner accepting it.
         case .monasSiteRootDelegationV1: text.hasPrefix("{")
         case .pistisAuthenticationOrMonasSiteRoot:
-            text.hasPrefix("PISTIS1:") || text.hasPrefix("{")
+            text.hasPrefix("PISTIS1:") || text.hasPrefix("{") || text.hasPrefix("PXFP1:P:")
         }
     }
 }

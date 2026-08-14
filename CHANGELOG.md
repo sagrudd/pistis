@@ -4,6 +4,14 @@
 
 ### Added
 
+- Add the accepted ADR-0014 offline first-Site-X.509 response path. Pistis
+  strictly parses the shared Thesaurophylax `PXFP1:P:` presentation from QR or
+  raw file bytes, displays the protected Site/device/target/service-IP facts,
+  releases the exact existing Site-root approval after Face ID, binds it to
+  the registered production App Attest key, and emits only the canonical
+  `PXFP1:R:` response. No network origin, trust exception, browser grant,
+  replacement enrolment, CA key or generic signing path is introduced.
+
 - Add the attended Site-origin relocation approval profile. Pistis parses and
   displays the byte-exact Proxenos PXSR/v1 old/new private-IP origins and all
   authority generations, releases the existing Site-authority key after one

@@ -1,0 +1,64 @@
+import Foundation
+
+struct SiteX509FirstProvisionOfflineReview: Identifiable, Equatable {
+    let id: Data
+    let site: String
+    let generations: String
+    let enrolledDevice: String
+    let target: String
+    let services: String
+    let expiry: String
+}
+
+/// Keeps the public offline response in memory for operator-controlled return.
+@MainActor
+final class SiteX509FirstProvisionOfflineCoordinator: ObservableObject {
+    enum Phase: Equatable { case idle, review, approving, completed, failed }
+    @Published private(set) var phase: Phase = .idle
+    @Published private(set) var presentedReview: SiteX509FirstProvisionOfflineReview?
+    @Published private(set) var responseQRText: String?
+    private let producer: SecureEnclaveSiteX509FirstProvisionOfflineProducerV1
+    private var pending: SiteX509FirstProvisionOfflinePresentationV1?
+
+    init(producer: SecureEnclaveSiteX509FirstProvisionOfflineProducerV1 = .init()) {
+        self.producer = producer
+    }
+
+    func accept(qrText: String, nowUnixSeconds: UInt64 = UInt64(Date().timeIntervalSince1970)) {
+        do {
+            let value = try SiteX509FirstProvisionOfflinePresentationV1(
+                qrText: qrText, nowUnixSeconds: nowUnixSeconds
+            )
+            pending = value
+            presentedReview = .init(
+                id: value.presentationDigest,
+                site: "\(value.siteTrustDomain) · \(value.siteUUID.hex)",
+                generations: "Authority \(value.authorityGeneration); custody \(value.custodyGeneration); revocation \(value.revocationGeneration); root/issuer \(value.generation)",
+                enrolledDevice: "\(value.installationID) · \(value.deviceID) · \(value.appAttestApplicationID)",
+                target: "\(value.targetKind) · \(value.targetID.hex)",
+                services: value.services.map { "\($0.serviceID): \($0.privateIPs.joined(separator: ", "))" }.joined(separator: "\n"),
+                expiry: Date(timeIntervalSince1970: TimeInterval(value.expiresAt)).formatted()
+            )
+            phase = .review
+        } catch { reset(); phase = .failed }
+    }
+
+    func approve(nowUnixSeconds: UInt64 = UInt64(Date().timeIntervalSince1970)) async {
+        guard let pending else { phase = .failed; return }
+        do {
+            phase = .approving
+            let response = try await producer.produce(pending, nowUnixSeconds: nowUnixSeconds)
+            responseQRText = try SecureEnclaveSiteX509FirstProvisionOfflineProducerV1
+                .responseQRText(response)
+            phase = .completed
+        } catch { responseQRText = nil; phase = .failed }
+    }
+
+    func reset() {
+        pending = nil; presentedReview = nil; responseQRText = nil; phase = .idle
+    }
+}
+
+private extension Data {
+    var hex: String { map { String(format: "%02x", $0) }.joined() }
+}

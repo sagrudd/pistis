@@ -1,4 +1,5 @@
 import SwiftUI
+import CoreImage.CIFilterBuiltins
 #if canImport(UIKit)
 import UIKit
 #endif
@@ -10,6 +11,7 @@ struct ScanView: View {
     @StateObject private var mtgsRecovery: MTGSRecoveryCoordinator
     @StateObject private var siteRootConvergence: SiteRootConvergenceCoordinator
     @StateObject private var siteOriginRelocation: SiteOriginRelocationCoordinator
+    @StateObject private var siteX509Offline = SiteX509FirstProvisionOfflineCoordinator()
     private let siteRootTransport: any MonasSiteRootCeremonyTransport
     private let expectedSiteRootAuthorityHost: String?
     private let showInstallations: () -> Void
@@ -162,6 +164,9 @@ struct ScanView: View {
         .sheet(item: siteOriginRelocationReviewBinding) { review in
             SiteOriginRelocationReviewView(review: review, coordinator: siteOriginRelocation)
         }
+        .sheet(item: siteX509OfflineReviewBinding) { review in
+            SiteX509FirstProvisionOfflineReviewView(review: review, coordinator: siteX509Offline)
+        }
     }
 
     @MainActor
@@ -170,6 +175,11 @@ struct ScanView: View {
         switch result {
         case let .success(payload):
             scanFailure = nil
+            if payload.text.hasPrefix(SiteX509FirstProvisionOfflineProfileV1.presentationQRPrefix) {
+                siteX509Offline.accept(qrText: payload.text)
+                if case .failed = siteX509Offline.phase { scanFailure = .qrPayloadUnsupported }
+                return
+            }
             if payload.text.hasPrefix("{") {
                 if payload.text.contains(SiteOriginRelocationProfileV1.presentationSchema) {
                     siteOriginRelocation.accept(qrText: payload.text)
@@ -292,6 +302,14 @@ struct ScanView: View {
         }
     }
 
+    private var siteX509OfflineReviewBinding: Binding<SiteX509FirstProvisionOfflineReview?> {
+        Binding {
+            siteX509Offline.presentedReview
+        } set: { value in
+            if value == nil { siteX509Offline.reset(); startScanning() }
+        }
+    }
+
     private var statusText: String {
         switch ceremony.phase {
         case .verifying: "Verifying enrolled installation"
@@ -308,6 +326,68 @@ struct ScanView: View {
         }
     }
 
+}
+
+private struct SiteX509FirstProvisionOfflineReviewView: View {
+    let review: SiteX509FirstProvisionOfflineReview
+    @ObservedObject var coordinator: SiteX509FirstProvisionOfflineCoordinator
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        NavigationStack {
+            ScrollView {
+                VStack(alignment: .leading, spacing: MnSpacing.x4) {
+                    MnSectionHeading(
+                        "Approve first Site HTTPS",
+                        orientation: "Verify the Site, enrolled device, managed target and every private-IP service before Face ID."
+                    )
+                    MnPanel {
+                        VStack(alignment: .leading, spacing: MnSpacing.x3) {
+                            MnEvidenceRow(label: "Site", value: review.site); Divider()
+                            MnEvidenceRow(label: "Generations", value: review.generations); Divider()
+                            MnEvidenceRow(label: "Enrolled device", value: review.enrolledDevice); Divider()
+                            MnEvidenceRow(label: "Managed target", value: review.target); Divider()
+                            MnEvidenceRow(label: "Services and private IPs", value: review.services); Divider()
+                            MnEvidenceRow(label: "Expires", value: review.expiry)
+                        }
+                    }
+                    switch coordinator.phase {
+                    case .review:
+                        MnPrimaryButton("Approve with Face ID", systemImage: "faceid") {
+                            Task { await coordinator.approve() }
+                        }
+                    case .approving:
+                        ProgressView("Creating Site-root approval and App Attest proof…")
+                    case .completed:
+                        if let text = coordinator.responseQRText,
+                           let image = Self.qrImage(text) {
+                            MnStatusLabel(text: "Return this one-use response to Monas", kind: .success)
+                            Image(uiImage: image).interpolation(.none).resizable()
+                                .scaledToFit().accessibilityLabel("One-use Site HTTPS approval QR")
+                            ShareLink(item: text) { Label("Share response file text", systemImage: "square.and.arrow.up") }
+                            Button("Done") { dismiss() }.font(.headline)
+                        }
+                    case .failed:
+                        MnStatusLabel(text: "Approval stopped safely", kind: .danger)
+                        Text("No authority, trust exception or replacement enrolment was created.")
+                    case .idle: EmptyView()
+                    }
+                }.padding(MnMetrics.screenGutter)
+            }
+            .navigationTitle("First Site HTTPS")
+            .mnScreenBackground()
+        }
+        .interactiveDismissDisabled(coordinator.phase == .approving)
+    }
+
+    private static func qrImage(_ text: String) -> UIImage? {
+        let filter = CIFilter.qrCodeGenerator()
+        filter.message = Data(text.utf8); filter.correctionLevel = "M"
+        guard let output = filter.outputImage else { return nil }
+        let context = CIContext()
+        guard let cg = context.createCGImage(output.transformed(by: .init(scaleX: 8, y: 8)), from: output.extent.applying(.init(scaleX: 8, y: 8))) else { return nil }
+        return UIImage(cgImage: cg)
+    }
 }
 
 private struct SiteOriginRelocationReviewView: View {

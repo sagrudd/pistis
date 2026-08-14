@@ -1,5 +1,6 @@
 import SwiftUI
 import CoreImage.CIFilterBuiltins
+import UniformTypeIdentifiers
 #if canImport(UIKit)
 import UIKit
 #endif
@@ -16,6 +17,7 @@ struct ScanView: View {
     private let expectedSiteRootAuthorityHost: String?
     private let showInstallations: () -> Void
     @State private var scanning = true
+    @State private var importingOfflinePresentation = false
     @State private var scanFailure: PlatformFailure?
     @State private var readiness = PasswordlessReadiness.checking
 
@@ -105,6 +107,14 @@ struct ScanView: View {
                     }
                 }
 
+                Button {
+                    importingOfflinePresentation = true
+                } label: {
+                    Label("Import first Site HTTPS challenge", systemImage: "doc.badge.plus")
+                }
+                .font(.headline)
+                .frame(maxWidth: .infinity, minHeight: MnMetrics.minimumTarget)
+
                 MnPanel {
                     VStack(alignment: .leading, spacing: MnSpacing.x4) {
                         MnStatusLabel(
@@ -166,6 +176,13 @@ struct ScanView: View {
         }
         .sheet(item: siteX509OfflineReviewBinding) { review in
             SiteX509FirstProvisionOfflineReviewView(review: review, coordinator: siteX509Offline)
+        }
+        .fileImporter(
+            isPresented: $importingOfflinePresentation,
+            allowedContentTypes: [.data],
+            allowsMultipleSelection: false
+        ) { result in
+            handleOfflinePresentationFile(result)
         }
     }
 
@@ -247,6 +264,37 @@ struct ScanView: View {
         guard let settings = URL(string: UIApplication.openSettingsURLString) else { return }
         UIApplication.shared.open(settings)
 #endif
+    }
+
+    @MainActor
+    private func handleOfflinePresentationFile(_ result: Result<[URL], Error>) {
+        guard case let .success(urls) = result, urls.count == 1 else {
+            scanFailure = .qrPayloadUnsupported
+            return
+        }
+        let url = urls[0]
+        let scoped = url.startAccessingSecurityScopedResource()
+        defer { if scoped { url.stopAccessingSecurityScopedResource() } }
+        do {
+            let values = try url.resourceValues(forKeys: [
+                .fileSizeKey, .isRegularFileKey, .isSymbolicLinkKey,
+            ])
+            guard values.isRegularFile == true, values.isSymbolicLink != true,
+                  let size = values.fileSize, size > 0,
+                  size <= SiteX509FirstProvisionOfflineProfileV1.maximumPresentationFileBytes
+            else { throw PlatformFailure.qrPayloadUnsupported }
+            let bytes = try Data(contentsOf: url, options: [.mappedIfSafe])
+            guard bytes.count == size else { throw PlatformFailure.qrPayloadUnsupported }
+            scanning = false
+            siteX509Offline.accept(fileBytes: bytes)
+            if case .failed = siteX509Offline.phase {
+                scanFailure = .qrPayloadUnsupported
+            } else {
+                scanFailure = nil
+            }
+        } catch {
+            scanFailure = .qrPayloadUnsupported
+        }
     }
 
     private func resetSiteRoot() {

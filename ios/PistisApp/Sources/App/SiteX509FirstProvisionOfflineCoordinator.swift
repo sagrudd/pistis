@@ -29,17 +29,18 @@ final class SiteX509FirstProvisionOfflineCoordinator: ObservableObject {
             let value = try SiteX509FirstProvisionOfflinePresentationV1(
                 qrText: qrText, nowUnixSeconds: nowUnixSeconds
             )
-            pending = value
-            presentedReview = .init(
-                id: value.presentationDigest,
-                site: "\(value.siteTrustDomain) · \(value.siteUUID.hex)",
-                generations: "Authority \(value.authorityGeneration); custody \(value.custodyGeneration); revocation \(value.revocationGeneration); root/issuer \(value.generation)",
-                enrolledDevice: "\(value.installationID) · \(value.deviceID) · \(value.appAttestApplicationID)",
-                target: "\(value.targetKind) · \(value.targetID.hex)",
-                services: value.services.map { "\($0.serviceID): \($0.privateIPs.joined(separator: ", "))" }.joined(separator: "\n"),
-                expiry: Date(timeIntervalSince1970: TimeInterval(value.expiresAt)).formatted()
-            )
-            phase = .review
+            accept(value)
+        } catch { reset(); phase = .failed }
+    }
+
+    func accept(fileBytes: Data, nowUnixSeconds: UInt64 = UInt64(Date().timeIntervalSince1970)) {
+        do {
+            guard !fileBytes.isEmpty,
+                  fileBytes.count <= SiteX509FirstProvisionOfflineProfileV1.maximumPresentationFileBytes
+            else { throw PlatformFailure.qrPayloadUnsupported }
+            accept(try SiteX509FirstProvisionOfflinePresentationV1(
+                fileBytes: fileBytes, nowUnixSeconds: nowUnixSeconds
+            ))
         } catch { reset(); phase = .failed }
     }
 
@@ -56,6 +57,20 @@ final class SiteX509FirstProvisionOfflineCoordinator: ObservableObject {
 
     func reset() {
         pending = nil; presentedReview = nil; responseQRText = nil; phase = .idle
+    }
+
+    private func accept(_ value: SiteX509FirstProvisionOfflinePresentationV1) {
+        pending = value
+        presentedReview = .init(
+            id: value.presentationDigest,
+            site: "\(value.siteTrustDomain) · \(value.siteUUID.hex)",
+            generations: "Authority \(value.authorityGeneration); custody \(value.custodyGeneration); revocation \(value.revocationGeneration); root/issuer \(value.generation)",
+            enrolledDevice: "\(value.installationID) · \(value.deviceID) · \(value.appAttestApplicationID)",
+            target: "\(value.targetKind) · \(value.targetID.hex)",
+            services: value.services.map { "\($0.serviceID): \($0.privateIPs.joined(separator: ", "))" }.joined(separator: "\n"),
+            expiry: Date(timeIntervalSince1970: TimeInterval(value.expiresAt)).formatted()
+        )
+        phase = .review
     }
 }
 

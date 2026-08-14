@@ -14,6 +14,7 @@ enum SiteX509FirstProvisionOfflineProfileV1 {
     static let presentationQRPrefix = "PXFP2:P:"
     static let responseQRPrefix = "PXFP2:R:"
     static let maximumQRBytes = 2_953
+    static let maximumPresentationFileBytes = 8_192
 }
 
 struct SiteX509FirstProvisionOfflineServiceV1: Equatable, Sendable {

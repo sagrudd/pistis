@@ -104,6 +104,24 @@ final class SiteX509FirstProvisionOfflineV1Tests: XCTestCase {
         ))
     }
 
+    @MainActor
+    func testCoordinatorUsesSameBoundedParserForRawFile() throws {
+        let coordinator = SiteX509FirstProvisionOfflineCoordinator()
+        coordinator.accept(fileBytes: try presentation(), nowUnixSeconds: 1_001)
+        XCTAssertEqual(coordinator.phase, .review)
+        XCTAssertNotNil(coordinator.presentedReview)
+
+        coordinator.accept(
+            fileBytes: Data(
+                repeating: 0,
+                count: SiteX509FirstProvisionOfflineProfileV1.maximumPresentationFileBytes + 1
+            ),
+            nowUnixSeconds: 1_001
+        )
+        XCTAssertEqual(coordinator.phase, .failed)
+        XCTAssertNil(coordinator.presentedReview)
+    }
+
     private func presentation(
         invalidRootKey: Bool = false,
         identicalRoleKeys: Bool = false,

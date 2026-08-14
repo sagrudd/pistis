@@ -5,7 +5,7 @@ the canonical carrier owned by Thesaurophylax 0.67.0 at exact merge revision
 `547fa11acd657b862e0f42cbf477843e7cbfffb3`. Pistis does not define a parallel
 wire format.
 
-The Scan view admits only the strict `PXFP1:P:` unpadded-Base64url text form;
+The Scan view admits only the strict `PXFP2:P:` unpadded-Base64url text form;
 the file entry point accepts the byte-identical raw presentation. Both reach
 the same closed parser. The review shows the Site UUID and Trust Domain,
 authority/custody/revocation/root/issuer generations, enrolled installation,
@@ -19,7 +19,7 @@ and issuer keys in the challenge are distinct certificate outputs; neither is
 an iPhone approval key. Pistis creates the existing detached ES256
 `application/vnd.mnemosyne.pxfp.v1` approval, computes
 the shared `PXAT/v1` client-data hash, and asks only the already registered
-production App Attest key for an assertion. It emits the strict `PXFP1:R:` QR
+production App Attest key for an assertion. It emits the strict `PXFP2:R:` QR
 text or the same canonical response bytes as a file. The response contains no
 private key, custody handle, authority token, origin override, certificate,
 browser grant or session credential.

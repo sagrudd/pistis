@@ -3,16 +3,16 @@ import Darwin
 import Foundation
 
 enum SiteX509FirstProvisionOfflineProfileV1 {
-    static let presentationMagic = Data("PXFP/v1\u{2}".utf8)
-    static let responseMagic = Data("PXFP/v1\u{3}".utf8)
-    static let contextMagic = Data("PXCT/v1\0".utf8)
+    static let presentationMagic = Data("PXFP/v2\u{2}".utf8)
+    static let responseMagic = Data("PXFP/v2\u{3}".utf8)
+    static let contextMagic = Data("PXCT/v2\0".utf8)
     static let challengeMagic = Data("PXFP/v1\u{1}".utf8)
-    static let transcriptMagic = Data("PXAT/v1\0".utf8)
-    static let purpose = "site-x509-first-provision-offline-v1"
-    static let audience = "pistis:site-x509-first-provision-offline:v1"
+    static let transcriptMagic = Data("PXAT/v2\0".utf8)
+    static let purpose = "site-x509-first-provision-offline-v2"
+    static let audience = "pistis:site-x509-first-provision-offline:v2"
     static let contentType = "application/vnd.mnemosyne.pxfp.v1"
-    static let presentationQRPrefix = "PXFP1:P:"
-    static let responseQRPrefix = "PXFP1:R:"
+    static let presentationQRPrefix = "PXFP2:P:"
+    static let responseQRPrefix = "PXFP2:R:"
     static let maximumQRBytes = 2_953
 }
 
@@ -41,6 +41,8 @@ struct SiteX509FirstProvisionOfflinePresentationV1: Equatable, Sendable {
     let deviceID: String
     let appAttestKeyID: String
     let appAttestApplicationID: String
+    let siteRootApprovalKeyID: Data
+    let siteRootApprovalPublicKey: Data
     let targetKind: String
     let targetID: Data
     let services: [SiteX509FirstProvisionOfflineServiceV1]
@@ -71,6 +73,8 @@ struct SiteX509FirstProvisionOfflinePresentationV1: Equatable, Sendable {
         guard challenge.transactionUUID == fields[2], challenge.expiresAt == expiry,
               challenge.generation == context.siteRootGeneration,
               challenge.generation == context.issuerGeneration,
+              context.siteRootApprovalPublicKey != challenge.rootPublicKey,
+              context.siteRootApprovalPublicKey != challenge.issuerPublicKey,
               !fields[5].allSatisfy({ $0 == 0 }), !fields[6].allSatisfy({ $0 == 0 })
         else { throw PlatformFailure.qrPayloadUnsupported }
         canonical = fileBytes; canonicalChallenge = fields[0]
@@ -85,6 +89,8 @@ struct SiteX509FirstProvisionOfflinePresentationV1: Equatable, Sendable {
         installationID = context.installationID; deviceID = context.deviceID
         appAttestKeyID = context.appAttestKeyID
         appAttestApplicationID = context.appAttestApplicationID
+        siteRootApprovalKeyID = context.siteRootApprovalKeyID
+        siteRootApprovalPublicKey = context.siteRootApprovalPublicKey
         targetKind = context.targetKind; targetID = context.targetID; services = context.services
         replayReference = fields[5]; ceremonyChallenge = fields[6]
         preparedAt = prepared; expiresAt = expiry
@@ -128,9 +134,10 @@ struct SiteX509FirstProvisionOfflinePresentationV1: Equatable, Sendable {
         let revocationGeneration: UInt64; let siteRootGeneration: UInt64; let issuerGeneration: UInt64
         let installationID: String; let deviceID: String; let appAttestKeyID: String
         let appAttestApplicationID: String; let targetKind: String; let targetID: Data
+        let siteRootApprovalKeyID: Data; let siteRootApprovalPublicKey: Data
         let services: [SiteX509FirstProvisionOfflineServiceV1]
         init(_ bytes: Data) throws {
-            let f = try TLV.parse(bytes, magic: SiteX509FirstProvisionOfflineProfileV1.contextMagic, tags: 1 ... 15)
+            let f = try TLV.parse(bytes, magic: SiteX509FirstProvisionOfflineProfileV1.contextMagic, tags: 1 ... 17)
             guard TLV.text(f[0]) == SiteX509FirstProvisionOfflineProfileV1.purpose,
                   TLV.text(f[1]) == SiteX509FirstProvisionOfflineProfileV1.audience,
                   let domain = TLV.identifier(f[2]), let authority = TLV.identifier(f[3]),
@@ -141,13 +148,21 @@ struct SiteX509FirstProvisionOfflinePresentationV1: Equatable, Sendable {
                   let key = TLV.identifier(f[10]), let app = TLV.identifier(f[11]),
                   app == AppleAppAttestRegistrationEnvelope.reviewedAppIdentifier,
                   let targetKind = TLV.identifier(f[12]), f[12].count <= 128,
-                  f[13].count == 32, !f[13].allSatisfy({ $0 == 0 })
+                  f[13].count == 32, !f[13].allSatisfy({ $0 == 0 }),
+                  f[15].count == 32, !f[15].allSatisfy({ $0 == 0 }),
+                  f[16].count == 33,
+                  let approvalKey = try? P256.Signing.PublicKey(
+                      compressedRepresentation: f[16]
+                  ),
+                  approvalKey.compressedRepresentation == f[16],
+                  Data(SHA256.hash(data: f[16])) == f[15]
             else { throw PlatformFailure.qrPayloadUnsupported }
             siteTrustDomain = domain; authorityGeneration = authority; custodyGeneration = custody
             revocationGeneration = revocation; siteRootGeneration = root; issuerGeneration = issuer
             installationID = installation; deviceID = device; appAttestKeyID = key
             appAttestApplicationID = app; self.targetKind = targetKind; targetID = f[13]
             services = try ServiceProjection(f[14]).values
+            siteRootApprovalKeyID = f[15]; siteRootApprovalPublicKey = f[16]
         }
     }
 
@@ -251,8 +266,10 @@ final class SecureEnclaveSiteX509FirstProvisionOfflineProducerV1: @unchecked Sen
         let signer = try SecureEnclaveSigner(namespace: "site-root-delegation-v1", authenticationReason: "Approve this exact first Site X.509 challenge")
         guard try signer.hasExistingKey() else { throw PlatformFailure.keyNotFound }
         let publicKey = try signer.publicKey(using: ceremony).compressedSEC1
-        guard publicKey == value.rootPublicKey else { throw PlatformFailure.keyNotFound }
-        let protected = try DetachedES256Cose.protectedHeaders(kid: Data(SHA256.hash(data: publicKey)), contentType: SiteX509FirstProvisionOfflineProfileV1.contentType)
+        guard publicKey == value.siteRootApprovalPublicKey,
+              value.siteRootApprovalKeyID == Data(SHA256.hash(data: publicKey))
+        else { throw PlatformFailure.keyNotFound }
+        let protected = try DetachedES256Cose.protectedHeaders(kid: value.siteRootApprovalKeyID, contentType: SiteX509FirstProvisionOfflineProfileV1.contentType)
         let structure = try DetachedES256Cose.signatureStructure(protected: protected, payload: value.canonicalChallenge)
         let signature = try signer.sign(message: structure, using: ceremony)
         let approval = try DetachedES256Cose.envelope(protected: protected, signature: signature)

@@ -15,6 +15,12 @@ final class SiteX509FirstProvisionOfflineV1Tests: XCTestCase {
         XCTAssertEqual(parsed.custodyGeneration, "custody-generation-1")
         XCTAssertEqual(parsed.revocationGeneration, 1)
         XCTAssertEqual(parsed.targetKind, "customer-appliance")
+        XCTAssertNotEqual(parsed.siteRootApprovalPublicKey, parsed.rootPublicKey)
+        XCTAssertNotEqual(parsed.siteRootApprovalPublicKey, parsed.issuerPublicKey)
+        XCTAssertEqual(
+            parsed.siteRootApprovalKeyID,
+            Data(SHA256.hash(data: parsed.siteRootApprovalPublicKey))
+        )
         XCTAssertEqual(parsed.services.map(\.serviceID), [
             "service-dasobjectstore-s3", "service-monas-web",
         ])
@@ -56,6 +62,10 @@ final class SiteX509FirstProvisionOfflineV1Tests: XCTestCase {
             qrText: SiteX509FirstProvisionOfflineProfileV1.presentationQRPrefix + encoded + "=",
             nowUnixSeconds: 1_001
         ))
+        XCTAssertThrowsError(try SiteX509FirstProvisionOfflinePresentationV1(
+            qrText: "PXFP1:P:" + encoded,
+            nowUnixSeconds: 1_001
+        ))
         for value in [
             SiteX509FirstProvisionOfflineProfileV1.purpose,
             SiteX509FirstProvisionOfflineProfileV1.audience,
@@ -89,20 +99,28 @@ final class SiteX509FirstProvisionOfflineV1Tests: XCTestCase {
         XCTAssertThrowsError(try SiteX509FirstProvisionOfflinePresentationV1(
             fileBytes: presentation(identicalRoleKeys: true), nowUnixSeconds: 1_001
         ))
+        XCTAssertThrowsError(try SiteX509FirstProvisionOfflinePresentationV1(
+            fileBytes: presentation(approvalMatchesRoot: true), nowUnixSeconds: 1_001
+        ))
     }
 
     private func presentation(
         invalidRootKey: Bool = false,
-        identicalRoleKeys: Bool = false
+        identicalRoleKeys: Bool = false,
+        approvalMatchesRoot: Bool = false
     ) throws -> Data {
         let root = try P256.Signing.PrivateKey(rawRepresentation: Data(repeating: 3, count: 32))
         let issuer = try P256.Signing.PrivateKey(rawRepresentation: Data(repeating: 4, count: 32))
+        let approval = try P256.Signing.PrivateKey(rawRepresentation: Data(repeating: 9, count: 32))
         let rootKey = invalidRootKey
             ? Data([2]) + Data(repeating: 0xff, count: 32)
             : compress(root.publicKey.x963Representation)
         let issuerKey = identicalRoleKeys
             ? rootKey
             : compress(issuer.publicKey.x963Representation)
+        let approvalKey = approvalMatchesRoot
+            ? rootKey
+            : compress(approval.publicKey.x963Representation)
         let challenge = tlv(
             magic: SiteX509FirstProvisionOfflineProfileV1.challengeMagic,
             fields: [
@@ -130,6 +148,7 @@ final class SiteX509FirstProvisionOfflineV1Tests: XCTestCase {
                 Data("device-1".utf8), Data("app-attest-key-1".utf8),
                 Data(AppleAppAttestRegistrationEnvelope.reviewedAppIdentifier.utf8),
                 Data("customer-appliance".utf8), Data(repeating: 15, count: 32), services,
+                Data(SHA256.hash(data: approvalKey)), approvalKey,
             ]
         )
         return tlv(

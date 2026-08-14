@@ -93,8 +93,10 @@ pub use site_trust_registration_acceptance::{
     decode_site_trust_app_attest_registration_submission_v1,
 };
 pub use site_x509_first_provision_offline_approval::{
-    SiteX509FirstProvisionOfflineApprovalErrorV2,
+    SiteX509FirstProvisionOfflineAppAttestAcceptanceV2,
+    SiteX509FirstProvisionOfflineAppAttestOutcomeV2, SiteX509FirstProvisionOfflineApprovalErrorV2,
     encode_site_x509_first_provision_offline_approval_v2,
+    verify_site_x509_first_provision_offline_app_attest_assertion_v2,
 };
 pub use thesaurophylax_api::site_x509_first_provision_offline_v2::{
     SITE_X509_FIRST_PROVISION_APP_ATTEST_TRANSCRIPT_V2,

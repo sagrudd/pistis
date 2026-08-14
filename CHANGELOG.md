@@ -10,7 +10,11 @@
   releases the exact existing Site-root approval after Face ID, binds it to
   the registered production App Attest key, and emits only the canonical
   `PXFP2:R:` response. No network origin, trust exception, browser grant,
-  replacement enrolment, CA key or generic signing path is introduced.
+  replacement enrolment, CA key or generic signing path is introduced. The
+  Monas integration API reconstructs a verifier only from exact protected and
+  durable App Attest registration identities, verifies the purpose-bound
+  PXAT/v2 assertion, and returns only the monotonic counter and assertion
+  digest for atomic one-use consumption.
 
 - Add the attended Site-origin relocation approval profile. Pistis parses and
   displays the byte-exact Proxenos PXSR/v1 old/new private-IP origins and all

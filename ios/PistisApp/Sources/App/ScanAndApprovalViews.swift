@@ -283,7 +283,11 @@ struct ScanView: View {
                   let size = values.fileSize, size > 0,
                   size <= SiteX509FirstProvisionOfflineProfileV1.maximumPresentationFileBytes
             else { throw PlatformFailure.qrPayloadUnsupported }
-            let bytes = try Data(contentsOf: url, options: [.mappedIfSafe])
+            let handle = try FileHandle(forReadingFrom: url)
+            defer { try? handle.close() }
+            let bytes = try handle.read(
+                upToCount: SiteX509FirstProvisionOfflineProfileV1.maximumPresentationFileBytes + 1
+            ) ?? Data()
             guard bytes.count == size else { throw PlatformFailure.qrPayloadUnsupported }
             scanning = false
             siteX509Offline.accept(fileBytes: bytes)

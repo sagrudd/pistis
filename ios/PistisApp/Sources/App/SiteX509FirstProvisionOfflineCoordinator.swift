@@ -17,16 +17,16 @@ final class SiteX509FirstProvisionOfflineCoordinator: ObservableObject {
     @Published private(set) var phase: Phase = .idle
     @Published private(set) var presentedReview: SiteX509FirstProvisionOfflineReview?
     @Published private(set) var responseQRText: String?
-    private let producer: SecureEnclaveSiteX509FirstProvisionOfflineProducerV1
-    private var pending: SiteX509FirstProvisionOfflinePresentationV1?
+    private let producer: SecureEnclaveSiteX509FirstProvisionOfflineProducerV2
+    private var pending: SiteX509FirstProvisionOfflinePresentationV2?
 
-    init(producer: SecureEnclaveSiteX509FirstProvisionOfflineProducerV1 = .init()) {
+    init(producer: SecureEnclaveSiteX509FirstProvisionOfflineProducerV2 = .init()) {
         self.producer = producer
     }
 
     func accept(qrText: String, nowUnixSeconds: UInt64 = UInt64(Date().timeIntervalSince1970)) {
         do {
-            let value = try SiteX509FirstProvisionOfflinePresentationV1(
+            let value = try SiteX509FirstProvisionOfflinePresentationV2(
                 qrText: qrText, nowUnixSeconds: nowUnixSeconds
             )
             accept(value)
@@ -36,9 +36,9 @@ final class SiteX509FirstProvisionOfflineCoordinator: ObservableObject {
     func accept(fileBytes: Data, nowUnixSeconds: UInt64 = UInt64(Date().timeIntervalSince1970)) {
         do {
             guard !fileBytes.isEmpty,
-                  fileBytes.count <= SiteX509FirstProvisionOfflineProfileV1.maximumPresentationFileBytes
+                  fileBytes.count <= SiteX509FirstProvisionOfflineProfileV2.maximumPresentationFileBytes
             else { throw PlatformFailure.qrPayloadUnsupported }
-            accept(try SiteX509FirstProvisionOfflinePresentationV1(
+            accept(try SiteX509FirstProvisionOfflinePresentationV2(
                 fileBytes: fileBytes, nowUnixSeconds: nowUnixSeconds
             ))
         } catch { reset(); phase = .failed }
@@ -49,7 +49,7 @@ final class SiteX509FirstProvisionOfflineCoordinator: ObservableObject {
         do {
             phase = .approving
             let response = try await producer.produce(pending, nowUnixSeconds: nowUnixSeconds)
-            responseQRText = try SecureEnclaveSiteX509FirstProvisionOfflineProducerV1
+            responseQRText = try SecureEnclaveSiteX509FirstProvisionOfflineProducerV2
                 .responseQRText(response)
             phase = .completed
         } catch { responseQRText = nil; phase = .failed }
@@ -59,7 +59,7 @@ final class SiteX509FirstProvisionOfflineCoordinator: ObservableObject {
         pending = nil; presentedReview = nil; responseQRText = nil; phase = .idle
     }
 
-    private func accept(_ value: SiteX509FirstProvisionOfflinePresentationV1) {
+    private func accept(_ value: SiteX509FirstProvisionOfflinePresentationV2) {
         pending = value
         presentedReview = .init(
             id: value.presentationDigest,

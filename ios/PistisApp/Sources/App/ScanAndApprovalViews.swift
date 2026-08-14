@@ -192,7 +192,7 @@ struct ScanView: View {
         switch result {
         case let .success(payload):
             scanFailure = nil
-            if payload.text.hasPrefix(SiteX509FirstProvisionOfflineProfileV1.presentationQRPrefix) {
+            if payload.text.hasPrefix(SiteX509FirstProvisionOfflineProfileV2.presentationQRPrefix) {
                 siteX509Offline.accept(qrText: payload.text)
                 if case .failed = siteX509Offline.phase { scanFailure = .qrPayloadUnsupported }
                 return
@@ -281,12 +281,12 @@ struct ScanView: View {
             ])
             guard values.isRegularFile == true, values.isSymbolicLink != true,
                   let size = values.fileSize, size > 0,
-                  size <= SiteX509FirstProvisionOfflineProfileV1.maximumPresentationFileBytes
+                  size <= SiteX509FirstProvisionOfflineProfileV2.maximumPresentationFileBytes
             else { throw PlatformFailure.qrPayloadUnsupported }
             let handle = try FileHandle(forReadingFrom: url)
             defer { try? handle.close() }
             let bytes = try handle.read(
-                upToCount: SiteX509FirstProvisionOfflineProfileV1.maximumPresentationFileBytes + 1
+                upToCount: SiteX509FirstProvisionOfflineProfileV2.maximumPresentationFileBytes + 1
             ) ?? Data()
             guard bytes.count == size else { throw PlatformFailure.qrPayloadUnsupported }
             scanning = false

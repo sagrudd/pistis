@@ -2,7 +2,7 @@ import CryptoKit
 import Darwin
 import Foundation
 
-enum SiteX509FirstProvisionOfflineProfileV1 {
+enum SiteX509FirstProvisionOfflineProfileV2 {
     static let presentationMagic = Data("PXFP/v2\u{2}".utf8)
     static let responseMagic = Data("PXFP/v2\u{3}".utf8)
     static let contextMagic = Data("PXCT/v2\0".utf8)
@@ -17,13 +17,13 @@ enum SiteX509FirstProvisionOfflineProfileV1 {
     static let maximumPresentationFileBytes = 8_192
 }
 
-struct SiteX509FirstProvisionOfflineServiceV1: Equatable, Sendable {
+struct SiteX509FirstProvisionOfflineServiceV2: Equatable, Sendable {
     let serviceID: String
     let privateIPs: [String]
 }
 
 /// Byte-exact ADR-0014 presentation parsed from strict QR text or a raw file.
-struct SiteX509FirstProvisionOfflinePresentationV1: Equatable, Sendable {
+struct SiteX509FirstProvisionOfflinePresentationV2: Equatable, Sendable {
     let canonical: Data
     let canonicalChallenge: Data
     let presentationDigest: Data
@@ -46,21 +46,21 @@ struct SiteX509FirstProvisionOfflinePresentationV1: Equatable, Sendable {
     let siteRootApprovalPublicKey: Data
     let targetKind: String
     let targetID: Data
-    let services: [SiteX509FirstProvisionOfflineServiceV1]
+    let services: [SiteX509FirstProvisionOfflineServiceV2]
     let replayReference: Data
     let ceremonyChallenge: Data
     let preparedAt: UInt64
     let expiresAt: UInt64
 
     init(qrText: String, nowUnixSeconds: UInt64) throws {
-        guard let bytes = Self.decodeQR(qrText, prefix: SiteX509FirstProvisionOfflineProfileV1.presentationQRPrefix) else {
+        guard let bytes = Self.decodeQR(qrText, prefix: SiteX509FirstProvisionOfflineProfileV2.presentationQRPrefix) else {
             throw PlatformFailure.qrPayloadUnsupported
         }
         try self.init(fileBytes: bytes, nowUnixSeconds: nowUnixSeconds)
     }
 
     init(fileBytes: Data, nowUnixSeconds: UInt64) throws {
-        let fields = try TLV.parse(fileBytes, magic: SiteX509FirstProvisionOfflineProfileV1.presentationMagic, tags: 1 ... 9)
+        let fields = try TLV.parse(fileBytes, magic: SiteX509FirstProvisionOfflineProfileV2.presentationMagic, tags: 1 ... 9)
         guard (1 ... 2_048).contains(fields[0].count), fields[1].count == 32,
               Data(SHA256.hash(data: fields[0])) == fields[1], fields[2].count == 16,
               (1 ... 4_096).contains(fields[3].count), fields[4].count == 32,
@@ -102,7 +102,7 @@ struct SiteX509FirstProvisionOfflinePresentationV1: Equatable, Sendable {
             throw PlatformFailure.appAttestInvalidInput
         }
         return Data(SHA256.hash(data:
-            SiteX509FirstProvisionOfflineProfileV1.transcriptMagic
+            SiteX509FirstProvisionOfflineProfileV2.transcriptMagic
                 + presentationDigest + contextDigest + challengeDigest + transactionUUID
                 + replayReference + ceremonyChallenge
                 + Data(SHA256.hash(data: detachedApproval))
@@ -113,15 +113,15 @@ struct SiteX509FirstProvisionOfflinePresentationV1: Equatable, Sendable {
         let siteUUID: Data; let transactionUUID: Data; let generation: UInt64
         let rootPublicKey: Data; let issuerPublicKey: Data; let expiresAt: UInt64
         init(_ bytes: Data, now: UInt64) throws {
-            let f = try TLV.parse(bytes, magic: SiteX509FirstProvisionOfflineProfileV1.challengeMagic, tags: 1 ... 14)
+            let f = try TLV.parse(bytes, magic: SiteX509FirstProvisionOfflineProfileV2.challengeMagic, tags: 1 ... 14)
             let rootKey = try? P256.Signing.PublicKey(compressedRepresentation: f[5])
             let issuerKey = try? P256.Signing.PublicKey(compressedRepresentation: f[9])
             guard TLV.text(f[0]) == "site-x509-first-provision", f[1].count == 16,
-                  f[2].count == 16, let generation = SiteX509FirstProvisionOfflinePresentationV1.u64(f[3]), generation > 0,
+                  f[2].count == 16, let generation = SiteX509FirstProvisionOfflinePresentationV2.u64(f[3]), generation > 0,
                   TLV.text(f[4]) == "site-x509-root-first-provision", f[5].count == 33,
                   [6, 7, 10, 11].allSatisfy({ f[$0].count == 32 && !f[$0].allSatisfy({ $0 == 0 }) }),
                   TLV.text(f[8]) == "site-x509-issuer-first-provision", f[9].count == 33,
-                  let expiry = SiteX509FirstProvisionOfflinePresentationV1.u64(f[12]), now < expiry,
+                  let expiry = SiteX509FirstProvisionOfflinePresentationV2.u64(f[12]), now < expiry,
                   f[13].count == 32, !f[13].allSatisfy({ $0 == 0 }),
                   rootKey != nil, issuerKey != nil, f[5] != f[9]
             else { throw PlatformFailure.qrPayloadUnsupported }
@@ -136,15 +136,15 @@ struct SiteX509FirstProvisionOfflinePresentationV1: Equatable, Sendable {
         let installationID: String; let deviceID: String; let appAttestKeyID: String
         let appAttestApplicationID: String; let targetKind: String; let targetID: Data
         let siteRootApprovalKeyID: Data; let siteRootApprovalPublicKey: Data
-        let services: [SiteX509FirstProvisionOfflineServiceV1]
+        let services: [SiteX509FirstProvisionOfflineServiceV2]
         init(_ bytes: Data) throws {
-            let f = try TLV.parse(bytes, magic: SiteX509FirstProvisionOfflineProfileV1.contextMagic, tags: 1 ... 17)
-            guard TLV.text(f[0]) == SiteX509FirstProvisionOfflineProfileV1.purpose,
-                  TLV.text(f[1]) == SiteX509FirstProvisionOfflineProfileV1.audience,
+            let f = try TLV.parse(bytes, magic: SiteX509FirstProvisionOfflineProfileV2.contextMagic, tags: 1 ... 17)
+            guard TLV.text(f[0]) == SiteX509FirstProvisionOfflineProfileV2.purpose,
+                  TLV.text(f[1]) == SiteX509FirstProvisionOfflineProfileV2.audience,
                   let domain = TLV.identifier(f[2]), let authority = TLV.identifier(f[3]),
-                  let custody = TLV.identifier(f[4]), let revocation = SiteX509FirstProvisionOfflinePresentationV1.u64(f[5]), revocation > 0,
-                  let root = SiteX509FirstProvisionOfflinePresentationV1.u64(f[6]), root > 0,
-                  let issuer = SiteX509FirstProvisionOfflinePresentationV1.u64(f[7]), issuer > 0,
+                  let custody = TLV.identifier(f[4]), let revocation = SiteX509FirstProvisionOfflinePresentationV2.u64(f[5]), revocation > 0,
+                  let root = SiteX509FirstProvisionOfflinePresentationV2.u64(f[6]), root > 0,
+                  let issuer = SiteX509FirstProvisionOfflinePresentationV2.u64(f[7]), issuer > 0,
                   let installation = TLV.identifier(f[8]), let device = TLV.identifier(f[9]),
                   let key = TLV.identifier(f[10]), let app = TLV.identifier(f[11]),
                   app == AppleAppAttestRegistrationEnvelope.reviewedAppIdentifier,
@@ -168,12 +168,12 @@ struct SiteX509FirstProvisionOfflinePresentationV1: Equatable, Sendable {
     }
 
     private struct ServiceProjection {
-        let values: [SiteX509FirstProvisionOfflineServiceV1]
+        let values: [SiteX509FirstProvisionOfflineServiceV2]
         init(_ bytes: Data) throws {
             guard bytes.count >= 2 else { throw PlatformFailure.qrPayloadUnsupported }
             var cursor = 2; let count = Int(bytes[0]) << 8 | Int(bytes[1])
             guard (1 ... 16).contains(count) else { throw PlatformFailure.qrPayloadUnsupported }
-            var result: [SiteX509FirstProvisionOfflineServiceV1] = []
+            var result: [SiteX509FirstProvisionOfflineServiceV2] = []
             var priorService = ""
             for _ in 0 ..< count {
                 guard cursor < bytes.count else { throw PlatformFailure.qrPayloadUnsupported }
@@ -242,7 +242,7 @@ struct SiteX509FirstProvisionOfflinePresentationV1: Equatable, Sendable {
         return bytes.reduce(0) { ($0 << 8) | UInt64($1) }
     }
     private static func decodeQR(_ text: String, prefix: String) -> Data? {
-        guard text.utf8.count <= SiteX509FirstProvisionOfflineProfileV1.maximumQRBytes,
+        guard text.utf8.count <= SiteX509FirstProvisionOfflineProfileV2.maximumQRBytes,
               text.hasPrefix(prefix) else { return nil }
         let encoded = String(text.dropFirst(prefix.count))
         guard !encoded.isEmpty, !encoded.contains("="), encoded.utf8.allSatisfy({ $0.isBase64URL }) else { return nil }
@@ -258,10 +258,10 @@ struct SiteX509FirstProvisionOfflinePresentationV1: Equatable, Sendable {
 }
 
 /// Face-ID-gated producer for the existing Site-root approval and registered App Attest assertion.
-final class SecureEnclaveSiteX509FirstProvisionOfflineProducerV1: @unchecked Sendable {
+final class SecureEnclaveSiteX509FirstProvisionOfflineProducerV2: @unchecked Sendable {
     private let appAttest: AppleAppAttestClient
     init(appAttest: AppleAppAttestClient = AppleAppAttestClient()) { self.appAttest = appAttest }
-    func produce(_ value: SiteX509FirstProvisionOfflinePresentationV1, nowUnixSeconds: UInt64) async throws -> Data {
+    func produce(_ value: SiteX509FirstProvisionOfflinePresentationV2, nowUnixSeconds: UInt64) async throws -> Data {
         guard value.preparedAt <= nowUnixSeconds, nowUnixSeconds < value.expiresAt else { throw PlatformFailure.qrPayloadUnsupported }
         let ceremony = try await FaceIDCeremonyContext.authenticate(reason: "Approve first Site HTTPS for the displayed services and private addresses")
         let signer = try SecureEnclaveSigner(namespace: "site-root-delegation-v1", authenticationReason: "Approve this exact first Site X.509 challenge")
@@ -270,7 +270,7 @@ final class SecureEnclaveSiteX509FirstProvisionOfflineProducerV1: @unchecked Sen
         guard publicKey == value.siteRootApprovalPublicKey,
               value.siteRootApprovalKeyID == Data(SHA256.hash(data: publicKey))
         else { throw PlatformFailure.keyNotFound }
-        let protected = try DetachedES256Cose.protectedHeaders(kid: value.siteRootApprovalKeyID, contentType: SiteX509FirstProvisionOfflineProfileV1.contentType)
+        let protected = try DetachedES256Cose.protectedHeaders(kid: value.siteRootApprovalKeyID, contentType: SiteX509FirstProvisionOfflineProfileV2.contentType)
         let structure = try DetachedES256Cose.signatureStructure(protected: protected, payload: value.canonicalChallenge)
         let signature = try signer.sign(message: structure, using: ceremony)
         let approval = try DetachedES256Cose.envelope(protected: protected, signature: signature)
@@ -278,12 +278,12 @@ final class SecureEnclaveSiteX509FirstProvisionOfflineProducerV1: @unchecked Sen
         let assertion = try await appAttest.prepareSiteX509FirstProvisionOfflineAssertion(expectedKeyID: value.appAttestKeyID, clientDataHash: clientHash)
         return try Self.response(value, approval: approval, assertion: assertion)
     }
-    static func response(_ value: SiteX509FirstProvisionOfflinePresentationV1, approval: Data, assertion: Data) throws -> Data {
+    static func response(_ value: SiteX509FirstProvisionOfflinePresentationV2, approval: Data, assertion: Data) throws -> Data {
         let clientHash = try value.appAttestClientDataHash(detachedApproval: approval)
         let fields: [Data] = [value.presentationDigest, value.contextDigest, value.challengeDigest,
                               value.transactionUUID, value.replayReference, value.ceremonyChallenge,
                               Data(SHA256.hash(data: approval)), approval, assertion, clientHash]
-        var result = SiteX509FirstProvisionOfflineProfileV1.responseMagic
+        var result = SiteX509FirstProvisionOfflineProfileV2.responseMagic
         for (index, field) in fields.enumerated() {
             guard !field.isEmpty, field.count <= Int(UInt16.max) else { throw PlatformFailure.appAttestInvalidInput }
             result.append(UInt8(index + 1)); result.append(UInt8(field.count >> 8)); result.append(UInt8(field.count & 0xff)); result.append(field)
@@ -291,9 +291,9 @@ final class SecureEnclaveSiteX509FirstProvisionOfflineProducerV1: @unchecked Sen
         return result
     }
     static func responseQRText(_ canonical: Data) throws -> String {
-        let text = SiteX509FirstProvisionOfflineProfileV1.responseQRPrefix
-            + SiteX509FirstProvisionOfflinePresentationV1.base64URL(canonical)
-        guard text.utf8.count <= SiteX509FirstProvisionOfflineProfileV1.maximumQRBytes else { throw PlatformFailure.qrPayloadTooLarge }
+        let text = SiteX509FirstProvisionOfflineProfileV2.responseQRPrefix
+            + SiteX509FirstProvisionOfflinePresentationV2.base64URL(canonical)
+        guard text.utf8.count <= SiteX509FirstProvisionOfflineProfileV2.maximumQRBytes else { throw PlatformFailure.qrPayloadTooLarge }
         return text
     }
 }

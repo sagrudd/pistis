@@ -2,12 +2,12 @@ import CryptoKit
 import XCTest
 @testable import Pistis
 
-final class SiteX509FirstProvisionOfflineV1Tests: XCTestCase {
+final class SiteX509FirstProvisionOfflineV2Tests: XCTestCase {
     func testStrictPresentationAndCanonicalResponseBindEveryCoordinate() throws {
         let bytes = try presentation()
-        let qr = SiteX509FirstProvisionOfflineProfileV1.presentationQRPrefix
-            + SiteX509FirstProvisionOfflinePresentationV1.base64URL(bytes)
-        let parsed = try SiteX509FirstProvisionOfflinePresentationV1(
+        let qr = SiteX509FirstProvisionOfflineProfileV2.presentationQRPrefix
+            + SiteX509FirstProvisionOfflinePresentationV2.base64URL(bytes)
+        let parsed = try SiteX509FirstProvisionOfflinePresentationV2(
             qrText: qr, nowUnixSeconds: 1_001
         )
         XCTAssertEqual(parsed.siteTrustDomain, "site-00000000-0000-0000-0000-000000000001")
@@ -28,11 +28,11 @@ final class SiteX509FirstProvisionOfflineV1Tests: XCTestCase {
 
         let approval = Data(repeating: 12, count: 64)
         let assertion = Data(repeating: 13, count: 128)
-        let response = try SecureEnclaveSiteX509FirstProvisionOfflineProducerV1.response(
+        let response = try SecureEnclaveSiteX509FirstProvisionOfflineProducerV2.response(
             parsed, approval: approval, assertion: assertion
         )
         let responseFields = try fields(
-            response, magic: SiteX509FirstProvisionOfflineProfileV1.responseMagic, count: 10
+            response, magic: SiteX509FirstProvisionOfflineProfileV2.responseMagic, count: 10
         )
         XCTAssertEqual(responseFields[0], parsed.presentationDigest)
         XCTAssertEqual(responseFields[1], parsed.contextDigest)
@@ -47,28 +47,28 @@ final class SiteX509FirstProvisionOfflineV1Tests: XCTestCase {
             responseFields[9], try parsed.appAttestClientDataHash(detachedApproval: approval)
         )
         XCTAssertTrue(
-            try SecureEnclaveSiteX509FirstProvisionOfflineProducerV1.responseQRText(response)
-                .hasPrefix(SiteX509FirstProvisionOfflineProfileV1.responseQRPrefix)
+            try SecureEnclaveSiteX509FirstProvisionOfflineProducerV2.responseQRText(response)
+                .hasPrefix(SiteX509FirstProvisionOfflineProfileV2.responseQRPrefix)
         )
     }
 
     func testExpiryAlternateQRAndEveryProtectedSubstitutionDeny() throws {
         let bytes = try presentation()
-        XCTAssertThrowsError(try SiteX509FirstProvisionOfflinePresentationV1(
+        XCTAssertThrowsError(try SiteX509FirstProvisionOfflinePresentationV2(
             fileBytes: bytes, nowUnixSeconds: 1_200
         ))
-        let encoded = SiteX509FirstProvisionOfflinePresentationV1.base64URL(bytes)
-        XCTAssertThrowsError(try SiteX509FirstProvisionOfflinePresentationV1(
-            qrText: SiteX509FirstProvisionOfflineProfileV1.presentationQRPrefix + encoded + "=",
+        let encoded = SiteX509FirstProvisionOfflinePresentationV2.base64URL(bytes)
+        XCTAssertThrowsError(try SiteX509FirstProvisionOfflinePresentationV2(
+            qrText: SiteX509FirstProvisionOfflineProfileV2.presentationQRPrefix + encoded + "=",
             nowUnixSeconds: 1_001
         ))
-        XCTAssertThrowsError(try SiteX509FirstProvisionOfflinePresentationV1(
+        XCTAssertThrowsError(try SiteX509FirstProvisionOfflinePresentationV2(
             qrText: "PXFP1:P:" + encoded,
             nowUnixSeconds: 1_001
         ))
         for value in [
-            SiteX509FirstProvisionOfflineProfileV1.purpose,
-            SiteX509FirstProvisionOfflineProfileV1.audience,
+            SiteX509FirstProvisionOfflineProfileV2.purpose,
+            SiteX509FirstProvisionOfflineProfileV2.audience,
             "site-00000000-0000-0000-0000-000000000001",
             "authority-generation-1", "custody-generation-1", "installation-1",
             "device-1", "app-attest-key-1",
@@ -79,7 +79,7 @@ final class SiteX509FirstProvisionOfflineV1Tests: XCTestCase {
             let needle = Data(value.utf8)
             let range = try XCTUnwrap(changed.range(of: needle))
             changed[range.lowerBound] ^= 1
-            XCTAssertThrowsError(try SiteX509FirstProvisionOfflinePresentationV1(
+            XCTAssertThrowsError(try SiteX509FirstProvisionOfflinePresentationV2(
                 fileBytes: changed, nowUnixSeconds: 1_001
             ), "substitution unexpectedly accepted for \(value)")
         }
@@ -87,19 +87,19 @@ final class SiteX509FirstProvisionOfflineV1Tests: XCTestCase {
         let encodedIP = Data([4, 192, 168, 0, 193])
         let ipRange = try XCTUnwrap(changedIP.range(of: encodedIP))
         changedIP[ipRange.upperBound - 1] = 194
-        XCTAssertThrowsError(try SiteX509FirstProvisionOfflinePresentationV1(
+        XCTAssertThrowsError(try SiteX509FirstProvisionOfflinePresentationV2(
             fileBytes: changedIP, nowUnixSeconds: 1_001
         ))
     }
 
     func testChallengeRejectsInvalidOrIdenticalRoleKeys() throws {
-        XCTAssertThrowsError(try SiteX509FirstProvisionOfflinePresentationV1(
+        XCTAssertThrowsError(try SiteX509FirstProvisionOfflinePresentationV2(
             fileBytes: presentation(invalidRootKey: true), nowUnixSeconds: 1_001
         ))
-        XCTAssertThrowsError(try SiteX509FirstProvisionOfflinePresentationV1(
+        XCTAssertThrowsError(try SiteX509FirstProvisionOfflinePresentationV2(
             fileBytes: presentation(identicalRoleKeys: true), nowUnixSeconds: 1_001
         ))
-        XCTAssertThrowsError(try SiteX509FirstProvisionOfflinePresentationV1(
+        XCTAssertThrowsError(try SiteX509FirstProvisionOfflinePresentationV2(
             fileBytes: presentation(approvalMatchesRoot: true), nowUnixSeconds: 1_001
         ))
     }
@@ -114,7 +114,7 @@ final class SiteX509FirstProvisionOfflineV1Tests: XCTestCase {
         coordinator.accept(
             fileBytes: Data(
                 repeating: 0,
-                count: SiteX509FirstProvisionOfflineProfileV1.maximumPresentationFileBytes + 1
+                count: SiteX509FirstProvisionOfflineProfileV2.maximumPresentationFileBytes + 1
             ),
             nowUnixSeconds: 1_001
         )
@@ -140,7 +140,7 @@ final class SiteX509FirstProvisionOfflineV1Tests: XCTestCase {
             ? rootKey
             : compress(approval.publicKey.x963Representation)
         let challenge = tlv(
-            magic: SiteX509FirstProvisionOfflineProfileV1.challengeMagic,
+            magic: SiteX509FirstProvisionOfflineProfileV2.challengeMagic,
             fields: [
                 Data("site-x509-first-provision".utf8), Data(repeating: 1, count: 16),
                 Data(repeating: 2, count: 16), u64(1),
@@ -156,10 +156,10 @@ final class SiteX509FirstProvisionOfflineV1Tests: XCTestCase {
             ("service-monas-web", [192, 168, 0, 193]),
         ])
         let context = tlv(
-            magic: SiteX509FirstProvisionOfflineProfileV1.contextMagic,
+            magic: SiteX509FirstProvisionOfflineProfileV2.contextMagic,
             fields: [
-                Data(SiteX509FirstProvisionOfflineProfileV1.purpose.utf8),
-                Data(SiteX509FirstProvisionOfflineProfileV1.audience.utf8),
+                Data(SiteX509FirstProvisionOfflineProfileV2.purpose.utf8),
+                Data(SiteX509FirstProvisionOfflineProfileV2.audience.utf8),
                 Data("site-00000000-0000-0000-0000-000000000001".utf8),
                 Data("authority-generation-1".utf8), Data("custody-generation-1".utf8),
                 u64(1), u64(1), u64(1), Data("installation-1".utf8),
@@ -170,7 +170,7 @@ final class SiteX509FirstProvisionOfflineV1Tests: XCTestCase {
             ]
         )
         return tlv(
-            magic: SiteX509FirstProvisionOfflineProfileV1.presentationMagic,
+            magic: SiteX509FirstProvisionOfflineProfileV2.presentationMagic,
             fields: [challenge, Data(SHA256.hash(data: challenge)), Data(repeating: 2, count: 16),
                      context, Data(SHA256.hash(data: context)), Data(repeating: 10, count: 32),
                      Data(repeating: 11, count: 32), u64(1_000), u64(1_200)]

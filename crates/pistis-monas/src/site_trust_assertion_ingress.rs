@@ -950,6 +950,56 @@ struct DecodedAssertionV1 {
     authenticator_data: Vec<u8>,
 }
 
+pub(crate) fn verify_purpose_bound_app_attest_assertion_v2(
+    assertion: &[u8],
+    expected_client_data_hash: [u8; 32],
+    registered_key_id: [u8; 32],
+    registered_public_key_sec1: [u8; 65],
+    previous_counter: u32,
+    bundle_version: &str,
+) -> Result<(MonotonicAppAttestCounterV1, [u8; 32]), SiteTrustAppAttestAssertionIngressErrorV1> {
+    let registered_digest: [u8; 32] = Sha256::digest(registered_public_key_sec1).into();
+    if expected_client_data_hash == [0; 32]
+        || registered_key_id == [0; 32]
+        || registered_digest != registered_key_id
+        || previous_counter == u32::MAX
+        || !valid_bundle_version(bundle_version)
+    {
+        return Err(SiteTrustAppAttestAssertionIngressErrorV1::Denied);
+    }
+    let decoded = decode_assertion_object(assertion)?;
+    let application_hash: [u8; 32] =
+        Sha256::digest(MONAS_PRODUCTION_APP_ATTEST_APP_IDENTIFIER_V1.as_bytes()).into();
+    if decoded.authenticator_data.len() < AUTHENTICATOR_DATA_MINIMUM_BYTES
+        || decoded.authenticator_data[..32] != application_hash
+        || !valid_assertion_flags_and_extensions(&decoded.authenticator_data, bundle_version)
+    {
+        return Err(SiteTrustAppAttestAssertionIngressErrorV1::Denied);
+    }
+    let counter = MonotonicAppAttestCounterV1(u32::from_be_bytes(
+        decoded.authenticator_data[33..37]
+            .try_into()
+            .map_err(|_| SiteTrustAppAttestAssertionIngressErrorV1::Denied)?,
+    ));
+    if !counter.strictly_after(previous_counter) {
+        return Err(SiteTrustAppAttestAssertionIngressErrorV1::Denied);
+    }
+    let nonce = Sha256::digest(
+        [
+            decoded.authenticator_data.as_slice(),
+            expected_client_data_hash.as_slice(),
+        ]
+        .concat(),
+    );
+    let key = VerifyingKey::from_sec1_bytes(&registered_public_key_sec1)
+        .map_err(|_| SiteTrustAppAttestAssertionIngressErrorV1::Unavailable)?;
+    let signature = Signature::from_der(&decoded.signature)
+        .map_err(|_| SiteTrustAppAttestAssertionIngressErrorV1::Denied)?;
+    key.verify(&nonce, &signature)
+        .map_err(|_| SiteTrustAppAttestAssertionIngressErrorV1::Denied)?;
+    Ok((counter, Sha256::digest(assertion).into()))
+}
+
 fn decode_assertion_object(
     encoded: &[u8],
 ) -> Result<DecodedAssertionV1, SiteTrustAppAttestAssertionIngressErrorV1> {

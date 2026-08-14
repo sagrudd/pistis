@@ -370,6 +370,20 @@ final class AppleAppAttestClient: @unchecked Sendable {
         return try AppleAppAttestAssertionEnvelope(ceremonyID: ceremonyID, assertion: assertion)
     }
 
+    /// Produces the raw assertion for the accepted ADR-0014 offline response.
+    /// The exact carrier owns its ceremony binding; this method neither enrols
+    /// a replacement key nor wraps the assertion in an HTTP ingress envelope.
+    func prepareSiteX509FirstProvisionOfflineAssertion(
+        expectedKeyID: String,
+        clientDataHash: Data
+    ) async throws -> Data {
+        guard service.isSupported, !expectedKeyID.isEmpty,
+              expectedKeyID.utf8.count <= 128, clientDataHash.count == 32,
+              let keyID = existingKeyID(), keyID == expectedKeyID
+        else { throw PlatformFailure.appAttestUnavailable }
+        return try await service.generateAssertion(keyID, clientDataHash: clientDataHash)
+    }
+
     private func existingOrNewKeyID() async throws -> String {
         if let existing = existingKeyID() {
             return existing

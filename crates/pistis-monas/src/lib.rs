@@ -19,6 +19,7 @@ mod site_root_genesis_device_binding;
 mod site_trust;
 mod site_trust_assertion_ingress;
 mod site_trust_registration_acceptance;
+mod site_x509_first_provision_offline_approval;
 
 pub use app_attest_session_handoff::{
     MONAS_APP_ATTEST_SESSION_HANDOFF_PROFILE_V1, MonasAppAttestSessionHandoffErrorV1,
@@ -90,4 +91,26 @@ pub use site_trust_registration_acceptance::{
     ProductionAppleAppAttestAcceptanceFactoryV1, SiteTrustAppAttestRegistrationErrorV1,
     SiteTrustAppAttestRegistrationSubmissionV1,
     decode_site_trust_app_attest_registration_submission_v1,
+};
+pub use site_x509_first_provision_offline_approval::{
+    SiteX509FirstProvisionOfflineAppAttestAcceptanceV2,
+    SiteX509FirstProvisionOfflineAppAttestOutcomeV2, SiteX509FirstProvisionOfflineApprovalErrorV2,
+    encode_site_x509_first_provision_offline_approval_v2,
+    verify_site_x509_first_provision_offline_app_attest_assertion_v2,
+};
+pub use thesaurophylax_api::site_x509_first_provision_offline_v2::{
+    SITE_X509_FIRST_PROVISION_APP_ATTEST_TRANSCRIPT_V2,
+    SITE_X509_FIRST_PROVISION_OFFLINE_AUDIENCE_V2,
+    SITE_X509_FIRST_PROVISION_OFFLINE_MAXIMUM_QR_TEXT_V2,
+    SITE_X509_FIRST_PROVISION_OFFLINE_PRESENTATION_QR_PREFIX_V2,
+    SITE_X509_FIRST_PROVISION_OFFLINE_PURPOSE_V2,
+    SITE_X509_FIRST_PROVISION_OFFLINE_RESPONSE_QR_PREFIX_V2,
+    SiteX509FirstProvisionOfflineBindingV2, SiteX509FirstProvisionOfflineContextV2,
+    SiteX509FirstProvisionOfflinePresentationV2, SiteX509FirstProvisionOfflineResponseV2,
+    SiteX509FirstProvisionOfflineServiceV2,
+    decode_site_x509_first_provision_offline_presentation_qr_text_v2,
+    decode_site_x509_first_provision_offline_response_qr_text_v2,
+    encode_site_x509_first_provision_offline_presentation_qr_text_v2,
+    encode_site_x509_first_provision_offline_response_qr_text_v2,
+    site_x509_first_provision_app_attest_client_data_hash_v2,
 };

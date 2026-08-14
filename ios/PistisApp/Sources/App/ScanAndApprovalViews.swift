@@ -1,4 +1,6 @@
 import SwiftUI
+import CoreImage.CIFilterBuiltins
+import UniformTypeIdentifiers
 #if canImport(UIKit)
 import UIKit
 #endif
@@ -10,10 +12,12 @@ struct ScanView: View {
     @StateObject private var mtgsRecovery: MTGSRecoveryCoordinator
     @StateObject private var siteRootConvergence: SiteRootConvergenceCoordinator
     @StateObject private var siteOriginRelocation: SiteOriginRelocationCoordinator
+    @StateObject private var siteX509Offline = SiteX509FirstProvisionOfflineCoordinator()
     private let siteRootTransport: any MonasSiteRootCeremonyTransport
     private let expectedSiteRootAuthorityHost: String?
     private let showInstallations: () -> Void
     @State private var scanning = true
+    @State private var importingOfflinePresentation = false
     @State private var scanFailure: PlatformFailure?
     @State private var readiness = PasswordlessReadiness.checking
 
@@ -99,9 +103,21 @@ struct ScanView: View {
                         Text("Only bounded Pistis v2 and Monas Site Root v1 envelopes are acquired. Each reaches its own mandatory protocol validator before facts are shown.")
                             .font(.footnote)
                             .foregroundStyle(MnColor.textPrimary)
+                            .background(MnColor.raised)
                             .fixedSize(horizontal: false, vertical: true)
                     }
                 }
+
+                Button {
+                    importingOfflinePresentation = true
+                } label: {
+                    Label("Import first Site HTTPS challenge", systemImage: "doc.badge.plus")
+                }
+                .font(.headline)
+                .frame(maxWidth: .infinity, minHeight: MnMetrics.minimumTarget)
+                .buttonStyle(.borderedProminent)
+                .tint(MnColor.action)
+                .foregroundStyle(MnColor.onBrand)
 
                 MnPanel {
                     VStack(alignment: .leading, spacing: MnSpacing.x4) {
@@ -117,6 +133,8 @@ struct ScanView: View {
                         if !readiness.approvalEnabled {
                             Text("Approve remains disabled until every capability and trust check is ready.")
                                 .font(.footnote.weight(.semibold))
+                                .foregroundStyle(MnColor.textPrimary)
+                                .background(MnColor.raised)
                         }
                     }
                 }
@@ -126,6 +144,8 @@ struct ScanView: View {
                         VStack(alignment: .leading, spacing: MnSpacing.x3) {
                             MnStatusLabel(text: "Scan failed", kind: .danger)
                             Text(scanFailure.safeUserMessage)
+                                .foregroundStyle(MnColor.textPrimary)
+                                .background(MnColor.raised)
                             if scanFailure == .cameraPermissionDenied {
                                 Button("Open Settings") { openCameraSettings() }
                                     .font(.headline)
@@ -137,6 +157,7 @@ struct ScanView: View {
 
             }
             .padding(MnMetrics.screenGutter)
+            .padding(.bottom, MnSpacing.x8 * 3)
         }
         .navigationTitle("Scan")
         .mnScreenBackground()
@@ -162,6 +183,16 @@ struct ScanView: View {
         .sheet(item: siteOriginRelocationReviewBinding) { review in
             SiteOriginRelocationReviewView(review: review, coordinator: siteOriginRelocation)
         }
+        .sheet(item: siteX509OfflineReviewBinding) { review in
+            SiteX509FirstProvisionOfflineReviewView(review: review, coordinator: siteX509Offline)
+        }
+        .fileImporter(
+            isPresented: $importingOfflinePresentation,
+            allowedContentTypes: [.data],
+            allowsMultipleSelection: false
+        ) { result in
+            handleOfflinePresentationFile(result)
+        }
     }
 
     @MainActor
@@ -170,6 +201,11 @@ struct ScanView: View {
         switch result {
         case let .success(payload):
             scanFailure = nil
+            if payload.text.hasPrefix(SiteX509FirstProvisionOfflineProfileV2.presentationQRPrefix) {
+                siteX509Offline.accept(qrText: payload.text)
+                if case .failed = siteX509Offline.phase { scanFailure = .qrPayloadUnsupported }
+                return
+            }
             if payload.text.hasPrefix("{") {
                 if payload.text.contains(SiteOriginRelocationProfileV1.presentationSchema) {
                     siteOriginRelocation.accept(qrText: payload.text)
@@ -239,6 +275,41 @@ struct ScanView: View {
 #endif
     }
 
+    @MainActor
+    private func handleOfflinePresentationFile(_ result: Result<[URL], Error>) {
+        guard case let .success(urls) = result, urls.count == 1 else {
+            scanFailure = .qrPayloadUnsupported
+            return
+        }
+        let url = urls[0]
+        let scoped = url.startAccessingSecurityScopedResource()
+        defer { if scoped { url.stopAccessingSecurityScopedResource() } }
+        do {
+            let values = try url.resourceValues(forKeys: [
+                .fileSizeKey, .isRegularFileKey, .isSymbolicLinkKey,
+            ])
+            guard values.isRegularFile == true, values.isSymbolicLink != true,
+                  let size = values.fileSize, size > 0,
+                  size <= SiteX509FirstProvisionOfflineProfileV2.maximumPresentationFileBytes
+            else { throw PlatformFailure.qrPayloadUnsupported }
+            let handle = try FileHandle(forReadingFrom: url)
+            defer { try? handle.close() }
+            let bytes = try handle.read(
+                upToCount: SiteX509FirstProvisionOfflineProfileV2.maximumPresentationFileBytes + 1
+            ) ?? Data()
+            guard bytes.count == size else { throw PlatformFailure.qrPayloadUnsupported }
+            scanning = false
+            siteX509Offline.accept(fileBytes: bytes)
+            if case .failed = siteX509Offline.phase {
+                scanFailure = .qrPayloadUnsupported
+            } else {
+                scanFailure = nil
+            }
+        } catch {
+            scanFailure = .qrPayloadUnsupported
+        }
+    }
+
     private func resetSiteRoot() {
         siteRootCeremony.reset()
     }
@@ -292,6 +363,14 @@ struct ScanView: View {
         }
     }
 
+    private var siteX509OfflineReviewBinding: Binding<SiteX509FirstProvisionOfflineReview?> {
+        Binding {
+            siteX509Offline.presentedReview
+        } set: { value in
+            if value == nil { siteX509Offline.reset(); startScanning() }
+        }
+    }
+
     private var statusText: String {
         switch ceremony.phase {
         case .verifying: "Verifying enrolled installation"
@@ -308,6 +387,68 @@ struct ScanView: View {
         }
     }
 
+}
+
+private struct SiteX509FirstProvisionOfflineReviewView: View {
+    let review: SiteX509FirstProvisionOfflineReview
+    @ObservedObject var coordinator: SiteX509FirstProvisionOfflineCoordinator
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        NavigationStack {
+            ScrollView {
+                VStack(alignment: .leading, spacing: MnSpacing.x4) {
+                    MnSectionHeading(
+                        "Approve first Site HTTPS",
+                        orientation: "Verify the Site, enrolled device, managed target and every private-IP service before Face ID."
+                    )
+                    MnPanel {
+                        VStack(alignment: .leading, spacing: MnSpacing.x3) {
+                            MnEvidenceRow(label: "Site", value: review.site); Divider()
+                            MnEvidenceRow(label: "Generations", value: review.generations); Divider()
+                            MnEvidenceRow(label: "Enrolled device", value: review.enrolledDevice); Divider()
+                            MnEvidenceRow(label: "Managed target", value: review.target); Divider()
+                            MnEvidenceRow(label: "Services and private IPs", value: review.services); Divider()
+                            MnEvidenceRow(label: "Expires", value: review.expiry)
+                        }
+                    }
+                    switch coordinator.phase {
+                    case .review:
+                        MnPrimaryButton("Approve with Face ID", systemImage: "faceid") {
+                            Task { await coordinator.approve() }
+                        }
+                    case .approving:
+                        ProgressView("Creating Site-root approval and App Attest proof…")
+                    case .completed:
+                        if let text = coordinator.responseQRText,
+                           let image = Self.qrImage(text) {
+                            MnStatusLabel(text: "Return this one-use response to Monas", kind: .success)
+                            Image(uiImage: image).interpolation(.none).resizable()
+                                .scaledToFit().accessibilityLabel("One-use Site HTTPS approval QR")
+                            ShareLink(item: text) { Label("Share response file text", systemImage: "square.and.arrow.up") }
+                            Button("Done") { dismiss() }.font(.headline)
+                        }
+                    case .failed:
+                        MnStatusLabel(text: "Approval stopped safely", kind: .danger)
+                        Text("No authority, trust exception or replacement enrolment was created.")
+                    case .idle: EmptyView()
+                    }
+                }.padding(MnMetrics.screenGutter)
+            }
+            .navigationTitle("First Site HTTPS")
+            .mnScreenBackground()
+        }
+        .interactiveDismissDisabled(coordinator.phase == .approving)
+    }
+
+    private static func qrImage(_ text: String) -> UIImage? {
+        let filter = CIFilter.qrCodeGenerator()
+        filter.message = Data(text.utf8); filter.correctionLevel = "M"
+        guard let output = filter.outputImage else { return nil }
+        let context = CIContext()
+        guard let cg = context.createCGImage(output.transformed(by: .init(scaleX: 8, y: 8)), from: output.extent.applying(.init(scaleX: 8, y: 8))) else { return nil }
+        return UIImage(cgImage: cg)
+    }
 }
 
 private struct SiteOriginRelocationReviewView: View {

@@ -1,5 +1,6 @@
 import SwiftUI
 import CoreImage.CIFilterBuiltins
+import CoreTransferable
 import UniformTypeIdentifiers
 #if canImport(UIKit)
 import UIKit
@@ -13,11 +14,14 @@ struct ScanView: View {
     @StateObject private var siteRootConvergence: SiteRootConvergenceCoordinator
     @StateObject private var siteOriginRelocation: SiteOriginRelocationCoordinator
     @StateObject private var siteX509Offline = SiteX509FirstProvisionOfflineCoordinator()
+    @StateObject private var appAttestReplacement = AppAttestKeyReplacementCoordinatorV1()
     private let siteRootTransport: any MonasSiteRootCeremonyTransport
+    private let appAttestReplacementTransport: MonasAppAttestTransport?
     private let expectedSiteRootAuthorityHost: String?
     private let showInstallations: () -> Void
     @State private var scanning = true
     @State private var importingOfflinePresentation = false
+    @State private var importingAppAttestReplacement = false
     @State private var scanFailure: PlatformFailure?
     @State private var readiness = PasswordlessReadiness.checking
 
@@ -30,6 +34,11 @@ struct ScanView: View {
         self.siteRootTransport = siteRootTransport
         self.expectedSiteRootAuthorityHost = expectedSiteRootAuthorityHost
         self.showInstallations = showInstallations
+        if let pinned = siteRootTransport as? MonasSiteRootDelegationTransport {
+            appAttestReplacementTransport = try? pinned.appAttestTransport()
+        } else {
+            appAttestReplacementTransport = nil
+        }
         _siteRootCeremony = StateObject(
             wrappedValue: SiteRootDelegationCoordinator(
                 transport: siteRootTransport, authorityCustodyMode: authorityCustodyMode
@@ -119,6 +128,16 @@ struct ScanView: View {
                 .tint(MnColor.action)
                 .foregroundStyle(MnColor.onBrand)
 
+                Button {
+                    importingAppAttestReplacement = true
+                } label: {
+                    Label("Import App Attest replacement file", systemImage: "key.horizontal")
+                }
+                .font(.headline)
+                .frame(maxWidth: .infinity, minHeight: MnMetrics.minimumTarget)
+                .buttonStyle(.bordered)
+                .disabled(appAttestReplacementTransport == nil)
+
                 MnPanel {
                     VStack(alignment: .leading, spacing: MnSpacing.x4) {
                         MnStatusLabel(
@@ -161,7 +180,10 @@ struct ScanView: View {
         }
         .navigationTitle("Scan")
         .mnScreenBackground()
-        .task { readiness = await PasswordlessReadinessProbe.current() }
+        .task {
+            appAttestReplacement.restoreRetainedSubmission()
+            readiness = await PasswordlessReadinessProbe.current()
+        }
         .onAppear { startScanning() }
         .onDisappear { stopScanning() }
         .sheet(item: reviewBinding) { request in
@@ -186,12 +208,26 @@ struct ScanView: View {
         .sheet(item: siteX509OfflineReviewBinding) { review in
             SiteX509FirstProvisionOfflineReviewView(review: review, coordinator: siteX509Offline)
         }
+        .sheet(item: appAttestReplacementReviewBinding) { review in
+            AppAttestKeyReplacementReviewView(
+                review: review,
+                coordinator: appAttestReplacement,
+                transport: appAttestReplacementTransport
+            )
+        }
         .fileImporter(
             isPresented: $importingOfflinePresentation,
             allowedContentTypes: [.data],
             allowsMultipleSelection: false
         ) { result in
             handleOfflinePresentationFile(result)
+        }
+        .fileImporter(
+            isPresented: $importingAppAttestReplacement,
+            allowedContentTypes: [.json, .data],
+            allowsMultipleSelection: false
+        ) { result in
+            handleAppAttestReplacementFile(result)
         }
     }
 
@@ -310,6 +346,45 @@ struct ScanView: View {
         }
     }
 
+    @MainActor
+    private func handleAppAttestReplacementFile(_ result: Result<[URL], Error>) {
+        guard appAttestReplacementTransport != nil,
+              case let .success(urls) = result, urls.count == 1
+        else {
+            scanFailure = .productionEnvelopeUnavailable
+            return
+        }
+        let url = urls[0]
+        let scoped = url.startAccessingSecurityScopedResource()
+        defer { if scoped { url.stopAccessingSecurityScopedResource() } }
+        do {
+            let values = try url.resourceValues(forKeys: [
+                .fileSizeKey, .isRegularFileKey, .isSymbolicLinkKey,
+            ])
+            guard values.isRegularFile == true, values.isSymbolicLink != true,
+                  let size = values.fileSize, size > 0,
+                  size <= AppAttestKeyReplacementOfflineProfileV1.maximumJSONBytes
+            else { throw PlatformFailure.productionEnvelopeUnavailable }
+            let handle = try FileHandle(forReadingFrom: url)
+            defer { try? handle.close() }
+            let bytes = try handle.read(
+                upToCount: AppAttestKeyReplacementOfflineProfileV1.maximumJSONBytes + 1
+            ) ?? Data()
+            guard bytes.count == size else {
+                throw PlatformFailure.productionEnvelopeUnavailable
+            }
+            scanning = false
+            appAttestReplacement.accept(fileBytes: bytes)
+            if case .failed = appAttestReplacement.phase {
+                scanFailure = .productionEnvelopeUnavailable
+            } else {
+                scanFailure = nil
+            }
+        } catch {
+            scanFailure = .productionEnvelopeUnavailable
+        }
+    }
+
     private func resetSiteRoot() {
         siteRootCeremony.reset()
     }
@@ -368,6 +443,14 @@ struct ScanView: View {
             siteX509Offline.presentedReview
         } set: { value in
             if value == nil { siteX509Offline.reset(); startScanning() }
+        }
+    }
+
+    private var appAttestReplacementReviewBinding: Binding<AppAttestKeyReplacementReviewV1?> {
+        Binding {
+            appAttestReplacement.presentedReview
+        } set: { value in
+            if value == nil { appAttestReplacement.reset(); startScanning() }
         }
     }
 
@@ -448,6 +531,102 @@ private struct SiteX509FirstProvisionOfflineReviewView: View {
         let context = CIContext()
         guard let cg = context.createCGImage(output.transformed(by: .init(scaleX: 8, y: 8)), from: output.extent.applying(.init(scaleX: 8, y: 8))) else { return nil }
         return UIImage(cgImage: cg)
+    }
+}
+
+private struct AppAttestReplacementResponseDocument: Transferable {
+    let bytes: Data
+
+    static var transferRepresentation: some TransferRepresentation {
+        DataRepresentation(exportedContentType: .json) { document in
+            document.bytes
+        }
+        .suggestedFileName("pistis-app-attest-key-replacement-response.json")
+    }
+}
+
+private struct AppAttestKeyReplacementReviewView: View {
+    let review: AppAttestKeyReplacementReviewV1
+    @ObservedObject var coordinator: AppAttestKeyReplacementCoordinatorV1
+    let transport: MonasAppAttestTransport?
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        NavigationStack {
+            ScrollView {
+                VStack(alignment: .leading, spacing: MnSpacing.x4) {
+                    MnSectionHeading(
+                        "Replace unavailable App Attest key",
+                        orientation: "Verify the protected Site and old server key before Face ID stages one fresh candidate."
+                    )
+                    MnPanel {
+                        VStack(alignment: .leading, spacing: MnSpacing.x3) {
+                            MnEvidenceRow(label: "Site", value: review.site)
+                            Divider()
+                            MnEvidenceRow(label: "Installation and device", value: review.device)
+                            Divider()
+                            MnEvidenceRow(label: "Protected old key", value: review.currentKey, monospaced: true)
+                            Divider()
+                            MnEvidenceRow(label: "Generation", value: review.authority)
+                            Divider()
+                            MnEvidenceRow(label: "Expires", value: review.expiry)
+                        }
+                    }
+                    Text("This file-first recovery may stage a candidate when this iPhone's local key differs. It cannot promote that key until the fixed pinned Monas route authenticates an exact accepted result.")
+                        .font(.footnote)
+                        .fixedSize(horizontal: false, vertical: true)
+
+                    switch coordinator.phase {
+                    case .review:
+                        MnPrimaryButton("Approve replacement with Face ID", systemImage: "faceid") {
+                            Task { await coordinator.approve() }
+                        }
+                    case .producing:
+                        ProgressView("Waiting for Face ID and App Attest…")
+                    case .responseReady:
+                        if let bytes = coordinator.responseFileBytes {
+                            MnStatusLabel(text: "Replacement response ready", kind: .success)
+                            ShareLink(
+                                item: AppAttestReplacementResponseDocument(bytes: bytes),
+                                preview: SharePreview("App Attest replacement response")
+                            ) {
+                                Label("Share response file", systemImage: "square.and.arrow.up")
+                            }
+                            if let transport {
+                                MnPrimaryButton("Submit securely to Monas", systemImage: "lock.shield") {
+                                    Task { await coordinator.submitAndCommit(using: transport) }
+                                }
+                            }
+                        }
+                    case .submitting:
+                        ProgressView("Waiting for authenticated Monas acceptance…")
+                    case .accepted:
+                        MnStatusLabel(text: "Replacement accepted and committed", kind: .success)
+                        Button("Done") { coordinator.reset(); dismiss() }
+                            .font(.headline)
+                    case .failed:
+                        MnStatusLabel(text: "Replacement stopped safely", kind: .danger)
+                        Text("The current local key and any retained recovery record remain fail-closed.")
+                        Button("Close") { dismiss() }.font(.headline)
+                    case .idle:
+                        EmptyView()
+                    }
+                }
+                .padding(MnMetrics.screenGutter)
+            }
+            .navigationTitle("App Attest replacement")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel") { dismiss() }
+                        .disabled(coordinator.phase == .producing || coordinator.phase == .submitting)
+                }
+            }
+            .mnScreenBackground()
+        }
+        .interactiveDismissDisabled(
+            coordinator.phase == .producing || coordinator.phase == .submitting
+        )
     }
 }
 

@@ -108,6 +108,22 @@ struct CustodyRotationAppAttestChallengeV2: Sendable {
     }
 }
 
+/// Opaque proof that an exact App Attest replacement acceptance arrived from
+/// the fixed Monas endpoint through this transport's reviewed TLS policy.
+/// There is deliberately no raw-JSON or public memberwise constructor.
+struct AuthenticatedAppAttestReplacementAcceptanceV1: Sendable {
+    let accepted: AppAttestKeyReplacementAcceptedV1
+
+    fileprivate init(_ accepted: AppAttestKeyReplacementAcceptedV1) {
+        self.accepted = accepted
+    }
+}
+
+enum AppAttestReplacementTransportFailure: Error {
+    case ambiguousDelivery
+    case authenticatedDenial
+}
+
 /// Dedicated, pinned HTTPS JSON transport for App Attest. It cannot submit
 /// generic COSE or consume cookies, redirects, cache entries, browser state,
 /// endpoint hints, or local identity.
@@ -118,6 +134,8 @@ struct MonasAppAttestTransport: Sendable {
         "/v1/pistis/site-trust/app-attest/assertion"
     private static let mtgsRecoveryAssertionPath =
         "/v1/pistis/site-trust/mtgs-recovery/v1/assertion"
+    private static let appAttestReplacementPath =
+        "/v1/pistis/site-trust/app-attest-key-replacement/v1/submit"
     private static let custodyRewrapSubmissionPath =
         "/v1/pistis/site-trust/custody-rewrap/submit"
     private static let authorityCustodyRotationBeginPath =
@@ -190,6 +208,71 @@ struct MonasAppAttestTransport: Sendable {
             path: Self.registrationPath,
             maximumRequestBytes: 196_608
         )
+    }
+
+    /// Submits one canonical PXAR replacement file to the fixed, pinned Monas
+    /// route and returns an opaque acceptance capability only for an exact
+    /// 200/no-store result cross-bound to that submission.
+    func submitAppAttestReplacement(
+        canonicalSubmission: Data
+    ) async throws -> AuthenticatedAppAttestReplacementAcceptanceV1 {
+        let submission: AppAttestKeyReplacementSubmissionV1
+        do {
+            submission = try AppAttestKeyReplacementSubmissionV1(
+                canonicalBytes: canonicalSubmission
+            )
+        } catch { throw AppAttestReplacementTransportFailure.authenticatedDenial }
+        guard submission.wireProtocol
+                == AppAttestKeyReplacementOfflineProfileV1.wireProtocol,
+              submission.presentation.wireProtocol
+                == AppAttestKeyReplacementOfflineProfileV1.wireProtocol,
+              submission.approval.wireProtocol
+                == AppAttestKeyReplacementOfflineProfileV1.wireProtocol,
+              let endpoint = URL(
+                  string: Self.appAttestReplacementPath, relativeTo: origin
+              )?.absoluteURL,
+              endpoint.absoluteString == origin.absoluteString + Self.appAttestReplacementPath
+        else { throw AppAttestReplacementTransportFailure.authenticatedDenial }
+        var request = URLRequest(url: endpoint)
+        request.httpMethod = "POST"
+        request.httpBody = canonicalSubmission
+        request.timeoutInterval = 15
+        request.setValue("application/json; charset=utf-8", forHTTPHeaderField: "Content-Type")
+        request.setValue("application/json", forHTTPHeaderField: "Accept")
+        request.setValue("no-store", forHTTPHeaderField: "Cache-Control")
+        do {
+            let (bytes, response) = try await session.data(for: request)
+            guard let http = response as? HTTPURLResponse,
+                  http.url == endpoint
+            else { throw AppAttestReplacementTransportFailure.ambiguousDelivery }
+            guard http.statusCode == 200 else {
+                if (400...499).contains(http.statusCode) {
+                    throw AppAttestReplacementTransportFailure.authenticatedDenial
+                }
+                throw AppAttestReplacementTransportFailure.ambiguousDelivery
+            }
+            guard
+                  !bytes.isEmpty,
+                  bytes.count <= 4_096,
+                  http.value(forHTTPHeaderField: "Cache-Control")?
+                    .lowercased().contains("no-store") == true
+            else { throw AppAttestReplacementTransportFailure.authenticatedDenial }
+            let accepted: AppAttestKeyReplacementAcceptedV1
+            do {
+                accepted = try AppAttestKeyReplacementAcceptedV1(canonicalBytes: bytes)
+            } catch {
+                throw AppAttestReplacementTransportFailure.authenticatedDenial
+            }
+            guard accepted.transactionID == submission.presentation.transactionID,
+                  accepted.installationID == submission.presentation.installationID,
+                  accepted.oldGeneration == submission.presentation.oldGeneration,
+                  accepted.newGeneration == submission.presentation.newGeneration,
+                  accepted.oldKeyIDB64URL == submission.presentation.oldKeyIDB64URL,
+                  accepted.newKeyIDB64URL == submission.approval.newKeyIDB64URL
+            else { throw AppAttestReplacementTransportFailure.authenticatedDenial }
+            return AuthenticatedAppAttestReplacementAcceptanceV1(accepted)
+        } catch let failure as AppAttestReplacementTransportFailure { throw failure }
+        catch { throw AppAttestReplacementTransportFailure.ambiguousDelivery }
     }
 
     func submitAssertion(_ envelope: AppleAppAttestAssertionEnvelope) async throws {

@@ -141,6 +141,49 @@ struct AppAttestKeyReplacementSubmissionV1: Codable, Equatable, Sendable {
     }
 }
 
+extension AppAttestKeyReplacementSubmissionV1 {
+    init(canonicalBytes: Data) throws {
+        let decoded: Self = try PXARJSON.decodeCanonical(
+            canonicalBytes,
+            maximumBytes: AppAttestKeyReplacementOfflineProfileV1.maximumJSONBytes
+        )
+        guard decoded.wireProtocol == AppAttestKeyReplacementOfflineProfileV1.wireProtocol,
+            decoded.presentation.wireProtocol
+                == AppAttestKeyReplacementOfflineProfileV1.wireProtocol,
+            decoded.presentation.purpose == AppAttestKeyReplacementOfflineProfileV1.purpose,
+            decoded.approval.wireProtocol
+                == AppAttestKeyReplacementOfflineProfileV1.wireProtocol,
+            decoded.approval.purpose == AppAttestKeyReplacementOfflineProfileV1.purpose,
+            decoded.approval.transactionID == decoded.presentation.transactionID,
+            decoded.approval.installationID == decoded.presentation.installationID,
+            decoded.approval.deviceID == decoded.presentation.deviceID,
+            decoded.approval.siteTrustDomain == decoded.presentation.siteTrustDomain,
+            decoded.approval.oldKeyIDB64URL == decoded.presentation.oldKeyIDB64URL,
+            decoded.approval.newGeneration == decoded.presentation.newGeneration,
+            decoded.approval.challengeB64URL == decoded.presentation.challengeB64URL,
+            decoded.appleRegistration.wireProtocol
+                == AppleAppAttestRegistrationEnvelope.protocolVersion,
+            decoded.appleRegistration.ceremonyID == decoded.presentation.transactionID,
+            decoded.appleRegistration.siteTrustDomain
+                == decoded.presentation.siteTrustDomain,
+            decoded.appleRegistration.appIdentifier
+                == AppleAppAttestRegistrationEnvelope.reviewedAppIdentifier,
+            decoded.appleRegistration.keyIDB64URL == decoded.approval.newKeyIDB64URL,
+            decoded.appleRegistration.clientDataHashB64URL
+                == decoded.presentation.challengeB64URL,
+            let attestation = PXARJSON.base64URLVariable(
+                decoded.appleRegistration.attestationObjectB64URL,
+                minimum: 1,
+                maximum: 128 * 1_024
+            ),
+            decoded.approval.attestationSHA256B64URL
+                == PXARJSON.base64URL(Data(SHA256.hash(data: attestation))),
+            PXARJSON.base64URL(decoded.siteRootSignatureB64URL, count: 64) != nil
+        else { throw PlatformFailure.appAttestInvalidInput }
+        self = decoded
+    }
+}
+
 struct AppAttestKeyReplacementAcceptedV1: Codable, Equatable, Sendable {
     let wireProtocol: String
     let transactionID: String
@@ -314,13 +357,22 @@ enum PXARJSON {
     }
 
     static func base64URL(_ value: String, count: Int) -> Data? {
+        base64URLVariable(value, minimum: count, maximum: count)
+    }
+
+    static func base64URLVariable(
+        _ value: String,
+        minimum: Int,
+        maximum: Int
+    ) -> Data? {
         guard !value.isEmpty, !value.contains("="), value.utf8.allSatisfy({ $0.isBase64URL })
         else { return nil }
         let standard =
             value.replacingOccurrences(of: "-", with: "+")
             .replacingOccurrences(of: "_", with: "/")
             + String(repeating: "=", count: (4 - value.count % 4) % 4)
-        guard let decoded = Data(base64Encoded: standard), decoded.count == count,
+        guard let decoded = Data(base64Encoded: standard),
+            (minimum...maximum).contains(decoded.count),
             base64URL(decoded) == value
         else { return nil }
         return decoded

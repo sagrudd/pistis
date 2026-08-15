@@ -10,7 +10,10 @@ struct AppAttestKeyReplacementReviewV1: Identifiable, Equatable {
 }
 
 protocol AppAttestKeyReplacementCommittingV1: Sendable {
-    func commitReplacementKey(_ pending: PendingAppAttestReplacementKeyV1) throws
+    func commitReplacementKey(
+        _ pending: PendingAppAttestReplacementKeyV1,
+        authenticated: AuthenticatedAppAttestReplacementAcceptanceV1
+    ) throws
     func discardReplacementKey(transactionUUID: Data) throws
 }
 
@@ -23,6 +26,7 @@ final class AppAttestKeyReplacementCoordinatorV1: ObservableObject {
         case review
         case producing
         case responseReady
+        case submitting
         case accepted
         case failed
     }
@@ -102,15 +106,14 @@ final class AppAttestKeyReplacementCoordinatorV1: ObservableObject {
         }
     }
 
-    /// The caller must supply bytes obtained through the separately
-    /// authenticated Monas acceptance channel. Only the exact canonical
-    /// `accepted` result for this pending candidate can promote the Keychain
-    /// primary key.
-    func commitAuthenticatedAccepted(canonicalBytes: Data) {
+    /// Only the opaque capability returned by the fixed, pinned Monas
+    /// transport can promote the Keychain primary key. Raw files and caller-
+    /// constructed JSON are not an acceptance boundary.
+    func commitAuthenticatedAccepted(
+        _ authenticated: AuthenticatedAppAttestReplacementAcceptanceV1
+    ) {
         do {
-            let accepted = try AppAttestKeyReplacementAcceptedV1(
-                canonicalBytes: canonicalBytes
-            )
+            let accepted = authenticated.accepted
             guard phase == .responseReady, let staged, let presentation,
                 PXARJSON.canonicalUUID(accepted.transactionID) == staged.transactionUUID,
                 accepted.installationID == presentation.wire.installationID,
@@ -120,10 +123,28 @@ final class AppAttestKeyReplacementCoordinatorV1: ObservableObject {
                 let newKey = PXARJSON.base64URL(accepted.newKeyIDB64URL, count: 32),
                 newKey.base64EncodedString() == staged.replacementKeyID
             else { throw PlatformFailure.appAttestInvalidInput }
-            try committer.commitReplacementKey(staged)
+            try committer.commitReplacementKey(staged, authenticated: authenticated)
             responseFileBytes = nil
             phase = .accepted
         } catch { phase = .failed }
+    }
+
+    func submitAndCommit(using transport: MonasAppAttestTransport) async {
+        guard phase == .responseReady, let responseFileBytes else {
+            phase = .failed
+            return
+        }
+        do {
+            phase = .submitting
+            let authenticated = try await transport.submitAppAttestReplacement(
+                canonicalSubmission: responseFileBytes
+            )
+            // Restore the guarded phase consumed by the same commit boundary.
+            phase = .responseReady
+            commitAuthenticatedAccepted(authenticated)
+        } catch {
+            phase = .failed
+        }
     }
 
     func discard() {

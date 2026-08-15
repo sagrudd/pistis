@@ -82,18 +82,42 @@ final class AppAttestKeyReplacementOfflineV1Tests: XCTestCase {
         XCTAssertEqual(state.loadPending(), staged.pending)
         XCTAssertEqual(service.attestationHash, Data(repeating: 9, count: 32))
 
-        try client.commitReplacementKey(staged.pending)
+        try state.commitPending(staged.pending)
         XCTAssertEqual(state.loadKeyID(), replacement)
         XCTAssertNil(state.loadPending())
     }
 
-    func testPendingConflictAndWrongCurrentKeyDenyWithoutGeneration() async throws {
+    func testServerOldKeyMismatchStagesWithoutOverwritingLocalPrimary() async throws {
+        let serverOld = Data(repeating: 2, count: 32).base64EncodedString()
+        let localPrimary = Data(repeating: 4, count: 32).base64EncodedString()
+        let replacement = Data(repeating: 3, count: 32).base64EncodedString()
+        let state = RecordingReplacementStore(primary: localPrimary)
+        let service = ReplacementAppAttestService(generatedKeyID: replacement)
+        let client = AppleAppAttestClient(
+            service: service, keyIDStore: state, replacementStore: state
+        )
+
+        let staged = try await client.stageReplacementKey(
+            transactionUUID: Data(repeating: 1, count: 16),
+            expectedCurrentKeyID: serverOld,
+            clientDataHash: { _ in Data(repeating: 9, count: 32) }
+        )
+
+        XCTAssertEqual(staged.pending.expectedCurrentKeyID, serverOld)
+        XCTAssertEqual(staged.pending.localPrimaryKeyID, localPrimary)
+        XCTAssertEqual(state.loadKeyID(), localPrimary)
+        try state.commitPending(staged.pending)
+        XCTAssertEqual(state.loadKeyID(), replacement)
+    }
+
+    func testPendingTransactionConflictDeniesWithoutGeneration() async throws {
         let old = Data(repeating: 2, count: 32).base64EncodedString()
         let replacement = Data(repeating: 3, count: 32).base64EncodedString()
         let state = RecordingReplacementStore(primary: old)
         state.pending = try PendingAppAttestReplacementKeyV1(
             transactionUUID: Data(repeating: 8, count: 16),
             expectedCurrentKeyID: old,
+            localPrimaryKeyID: old,
             replacementKeyID: replacement
         )
         let service = ReplacementAppAttestService(generatedKeyID: replacement)
@@ -108,16 +132,6 @@ final class AppAttestKeyReplacementOfflineV1Tests: XCTestCase {
             )
         }
         XCTAssertEqual(service.generateCount, 0)
-
-        state.pending = nil
-        await assertThrowsErrorAsync {
-            _ = try await client.stageReplacementKey(
-                transactionUUID: Data(repeating: 1, count: 16),
-                expectedCurrentKeyID: Data(repeating: 4, count: 32).base64EncodedString(),
-                clientDataHash: { _ in Data(repeating: 9, count: 32) }
-            )
-        }
-        XCTAssertEqual(service.generateCount, 0)
     }
 
     func testExactPendingTransactionResumesWithoutMintingAnotherKey() async throws {
@@ -128,6 +142,7 @@ final class AppAttestKeyReplacementOfflineV1Tests: XCTestCase {
         state.pending = try PendingAppAttestReplacementKeyV1(
             transactionUUID: transaction,
             expectedCurrentKeyID: old,
+            localPrimaryKeyID: old,
             replacementKeyID: replacement
         )
         let service = ReplacementAppAttestService(
@@ -158,6 +173,7 @@ final class AppAttestKeyReplacementOfflineV1Tests: XCTestCase {
         let retained = try PendingAppAttestReplacementKeyV1(
             transactionUUID: transaction,
             expectedCurrentKeyID: old,
+            localPrimaryKeyID: old,
             replacementKeyID: replacement
         )
         let store = RecordingReplacementStore(primary: replacement)
@@ -174,11 +190,16 @@ final class AppAttestKeyReplacementOfflineV1Tests: XCTestCase {
         let pending = try PendingAppAttestReplacementKeyV1(
             transactionUUID: Data(repeating: 1, count: 16),
             expectedCurrentKeyID: old,
+            localPrimaryKeyID: old,
             replacementKeyID: replacement
         )
         let committer = RecordingCommitter()
+        let submission = try canonicalSubmission()
         let coordinator = AppAttestKeyReplacementCoordinatorV1(
-            producer: FixedReplacementProducer(pending: pending), committer: committer
+            producer: FixedReplacementProducer(
+                pending: pending, canonicalResponse: submission
+            ),
+            committer: committer
         )
         coordinator.accept(fileBytes: try presentation(), nowUnixMillis: 1_001)
         await coordinator.approve(nowUnixMillis: 1_001)
@@ -186,16 +207,27 @@ final class AppAttestKeyReplacementOfflineV1Tests: XCTestCase {
 
         var wrong = acceptedObject()
         wrong["new_key_id_b64url"] = PXARJSON.base64URL(Data(repeating: 4, count: 32))
-        coordinator.commitAuthenticatedAccepted(canonicalBytes: try canonicalObject(wrong))
-        XCTAssertEqual(coordinator.phase, .failed)
+        PXARAcceptanceURLProtocol.setResponse(try canonicalObject(wrong))
+        let transport = try replacementTransport()
+        do {
+            _ = try await transport.submitAppAttestReplacement(
+                canonicalSubmission: submission
+            )
+            XCTFail("substituted accepted result unexpectedly authenticated")
+        } catch {}
+        XCTAssertEqual(coordinator.phase, .responseReady)
         XCTAssertNil(committer.committed)
 
+        PXARAcceptanceURLProtocol.setResponse(try canonicalObject(acceptedObject()))
         let exact = AppAttestKeyReplacementCoordinatorV1(
-            producer: FixedReplacementProducer(pending: pending), committer: committer
+            producer: FixedReplacementProducer(
+                pending: pending, canonicalResponse: submission
+            ),
+            committer: committer
         )
         exact.accept(fileBytes: try presentation(), nowUnixMillis: 1_001)
         await exact.approve(nowUnixMillis: 1_001)
-        exact.commitAuthenticatedAccepted(canonicalBytes: try canonicalObject(acceptedObject()))
+        await exact.submitAndCommit(using: transport)
         XCTAssertEqual(exact.phase, .accepted)
         XCTAssertEqual(committer.committed, pending)
     }
@@ -236,6 +268,54 @@ final class AppAttestKeyReplacementOfflineV1Tests: XCTestCase {
         ]
     }
 
+    private func canonicalSubmission() throws -> Data {
+        let parsed = try AppAttestKeyReplacementPresentationV1(
+            fileBytes: presentation(), nowUnixMillis: 1_001
+        )
+        let attestation = Data(repeating: 6, count: 64)
+        let newKey = PXARJSON.base64URL(Data(repeating: 3, count: 32))
+        let approval = AppAttestKeyReplacementApprovalV1(
+            wireProtocol: AppAttestKeyReplacementOfflineProfileV1.wireProtocol,
+            purpose: AppAttestKeyReplacementOfflineProfileV1.purpose,
+            transactionID: parsed.wire.transactionID,
+            installationID: parsed.wire.installationID,
+            deviceID: parsed.wire.deviceID,
+            siteTrustDomain: parsed.wire.siteTrustDomain,
+            oldKeyIDB64URL: parsed.wire.oldKeyIDB64URL,
+            newKeyIDB64URL: newKey,
+            attestationSHA256B64URL: PXARJSON.base64URL(
+                Data(SHA256.hash(data: attestation))
+            ),
+            challengeB64URL: parsed.wire.challengeB64URL,
+            newGeneration: parsed.wire.newGeneration
+        )
+        let registration = try AppleAppAttestRegistrationEnvelope(
+            ceremonyID: parsed.wire.transactionID,
+            siteTrustDomain: parsed.wire.siteTrustDomain,
+            appleKeyID: Data(repeating: 3, count: 32).base64EncodedString(),
+            clientDataHash: parsed.challenge,
+            attestationObject: attestation
+        )
+        return try PXARJSON.encodeCanonical(
+            AppAttestKeyReplacementSubmissionV1(
+                wireProtocol: AppAttestKeyReplacementOfflineProfileV1.wireProtocol,
+                presentation: parsed.wire,
+                appleRegistration: registration,
+                approval: approval,
+                siteRootSignatureB64URL: PXARJSON.base64URL(Data(repeating: 7, count: 64))
+            ))
+    }
+
+    private func replacementTransport() throws -> MonasAppAttestTransport {
+        let configuration = URLSessionConfiguration.ephemeral
+        configuration.protocolClasses = [PXARAcceptanceURLProtocol.self]
+        return try MonasAppAttestTransport(
+            authorityOrigin: XCTUnwrap(URL(string: "https://monas.example.test")),
+            expectedSPKISHA256: Data(repeating: 9, count: 32),
+            configuration: configuration
+        )
+    }
+
     private func canonicalObject(_ value: [String: Any]) throws -> Data {
         try JSONSerialization.data(
             withJSONObject: value, options: [.sortedKeys, .withoutEscapingSlashes]
@@ -258,7 +338,7 @@ private final class RecordingReplacementStore:
     }
     func commitPending(_ value: PendingAppAttestReplacementKeyV1) throws {
         guard pending == value,
-            primary == value.expectedCurrentKeyID || primary == value.replacementKeyID
+            primary == value.localPrimaryKeyID || primary == value.replacementKeyID
         else { throw PlatformFailure.appAttestInvalidInput }
         primary = value.replacementKeyID
         pending = nil
@@ -266,7 +346,7 @@ private final class RecordingReplacementStore:
     func discardPending(transactionUUID: Data) throws {
         guard let retained = pending,
             retained.transactionUUID == transactionUUID,
-            primary == retained.expectedCurrentKeyID
+            primary == retained.localPrimaryKeyID
         else { throw PlatformFailure.appAttestInvalidInput }
         pending = nil
     }
@@ -293,11 +373,12 @@ private final class ReplacementAppAttestService: AppleAppAttestServicing, @unche
 
 private struct FixedReplacementProducer: AppAttestKeyReplacementProducingV1 {
     let pending: PendingAppAttestReplacementKeyV1
+    let canonicalResponse: Data
     func produce(
         _: AppAttestKeyReplacementPresentationV1, nowUnixMillis _: UInt64
     ) async throws -> StagedAppAttestKeyReplacementResponseV1 {
         StagedAppAttestKeyReplacementResponseV1(
-            canonicalResponse: Data("{}".utf8), pendingKey: pending
+            canonicalResponse: canonicalResponse, pendingKey: pending
         )
     }
 }
@@ -306,10 +387,42 @@ private final class RecordingCommitter:
     AppAttestKeyReplacementCommittingV1, @unchecked Sendable
 {
     var committed: PendingAppAttestReplacementKeyV1?
-    func commitReplacementKey(_ pending: PendingAppAttestReplacementKeyV1) throws {
+    func commitReplacementKey(
+        _ pending: PendingAppAttestReplacementKeyV1,
+        authenticated _: AuthenticatedAppAttestReplacementAcceptanceV1
+    ) throws {
         committed = pending
     }
     func discardReplacementKey(transactionUUID _: Data) throws {}
+}
+
+private final class PXARAcceptanceURLProtocol: URLProtocol, @unchecked Sendable {
+    private static let lock = NSLock()
+    nonisolated(unsafe) private static var responseData = Data()
+
+    static func setResponse(_ data: Data) {
+        lock.lock()
+        responseData = data
+        lock.unlock()
+    }
+
+    override class func canInit(with _: URLRequest) -> Bool { true }
+    override class func canonicalRequest(for request: URLRequest) -> URLRequest { request }
+
+    override func startLoading() {
+        let response = HTTPURLResponse(
+            url: request.url!, statusCode: 200, httpVersion: "HTTP/1.1",
+            headerFields: ["Cache-Control": "no-store"]
+        )!
+        client?.urlProtocol(self, didReceive: response, cacheStoragePolicy: .notAllowed)
+        Self.lock.lock()
+        let data = Self.responseData
+        Self.lock.unlock()
+        client?.urlProtocol(self, didLoad: data)
+        client?.urlProtocolDidFinishLoading(self)
+    }
+
+    override func stopLoading() {}
 }
 
 private func assertThrowsErrorAsync(

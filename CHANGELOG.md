@@ -9,9 +9,14 @@
   offline carrier, requires the protected Site, installation, device,
   authority, revocation, current App Attest key and Site-root approval key,
   creates and attests one fresh pending key after Face ID, and commits that key
-  only after an exact separately authenticated acceptance. The admitted key is
-  unchanged while the response is pending; exact retries reuse the retained
-  candidate, and alternate transactions or keys fail closed.
+  only through an opaque acceptance capability returned by the fixed pinned
+  Monas transport. The admitted key is unchanged while the response is
+  pending; exact retries reuse the retained candidate, a server/local old-key
+  mismatch may stage recovery without promotion, and alternate transactions
+  or acceptance keys fail closed. The production Scan view provides a
+  purpose-specific canonical-JSON file importer, review sheet, response-file
+  share action, and fixed pinned Monas submission; the generic QR path does not
+  accept replacement presentations.
 
 - Add the accepted ADR-0014 offline first-Site-X.509 response path. Pistis
   strictly parses the shared Thesaurophylax `PXFP2:P:` presentation from QR or

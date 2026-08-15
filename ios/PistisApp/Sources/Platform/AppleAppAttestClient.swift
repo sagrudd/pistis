@@ -126,25 +126,30 @@ protocol AppleAppAttestKeyIDStoring: Sendable {
 struct PendingAppAttestReplacementKeyV1: Equatable, Sendable {
     let transactionUUID: Data
     let expectedCurrentKeyID: String
+    let localPrimaryKeyID: String
     let replacementKeyID: String
 
     init(
         transactionUUID: Data,
         expectedCurrentKeyID: String,
+        localPrimaryKeyID: String,
         replacementKeyID: String
     ) throws {
         guard transactionUUID.count == 16,
             !transactionUUID.allSatisfy({ $0 == 0 }),
             Self.canonicalKeyID(expectedCurrentKeyID) != nil,
+            Self.canonicalKeyID(localPrimaryKeyID) != nil,
             Self.canonicalKeyID(replacementKeyID) != nil,
-            expectedCurrentKeyID != replacementKeyID
+            expectedCurrentKeyID != replacementKeyID,
+            localPrimaryKeyID != replacementKeyID
         else { throw PlatformFailure.appAttestInvalidInput }
         self.transactionUUID = transactionUUID
         self.expectedCurrentKeyID = expectedCurrentKeyID
+        self.localPrimaryKeyID = localPrimaryKeyID
         self.replacementKeyID = replacementKeyID
     }
 
-    private static func canonicalKeyID(_ value: String) -> Data? {
+    static func canonicalKeyID(_ value: String) -> Data? {
         guard !value.isEmpty, value.utf8.count <= 512,
             let decoded = Data(base64Encoded: value), decoded.count == 32,
             decoded.base64EncodedString() == value
@@ -305,7 +310,7 @@ final class KeychainAppleAppAttestReplacementKeyStore:
     func commitPending(_ value: PendingAppAttestReplacementKeyV1) throws {
         guard loadPending() == value,
             let current = primary.loadKeyID(),
-            current == value.expectedCurrentKeyID || current == value.replacementKeyID
+            current == value.localPrimaryKeyID || current == value.replacementKeyID
         else { throw PlatformFailure.appAttestInvalidInput }
         if current != value.replacementKeyID {
             try primary.saveKeyID(value.replacementKeyID)
@@ -318,7 +323,7 @@ final class KeychainAppleAppAttestReplacementKeyStore:
     func discardPending(transactionUUID: Data) throws {
         guard let retained = loadPending() else { return }
         guard retained.transactionUUID == transactionUUID,
-            primary.loadKeyID() == retained.expectedCurrentKeyID
+            primary.loadKeyID() == retained.localPrimaryKeyID
         else {
             throw PlatformFailure.appAttestInvalidInput
         }
@@ -339,7 +344,9 @@ final class KeychainAppleAppAttestReplacementKeyStore:
     private func encode(_ value: PendingAppAttestReplacementKeyV1) -> Data {
         var bytes = magic
         bytes.append(value.transactionUUID)
-        for field in [value.expectedCurrentKeyID, value.replacementKeyID] {
+        for field in [
+            value.expectedCurrentKeyID, value.localPrimaryKeyID, value.replacementKeyID,
+        ] {
             let encoded = Data(field.utf8)
             bytes.append(UInt8(encoded.count >> 8))
             bytes.append(UInt8(encoded.count & 0xff))
@@ -356,7 +363,7 @@ final class KeychainAppleAppAttestReplacementKeyStore:
         let transaction = bytes[cursor..<cursor + 16]
         cursor += 16
         var fields: [String] = []
-        for _ in 0..<2 {
+        for _ in 0..<3 {
             guard cursor + 2 <= bytes.count else {
                 throw PlatformFailure.appAttestInvalidInput
             }
@@ -371,7 +378,7 @@ final class KeychainAppleAppAttestReplacementKeyStore:
         guard cursor == bytes.count else { throw PlatformFailure.appAttestInvalidInput }
         return try PendingAppAttestReplacementKeyV1(
             transactionUUID: Data(transaction), expectedCurrentKeyID: fields[0],
-            replacementKeyID: fields[1]
+            localPrimaryKeyID: fields[1], replacementKeyID: fields[2]
         )
     }
 }
@@ -542,12 +549,15 @@ final class AppleAppAttestClient: @unchecked Sendable {
         expectedCurrentKeyID: String,
         clientDataHash: @Sendable (String) throws -> Data
     ) async throws -> (pending: PendingAppAttestReplacementKeyV1, attestation: Data) {
-        guard service.isSupported, existingKeyID() == expectedCurrentKeyID
+        guard service.isSupported, let localPrimaryKeyID = existingKeyID(),
+            PendingAppAttestReplacementKeyV1.canonicalKeyID(expectedCurrentKeyID) != nil,
+            PendingAppAttestReplacementKeyV1.canonicalKeyID(localPrimaryKeyID) != nil
         else { throw PlatformFailure.appAttestUnavailable }
         let pending: PendingAppAttestReplacementKeyV1
         if let retained = replacementStore.loadPending() {
             guard retained.transactionUUID == transactionUUID,
-                retained.expectedCurrentKeyID == expectedCurrentKeyID
+                retained.expectedCurrentKeyID == expectedCurrentKeyID,
+                retained.localPrimaryKeyID == localPrimaryKeyID
             else { throw PlatformFailure.appAttestInvalidInput }
             pending = retained
         } else {
@@ -555,6 +565,7 @@ final class AppleAppAttestClient: @unchecked Sendable {
             pending = try PendingAppAttestReplacementKeyV1(
                 transactionUUID: transactionUUID,
                 expectedCurrentKeyID: expectedCurrentKeyID,
+                localPrimaryKeyID: localPrimaryKeyID,
                 replacementKeyID: replacement
             )
             // Publish the candidate identifier before requesting attestation so
@@ -572,7 +583,22 @@ final class AppleAppAttestClient: @unchecked Sendable {
         )
     }
 
-    func commitReplacementKey(_ pending: PendingAppAttestReplacementKeyV1) throws {
+    func commitReplacementKey(
+        _ pending: PendingAppAttestReplacementKeyV1,
+        authenticated: AuthenticatedAppAttestReplacementAcceptanceV1
+    ) throws {
+        let accepted = authenticated.accepted
+        guard
+            let acceptedOldKey = PXARJSON.base64URL(
+                accepted.oldKeyIDB64URL, count: 32
+            ),
+            let acceptedNewKey = PXARJSON.base64URL(
+                accepted.newKeyIDB64URL, count: 32
+            ),
+            PXARJSON.canonicalUUID(accepted.transactionID) == pending.transactionUUID,
+            acceptedOldKey.base64EncodedString() == pending.expectedCurrentKeyID,
+            acceptedNewKey.base64EncodedString() == pending.replacementKeyID
+        else { throw PlatformFailure.appAttestInvalidInput }
         try replacementStore.commitPending(pending)
     }
 

@@ -26,8 +26,11 @@ After one fresh Face ID evaluation, Pistis verifies the existing Site-root
 public key, asks Apple for a distinct new App Attest key, and stores the opaque
 candidate key ID as pending before requesting its attestation. A retry for the
 exact transaction reuses that candidate; a different pending transaction is
-denied. The admitted primary key remains byte-identical. The Monas challenge
-is the exact 32-byte App Attest client-data hash.
+denied. If the local Keychain primary differs from Monas's protected old key,
+Pistis records both identities and may still stage a distinct candidate; it
+does not overwrite either identity or claim recovery. The admitted local
+primary remains byte-identical. The Monas challenge is the exact 32-byte App
+Attest client-data hash.
 
 Pistis then constructs the exact approval object: `protocol`, `purpose`,
 transaction, installation, device, Site domain, old and new App Attest key
@@ -39,10 +42,19 @@ the original presentation, the approval object, and the Base64url signature.
 The potentially large submission is a file payload; this slice makes no claim
 that it fits a QR carrier.
 
-Pistis promotes the pending key to the primary Keychain slot only after a
-separately authenticated Monas result is canonical JSON with state
-`accepted` and exact transaction, installation, generations, and old/new key
-bindings. A crash after primary publication is reconciled idempotently from
+Pistis promotes the pending key to the primary Keychain slot only through an
+opaque capability returned by the fixed-path, pinned-TLS Monas submission
+transport. That transport requires a canonical JSON `accepted` result with
+exact transaction, installation, generations, and old/new key bindings. Raw
+accepted JSON or an imported file cannot construct the capability or reach the
+commit API. A crash after primary publication is reconciled idempotently from
 the retained pending record. Rejection may discard only the exact pending
-transaction while the old key remains primary. No private key, generic URL,
-origin override, trust exception, password, or fallback is exposed.
+transaction while the locally observed pre-stage key remains primary. No
+private key, generic URL, origin override, trust exception, password, or
+fallback is exposed.
+
+Version 0.17.0 adds a dedicated production Scan-view file importer and review
+sheet. Replacement presentations are accepted only as bounded canonical JSON
+files, never by the generic QR path. The sheet shows the protected old key and
+generation before Face ID, exports the canonical response as a file, and can
+submit those exact bytes only to the fixed pinned Monas route before commit.

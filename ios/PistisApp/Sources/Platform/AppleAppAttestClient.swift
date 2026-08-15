@@ -39,11 +39,11 @@ struct AppleAppAttestRegistrationEnvelope: Codable, Equatable, Sendable {
         attestationObject: Data
     ) throws {
         guard Self.validIdentifier(ceremonyID, maximumLength: 128),
-              Self.validIdentifier(siteTrustDomain, maximumLength: 255),
-              clientDataHash.count == 32,
-              !attestationObject.isEmpty,
-              attestationObject.count <= 262_144,
-              let credentialID = Data(base64Encoded: appleKeyID)
+            Self.validIdentifier(siteTrustDomain, maximumLength: 255),
+            clientDataHash.count == 32,
+            !attestationObject.isEmpty,
+            attestationObject.count <= 262_144,
+            let credentialID = Data(base64Encoded: appleKeyID)
         else {
             throw PlatformFailure.appAttestInvalidInput
         }
@@ -98,9 +98,9 @@ struct AppleAppAttestAssertionEnvelope: Codable, Equatable, Sendable {
 
     init(ceremonyID: Data, assertion: Data) throws {
         guard ceremonyID.count == 16,
-              !ceremonyID.allSatisfy({ $0 == 0 }),
-              !assertion.isEmpty,
-              assertion.count <= 16_384
+            !ceremonyID.allSatisfy({ $0 == 0 }),
+            !assertion.isEmpty,
+            assertion.count <= 16_384
         else { throw PlatformFailure.appAttestInvalidInput }
         profile = Self.ingressProfile
         ceremonyIDB64URL = Self.base64URL(ceremonyID)
@@ -121,6 +121,43 @@ struct AppleAppAttestAssertionEnvelope: Codable, Equatable, Sendable {
 protocol AppleAppAttestKeyIDStoring: Sendable {
     func loadKeyID() -> String?
     func saveKeyID(_ keyID: String) throws
+}
+
+struct PendingAppAttestReplacementKeyV1: Equatable, Sendable {
+    let transactionUUID: Data
+    let expectedCurrentKeyID: String
+    let replacementKeyID: String
+
+    init(
+        transactionUUID: Data,
+        expectedCurrentKeyID: String,
+        replacementKeyID: String
+    ) throws {
+        guard transactionUUID.count == 16,
+            !transactionUUID.allSatisfy({ $0 == 0 }),
+            Self.canonicalKeyID(expectedCurrentKeyID) != nil,
+            Self.canonicalKeyID(replacementKeyID) != nil,
+            expectedCurrentKeyID != replacementKeyID
+        else { throw PlatformFailure.appAttestInvalidInput }
+        self.transactionUUID = transactionUUID
+        self.expectedCurrentKeyID = expectedCurrentKeyID
+        self.replacementKeyID = replacementKeyID
+    }
+
+    private static func canonicalKeyID(_ value: String) -> Data? {
+        guard !value.isEmpty, value.utf8.count <= 512,
+            let decoded = Data(base64Encoded: value), decoded.count == 32,
+            decoded.base64EncodedString() == value
+        else { return nil }
+        return decoded
+    }
+}
+
+protocol AppleAppAttestReplacementKeyStoring: Sendable {
+    func loadPending() -> PendingAppAttestReplacementKeyV1?
+    func savePending(_ value: PendingAppAttestReplacementKeyV1) throws
+    func commitPending(_ value: PendingAppAttestReplacementKeyV1) throws
+    func discardPending(transactionUUID: Data) throws
 }
 
 /// Narrow boundary around the Apple framework. This makes exact input hashing
@@ -194,10 +231,10 @@ final class KeychainAppleAppAttestKeyIDStore: AppleAppAttestKeyIDStoring, @unche
         query[kSecMatchLimit as String] = kSecMatchLimitOne
         var result: CFTypeRef?
         guard SecItemCopyMatching(query as CFDictionary, &result) == errSecSuccess,
-              let data = result as? Data,
-              let keyID = String(data: data, encoding: .utf8),
-              !keyID.isEmpty,
-              keyID.utf8.count <= 512
+            let data = result as? Data,
+            let keyID = String(data: data, encoding: .utf8),
+            !keyID.isEmpty,
+            keyID.utf8.count <= 512
         else { return nil }
         return keyID
     }
@@ -213,10 +250,11 @@ final class KeychainAppleAppAttestKeyIDStore: AppleAppAttestKeyIDStoring, @unche
             kSecAttrAccessible as String: kSecAttrAccessibleWhenUnlockedThisDeviceOnly,
         ]
         let status = SecItemAdd((query.merging(attributes) { _, new in new }) as CFDictionary, nil)
-        guard status == errSecSuccess
-            || (status == errSecDuplicateItem
-                && SecItemUpdate(query as CFDictionary, attributes as CFDictionary)
-                    == errSecSuccess)
+        guard
+            status == errSecSuccess
+                || (status == errSecDuplicateItem
+                    && SecItemUpdate(query as CFDictionary, attributes as CFDictionary)
+                        == errSecSuccess)
         else { throw PlatformFailure.appAttestKeyCreationFailed }
     }
 
@@ -226,6 +264,115 @@ final class KeychainAppleAppAttestKeyIDStore: AppleAppAttestKeyIDStoring, @unche
             kSecAttrService as String: service,
             kSecAttrAccount as String: account,
         ]
+    }
+}
+
+final class KeychainAppleAppAttestReplacementKeyStore:
+    AppleAppAttestReplacementKeyStoring, @unchecked Sendable
+{
+    private let pendingService = "org.mnemosynebiosciences.pistis.app-attest-replacement.v1"
+    private let primary = KeychainAppleAppAttestKeyIDStore()
+    private let account = "pending"
+    private let magic = Data("PXAK/v1\0".utf8)
+
+    func loadPending() -> PendingAppAttestReplacementKeyV1? {
+        var query = baseQuery()
+        query[kSecReturnData as String] = true
+        query[kSecMatchLimit as String] = kSecMatchLimitOne
+        var result: CFTypeRef?
+        guard SecItemCopyMatching(query as CFDictionary, &result) == errSecSuccess,
+            let bytes = result as? Data
+        else { return nil }
+        return try? decode(bytes)
+    }
+
+    func savePending(_ value: PendingAppAttestReplacementKeyV1) throws {
+        if let retained = loadPending() {
+            guard retained == value else { throw PlatformFailure.appAttestInvalidInput }
+            return
+        }
+        let attributes: [String: Any] = [
+            kSecValueData as String: encode(value),
+            kSecAttrAccessible as String: kSecAttrAccessibleWhenUnlockedThisDeviceOnly,
+        ]
+        guard
+            SecItemAdd(
+                (baseQuery().merging(attributes) { _, new in new }) as CFDictionary, nil
+            ) == errSecSuccess
+        else { throw PlatformFailure.appAttestKeyCreationFailed }
+    }
+
+    func commitPending(_ value: PendingAppAttestReplacementKeyV1) throws {
+        guard loadPending() == value,
+            let current = primary.loadKeyID(),
+            current == value.expectedCurrentKeyID || current == value.replacementKeyID
+        else { throw PlatformFailure.appAttestInvalidInput }
+        if current != value.replacementKeyID {
+            try primary.saveKeyID(value.replacementKeyID)
+        }
+        guard SecItemDelete(baseQuery() as CFDictionary) == errSecSuccess else {
+            throw PlatformFailure.appAttestKeyCreationFailed
+        }
+    }
+
+    func discardPending(transactionUUID: Data) throws {
+        guard let retained = loadPending() else { return }
+        guard retained.transactionUUID == transactionUUID,
+            primary.loadKeyID() == retained.expectedCurrentKeyID
+        else {
+            throw PlatformFailure.appAttestInvalidInput
+        }
+        let status = SecItemDelete(baseQuery() as CFDictionary)
+        guard status == errSecSuccess || status == errSecItemNotFound else {
+            throw PlatformFailure.appAttestKeyCreationFailed
+        }
+    }
+
+    private func baseQuery() -> [String: Any] {
+        [
+            kSecClass as String: kSecClassGenericPassword,
+            kSecAttrService as String: pendingService,
+            kSecAttrAccount as String: account,
+        ]
+    }
+
+    private func encode(_ value: PendingAppAttestReplacementKeyV1) -> Data {
+        var bytes = magic
+        bytes.append(value.transactionUUID)
+        for field in [value.expectedCurrentKeyID, value.replacementKeyID] {
+            let encoded = Data(field.utf8)
+            bytes.append(UInt8(encoded.count >> 8))
+            bytes.append(UInt8(encoded.count & 0xff))
+            bytes.append(encoded)
+        }
+        return bytes
+    }
+
+    private func decode(_ bytes: Data) throws -> PendingAppAttestReplacementKeyV1 {
+        guard bytes.count >= magic.count + 20,
+            bytes.prefix(magic.count) == magic
+        else { throw PlatformFailure.appAttestInvalidInput }
+        var cursor = magic.count
+        let transaction = bytes[cursor..<cursor + 16]
+        cursor += 16
+        var fields: [String] = []
+        for _ in 0..<2 {
+            guard cursor + 2 <= bytes.count else {
+                throw PlatformFailure.appAttestInvalidInput
+            }
+            let count = Int(bytes[cursor]) << 8 | Int(bytes[cursor + 1])
+            cursor += 2
+            guard count > 0, cursor + count <= bytes.count,
+                let value = String(data: bytes[cursor..<cursor + count], encoding: .utf8)
+            else { throw PlatformFailure.appAttestInvalidInput }
+            cursor += count
+            fields.append(value)
+        }
+        guard cursor == bytes.count else { throw PlatformFailure.appAttestInvalidInput }
+        return try PendingAppAttestReplacementKeyV1(
+            transactionUUID: Data(transaction), expectedCurrentKeyID: fields[0],
+            replacementKeyID: fields[1]
+        )
     }
 }
 
@@ -241,13 +388,17 @@ final class AppleAppAttestClient: @unchecked Sendable {
 
     private let service: AppleAppAttestServicing
     private let keyIDStore: AppleAppAttestKeyIDStoring
+    private let replacementStore: AppleAppAttestReplacementKeyStoring
 
     init(
         service: AppleAppAttestServicing = DeviceCheckAppAttestService(),
-        keyIDStore: AppleAppAttestKeyIDStoring = KeychainAppleAppAttestKeyIDStore()
+        keyIDStore: AppleAppAttestKeyIDStoring = KeychainAppleAppAttestKeyIDStore(),
+        replacementStore: AppleAppAttestReplacementKeyStoring =
+            KeychainAppleAppAttestReplacementKeyStore()
     ) {
         self.service = service
         self.keyIDStore = keyIDStore
+        self.replacementStore = replacementStore
     }
 
     /// Creates a v1 registration envelope for an exact, one-use Monas
@@ -300,7 +451,7 @@ final class AppleAppAttestClient: @unchecked Sendable {
         bootstrap: MonasAppAttestCeremonyBootstrap
     ) async throws -> AppleAppAttestAssertionEnvelope {
         guard service.isSupported,
-              let keyID = existingKeyID()
+            let keyID = existingKeyID()
         else { throw PlatformFailure.appAttestUnavailable }
 
         let clientData = Self.assertionClientDataPrefix + bootstrap.challengeDigest
@@ -322,8 +473,8 @@ final class AppleAppAttestClient: @unchecked Sendable {
         challenge: CustodyRotationAppAttestChallengeV2
     ) async throws -> AppleAppAttestAssertionEnvelope {
         guard service.isSupported, let keyID = existingKeyID(),
-              let decodedKeyID = Data(base64Encoded: keyID),
-              decodedKeyID == challenge.keyID
+            let decodedKeyID = Data(base64Encoded: keyID),
+            decodedKeyID == challenge.keyID
         else { throw PlatformFailure.appAttestUnavailable }
         let assertion = try await service.generateAssertion(
             keyID, clientDataHash: challenge.clientDataHash
@@ -339,8 +490,8 @@ final class AppleAppAttestClient: @unchecked Sendable {
         presentation: MTGSRecoveryPresentationV1
     ) async throws -> AppleAppAttestAssertionEnvelope {
         guard service.isSupported, let keyID = existingKeyID(),
-              let decodedKeyID = Data(base64Encoded: keyID),
-              decodedKeyID == presentation.keyID
+            let decodedKeyID = Data(base64Encoded: keyID),
+            decodedKeyID == presentation.keyID
         else { throw PlatformFailure.appAttestUnavailable }
         let clientData = Self.assertionClientDataPrefix + presentation.challengeDigest
         let assertionClientDataHash = Data(SHA256.hash(data: clientData))
@@ -362,9 +513,9 @@ final class AppleAppAttestClient: @unchecked Sendable {
         clientDataHash: Data
     ) async throws -> AppleAppAttestAssertionEnvelope {
         guard service.isSupported, ceremonyID.count == 16,
-              expectedKeyID.count == 32, clientDataHash.count == 32,
-              let keyID = existingKeyID(), let decodedKeyID = Data(base64Encoded: keyID),
-              decodedKeyID == expectedKeyID
+            expectedKeyID.count == 32, clientDataHash.count == 32,
+            let keyID = existingKeyID(), let decodedKeyID = Data(base64Encoded: keyID),
+            decodedKeyID == expectedKeyID
         else { throw PlatformFailure.appAttestUnavailable }
         let assertion = try await service.generateAssertion(keyID, clientDataHash: clientDataHash)
         return try AppleAppAttestAssertionEnvelope(ceremonyID: ceremonyID, assertion: assertion)
@@ -378,10 +529,55 @@ final class AppleAppAttestClient: @unchecked Sendable {
         clientDataHash: Data
     ) async throws -> Data {
         guard service.isSupported, !expectedKeyID.isEmpty,
-              expectedKeyID.utf8.count <= 128, clientDataHash.count == 32,
-              let keyID = existingKeyID(), keyID == expectedKeyID
+            expectedKeyID.utf8.count <= 128, clientDataHash.count == 32,
+            let keyID = existingKeyID(), keyID == expectedKeyID
         else { throw PlatformFailure.appAttestUnavailable }
         return try await service.generateAssertion(keyID, clientDataHash: clientDataHash)
+    }
+
+    /// Generates and attests a distinct candidate key without changing the
+    /// currently admitted App Attest key identifier.
+    func stageReplacementKey(
+        transactionUUID: Data,
+        expectedCurrentKeyID: String,
+        clientDataHash: @Sendable (String) throws -> Data
+    ) async throws -> (pending: PendingAppAttestReplacementKeyV1, attestation: Data) {
+        guard service.isSupported, existingKeyID() == expectedCurrentKeyID
+        else { throw PlatformFailure.appAttestUnavailable }
+        let pending: PendingAppAttestReplacementKeyV1
+        if let retained = replacementStore.loadPending() {
+            guard retained.transactionUUID == transactionUUID,
+                retained.expectedCurrentKeyID == expectedCurrentKeyID
+            else { throw PlatformFailure.appAttestInvalidInput }
+            pending = retained
+        } else {
+            let replacement = try await service.generateKey()
+            pending = try PendingAppAttestReplacementKeyV1(
+                transactionUUID: transactionUUID,
+                expectedCurrentKeyID: expectedCurrentKeyID,
+                replacementKeyID: replacement
+            )
+            // Publish the candidate identifier before requesting attestation so
+            // a crash resumes this exact key rather than minting an untracked
+            // second candidate.
+            try replacementStore.savePending(pending)
+        }
+        let hash = try clientDataHash(pending.replacementKeyID)
+        guard hash.count == 32, !hash.allSatisfy({ $0 == 0 }) else {
+            throw PlatformFailure.appAttestInvalidInput
+        }
+        return (
+            pending,
+            try await service.attestKey(pending.replacementKeyID, clientDataHash: hash)
+        )
+    }
+
+    func commitReplacementKey(_ pending: PendingAppAttestReplacementKeyV1) throws {
+        try replacementStore.commitPending(pending)
+    }
+
+    func discardReplacementKey(transactionUUID: Data) throws {
+        try replacementStore.discardPending(transactionUUID: transactionUUID)
     }
 
     private func existingOrNewKeyID() async throws -> String {
@@ -402,9 +598,9 @@ final class AppleAppAttestClient: @unchecked Sendable {
 
     private func existingKeyID() -> String? {
         guard let keyID = keyIDStore.loadKeyID(),
-              let decoded = Data(base64Encoded: keyID),
-              !decoded.isEmpty,
-              decoded.count <= 256
+            let decoded = Data(base64Encoded: keyID),
+            !decoded.isEmpty,
+            decoded.count <= 256
         else { return nil }
         return keyID
     }

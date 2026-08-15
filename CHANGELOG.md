@@ -4,6 +4,15 @@
 
 ### Added
 
+- Add the staged App Attest replacement foundation for an already enrolled
+  physical iPhone. Pistis strictly parses the purpose-separated PXAR/v1
+  offline carrier, requires the protected Site, installation, device,
+  authority, revocation, current App Attest key and Site-root approval key,
+  creates and attests one fresh pending key after Face ID, and commits that key
+  only after an exact separately authenticated acceptance. The admitted key is
+  unchanged while the response is pending; exact retries reuse the retained
+  candidate, and alternate transactions or keys fail closed.
+
 - Add the accepted ADR-0014 offline first-Site-X.509 response path. Pistis
   strictly parses the shared Thesaurophylax `PXFP2:P:` presentation from QR or
   raw file bytes, displays the protected Site/device/target/service-IP facts,

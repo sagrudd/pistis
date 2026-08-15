@@ -252,6 +252,16 @@ final class SecureEnclaveAppAttestKeyReplacementProducerV1:
         guard value.wire.issuedAtUnixMillis <= nowUnixMillis,
             nowUnixMillis < value.wire.expiresAtUnixMillis
         else { throw PlatformFailure.qrPayloadUnsupported }
+        if let retained = appAttest.loadRetainedReplacement(),
+           retained.transactionUUID == value.transactionUUID,
+           retained.expectedCurrentKeyID == value.oldKeyID.base64EncodedString(),
+           let canonicalSubmission = retained.canonicalSubmission
+        {
+            return StagedAppAttestKeyReplacementResponseV1(
+                canonicalResponse: canonicalSubmission,
+                pendingKey: retained
+            )
+        }
         let ceremony = try await FaceIDCeremonyContext.authenticate(
             reason: "Replace this Site's unavailable App Attest key"
         )
@@ -312,9 +322,12 @@ final class SecureEnclaveAppAttestKeyReplacementProducerV1:
         guard response.count <= AppAttestKeyReplacementOfflineProfileV1.maximumJSONBytes else {
             throw PlatformFailure.appAttestInvalidInput
         }
+        let retained = try appAttest.retainReplacementSubmission(
+            staged.pending, canonicalSubmission: response
+        )
         return StagedAppAttestKeyReplacementResponseV1(
             canonicalResponse: response,
-            pendingKey: staged.pending
+            pendingKey: retained
         )
     }
 }

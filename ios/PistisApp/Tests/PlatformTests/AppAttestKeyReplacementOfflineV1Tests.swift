@@ -62,6 +62,31 @@ final class AppAttestKeyReplacementOfflineV1Tests: XCTestCase {
         )
     }
 
+    func testPendingStorageDecodesV1AndRetainsExactV2Submission() throws {
+        let transaction = Data(repeating: 1, count: 16)
+        let old = Data(repeating: 2, count: 32).base64EncodedString()
+        let local = Data(repeating: 4, count: 32).base64EncodedString()
+        let replacement = Data(repeating: 3, count: 32).base64EncodedString()
+        var legacy = Data("PXAK/v1\0".utf8)
+        legacy.append(transaction)
+        for field in [old, local, replacement] {
+            let bytes = Data(field.utf8)
+            legacy.append(UInt8(bytes.count >> 8))
+            legacy.append(UInt8(bytes.count & 0xff))
+            legacy.append(bytes)
+        }
+        let decodedLegacy = try KeychainAppleAppAttestReplacementKeyStore.decode(legacy)
+        XCTAssertNil(decodedLegacy.canonicalSubmission)
+
+        let submission = try canonicalSubmission()
+        let retained = try decodedLegacy.retaining(canonicalSubmission: submission)
+        let decodedV2 = try KeychainAppleAppAttestReplacementKeyStore.decode(
+            KeychainAppleAppAttestReplacementKeyStore.encode(retained)
+        )
+        XCTAssertEqual(decodedV2, retained)
+        XCTAssertEqual(decodedV2.canonicalSubmission, submission)
+    }
+
     func testReplacementClientStagesFreshKeyWithoutChangingPrimary() async throws {
         let old = Data(repeating: 2, count: 32).base64EncodedString()
         let replacement = Data(repeating: 3, count: 32).base64EncodedString()
@@ -229,7 +254,80 @@ final class AppAttestKeyReplacementOfflineV1Tests: XCTestCase {
         await exact.approve(nowUnixMillis: 1_001)
         await exact.submitAndCommit(using: transport)
         XCTAssertEqual(exact.phase, .accepted)
-        XCTAssertEqual(committer.committed, pending)
+        XCTAssertEqual(
+            committer.committed,
+            try pending.retaining(canonicalSubmission: submission)
+        )
+    }
+
+    @MainActor
+    func testLostResponseRelaunchRetriesExactSubmissionAfterPresentationExpiry() async throws {
+        let submission = try canonicalSubmission()
+        let pending = try PendingAppAttestReplacementKeyV1(
+            transactionUUID: Data(repeating: 1, count: 16),
+            expectedCurrentKeyID: Data(repeating: 2, count: 32).base64EncodedString(),
+            localPrimaryKeyID: Data(repeating: 4, count: 32).base64EncodedString(),
+            replacementKeyID: Data(repeating: 3, count: 32).base64EncodedString()
+        )
+        let committer = RecordingCommitter()
+        let first = AppAttestKeyReplacementCoordinatorV1(
+            producer: FixedReplacementProducer(
+                pending: pending, canonicalResponse: submission
+            ),
+            committer: committer
+        )
+        first.accept(fileBytes: try presentation(), nowUnixMillis: 1_001)
+        await first.approve(nowUnixMillis: 1_001)
+        committer.retained = try pending.retaining(canonicalSubmission: submission)
+
+        let lostTransport = RecordingReplacementTransport()
+        await first.submitAndCommit(using: lostTransport)
+        XCTAssertEqual(first.phase, .responseReady)
+        XCTAssertEqual(first.responseFileBytes, submission)
+        XCTAssertNil(committer.committed)
+        XCTAssertEqual(lostTransport.submission, submission)
+
+        // At real relaunch time the presentation is expired. Reconciliation
+        // still resubmits only the already-generated durable bytes.
+        let relaunched = AppAttestKeyReplacementCoordinatorV1(
+            producer: FailingReplacementProducer(), committer: committer
+        )
+        relaunched.restoreRetainedSubmission()
+        XCTAssertEqual(relaunched.phase, .responseReady)
+        XCTAssertEqual(relaunched.responseFileBytes, submission)
+
+        PXARAcceptanceURLProtocol.setResponse(try canonicalObject(acceptedObject()))
+        await relaunched.submitAndCommit(using: try replacementTransport())
+        XCTAssertEqual(relaunched.phase, .accepted)
+        XCTAssertEqual(committer.committed?.canonicalSubmission, submission)
+    }
+
+    @MainActor
+    func testAuthenticatedDenialIsTerminalButRetainsExactSubmission() async throws {
+        let submission = try canonicalSubmission()
+        let pending = try PendingAppAttestReplacementKeyV1(
+            transactionUUID: Data(repeating: 1, count: 16),
+            expectedCurrentKeyID: Data(repeating: 2, count: 32).base64EncodedString(),
+            localPrimaryKeyID: Data(repeating: 4, count: 32).base64EncodedString(),
+            replacementKeyID: Data(repeating: 3, count: 32).base64EncodedString()
+        )
+        let committer = RecordingCommitter()
+        let coordinator = AppAttestKeyReplacementCoordinatorV1(
+            producer: FixedReplacementProducer(
+                pending: pending, canonicalResponse: submission
+            ),
+            committer: committer
+        )
+        coordinator.accept(fileBytes: try presentation(), nowUnixMillis: 1_001)
+        await coordinator.approve(nowUnixMillis: 1_001)
+        committer.retained = try pending.retaining(canonicalSubmission: submission)
+
+        PXARAcceptanceURLProtocol.setStatus(410)
+        await coordinator.submitAndCommit(using: try replacementTransport())
+        XCTAssertEqual(coordinator.phase, .failed)
+        XCTAssertEqual(coordinator.responseFileBytes, submission)
+        XCTAssertEqual(committer.retained?.canonicalSubmission, submission)
+        XCTAssertNil(committer.committed)
     }
 
     private func presentation() throws -> Data {
@@ -333,7 +431,15 @@ private final class RecordingReplacementStore:
     func saveKeyID(_ keyID: String) throws { primary = keyID }
     func loadPending() -> PendingAppAttestReplacementKeyV1? { pending }
     func savePending(_ value: PendingAppAttestReplacementKeyV1) throws {
-        guard pending == nil || pending == value else { throw PlatformFailure.appAttestInvalidInput }
+        if let pending, pending != value {
+            guard pending.transactionUUID == value.transactionUUID,
+                pending.expectedCurrentKeyID == value.expectedCurrentKeyID,
+                pending.localPrimaryKeyID == value.localPrimaryKeyID,
+                pending.replacementKeyID == value.replacementKeyID,
+                pending.canonicalSubmission == nil,
+                value.canonicalSubmission != nil
+            else { throw PlatformFailure.appAttestInvalidInput }
+        }
         pending = value
     }
     func commitPending(_ value: PendingAppAttestReplacementKeyV1) throws {
@@ -378,8 +484,17 @@ private struct FixedReplacementProducer: AppAttestKeyReplacementProducingV1 {
         _: AppAttestKeyReplacementPresentationV1, nowUnixMillis _: UInt64
     ) async throws -> StagedAppAttestKeyReplacementResponseV1 {
         StagedAppAttestKeyReplacementResponseV1(
-            canonicalResponse: canonicalResponse, pendingKey: pending
+            canonicalResponse: canonicalResponse,
+            pendingKey: try pending.retaining(canonicalSubmission: canonicalResponse)
         )
+    }
+}
+
+private struct FailingReplacementProducer: AppAttestKeyReplacementProducingV1 {
+    func produce(
+        _: AppAttestKeyReplacementPresentationV1, nowUnixMillis _: UInt64
+    ) async throws -> StagedAppAttestKeyReplacementResponseV1 {
+        throw PlatformFailure.appAttestInvalidInput
     }
 }
 
@@ -387,6 +502,8 @@ private final class RecordingCommitter:
     AppAttestKeyReplacementCommittingV1, @unchecked Sendable
 {
     var committed: PendingAppAttestReplacementKeyV1?
+    var retained: PendingAppAttestReplacementKeyV1?
+    func loadRetainedReplacement() -> PendingAppAttestReplacementKeyV1? { retained }
     func commitReplacementKey(
         _ pending: PendingAppAttestReplacementKeyV1,
         authenticated _: AuthenticatedAppAttestReplacementAcceptanceV1
@@ -396,13 +513,37 @@ private final class RecordingCommitter:
     func discardReplacementKey(transactionUUID _: Data) throws {}
 }
 
+private final class RecordingReplacementTransport:
+    AppAttestReplacementSubmittingV1, @unchecked Sendable
+{
+    private let lock = NSLock()
+    private var recorded: Data?
+    var submission: Data? {
+        lock.withLock { recorded }
+    }
+    func submitAppAttestReplacement(
+        canonicalSubmission: Data
+    ) async throws -> AuthenticatedAppAttestReplacementAcceptanceV1 {
+        lock.withLock { recorded = canonicalSubmission }
+        throw AppAttestReplacementTransportFailure.ambiguousDelivery
+    }
+}
+
 private final class PXARAcceptanceURLProtocol: URLProtocol, @unchecked Sendable {
     private static let lock = NSLock()
     nonisolated(unsafe) private static var responseData = Data()
+    nonisolated(unsafe) private static var statusCode = 200
 
     static func setResponse(_ data: Data) {
         lock.lock()
         responseData = data
+        statusCode = 200
+        lock.unlock()
+    }
+
+    static func setStatus(_ value: Int) {
+        lock.lock()
+        statusCode = value
         lock.unlock()
     }
 
@@ -410,19 +551,21 @@ private final class PXARAcceptanceURLProtocol: URLProtocol, @unchecked Sendable 
     override class func canonicalRequest(for request: URLRequest) -> URLRequest { request }
 
     override func startLoading() {
+        Self.lock.lock()
+        let data = Self.responseData
+        let statusCode = Self.statusCode
+        Self.lock.unlock()
         let response = HTTPURLResponse(
-            url: request.url!, statusCode: 200, httpVersion: "HTTP/1.1",
+            url: request.url!, statusCode: statusCode, httpVersion: "HTTP/1.1",
             headerFields: ["Cache-Control": "no-store"]
         )!
         client?.urlProtocol(self, didReceive: response, cacheStoragePolicy: .notAllowed)
-        Self.lock.lock()
-        let data = Self.responseData
-        Self.lock.unlock()
         client?.urlProtocol(self, didLoad: data)
         client?.urlProtocolDidFinishLoading(self)
     }
 
     override func stopLoading() {}
+
 }
 
 private func assertThrowsErrorAsync(

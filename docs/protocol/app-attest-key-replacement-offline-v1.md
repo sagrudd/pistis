@@ -58,3 +58,12 @@ sheet. Replacement presentations are accepted only as bounded canonical JSON
 files, never by the generic QR path. The sheet shows the protected old key and
 generation before Face ID, exports the canonical response as a file, and can
 submit those exact bytes only to the fixed pinned Monas route before commit.
+
+Before the response is displayed or submitted, Pistis stores the exact
+canonical submission beside the pending key identifier in this-device-only
+Keychain state. A network loss or timeout returns to the same retryable
+response and a relaunch reloads those bytes without Face ID, key generation,
+or re-attestation—even after the presentation expires. An authenticated Monas
+4xx denial is terminal for the UI attempt while retaining the bytes for
+operator reconciliation. This client path is not operational until the
+matching fixed Monas submission route is mounted and deployed.

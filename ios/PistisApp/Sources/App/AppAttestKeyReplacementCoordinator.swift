@@ -10,6 +10,7 @@ struct AppAttestKeyReplacementReviewV1: Identifiable, Equatable {
 }
 
 protocol AppAttestKeyReplacementCommittingV1: Sendable {
+    func loadRetainedReplacement() -> PendingAppAttestReplacementKeyV1?
     func commitReplacementKey(
         _ pending: PendingAppAttestReplacementKeyV1,
         authenticated: AuthenticatedAppAttestReplacementAcceptanceV1
@@ -18,6 +19,14 @@ protocol AppAttestKeyReplacementCommittingV1: Sendable {
 }
 
 extension AppleAppAttestClient: AppAttestKeyReplacementCommittingV1 {}
+
+protocol AppAttestReplacementSubmittingV1: Sendable {
+    func submitAppAttestReplacement(
+        canonicalSubmission: Data
+    ) async throws -> AuthenticatedAppAttestReplacementAcceptanceV1
+}
+
+extension MonasAppAttestTransport: AppAttestReplacementSubmittingV1 {}
 
 @MainActor
 final class AppAttestKeyReplacementCoordinatorV1: ObservableObject {
@@ -93,6 +102,7 @@ final class AppAttestKeyReplacementCoordinatorV1: ObservableObject {
             guard response.pendingKey.transactionUUID == presentation.transactionUUID,
                 response.pendingKey.expectedCurrentKeyID
                     == presentation.oldKeyID.base64EncodedString(),
+                response.pendingKey.canonicalSubmission == response.canonicalResponse,
                 !response.canonicalResponse.isEmpty,
                 response.canonicalResponse.count
                     <= AppAttestKeyReplacementOfflineProfileV1.maximumJSONBytes
@@ -129,7 +139,7 @@ final class AppAttestKeyReplacementCoordinatorV1: ObservableObject {
         } catch { phase = .failed }
     }
 
-    func submitAndCommit(using transport: MonasAppAttestTransport) async {
+    func submitAndCommit(using transport: any AppAttestReplacementSubmittingV1) async {
         guard phase == .responseReady, let responseFileBytes else {
             phase = .failed
             return
@@ -142,6 +152,38 @@ final class AppAttestKeyReplacementCoordinatorV1: ObservableObject {
             // Restore the guarded phase consumed by the same commit boundary.
             phase = .responseReady
             commitAuthenticatedAccepted(authenticated)
+        } catch AppAttestReplacementTransportFailure.ambiguousDelivery {
+            // A transport failure is ambiguous: Monas may have accepted the
+            // request. Preserve the exact durable bytes for idempotent retry.
+            phase = .responseReady
+        } catch {
+            // A verified deterministic rejection is terminal for this UI
+            // attempt, but durable bytes remain for operator reconciliation.
+            phase = .failed
+        }
+    }
+
+    func restoreRetainedSubmission() {
+        guard let retained = committer.loadRetainedReplacement(),
+              let bytes = retained.canonicalSubmission
+        else { return }
+        do {
+            let submission = try AppAttestKeyReplacementSubmissionV1(
+                canonicalBytes: bytes
+            )
+            let presentationBytes = try PXARJSON.encodeCanonical(submission.presentation)
+            let restored = try AppAttestKeyReplacementPresentationV1(
+                fileBytes: presentationBytes,
+                nowUnixMillis: submission.presentation.issuedAtUnixMillis
+            )
+            guard restored.transactionUUID == retained.transactionUUID,
+                  retained.expectedCurrentKeyID
+                    == restored.oldKeyID.base64EncodedString()
+            else { throw PlatformFailure.appAttestInvalidInput }
+            accept(restored)
+            staged = retained
+            responseFileBytes = bytes
+            phase = .responseReady
         } catch {
             phase = .failed
         }

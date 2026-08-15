@@ -128,12 +128,14 @@ struct PendingAppAttestReplacementKeyV1: Equatable, Sendable {
     let expectedCurrentKeyID: String
     let localPrimaryKeyID: String
     let replacementKeyID: String
+    let canonicalSubmission: Data?
 
     init(
         transactionUUID: Data,
         expectedCurrentKeyID: String,
         localPrimaryKeyID: String,
-        replacementKeyID: String
+        replacementKeyID: String,
+        canonicalSubmission: Data? = nil
     ) throws {
         guard transactionUUID.count == 16,
             !transactionUUID.allSatisfy({ $0 == 0 }),
@@ -143,10 +145,33 @@ struct PendingAppAttestReplacementKeyV1: Equatable, Sendable {
             expectedCurrentKeyID != replacementKeyID,
             localPrimaryKeyID != replacementKeyID
         else { throw PlatformFailure.appAttestInvalidInput }
+        if let canonicalSubmission {
+            let submission = try AppAttestKeyReplacementSubmissionV1(
+                canonicalBytes: canonicalSubmission
+            )
+            guard PXARJSON.canonicalUUID(submission.presentation.transactionID)
+                    == transactionUUID,
+                  submission.presentation.oldKeyIDB64URL
+                    == PXARJSON.base64URL(Self.canonicalKeyID(expectedCurrentKeyID)!),
+                  submission.approval.newKeyIDB64URL
+                    == PXARJSON.base64URL(Self.canonicalKeyID(replacementKeyID)!)
+            else { throw PlatformFailure.appAttestInvalidInput }
+        }
         self.transactionUUID = transactionUUID
         self.expectedCurrentKeyID = expectedCurrentKeyID
         self.localPrimaryKeyID = localPrimaryKeyID
         self.replacementKeyID = replacementKeyID
+        self.canonicalSubmission = canonicalSubmission
+    }
+
+    func retaining(canonicalSubmission: Data) throws -> Self {
+        try Self(
+            transactionUUID: transactionUUID,
+            expectedCurrentKeyID: expectedCurrentKeyID,
+            localPrimaryKeyID: localPrimaryKeyID,
+            replacementKeyID: replacementKeyID,
+            canonicalSubmission: canonicalSubmission
+        )
     }
 
     static func canonicalKeyID(_ value: String) -> Data? {
@@ -278,7 +303,8 @@ final class KeychainAppleAppAttestReplacementKeyStore:
     private let pendingService = "org.mnemosynebiosciences.pistis.app-attest-replacement.v1"
     private let primary = KeychainAppleAppAttestKeyIDStore()
     private let account = "pending"
-    private let magic = Data("PXAK/v1\0".utf8)
+    private static let magicV1 = Data("PXAK/v1\0".utf8)
+    private static let magicV2 = Data("PXAK/v2\0".utf8)
 
     func loadPending() -> PendingAppAttestReplacementKeyV1? {
         var query = baseQuery()
@@ -288,16 +314,30 @@ final class KeychainAppleAppAttestReplacementKeyStore:
         guard SecItemCopyMatching(query as CFDictionary, &result) == errSecSuccess,
             let bytes = result as? Data
         else { return nil }
-        return try? decode(bytes)
+        return try? Self.decode(bytes)
     }
 
     func savePending(_ value: PendingAppAttestReplacementKeyV1) throws {
         if let retained = loadPending() {
-            guard retained == value else { throw PlatformFailure.appAttestInvalidInput }
+            if retained == value { return }
+            guard retained.transactionUUID == value.transactionUUID,
+                  retained.expectedCurrentKeyID == value.expectedCurrentKeyID,
+                  retained.localPrimaryKeyID == value.localPrimaryKeyID,
+                  retained.replacementKeyID == value.replacementKeyID,
+                  retained.canonicalSubmission == nil,
+                  value.canonicalSubmission != nil
+            else { throw PlatformFailure.appAttestInvalidInput }
+            let status = SecItemUpdate(
+                baseQuery() as CFDictionary,
+                [kSecValueData as String: Self.encode(value)] as CFDictionary
+            )
+            guard status == errSecSuccess else {
+                throw PlatformFailure.appAttestKeyCreationFailed
+            }
             return
         }
         let attributes: [String: Any] = [
-            kSecValueData as String: encode(value),
+            kSecValueData as String: Self.encode(value),
             kSecAttrAccessible as String: kSecAttrAccessibleWhenUnlockedThisDeviceOnly,
         ]
         guard
@@ -341,8 +381,8 @@ final class KeychainAppleAppAttestReplacementKeyStore:
         ]
     }
 
-    private func encode(_ value: PendingAppAttestReplacementKeyV1) -> Data {
-        var bytes = magic
+    static func encode(_ value: PendingAppAttestReplacementKeyV1) -> Data {
+        var bytes = magicV2
         bytes.append(value.transactionUUID)
         for field in [
             value.expectedCurrentKeyID, value.localPrimaryKeyID, value.replacementKeyID,
@@ -352,14 +392,22 @@ final class KeychainAppleAppAttestReplacementKeyStore:
             bytes.append(UInt8(encoded.count & 0xff))
             bytes.append(encoded)
         }
+        let submission = value.canonicalSubmission ?? Data()
+        let count = UInt32(submission.count)
+        bytes.append(UInt8((count >> 24) & 0xff))
+        bytes.append(UInt8((count >> 16) & 0xff))
+        bytes.append(UInt8((count >> 8) & 0xff))
+        bytes.append(UInt8(count & 0xff))
+        bytes.append(submission)
         return bytes
     }
 
-    private func decode(_ bytes: Data) throws -> PendingAppAttestReplacementKeyV1 {
-        guard bytes.count >= magic.count + 20,
-            bytes.prefix(magic.count) == magic
+    static func decode(_ bytes: Data) throws -> PendingAppAttestReplacementKeyV1 {
+        let isV2 = bytes.prefix(magicV2.count) == magicV2
+        guard bytes.count >= magicV1.count + 20,
+            isV2 || bytes.prefix(magicV1.count) == magicV1
         else { throw PlatformFailure.appAttestInvalidInput }
-        var cursor = magic.count
+        var cursor = magicV1.count
         let transaction = bytes[cursor..<cursor + 16]
         cursor += 16
         var fields: [String] = []
@@ -375,10 +423,25 @@ final class KeychainAppleAppAttestReplacementKeyStore:
             cursor += count
             fields.append(value)
         }
+        var submission: Data?
+        if isV2 {
+            guard cursor + 4 <= bytes.count else {
+                throw PlatformFailure.appAttestInvalidInput
+            }
+            let count = Int(bytes[cursor]) << 24 | Int(bytes[cursor + 1]) << 16
+                | Int(bytes[cursor + 2]) << 8 | Int(bytes[cursor + 3])
+            cursor += 4
+            guard count <= AppAttestKeyReplacementOfflineProfileV1.maximumJSONBytes,
+                  cursor + count == bytes.count
+            else { throw PlatformFailure.appAttestInvalidInput }
+            if count > 0 { submission = Data(bytes[cursor..<cursor + count]) }
+            cursor += count
+        }
         guard cursor == bytes.count else { throw PlatformFailure.appAttestInvalidInput }
         return try PendingAppAttestReplacementKeyV1(
             transactionUUID: Data(transaction), expectedCurrentKeyID: fields[0],
-            localPrimaryKeyID: fields[1], replacementKeyID: fields[2]
+            localPrimaryKeyID: fields[1], replacementKeyID: fields[2],
+            canonicalSubmission: submission
         )
     }
 }
@@ -557,7 +620,8 @@ final class AppleAppAttestClient: @unchecked Sendable {
         if let retained = replacementStore.loadPending() {
             guard retained.transactionUUID == transactionUUID,
                 retained.expectedCurrentKeyID == expectedCurrentKeyID,
-                retained.localPrimaryKeyID == localPrimaryKeyID
+                retained.localPrimaryKeyID == localPrimaryKeyID,
+                retained.canonicalSubmission == nil
             else { throw PlatformFailure.appAttestInvalidInput }
             pending = retained
         } else {
@@ -600,6 +664,19 @@ final class AppleAppAttestClient: @unchecked Sendable {
             acceptedNewKey.base64EncodedString() == pending.replacementKeyID
         else { throw PlatformFailure.appAttestInvalidInput }
         try replacementStore.commitPending(pending)
+    }
+
+    func retainReplacementSubmission(
+        _ pending: PendingAppAttestReplacementKeyV1,
+        canonicalSubmission: Data
+    ) throws -> PendingAppAttestReplacementKeyV1 {
+        let retained = try pending.retaining(canonicalSubmission: canonicalSubmission)
+        try replacementStore.savePending(retained)
+        return retained
+    }
+
+    func loadRetainedReplacement() -> PendingAppAttestReplacementKeyV1? {
+        replacementStore.loadPending()
     }
 
     func discardReplacementKey(transactionUUID: Data) throws {

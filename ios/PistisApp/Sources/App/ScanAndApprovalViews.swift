@@ -180,7 +180,10 @@ struct ScanView: View {
         }
         .navigationTitle("Scan")
         .mnScreenBackground()
-        .task { readiness = await PasswordlessReadinessProbe.current() }
+        .task {
+            appAttestReplacement.restoreRetainedSubmission()
+            readiness = await PasswordlessReadinessProbe.current()
+        }
         .onAppear { startScanning() }
         .onDisappear { stopScanning() }
         .sheet(item: reviewBinding) { request in

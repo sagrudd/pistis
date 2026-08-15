@@ -119,6 +119,11 @@ struct AuthenticatedAppAttestReplacementAcceptanceV1: Sendable {
     }
 }
 
+enum AppAttestReplacementTransportFailure: Error {
+    case ambiguousDelivery
+    case authenticatedDenial
+}
+
 /// Dedicated, pinned HTTPS JSON transport for App Attest. It cannot submit
 /// generic COSE or consume cookies, redirects, cache entries, browser state,
 /// endpoint hints, or local identity.
@@ -216,7 +221,7 @@ struct MonasAppAttestTransport: Sendable {
             submission = try AppAttestKeyReplacementSubmissionV1(
                 canonicalBytes: canonicalSubmission
             )
-        } catch { throw PlatformFailure.productionEnvelopeUnavailable }
+        } catch { throw AppAttestReplacementTransportFailure.authenticatedDenial }
         guard submission.wireProtocol
                 == AppAttestKeyReplacementOfflineProfileV1.wireProtocol,
               submission.presentation.wireProtocol
@@ -227,7 +232,7 @@ struct MonasAppAttestTransport: Sendable {
                   string: Self.appAttestReplacementPath, relativeTo: origin
               )?.absoluteURL,
               endpoint.absoluteString == origin.absoluteString + Self.appAttestReplacementPath
-        else { throw PlatformFailure.productionEnvelopeUnavailable }
+        else { throw AppAttestReplacementTransportFailure.authenticatedDenial }
         var request = URLRequest(url: endpoint)
         request.httpMethod = "POST"
         request.httpBody = canonicalSubmission
@@ -238,26 +243,36 @@ struct MonasAppAttestTransport: Sendable {
         do {
             let (bytes, response) = try await session.data(for: request)
             guard let http = response as? HTTPURLResponse,
-                  http.url == endpoint,
-                  http.statusCode == 200,
+                  http.url == endpoint
+            else { throw AppAttestReplacementTransportFailure.ambiguousDelivery }
+            guard http.statusCode == 200 else {
+                if (400...499).contains(http.statusCode) {
+                    throw AppAttestReplacementTransportFailure.authenticatedDenial
+                }
+                throw AppAttestReplacementTransportFailure.ambiguousDelivery
+            }
+            guard
                   !bytes.isEmpty,
                   bytes.count <= 4_096,
                   http.value(forHTTPHeaderField: "Cache-Control")?
                     .lowercased().contains("no-store") == true
-            else { throw PlatformFailure.productionEnvelopeUnavailable }
-            let accepted = try AppAttestKeyReplacementAcceptedV1(
-                canonicalBytes: bytes
-            )
+            else { throw AppAttestReplacementTransportFailure.authenticatedDenial }
+            let accepted: AppAttestKeyReplacementAcceptedV1
+            do {
+                accepted = try AppAttestKeyReplacementAcceptedV1(canonicalBytes: bytes)
+            } catch {
+                throw AppAttestReplacementTransportFailure.authenticatedDenial
+            }
             guard accepted.transactionID == submission.presentation.transactionID,
                   accepted.installationID == submission.presentation.installationID,
                   accepted.oldGeneration == submission.presentation.oldGeneration,
                   accepted.newGeneration == submission.presentation.newGeneration,
                   accepted.oldKeyIDB64URL == submission.presentation.oldKeyIDB64URL,
                   accepted.newKeyIDB64URL == submission.approval.newKeyIDB64URL
-            else { throw PlatformFailure.productionEnvelopeUnavailable }
+            else { throw AppAttestReplacementTransportFailure.authenticatedDenial }
             return AuthenticatedAppAttestReplacementAcceptanceV1(accepted)
-        } catch let failure as PlatformFailure { throw failure }
-        catch { throw PlatformFailure.productionEnvelopeUnavailable }
+        } catch let failure as AppAttestReplacementTransportFailure { throw failure }
+        catch { throw AppAttestReplacementTransportFailure.ambiguousDelivery }
     }
 
     func submitAssertion(_ envelope: AppleAppAttestAssertionEnvelope) async throws {

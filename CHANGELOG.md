@@ -16,7 +16,9 @@
   or acceptance keys fail closed. The production Scan view provides a
   purpose-specific canonical-JSON file importer, review sheet, response-file
   share action, and fixed pinned Monas submission; the generic QR path does not
-  accept replacement presentations.
+  accept replacement presentations. Exact submission bytes are retained with
+  the pending key for lost-response/relaunch reconciliation without generating
+  another key or attestation; verified 4xx denials remain terminal.
 
 - Add the accepted ADR-0014 offline first-Site-X.509 response path. Pistis
   strictly parses the shared Thesaurophylax `PXFP2:P:` presentation from QR or

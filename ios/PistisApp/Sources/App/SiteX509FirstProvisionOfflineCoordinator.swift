@@ -18,10 +18,10 @@ final class SiteX509FirstProvisionOfflineCoordinator: ObservableObject {
     @Published private(set) var failure: PlatformFailure?
     @Published private(set) var presentedReview: SiteX509FirstProvisionOfflineReview?
     @Published private(set) var responseQRText: String?
-    private let producer: SecureEnclaveSiteX509FirstProvisionOfflineProducerV2
+    private let producer: any SiteX509FirstProvisionOfflineProducing
     private var pending: SiteX509FirstProvisionOfflinePresentationV2?
 
-    init(producer: SecureEnclaveSiteX509FirstProvisionOfflineProducerV2 = .init()) {
+    init(producer: any SiteX509FirstProvisionOfflineProducing = SecureEnclaveSiteX509FirstProvisionOfflineProducerV2()) {
         self.producer = producer
     }
 
@@ -52,6 +52,7 @@ final class SiteX509FirstProvisionOfflineCoordinator: ObservableObject {
     func approve(nowUnixSeconds: UInt64 = UInt64(Date().timeIntervalSince1970)) async {
         guard let pending else { failure = .invalidConfiguration; phase = .failed; return }
         do {
+            failure = nil
             phase = .approving
             let response = try await producer.produce(pending, nowUnixSeconds: nowUnixSeconds)
             responseQRText = try SecureEnclaveSiteX509FirstProvisionOfflineProducerV2
@@ -69,6 +70,7 @@ final class SiteX509FirstProvisionOfflineCoordinator: ObservableObject {
     }
 
     private func accept(_ value: SiteX509FirstProvisionOfflinePresentationV2) {
+        failure = nil
         pending = value
         presentedReview = .init(
             id: value.presentationDigest,

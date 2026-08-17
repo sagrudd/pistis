@@ -258,7 +258,15 @@ struct SiteX509FirstProvisionOfflinePresentationV2: Equatable, Sendable {
 }
 
 /// Face-ID-gated producer for the existing Site-root approval and registered App Attest assertion.
-final class SecureEnclaveSiteX509FirstProvisionOfflineProducerV2: @unchecked Sendable {
+protocol SiteX509FirstProvisionOfflineProducing: Sendable {
+    func produce(
+        _ value: SiteX509FirstProvisionOfflinePresentationV2,
+        nowUnixSeconds: UInt64
+    ) async throws -> Data
+}
+
+final class SecureEnclaveSiteX509FirstProvisionOfflineProducerV2:
+    SiteX509FirstProvisionOfflineProducing, @unchecked Sendable {
     private let appAttest: AppleAppAttestClient
     init(appAttest: AppleAppAttestClient = AppleAppAttestClient()) { self.appAttest = appAttest }
     func produce(_ value: SiteX509FirstProvisionOfflinePresentationV2, nowUnixSeconds: UInt64) async throws -> Data {
@@ -296,7 +304,15 @@ final class SecureEnclaveSiteX509FirstProvisionOfflineProducerV2: @unchecked Sen
         }
         let protected = try DetachedES256Cose.protectedHeaders(kid: value.siteRootApprovalKeyID, contentType: SiteX509FirstProvisionOfflineProfileV2.contentType)
         let structure = try DetachedES256Cose.signatureStructure(protected: protected, payload: value.canonicalChallenge)
-        let signature = try signer.sign(message: structure, using: ceremony)
+        let signature: Data
+        do {
+            signature = try signer.sign(message: structure, using: ceremony)
+        } catch let failure as PlatformFailure {
+            if let mapped = Self.siteRootAuthorityKeyFailure(for: failure) {
+                throw mapped
+            }
+            throw failure
+        }
         let approval = try DetachedES256Cose.envelope(protected: protected, signature: signature)
         let clientHash = try value.appAttestClientDataHash(detachedApproval: approval)
         let assertion = try await appAttest.prepareSiteX509FirstProvisionOfflineAssertion(expectedKeyID: value.appAttestKeyID, clientDataHash: clientHash)
@@ -329,6 +345,17 @@ final class SecureEnclaveSiteX509FirstProvisionOfflineProducerV2: @unchecked Sen
               expectedKeyID == Data(SHA256.hash(data: actualPublicKey))
         else { return .siteRootAuthorityKeyMismatch }
         return nil
+    }
+
+    /// Map only the two Security lookup failures that can arise while using
+    /// the enrolled Site-root key. All unrelated signing failures retain their
+    /// original meaning and are never relabelled as an authority mismatch.
+    static func siteRootAuthorityKeyFailure(for failure: PlatformFailure) -> PlatformFailure? {
+        switch failure {
+        case .keyNotFound: return .siteRootAuthorityKeyMissing
+        case .keyInvalidated: return .siteRootAuthorityKeyInvalidated
+        default: return nil
+        }
     }
     static func responseQRText(_ canonical: Data) throws -> String {
         let text = SiteX509FirstProvisionOfflineProfileV2.responseQRPrefix

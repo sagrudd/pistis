@@ -3,6 +3,17 @@ import XCTest
 @testable import Pistis
 
 final class SiteX509FirstProvisionOfflineV2Tests: XCTestCase {
+    private struct FailingProducer: SiteX509FirstProvisionOfflineProducing {
+        let failure: PlatformFailure
+
+        func produce(
+            _: SiteX509FirstProvisionOfflinePresentationV2,
+            nowUnixSeconds _: UInt64
+        ) async throws -> Data {
+            throw failure
+        }
+    }
+
     func testExactThesaurophylaxV2FixtureHasSwiftTranscriptParity() throws {
         let presentationHex = "505846502f76320201019b505846502f763101010019736974652d783530392d66697273742d70726f766973696f6e0200100101010101010101010101010101010103001002020202020202020202020202020202040008000000000000000105001e736974652d783530392d726f6f742d66697273742d70726f766973696f6e06002102591ab771ebbcfd6d9cb9094d106528add1a69d44c2c1f627f089ec58b9c61adf07002004040404040404040404040404040404040404040404040404040404040404040800200505050505050505050505050505050505050505050505050505050505050505090020736974652d783530392d6973737565722d66697273742d70726f766973696f6e0a00210273103ec30b3ccf57daae08e93534aef144a35940cf6bbba12a0cf7cbd5d65a640b002007070707070707070707070707070707070707070707070707070707070707070c002008080808080808080808080808080808080808080808080808080808080808080d000800000000000004b00e002009090909090909090909090909090909090909090909090909090909090909090200202583d23c060cdcb778dfebfc01dcb3b8b96e9ff9e333742b730b36e345d87dbe030010020202020202020202020202020202020401f2505843542f763200010024736974652d783530392d66697273742d70726f766973696f6e2d6f66666c696e652d763202002b7069737469733a736974652d783530392d66697273742d70726f766973696f6e2d6f66666c696e653a7632030029736974652d30303030303030302d303030302d303030302d303030302d303030303030303030303031040016617574686f726974792d67656e65726174696f6e2d31050014637573746f64792d67656e65726174696f6e2d3106000800000000000000010700080000000000000001080008000000000000000109000e696e7374616c6c6174696f6e2d310a00086465766963652d310b00106170702d6174746573742d6b65792d310c002a433741364e51545359342e6f72672e6d6e656d6f73796e6562696f736369656e6365732e7069737469730d0012637573746f6d65722d6170706c69616e63650e00200f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f003a000219736572766963652d6461736f626a65637473746f72652d73330104c0a800c111736572766963652d6d6f6e61732d7765620104c0a800c11000203c2ecbee6f676d257d0c8ae592d15e7ce5ab6ab4d16378c778b0535b52c2e75b110021027135fa4fd93a09dce98bbf681b4bfcf50e7c0d6354e62afb0bff2a3429617865050020d4b72eeb238874d0929d7be53117cabbe7fc1c8024b774265c6a990047dde42d0600200a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0700200b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b08000800000000000003e809000800000000000004b0"
         let bytes = Data(hex: presentationHex)
@@ -157,6 +168,45 @@ final class SiteX509FirstProvisionOfflineV2Tests: XCTestCase {
         )
     }
 
+    func testAuthorityLookupFailuresMapOnlyTheTwoSecurityKeyOutcomes() {
+        XCTAssertEqual(
+            SecureEnclaveSiteX509FirstProvisionOfflineProducerV2
+                .siteRootAuthorityKeyFailure(for: .keyNotFound),
+            .siteRootAuthorityKeyMissing
+        )
+        XCTAssertEqual(
+            SecureEnclaveSiteX509FirstProvisionOfflineProducerV2
+                .siteRootAuthorityKeyFailure(for: .keyInvalidated),
+            .siteRootAuthorityKeyInvalidated
+        )
+        XCTAssertNil(
+            SecureEnclaveSiteX509FirstProvisionOfflineProducerV2
+                .siteRootAuthorityKeyFailure(for: .signingFailed)
+        )
+        XCTAssertNil(
+            SecureEnclaveSiteX509FirstProvisionOfflineProducerV2
+                .siteRootAuthorityKeyFailure(for: .userVerificationCancelled)
+        )
+    }
+
+    @MainActor
+    func testCoordinatorRetainsAuthorityFailureAndNeverEmitsResponse() async throws {
+        for failure in [
+            PlatformFailure.siteRootAuthorityKeyMissing,
+            .siteRootAuthorityKeyInvalidated,
+            .siteRootAuthorityKeyMismatch,
+        ] {
+            let coordinator = SiteX509FirstProvisionOfflineCoordinator(
+                producer: FailingProducer(failure: failure)
+            )
+            coordinator.accept(fileBytes: try presentation(), nowUnixSeconds: 1_001)
+            await coordinator.approve(nowUnixSeconds: 1_001)
+            XCTAssertEqual(coordinator.phase, .failed)
+            XCTAssertEqual(coordinator.failure, failure)
+            XCTAssertNil(coordinator.responseQRText)
+        }
+    }
+
     @MainActor
     func testCoordinatorUsesSameBoundedParserForRawFile() throws {
         let coordinator = SiteX509FirstProvisionOfflineCoordinator()
@@ -174,6 +224,10 @@ final class SiteX509FirstProvisionOfflineV2Tests: XCTestCase {
         XCTAssertEqual(coordinator.phase, .failed)
         XCTAssertEqual(coordinator.failure, .qrPayloadUnsupported)
         XCTAssertNil(coordinator.presentedReview)
+
+        coordinator.accept(fileBytes: try presentation(), nowUnixSeconds: 1_001)
+        XCTAssertEqual(coordinator.phase, .review)
+        XCTAssertNil(coordinator.failure)
     }
 
     private func presentation(

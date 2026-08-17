@@ -13,7 +13,7 @@ final class ProductionBuildConfigurationTests: XCTestCase {
         XCTAssertTrue(source.contains("PISTIS_MONAS_SITE_ROOT_AUTHORITY_SPKI_SHA256=''"))
         XCTAssertTrue(source.contains("openssl x509 -inform DER"))
         XCTAssertTrue(source.contains("openssl dgst -sha256 -binary"))
-        XCTAssertTrue(source.contains("CURRENT_PROJECT_VERSION=9"))
+        XCTAssertTrue(source.contains("CURRENT_PROJECT_VERSION=10"))
         XCTAssertTrue(
             source.contains(
                 "PISTIS_MONAS_SITE_ROOT_AUTHORITY_ALTERNATE_ORIGIN='https://192.168.0.193:8443'"

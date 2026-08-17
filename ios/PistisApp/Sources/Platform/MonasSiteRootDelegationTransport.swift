@@ -50,6 +50,11 @@ protocol MonasSiteRootDelegationReadinessChecking: Sendable {
 struct MonasSiteRootDelegationTransport: MonasSiteRootCeremonyTransport,
     MonasSiteRootDelegationReadinessChecking, Sendable
 {
+    private enum OriginAttemptFailure: Error {
+        case unreachable
+        case rejected(PlatformFailure)
+    }
+
     private static let maximumResponseBytes = 1_024
     private static let maximumSubmissionBytes = 90_000
 
@@ -135,6 +140,7 @@ struct MonasSiteRootDelegationTransport: MonasSiteRootCeremonyTransport,
     func appAttestTransport(authorityHost: String? = nil) throws -> MonasAppAttestTransport {
         try MonasAppAttestTransport(
             authorityOrigin: try endpointOrigin(for: authorityHost),
+            authorityOrigins: authorityOrigins,
             trustPolicy: trustPolicy
         )
     }
@@ -164,61 +170,83 @@ struct MonasSiteRootDelegationTransport: MonasSiteRootCeremonyTransport,
 
     func readiness() async throws -> MonasSiteRootDelegationReadinessV1 {
         let endpoint = try endpoint(path: MonasSiteRootDelegationEndpointV1.readinessPath)
-        var request = URLRequest(url: endpoint)
-        request.httpMethod = "GET"
-        request.setValue("application/json", forHTTPHeaderField: "Accept")
-        request.setValue("no-store", forHTTPHeaderField: "Cache-Control")
-        request.timeoutInterval = 15
-        let (data, _) = try await requestData(request, expectedURL: endpoint)
-        do {
-            return try JSONDecoder().decode(MonasReadinessResponse.self, from: data).value
-        } catch {
-            throw PlatformFailure.siteRootAuthorityUnavailable
+        var lastFailure = PlatformFailure.siteRootAuthorityUnavailable
+        for candidate in candidateEndpoints(
+            endpoint,
+            expectedPath: MonasSiteRootDelegationEndpointV1.readinessPath
+        ) {
+            var request = URLRequest(url: candidate)
+            request.httpMethod = "GET"
+            request.setValue("application/json", forHTTPHeaderField: "Accept")
+            request.setValue("no-store", forHTTPHeaderField: "Cache-Control")
+            request.timeoutInterval = 15
+            do {
+                let (data, _) = try await requestData(request, expectedURL: candidate)
+                return try JSONDecoder().decode(MonasReadinessResponse.self, from: data).value
+            } catch OriginAttemptFailure.unreachable {
+                lastFailure = .siteRootAuthorityUnavailable
+            } catch OriginAttemptFailure.rejected(let failure) {
+                throw failure
+            } catch let failure as PlatformFailure {
+                throw failure
+            } catch {
+                throw PlatformFailure.siteRootAuthorityUnavailable
+            }
         }
+        throw lastFailure
     }
 
     func authorityCustodyStatusV2(authorityHost: String? = nil) async throws
         -> AuthorityCustodyStatusV2
     {
+        let path = "/v1/pistis/site-trust/authority-custody/v2/status"
         let endpoint = try endpoint(
-            path: "/v1/pistis/site-trust/authority-custody/v2/status",
+            path: path,
             authorityHost: authorityHost
         )
-        var request = URLRequest(url: endpoint)
-        request.httpMethod = "GET"
-        request.setValue("application/json", forHTTPHeaderField: "Accept")
-        request.setValue("no-store", forHTTPHeaderField: "Cache-Control")
-        request.timeoutInterval = 15
-        let (data, response): (Data, URLResponse)
-        do {
-            (data, response) = try await session.data(for: request)
-        } catch {
-            throw PlatformFailure.siteRootAuthorityUnavailable
+        var lastFailure = PlatformFailure.siteRootAuthorityUnavailable
+        for candidate in candidateEndpoints(endpoint, expectedPath: path) {
+            var request = URLRequest(url: candidate)
+            request.httpMethod = "GET"
+            request.setValue("application/json", forHTTPHeaderField: "Accept")
+            request.setValue("no-store", forHTTPHeaderField: "Cache-Control")
+            request.timeoutInterval = 15
+            do {
+                let (data, response) = try await originData(for: request)
+                guard let http = response as? HTTPURLResponse,
+                      http.url == candidate,
+                      data.count <= 1_024,
+                      http.value(forHTTPHeaderField: "Cache-Control")?
+                        .lowercased().contains("no-store") == true
+                else { throw PlatformFailure.siteRootAuthorityUnavailable }
+                if http.statusCode == 503, data.isEmpty {
+                    return .appAttestAssertionRequired
+                }
+                guard http.statusCode == 200 else {
+                    throw PlatformFailure.siteRootAuthorityUnavailable
+                }
+                guard let object = try JSONSerialization.jsonObject(with: data) as? [String: Any],
+                      Set(object.keys) == ["schema", "state"],
+                      object["schema"] as? String == "monas.first-authority-custody-status.v2",
+                      let state = object["state"] as? String
+                else { throw PlatformFailure.siteRootAuthorityUnavailable }
+                switch state {
+                case "initial-rotation-required": return .initialRotationRequired
+                case "recovery-required": return .recoveryRequired
+                case "ready": return .ready
+                default: throw PlatformFailure.siteRootAuthorityUnavailable
+                }
+            } catch OriginAttemptFailure.unreachable {
+                lastFailure = .siteRootAuthorityUnavailable
+            } catch OriginAttemptFailure.rejected(let failure) {
+                throw failure
+            } catch let failure as PlatformFailure {
+                throw failure
+            } catch {
+                throw PlatformFailure.siteRootAuthorityUnavailable
+            }
         }
-        guard let http = response as? HTTPURLResponse,
-              http.url == endpoint,
-              data.count <= 1_024,
-              http.value(forHTTPHeaderField: "Cache-Control")?
-                .lowercased().contains("no-store") == true
-        else { throw PlatformFailure.siteRootAuthorityUnavailable }
-        if http.statusCode == 503, data.isEmpty {
-            return .appAttestAssertionRequired
-        }
-        guard http.statusCode == 200 else {
-            throw PlatformFailure.siteRootAuthorityUnavailable
-        }
-        guard data.count <= 1_024,
-              let object = try JSONSerialization.jsonObject(with: data) as? [String: Any],
-              Set(object.keys) == ["schema", "state"],
-              object["schema"] as? String == "monas.first-authority-custody-status.v2",
-              let state = object["state"] as? String
-        else { throw PlatformFailure.siteRootAuthorityUnavailable }
-        switch state {
-        case "initial-rotation-required": return .initialRotationRequired
-        case "recovery-required": return .recoveryRequired
-        case "ready": return .ready
-        default: throw PlatformFailure.siteRootAuthorityUnavailable
-        }
+        throw lastFailure
     }
 
     /// Reads only a matching, already proof-consumed Site Root lifecycle
@@ -238,27 +266,38 @@ struct MonasSiteRootDelegationTransport: MonasSiteRootCeremonyTransport,
             path: MonasSiteRootDelegationEndpointV1.installationStatusPath,
             authorityHost: authorityHost
         )
-        var request = URLRequest(url: endpoint)
-        request.httpMethod = "GET"
-        request.timeoutInterval = 15
-        request.setValue("application/json", forHTTPHeaderField: "Accept")
-        request.setValue("no-store", forHTTPHeaderField: "Cache-Control")
-        request.setValue(siteRootDeviceKeyID, forHTTPHeaderField: "X-Pistis-Site-Root-Key-ID")
-        do {
-            let (data, response) = try await session.data(for: request)
-            guard let http = response as? HTTPURLResponse, http.url == endpoint else {
+        var lastFailure = PlatformFailure.siteRootAuthorityUnavailable
+        for candidate in candidateEndpoints(
+            endpoint,
+            expectedPath: MonasSiteRootDelegationEndpointV1.installationStatusPath
+        ) {
+            var request = URLRequest(url: candidate)
+            request.httpMethod = "GET"
+            request.timeoutInterval = 15
+            request.setValue("application/json", forHTTPHeaderField: "Accept")
+            request.setValue("no-store", forHTTPHeaderField: "Cache-Control")
+            request.setValue(siteRootDeviceKeyID, forHTTPHeaderField: "X-Pistis-Site-Root-Key-ID")
+            do {
+                let (data, response) = try await originData(for: request)
+                guard let http = response as? HTTPURLResponse, http.url == candidate else {
+                    throw PlatformFailure.siteRootAuthorityUnavailable
+                }
+                if http.statusCode == 404, data.isEmpty { return nil }
+                guard http.statusCode == 200, data.count <= Self.maximumResponseBytes else {
+                    throw PlatformFailure.siteRootAuthorityUnavailable
+                }
+                return try MonasInstallationStatusResponse(data: data).value
+            } catch OriginAttemptFailure.unreachable {
+                lastFailure = .siteRootAuthorityUnavailable
+            } catch OriginAttemptFailure.rejected(let failure) {
+                throw failure
+            } catch let failure as PlatformFailure {
+                throw failure
+            } catch {
                 throw PlatformFailure.siteRootAuthorityUnavailable
             }
-            if http.statusCode == 404, data.isEmpty { return nil }
-            guard http.statusCode == 200, data.count <= Self.maximumResponseBytes else {
-                throw PlatformFailure.siteRootAuthorityUnavailable
-            }
-            return try MonasInstallationStatusResponse(data: data).value
-        } catch let failure as PlatformFailure {
-            throw failure
-        } catch {
-            throw PlatformFailure.siteRootAuthorityUnavailable
         }
+        throw lastFailure
     }
 
     /// Submits one detached iPhone proof and accepts only the exact bootstrap
@@ -311,10 +350,14 @@ struct MonasSiteRootDelegationTransport: MonasSiteRootCeremonyTransport,
                     authorityOrigins: authorityOrigins,
                     nowUnixMillis: nowUnixMillis
                 ).bootstrap
-            } catch let failure as PlatformFailure {
-                lastFailure = failure
-            } catch {
+            } catch OriginAttemptFailure.unreachable {
                 lastFailure = .siteRootAuthorityUnavailable
+            } catch OriginAttemptFailure.rejected(let failure) {
+                throw failure
+            } catch let failure as PlatformFailure {
+                throw failure
+            } catch {
+                throw PlatformFailure.siteRootAuthorityUnavailable
             }
         }
         throw lastFailure
@@ -367,10 +410,14 @@ struct MonasSiteRootDelegationTransport: MonasSiteRootCeremonyTransport,
                       http.value(forHTTPHeaderField: "Set-Cookie") == nil
                 else { throw PlatformFailure.siteRootAuthorityUnavailable }
                 return
-            } catch let failure as PlatformFailure {
-                lastFailure = failure
-            } catch {
+            } catch OriginAttemptFailure.unreachable {
                 lastFailure = .siteRootAuthorityUnavailable
+            } catch OriginAttemptFailure.rejected(let failure) {
+                throw failure
+            } catch let failure as PlatformFailure {
+                throw failure
+            } catch {
+                throw PlatformFailure.siteRootAuthorityUnavailable
             }
         }
         throw lastFailure
@@ -420,10 +467,14 @@ struct MonasSiteRootDelegationTransport: MonasSiteRootCeremonyTransport,
                     request: request,
                     authorityOrigins: authorityOrigins
                 ).presentation
-            } catch let failure as PlatformFailure {
-                lastFailure = failure
-            } catch {
+            } catch OriginAttemptFailure.unreachable {
                 lastFailure = .siteRootAuthorityUnavailable
+            } catch OriginAttemptFailure.rejected(let failure) {
+                throw failure
+            } catch let failure as PlatformFailure {
+                throw failure
+            } catch {
+                throw PlatformFailure.siteRootAuthorityUnavailable
             }
         }
         throw lastFailure
@@ -479,9 +530,35 @@ struct MonasSiteRootDelegationTransport: MonasSiteRootCeremonyTransport,
             else { throw PlatformFailure.siteRootAuthorityUnavailable }
             return (data, response)
         } catch let failure as PlatformFailure {
-            throw failure
+            throw OriginAttemptFailure.rejected(failure)
         } catch {
-            throw PlatformFailure.siteRootAuthorityUnavailable
+            if Self.isOriginUnreachable(error) {
+                throw OriginAttemptFailure.unreachable
+            }
+            throw OriginAttemptFailure.rejected(.siteRootAuthorityUnavailable)
+        }
+    }
+
+    private static func isOriginUnreachable(_ error: Error) -> Bool {
+        guard let urlError = error as? URLError else { return false }
+        switch urlError.code {
+        case .cannotConnectToHost, .cannotFindHost, .dnsLookupFailed,
+             .networkConnectionLost, .notConnectedToInternet, .resourceUnavailable,
+             .timedOut:
+            return true
+        default:
+            return false
+        }
+    }
+
+    private func originData(for request: URLRequest) async throws -> (Data, URLResponse) {
+        do {
+            return try await session.data(for: request)
+        } catch {
+            if Self.isOriginUnreachable(error) {
+                throw OriginAttemptFailure.unreachable
+            }
+            throw OriginAttemptFailure.rejected(.siteRootAuthorityUnavailable)
         }
     }
 

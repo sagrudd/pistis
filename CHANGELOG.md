@@ -4,6 +4,11 @@
 
 ### Changed
 
+- Extend the bounded `.192`/`.193` origin policy through readiness, custody,
+  installation-status, and App Attest follow-up requests. Alternate-origin
+  retry occurs only for a classified connection-unreachable error; reachable
+  HTTP denials, malformed responses, and trust failures remain terminal.
+
 - Retry an identical signed ceremony request across the other explicitly
   pinned computer origin when the first address is unreachable. The request
   bytes, Site Root binding, TLS policy, and endpoint path remain unchanged;

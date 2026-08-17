@@ -56,6 +56,11 @@ the identical signed bytes at the other listed origin. It never rewrites the
 signed delegation, creates a second ceremony, or accepts a host outside this
 bounded set.
 
+Readiness, custody/status, and the later App Attest requests use the same
+bounded set. Failover is limited to a classified connection-unreachable
+condition; a reachable denial, malformed response, or TLS/trust failure is
+terminal and is not replayed.
+
 - `GET /auth/pistis/v1/site-root-delegation/readiness` returning exactly
   `monas.site-root-delegation-readiness.v1` with `state`, `live_ceremony`,
   `registered_device`, `app_attest_binding_present`, and bounded `reasons`.

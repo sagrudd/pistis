@@ -151,7 +151,10 @@ final class SiteRootDelegationCoordinator: ObservableObject {
         // it is never projected into SwiftUI state, persistence, logs, QR,
         // browser state, or a session.
         phase = .attesting
-        let appAttestTransport = try MonasAppAttestTransport(bootstrap: bootstrap)
+        let appAttestTransport = try MonasAppAttestTransport(
+            bootstrap: bootstrap,
+            authorityOrigins: transport.genesisAuthorityOrigins
+        )
         if registerAppAttest {
             let registration = try await appAttestClient.prepareRegistration(
                 ceremonyID: Self.base64URL(bootstrap.ceremonyID),

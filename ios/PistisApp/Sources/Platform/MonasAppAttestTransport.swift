@@ -128,6 +128,11 @@ enum AppAttestReplacementTransportFailure: Error {
 /// generic COSE or consume cookies, redirects, cache entries, browser state,
 /// endpoint hints, or local identity.
 struct MonasAppAttestTransport: Sendable {
+    private enum OriginAttemptFailure: Error {
+        case unreachable
+        case rejected
+    }
+
     private static let registrationPath =
         "/v1/pistis/site-trust/app-attest/registration"
     private static let assertionPath =
@@ -152,16 +157,18 @@ struct MonasAppAttestTransport: Sendable {
         DasReplacementReceiptAttendedProfileV1.presentationPath
     private static let dasReplacementSubmissionPath =
         DasReplacementReceiptAttendedProfileV1.submissionPath
-    private let origin: URL
+    private let authorityOrigins: [URL]
     private let session: URLSession
 
     init(
         bootstrap: MonasAppAttestCeremonyBootstrap,
+        authorityOrigins: [URL] = [],
         configuration: URLSessionConfiguration = .ephemeral
     ) throws {
         try self.init(
             authorityOrigin: bootstrap.httpsOrigin,
-            expectedSPKISHA256: bootstrap.tlsSPKISHA256,
+            authorityOrigins: authorityOrigins.isEmpty ? [bootstrap.httpsOrigin] : authorityOrigins,
+            trustPolicy: .bootstrapLeafSPKI(bootstrap.tlsSPKISHA256),
             configuration: configuration
         )
     }
@@ -176,6 +183,7 @@ struct MonasAppAttestTransport: Sendable {
         else { throw PlatformFailure.appAttestInvalidInput }
         try self.init(
             authorityOrigin: authorityOrigin,
+            authorityOrigins: [authorityOrigin],
             trustPolicy: .bootstrapLeafSPKI(expectedSPKISHA256),
             configuration: configuration
         )
@@ -186,20 +194,78 @@ struct MonasAppAttestTransport: Sendable {
         trustPolicy: MonasServerTrustPolicy,
         configuration: URLSessionConfiguration = .ephemeral
     ) throws {
-        guard authorityOrigin.scheme == "https", authorityOrigin.host != nil
+        try self.init(
+            authorityOrigin: authorityOrigin,
+            authorityOrigins: [authorityOrigin],
+            trustPolicy: trustPolicy,
+            configuration: configuration
+        )
+    }
+
+    init(
+        authorityOrigin: URL,
+        authorityOrigins: [URL],
+        trustPolicy: MonasServerTrustPolicy,
+        configuration: URLSessionConfiguration = .ephemeral
+    ) throws {
+        guard authorityOrigin.scheme == "https", authorityOrigin.host != nil,
+              !authorityOrigins.isEmpty,
+              authorityOrigins.count <= 4,
+              authorityOrigins.contains(where: {
+                  $0.absoluteString == authorityOrigin.absoluteString
+              }),
+              authorityOrigins.allSatisfy(Self.isValidOrigin),
+              Set(authorityOrigins.map(\.absoluteString)).count == authorityOrigins.count
         else { throw PlatformFailure.appAttestInvalidInput }
-        origin = authorityOrigin
+        self.authorityOrigins = authorityOrigins
         configuration.httpShouldSetCookies = false
         configuration.urlCache = nil
         configuration.requestCachePolicy = .reloadIgnoringLocalCacheData
         session = URLSession(
             configuration: configuration,
             delegate: try PinnedEnrolmentSessionDelegate(
-                origin: authorityOrigin,
+                origins: authorityOrigins,
                 trustPolicy: trustPolicy
             ),
             delegateQueue: nil
         )
+    }
+
+    private static func isValidOrigin(_ origin: URL) -> Bool {
+        origin.scheme == "https"
+            && origin.host != nil
+            && origin.user == nil
+            && origin.password == nil
+            && (origin.path.isEmpty || origin.path == "/")
+            && origin.query == nil
+            && origin.fragment == nil
+    }
+
+    private func candidateEndpoints(_ path: String) -> [URL] {
+        authorityOrigins.compactMap { candidate in
+            guard let endpoint = URL(string: path, relativeTo: candidate)?.absoluteURL,
+                  endpoint.absoluteString == candidate.absoluteString + path
+            else { return nil }
+            return endpoint
+        }
+    }
+
+    private func originData(for request: URLRequest) async throws -> (Data, URLResponse) {
+        do {
+            return try await session.data(for: request)
+        } catch {
+            guard let urlError = error as? URLError else {
+                throw OriginAttemptFailure.rejected
+            }
+            switch urlError.code {
+            case .cannotConnectToHost, .cannotFindHost, .dnsLookupFailed,
+                 .networkConnectionLost, .notConnectedToInternet, .resourceUnavailable,
+                 .timedOut:
+                throw OriginAttemptFailure.unreachable
+            default:
+                throw OriginAttemptFailure.rejected
+            }
+        }
     }
 
     func submitRegistration(_ envelope: AppleAppAttestRegistrationEnvelope) async throws {
@@ -227,52 +293,56 @@ struct MonasAppAttestTransport: Sendable {
               submission.presentation.wireProtocol
                 == AppAttestKeyReplacementOfflineProfileV1.wireProtocol,
               submission.approval.wireProtocol
-                == AppAttestKeyReplacementOfflineProfileV1.wireProtocol,
-              let endpoint = URL(
-                  string: Self.appAttestReplacementPath, relativeTo: origin
-              )?.absoluteURL,
-              endpoint.absoluteString == origin.absoluteString + Self.appAttestReplacementPath
+                == AppAttestKeyReplacementOfflineProfileV1.wireProtocol
         else { throw AppAttestReplacementTransportFailure.authenticatedDenial }
-        var request = URLRequest(url: endpoint)
-        request.httpMethod = "POST"
-        request.httpBody = canonicalSubmission
-        request.timeoutInterval = 15
-        request.setValue("application/json; charset=utf-8", forHTTPHeaderField: "Content-Type")
-        request.setValue("application/json", forHTTPHeaderField: "Accept")
-        request.setValue("no-store", forHTTPHeaderField: "Cache-Control")
-        do {
-            let (bytes, response) = try await session.data(for: request)
-            guard let http = response as? HTTPURLResponse,
-                  http.url == endpoint
-            else { throw AppAttestReplacementTransportFailure.ambiguousDelivery }
-            guard http.statusCode == 200 else {
-                if (400...499).contains(http.statusCode) {
+        var lastFailure = AppAttestReplacementTransportFailure.ambiguousDelivery
+        for endpoint in candidateEndpoints(Self.appAttestReplacementPath) {
+            var request = URLRequest(url: endpoint)
+            request.httpMethod = "POST"
+            request.httpBody = canonicalSubmission
+            request.timeoutInterval = 15
+            request.setValue("application/json; charset=utf-8", forHTTPHeaderField: "Content-Type")
+            request.setValue("application/json", forHTTPHeaderField: "Accept")
+            request.setValue("no-store", forHTTPHeaderField: "Cache-Control")
+            do {
+                let (bytes, response) = try await originData(for: request)
+                guard let http = response as? HTTPURLResponse,
+                      http.url == endpoint
+                else { throw AppAttestReplacementTransportFailure.ambiguousDelivery }
+                guard http.statusCode == 200 else {
+                    if (400...499).contains(http.statusCode) {
+                        throw AppAttestReplacementTransportFailure.authenticatedDenial
+                    }
+                    throw AppAttestReplacementTransportFailure.ambiguousDelivery
+                }
+                guard !bytes.isEmpty,
+                      bytes.count <= 4_096,
+                      http.value(forHTTPHeaderField: "Cache-Control")?
+                        .lowercased().contains("no-store") == true
+                else { throw AppAttestReplacementTransportFailure.authenticatedDenial }
+                let accepted: AppAttestKeyReplacementAcceptedV1
+                do {
+                    accepted = try AppAttestKeyReplacementAcceptedV1(canonicalBytes: bytes)
+                } catch {
                     throw AppAttestReplacementTransportFailure.authenticatedDenial
                 }
+                guard accepted.transactionID == submission.presentation.transactionID,
+                      accepted.installationID == submission.presentation.installationID,
+                      accepted.oldGeneration == submission.presentation.oldGeneration,
+                      accepted.newGeneration == submission.presentation.newGeneration,
+                      accepted.oldKeyIDB64URL == submission.presentation.oldKeyIDB64URL,
+                      accepted.newKeyIDB64URL == submission.approval.newKeyIDB64URL
+                else { throw AppAttestReplacementTransportFailure.authenticatedDenial }
+                return AuthenticatedAppAttestReplacementAcceptanceV1(accepted)
+            } catch OriginAttemptFailure.unreachable {
+                lastFailure = .ambiguousDelivery
+            } catch let failure as AppAttestReplacementTransportFailure {
+                throw failure
+            } catch {
                 throw AppAttestReplacementTransportFailure.ambiguousDelivery
             }
-            guard
-                  !bytes.isEmpty,
-                  bytes.count <= 4_096,
-                  http.value(forHTTPHeaderField: "Cache-Control")?
-                    .lowercased().contains("no-store") == true
-            else { throw AppAttestReplacementTransportFailure.authenticatedDenial }
-            let accepted: AppAttestKeyReplacementAcceptedV1
-            do {
-                accepted = try AppAttestKeyReplacementAcceptedV1(canonicalBytes: bytes)
-            } catch {
-                throw AppAttestReplacementTransportFailure.authenticatedDenial
-            }
-            guard accepted.transactionID == submission.presentation.transactionID,
-                  accepted.installationID == submission.presentation.installationID,
-                  accepted.oldGeneration == submission.presentation.oldGeneration,
-                  accepted.newGeneration == submission.presentation.newGeneration,
-                  accepted.oldKeyIDB64URL == submission.presentation.oldKeyIDB64URL,
-                  accepted.newKeyIDB64URL == submission.approval.newKeyIDB64URL
-            else { throw AppAttestReplacementTransportFailure.authenticatedDenial }
-            return AuthenticatedAppAttestReplacementAcceptanceV1(accepted)
-        } catch let failure as AppAttestReplacementTransportFailure { throw failure }
-        catch { throw AppAttestReplacementTransportFailure.ambiguousDelivery }
+        }
+        throw lastFailure
     }
 
     func submitAssertion(_ envelope: AppleAppAttestAssertionEnvelope) async throws {
@@ -284,7 +354,8 @@ struct MonasAppAttestTransport: Sendable {
     }
 
     /// Submits one recovery assertion to the fixed, purpose-separated Monas route.
-    /// The QR cannot override this path and no retry or fallback is attempted.
+    /// The QR cannot override this path. A bounded retry is allowed only when
+    /// the selected pinned origin is connection-unreachable.
     func submitMTGSRecoveryAssertion(
         _ envelope: AppleAppAttestAssertionEnvelope
     ) async throws {
@@ -298,31 +369,38 @@ struct MonasAppAttestTransport: Sendable {
     func fetchCustodyRotationAssertionChallengeV2(
         nowUnixSeconds: UInt64
     ) async throws -> CustodyRotationAppAttestChallengeV2 {
-        guard let endpoint = URL(
-            string: Self.authorityCustodyRotationChallengePath, relativeTo: origin
-        )?.absoluteURL,
-        endpoint.absoluteString == origin.absoluteString + Self.authorityCustodyRotationChallengePath
-        else { throw PlatformFailure.productionEnvelopeUnavailable }
-        var request = URLRequest(url: endpoint)
-        request.httpMethod = "GET"
-        request.timeoutInterval = 15
-        request.setValue("application/json", forHTTPHeaderField: "Accept")
-        request.setValue("no-store", forHTTPHeaderField: "Cache-Control")
-        let (data, response) = try await session.data(for: request)
-        guard let http = response as? HTTPURLResponse, http.url == endpoint,
-              http.statusCode == 200,
-              http.value(forHTTPHeaderField: "Cache-Control")?
-                .lowercased().contains("no-store") == true
-        else { throw PlatformFailure.productionEnvelopeUnavailable }
-        return try CustodyRotationAppAttestChallengeV2(
-            data: data, nowUnixSeconds: nowUnixSeconds
-        )
+        var lastFailure = PlatformFailure.productionEnvelopeUnavailable
+        for endpoint in candidateEndpoints(Self.authorityCustodyRotationChallengePath) {
+            var request = URLRequest(url: endpoint)
+            request.httpMethod = "GET"
+            request.timeoutInterval = 15
+            request.setValue("application/json", forHTTPHeaderField: "Accept")
+            request.setValue("no-store", forHTTPHeaderField: "Cache-Control")
+            do {
+                let (data, response) = try await originData(for: request)
+                guard let http = response as? HTTPURLResponse, http.url == endpoint,
+                      http.statusCode == 200,
+                      http.value(forHTTPHeaderField: "Cache-Control")?
+                        .lowercased().contains("no-store") == true
+                else { throw PlatformFailure.productionEnvelopeUnavailable }
+                return try CustodyRotationAppAttestChallengeV2(
+                    data: data, nowUnixSeconds: nowUnixSeconds
+                )
+            } catch OriginAttemptFailure.unreachable {
+                lastFailure = .productionEnvelopeUnavailable
+            } catch let failure as PlatformFailure {
+                throw failure
+            } catch {
+                throw PlatformFailure.productionEnvelopeUnavailable
+            }
+        }
+        throw lastFailure
     }
 
     /// Delivers an App Attest assertion through the one pinned Monas ingress
     /// and accepts a custody presentation only as its terminal retained-session
     /// response. The same fixed URL is used; this method does not discover or
-    /// select a second endpoint, cookie, token, browser state, or fallback.
+    /// select an unpinned endpoint, cookie, token, browser state, or fallback.
     ///
     /// A normal assertion remains 202/empty. This stricter operation accepts
     /// only a 200 no-store response matching the custody relay schema, which a
@@ -334,40 +412,45 @@ struct MonasAppAttestTransport: Sendable {
     ) async throws -> IphoneMediatedCustodyRewrapPresentationV1 {
         let body = try JSONEncoder.sorted.encode(envelope)
         guard !body.isEmpty,
-              body.count <= 32_768,
-              let endpoint = URL(string: Self.assertionPath, relativeTo: origin)?.absoluteURL,
-              endpoint.absoluteString == origin.absoluteString + Self.assertionPath
+              body.count <= 32_768
         else { throw PlatformFailure.custodyRewrapUnavailable }
-        var request = URLRequest(url: endpoint)
-        request.httpMethod = "POST"
-        request.httpBody = body
-        request.timeoutInterval = 15
-        request.setValue("application/json; charset=utf-8", forHTTPHeaderField: "Content-Type")
-        request.setValue("application/json", forHTTPHeaderField: "Accept")
-        request.setValue("no-store", forHTTPHeaderField: "Cache-Control")
-        do {
-            let (data, response) = try await session.data(for: request)
-            guard let http = response as? HTTPURLResponse,
-                  http.url == endpoint,
-                  http.statusCode == 200,
-                  !data.isEmpty,
-                  data.count <= 16_384,
-                  http.value(forHTTPHeaderField: "Cache-Control")?
-                      .lowercased().contains("no-store") == true
-            else { throw PlatformFailure.custodyRewrapUnavailable }
-            return try MonasRetainedCustodyPresentationResponseV1(
-                data: data, nowUnixSeconds: nowUnixSeconds
-            ).presentation
-        } catch let error as PlatformFailure {
-            throw error
-        } catch {
-            throw PlatformFailure.custodyRewrapUnavailable
+        var lastFailure = PlatformFailure.custodyRewrapUnavailable
+        for endpoint in candidateEndpoints(Self.assertionPath) {
+            var request = URLRequest(url: endpoint)
+            request.httpMethod = "POST"
+            request.httpBody = body
+            request.timeoutInterval = 15
+            request.setValue("application/json; charset=utf-8", forHTTPHeaderField: "Content-Type")
+            request.setValue("application/json", forHTTPHeaderField: "Accept")
+            request.setValue("no-store", forHTTPHeaderField: "Cache-Control")
+            do {
+                let (data, response) = try await originData(for: request)
+                guard let http = response as? HTTPURLResponse,
+                      http.url == endpoint,
+                      http.statusCode == 200,
+                      !data.isEmpty,
+                      data.count <= 16_384,
+                      http.value(forHTTPHeaderField: "Cache-Control")?
+                          .lowercased().contains("no-store") == true
+                else { throw PlatformFailure.custodyRewrapUnavailable }
+                return try MonasRetainedCustodyPresentationResponseV1(
+                    data: data, nowUnixSeconds: nowUnixSeconds
+                ).presentation
+            } catch OriginAttemptFailure.unreachable {
+                lastFailure = .custodyRewrapUnavailable
+            } catch let failure as PlatformFailure {
+                throw failure
+            } catch {
+                throw PlatformFailure.custodyRewrapUnavailable
+            }
         }
+        throw lastFailure
     }
 
     /// Sends exactly one transient Secure Enclave rewrap response to Monas's
     /// fixed custody submission endpoint. This carries no cookie, bearer,
-    /// browser state, local identity, endpoint override, retry or fallback.
+    /// browser state, local identity, or endpoint override. A retry is bounded
+    /// to the other build-pinned origin only after connection failure.
     /// Monas must bind its correlation to the retained App Attest session and
     /// pass the opaque result only to its fixed Thesaurophylax peer.
     func submitCustodyRewrap(_ submission: IphoneMediatedCustodyRewrapSubmissionV1) async throws {
@@ -510,29 +593,34 @@ struct MonasAppAttestTransport: Sendable {
     ) async throws -> (Data, HTTPURLResponse, URL) {
         guard (method == "GET" && body == nil) || (method == "POST" && body != nil),
               body?.count ?? 0 <= 16_384,
-              let endpoint = URL(string: path, relativeTo: origin)?.absoluteURL,
-              endpoint.absoluteString == origin.absoluteString + path
+              !path.isEmpty
         else { throw PlatformFailure.custodyRewrapUnavailable }
-        var request = URLRequest(url: endpoint)
-        request.httpMethod = method
-        request.httpBody = body
-        request.timeoutInterval = 15
-        request.setValue("application/json", forHTTPHeaderField: "Accept")
-        request.setValue("no-store", forHTTPHeaderField: "Cache-Control")
-        if body != nil {
-            request.setValue(contentType, forHTTPHeaderField: "Content-Type")
+        var lastFailure = PlatformFailure.custodyRewrapUnavailable
+        for endpoint in candidateEndpoints(path) {
+            var request = URLRequest(url: endpoint)
+            request.httpMethod = method
+            request.httpBody = body
+            request.timeoutInterval = 15
+            request.setValue("application/json", forHTTPHeaderField: "Accept")
+            request.setValue("no-store", forHTTPHeaderField: "Cache-Control")
+            if body != nil {
+                request.setValue(contentType, forHTTPHeaderField: "Content-Type")
+            }
+            do {
+            let (data, response) = try await originData(for: request)
+                guard let http = response as? HTTPURLResponse, http.url == endpoint,
+                      data.count <= 16_384
+                else { throw PlatformFailure.custodyRewrapUnavailable }
+                return (data, http, endpoint)
+            } catch OriginAttemptFailure.unreachable {
+                lastFailure = .custodyRewrapUnavailable
+            } catch let failure as PlatformFailure {
+                throw failure
+            } catch {
+                throw PlatformFailure.custodyRewrapUnavailable
+            }
         }
-        do {
-            let (data, response) = try await session.data(for: request)
-            guard let http = response as? HTTPURLResponse, http.url == endpoint,
-                  data.count <= 16_384
-            else { throw PlatformFailure.custodyRewrapUnavailable }
-            return (data, http, endpoint)
-        } catch let failure as PlatformFailure {
-            throw failure
-        } catch {
-            throw PlatformFailure.custodyRewrapUnavailable
-        }
+        throw lastFailure
     }
 
     /// Begins the distinct v2 first-authority rotation only through the
@@ -623,28 +711,32 @@ struct MonasAppAttestTransport: Sendable {
     private func authorityCustodyRequest(
         body: Data, path: String
     ) async throws -> (Data, HTTPURLResponse, URL) {
-        guard !body.isEmpty, body.count <= 32_768,
-              let endpoint = URL(string: path, relativeTo: origin)?.absoluteURL,
-              endpoint.absoluteString == origin.absoluteString + path
+        guard !body.isEmpty, body.count <= 32_768, !path.isEmpty
         else { throw PlatformFailure.custodyRewrapUnavailable }
-        var request = URLRequest(url: endpoint)
-        request.httpMethod = "POST"
-        request.httpBody = body
-        request.timeoutInterval = 15
-        request.setValue("application/json; charset=utf-8", forHTTPHeaderField: "Content-Type")
-        request.setValue("application/json", forHTTPHeaderField: "Accept")
-        request.setValue("no-store", forHTTPHeaderField: "Cache-Control")
-        do {
-            let (data, response) = try await session.data(for: request)
-            guard let http = response as? HTTPURLResponse, http.url == endpoint,
-                  data.count <= 32_768
-            else { throw PlatformFailure.custodyRewrapUnavailable }
-            return (data, http, endpoint)
-        } catch let failure as PlatformFailure {
-            throw failure
-        } catch {
-            throw PlatformFailure.custodyRewrapUnavailable
+        var lastFailure = PlatformFailure.custodyRewrapUnavailable
+        for endpoint in candidateEndpoints(path) {
+            var request = URLRequest(url: endpoint)
+            request.httpMethod = "POST"
+            request.httpBody = body
+            request.timeoutInterval = 15
+            request.setValue("application/json; charset=utf-8", forHTTPHeaderField: "Content-Type")
+            request.setValue("application/json", forHTTPHeaderField: "Accept")
+            request.setValue("no-store", forHTTPHeaderField: "Cache-Control")
+            do {
+            let (data, response) = try await originData(for: request)
+                guard let http = response as? HTTPURLResponse, http.url == endpoint,
+                      data.count <= 32_768
+                else { throw PlatformFailure.custodyRewrapUnavailable }
+                return (data, http, endpoint)
+            } catch OriginAttemptFailure.unreachable {
+                lastFailure = .custodyRewrapUnavailable
+            } catch let failure as PlatformFailure {
+                throw failure
+            } catch {
+                throw PlatformFailure.custodyRewrapUnavailable
+            }
         }
+        throw lastFailure
     }
 
     private func submit<T: Encodable>(
@@ -655,30 +747,36 @@ struct MonasAppAttestTransport: Sendable {
         let body = try JSONEncoder.sorted.encode(envelope)
         guard !body.isEmpty,
               body.count <= maximumRequestBytes,
-              let endpoint = URL(string: path, relativeTo: origin)?.absoluteURL,
-              endpoint.absoluteString == origin.absoluteString + path
+              !path.isEmpty
         else { throw PlatformFailure.appAttestInvalidInput }
-        var request = URLRequest(url: endpoint)
-        request.httpMethod = "POST"
-        request.httpBody = body
-        request.timeoutInterval = 15
-        request.setValue("application/json; charset=utf-8", forHTTPHeaderField: "Content-Type")
-        request.setValue("application/json", forHTTPHeaderField: "Accept")
-        request.setValue("no-store", forHTTPHeaderField: "Cache-Control")
-        do {
-            let (data, response) = try await session.data(for: request)
-            guard let http = response as? HTTPURLResponse,
-                  http.url == endpoint,
-                  http.statusCode == 202,
-                  data.isEmpty,
-                  http.value(forHTTPHeaderField: "Cache-Control")?
-                      .lowercased().contains("no-store") == true
-            else { throw PlatformFailure.productionEnvelopeUnavailable }
-        } catch let error as PlatformFailure {
-            throw error
-        } catch {
-            throw PlatformFailure.productionEnvelopeUnavailable
+        var lastFailure = PlatformFailure.productionEnvelopeUnavailable
+        for endpoint in candidateEndpoints(path) {
+            var request = URLRequest(url: endpoint)
+            request.httpMethod = "POST"
+            request.httpBody = body
+            request.timeoutInterval = 15
+            request.setValue("application/json; charset=utf-8", forHTTPHeaderField: "Content-Type")
+            request.setValue("application/json", forHTTPHeaderField: "Accept")
+            request.setValue("no-store", forHTTPHeaderField: "Cache-Control")
+            do {
+                let (data, response) = try await originData(for: request)
+                guard let http = response as? HTTPURLResponse,
+                      http.url == endpoint,
+                      http.statusCode == 202,
+                      data.isEmpty,
+                      http.value(forHTTPHeaderField: "Cache-Control")?
+                          .lowercased().contains("no-store") == true
+                else { throw PlatformFailure.productionEnvelopeUnavailable }
+                return
+            } catch OriginAttemptFailure.unreachable {
+                lastFailure = .productionEnvelopeUnavailable
+            } catch let failure as PlatformFailure {
+                throw failure
+            } catch {
+                throw PlatformFailure.productionEnvelopeUnavailable
+            }
         }
+        throw lastFailure
     }
 }
 

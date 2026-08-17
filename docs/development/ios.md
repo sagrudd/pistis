@@ -343,6 +343,10 @@ If the signed request's listed address is unreachable, the client may retry
 the identical bytes at the other listed address; it never rewrites the signed
 payload or creates a new ceremony.
 
+The same bounded policy applies to readiness, custody/status reads, and the
+subsequent App Attest session. A reachable HTTP denial, malformed response, or
+TLS/trust failure is terminal and is never replayed at the other address.
+
 The Identities screen exposes only the accepted server-driven first-device
 surface. It scans and verifies the ADR 0029 version-4 presentation before
 network use. The app displays the verified installation and enables **Begin

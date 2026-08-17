@@ -339,6 +339,9 @@ Monas computer. The current profile pins `https://192.168.1.192:8443` and
 `https://192.168.0.193:8443` to the same Site Root identity and TLS policy.
 This is a bounded address set, not discovery: QR and follow-up requests may
 use either listed address, while every unlisted host remains rejected.
+If the signed request's listed address is unreachable, the client may retry
+the identical bytes at the other listed address; it never rewrites the signed
+payload or creates a new ceremony.
 
 The Identities screen exposes only the accepted server-driven first-device
 surface. It scans and verifies the ADR 0029 version-4 presentation before

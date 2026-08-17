@@ -4,6 +4,11 @@
 
 ### Changed
 
+- Retry an identical signed ceremony request across the other explicitly
+  pinned computer origin when the first address is unreachable. The request
+  bytes, Site Root binding, TLS policy, and endpoint path remain unchanged;
+  no new QR, host, alias, or attestation is created.
+
 - Pin the same Monas Site Root authority to a bounded pair of HTTPS origins,
   `192.168.1.192:8443` and `192.168.0.193:8443`, so one portable computer can
   move between its two approved network addresses without creating a second

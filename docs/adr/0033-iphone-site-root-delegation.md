@@ -51,6 +51,11 @@ shipped profile contains `https://192.168.1.192:8443` and
 apply to both. It accepts only the following exact paths with no query,
 fragment, user-info, redirect, cookie, cache, or unlisted-host fallback:
 
+When the signed endpoint's listed address is unreachable, the client may retry
+the identical signed bytes at the other listed origin. It never rewrites the
+signed delegation, creates a second ceremony, or accepts a host outside this
+bounded set.
+
 - `GET /auth/pistis/v1/site-root-delegation/readiness` returning exactly
   `monas.site-root-delegation-readiness.v1` with `state`, `live_ceremony`,
   `registered_device`, `app_attest_binding_present`, and bounded `reasons`.

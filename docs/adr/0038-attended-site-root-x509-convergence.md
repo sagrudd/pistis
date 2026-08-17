@@ -41,12 +41,15 @@ signature. THBR retains its existing Site Root profile. PXAK registration uses
 `application/vnd.mnemosyne.pxra.v2`; atomic X.509 provision uses
 `application/vnd.mnemosyne.pxfp.v1`.
 
-The QR may carry only exact canonical bytes and a submission URL equal to the
-build-pinned Monas origin and fixed route. Redirects, cookies, unknown members,
-stale lifetimes, changed Site/target/root/generation, reordered roles, duplicate
-transactions and trailing bytes deny. There is no alternate origin, local
-password, passcode, software signing key, re-enrolment or trust-on-first-use
-path.
+The QR may carry only exact canonical bytes and a submission URL equal to one
+of the bounded build-pinned Monas origins and the fixed route. A portable
+computer may publish more than one such origin (the shipped profile pins
+`https://192.168.1.192:8443` and `https://192.168.0.193:8443`), but those
+addresses share one Site Root identity and TLS policy; they are not separate
+authorities. Redirects, cookies, unknown members, stale lifetimes, changed
+Site/target/root/generation, reordered roles, duplicate transactions and
+trailing bytes deny. There is no unlisted alternate origin, local password,
+passcode, software signing key, re-enrolment or trust-on-first-use path.
 
 ## Atomicity and recovery
 

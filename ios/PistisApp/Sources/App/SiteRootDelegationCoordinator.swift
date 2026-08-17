@@ -57,10 +57,10 @@ final class SiteRootDelegationCoordinator: ObservableObject {
     func accept(qrText: String) {
         do {
             let nowUnixMillis = try Self.nowUnixMillis()
-            if let authority = transport.genesisAuthorityOrigin,
+            if !transport.genesisAuthorityOrigins.isEmpty,
                let firstDevice = try? SiteRootGenesisRegistrationPresentationV1(
                    qrText: qrText,
-                   authorityOrigin: authority,
+                   authorityOrigins: transport.genesisAuthorityOrigins,
                    nowUnixMillis: nowUnixMillis
                )
             {

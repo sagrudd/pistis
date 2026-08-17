@@ -4,6 +4,14 @@
 
 ### Changed
 
+- Pin the same Monas Site Root authority to a bounded pair of HTTPS origins,
+  `192.168.1.192:8443` and `192.168.0.193:8443`, so one portable computer can
+  move between its two approved network addresses without creating a second
+  authority or accepting arbitrary aliases. QR presentations, response
+  endpoints, TLS pins, custody continuation, and installation recovery all
+  accept only those two build-time origins; the selected installation's
+  address chooses which pinned origin is used for follow-up requests.
+
 - Make empty-state action buttons wrap at larger Dynamic Type sizes so their
   accessibility labels and visible text remain fully readable.
 

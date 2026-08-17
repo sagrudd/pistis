@@ -1,13 +1,14 @@
 import Foundation
 
-/// Public, signed application configuration for the one Monas Site Root
-/// authority that this Pistis build may contact.
+/// Public, signed application configuration for one Monas Site Root authority
+/// reachable at a bounded set of explicitly pinned network origins.
 ///
 /// The value is a build-time deployment commitment, not QR, browser, local
 /// network, account, or user input. Missing or malformed configuration keeps
 /// the Site Root transport unavailable rather than selecting an authority.
 struct MonasSiteRootAuthorityConfiguration: Sendable {
     static let infoDictionaryKey = "PistisMonasSiteRootAuthorityOrigin"
+    static let alternateInfoDictionaryKey = "PistisMonasSiteRootAuthorityAlternateOrigin"
     static let trustModeInfoDictionaryKey = "PistisMonasSiteRootAuthorityTrustMode"
     static let spkiInfoDictionaryKey = "PistisMonasSiteRootAuthoritySPKISHA256"
     static let rootDERInfoDictionaryKey = "PistisMonasSiteRootAuthorityRootDERB64URL"
@@ -19,6 +20,7 @@ struct MonasSiteRootAuthorityConfiguration: Sendable {
     static let siteRootTrustMode = "site-root-generation-v1"
 
     let authorityOrigin: URL
+    let authorityOrigins: [URL]
     let trustPolicy: MonasServerTrustPolicy
 
     init(rawValue: String, spkiB64URL: String) throws {
@@ -35,6 +37,9 @@ struct MonasSiteRootAuthorityConfiguration: Sendable {
         else {
             throw PlatformFailure.invalidConfiguration
         }
+        let alternate = (infoDictionary[Self.alternateInfoDictionaryKey] as? String)
+            .flatMap { $0.isEmpty ? nil : $0 }
+        let rawOrigins = [rawValue] + (alternate.map { [$0] } ?? [])
         switch trustMode {
         case Self.bootstrapTrustMode:
             guard let spki = infoDictionary[Self.spkiInfoDictionaryKey] as? String,
@@ -42,7 +47,11 @@ struct MonasSiteRootAuthorityConfiguration: Sendable {
                   Self.empty(infoDictionary[Self.rootFingerprintInfoDictionaryKey]),
                   Self.empty(infoDictionary[Self.rootGenerationInfoDictionaryKey])
             else { throw PlatformFailure.invalidConfiguration }
-            try self.init(rawValue: rawValue, spkiB64URL: spki)
+            let tlsSPKI = try Self.decodeSPKI(spki)
+            try self.init(
+                rawValues: rawOrigins,
+                trustPolicy: .bootstrapLeafSPKI(tlsSPKI)
+            )
         case Self.siteRootTrustMode:
             guard Self.empty(infoDictionary[Self.spkiInfoDictionaryKey]),
                   let rootText = infoDictionary[Self.rootDERInfoDictionaryKey] as? String,
@@ -55,7 +64,7 @@ struct MonasSiteRootAuthorityConfiguration: Sendable {
                   let fingerprint = Self.decodeCanonicalBase64URL(fingerprintText)
             else { throw PlatformFailure.invalidConfiguration }
             try self.init(
-                rawValue: rawValue,
+                rawValues: rawOrigins,
                 trustPolicy: MonasServerTrustPolicy(
                     siteRootDER: rootDER,
                     fingerprintSHA256: fingerprint,
@@ -75,12 +84,24 @@ struct MonasSiteRootAuthorityConfiguration: Sendable {
               origin.query == nil, origin.fragment == nil
         else { throw PlatformFailure.invalidConfiguration }
         authorityOrigin = origin
+        authorityOrigins = [origin]
+        self.trustPolicy = trustPolicy
+    }
+
+    private init(rawValues: [String], trustPolicy: MonasServerTrustPolicy) throws {
+        let origins = try rawValues.map(Self.parseOrigin)
+        guard !origins.isEmpty,
+              origins.count <= 4,
+              Set(origins.map(\.absoluteString)).count == origins.count
+        else { throw PlatformFailure.invalidConfiguration }
+        authorityOrigin = origins[0]
+        authorityOrigins = origins
         self.trustPolicy = trustPolicy
     }
 
     func makeTransport() throws -> MonasSiteRootDelegationTransport {
         try MonasSiteRootDelegationTransport(
-            authorityOrigin: authorityOrigin,
+            authorityOrigins: authorityOrigins,
             trustPolicy: trustPolicy
         )
     }
@@ -107,6 +128,21 @@ struct MonasSiteRootAuthorityConfiguration: Sendable {
                   .replacingOccurrences(of: "=", with: "") == value
         else { return nil }
         return decoded
+    }
+
+    private static func decodeSPKI(_ value: String) throws -> Data {
+        guard let decoded = decodeCanonicalBase64URL(value), decoded.count == 32,
+              !decoded.allSatisfy({ $0 == 0 })
+        else { throw PlatformFailure.invalidConfiguration }
+        return decoded
+    }
+
+    private static func parseOrigin(_ rawValue: String) throws -> URL {
+        guard !rawValue.isEmpty, !rawValue.contains("$("),
+              let origin = URL(string: rawValue), origin.absoluteString == rawValue,
+              MonasSiteRootDelegationTransport.isValidOrigin(origin)
+        else { throw PlatformFailure.invalidConfiguration }
+        return origin
     }
 }
 

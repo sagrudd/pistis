@@ -177,6 +177,51 @@ final class PlatformPolicyTests: XCTestCase {
         }
     }
 
+    func testMonasSiteRootAuthorityConfigurationPinsPortableComputerOrigins() throws {
+        let configuration = try MonasSiteRootAuthorityConfiguration(infoDictionary: [
+            MonasSiteRootAuthorityConfiguration.infoDictionaryKey:
+                "https://192.168.1.192:8443",
+            MonasSiteRootAuthorityConfiguration.alternateInfoDictionaryKey:
+                "https://192.168.0.193:8443",
+            MonasSiteRootAuthorityConfiguration.trustModeInfoDictionaryKey:
+                MonasSiteRootAuthorityConfiguration.bootstrapTrustMode,
+            MonasSiteRootAuthorityConfiguration.spkiInfoDictionaryKey:
+                "ERERERERERERERERERERERERERERERERERERERERERE",
+        ])
+
+        XCTAssertEqual(
+            configuration.authorityOrigins.map(\.absoluteString),
+            ["https://192.168.1.192:8443", "https://192.168.0.193:8443"]
+        )
+        XCTAssertTrue(
+            MonasSiteRootDelegationTransport.matchesAuthority(
+                URL(string: "https://192.168.1.192:8443/auth/pistis/v1")!,
+                origins: configuration.authorityOrigins,
+                expectedPath: "/auth/pistis/v1"
+            )
+        )
+        XCTAssertTrue(
+            MonasSiteRootDelegationTransport.matchesAuthority(
+                URL(string: "https://192.168.0.193:8443/auth/pistis/v1")!,
+                origins: configuration.authorityOrigins,
+                expectedPath: "/auth/pistis/v1"
+            )
+        )
+        XCTAssertFalse(
+            MonasSiteRootDelegationTransport.matchesAuthority(
+                URL(string: "https://192.168.0.194:8443/auth/pistis/v1")!,
+                origins: configuration.authorityOrigins,
+                expectedPath: "/auth/pistis/v1"
+            )
+        )
+        let transport = try configuration.makeTransport()
+        XCTAssertTrue(transport.isConfiguredAuthorityHost("192.168.1.192"))
+        XCTAssertTrue(transport.isConfiguredAuthorityHost("192.168.0.193"))
+        XCTAssertFalse(transport.isConfiguredAuthorityHost("192.168.0.194"))
+        XCTAssertNoThrow(try transport.appAttestTransport(authorityHost: "192.168.0.193"))
+        XCTAssertThrowsError(try transport.appAttestTransport(authorityHost: "192.168.0.194"))
+    }
+
     func testMonasSiteRootAuthorityConfigurationAcceptsOnlyOneRootGeneration() throws {
         let fixture = URL(fileURLWithPath: #filePath)
             .deletingLastPathComponent()

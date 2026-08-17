@@ -240,16 +240,17 @@ struct RootTabView: View {
         if authorityCustodyAttempt == attempt { authorityCustodyAttempt = nil }
       }
             guard let transport = siteRootTransport as? MonasSiteRootDelegationTransport,
-        let transportHost = transport.authorityHost,
-        (try? IncompleteSiteRootInstallation.canonicalHost(transportHost))
-          == (try? IncompleteSiteRootInstallation.canonicalHost(installation.localAlias))
+                  transport.isConfiguredAuthorityHost(installation.localAlias)
             else {
-                reconciliationMessage = "The retained Site Root authority does not match."
+                reconciliationMessage =
+                    "The retained Site Root authority is not one of this build's pinned origins."
                 return
             }
             var failureStage = AuthorityCustodyContinuationStage.initialStatus
             do {
-        var status = try await transport.authorityCustodyStatusV2()
+        var status = try await transport.authorityCustodyStatusV2(
+            authorityHost: installation.localAlias
+        )
         switch status {
                 case .ready:
                     if installation.status != "Trusted" {
@@ -269,7 +270,9 @@ struct RootTabView: View {
         case .appAttestAssertionRequired, .initialRotationRequired, .recoveryRequired:
           break
         }
-        let appAttestTransport = try transport.appAttestTransport()
+        let appAttestTransport = try transport.appAttestTransport(
+            authorityHost: installation.localAlias
+        )
         if status == .appAttestAssertionRequired {
           failureStage = .fetchChallenge
           let now = UInt64(Date().timeIntervalSince1970)
@@ -282,7 +285,9 @@ struct RootTabView: View {
           failureStage = .submitAssertion
           try await appAttestTransport.submitAssertion(assertion)
           failureStage = .resolveCustodyLifecycle
-          let observedLifecycle = try await transport.authorityCustodyStatusV2()
+          let observedLifecycle = try await transport.authorityCustodyStatusV2(
+            authorityHost: installation.localAlias
+          )
           let transition = try AuthorityCustodyAcceptedAssertionTransitionV2.next(
             after: status, observedLifecycle: observedLifecycle
           )

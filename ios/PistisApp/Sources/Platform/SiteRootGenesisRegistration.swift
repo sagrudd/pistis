@@ -18,6 +18,14 @@ struct SiteRootGenesisRegistrationPresentationV1: Sendable {
     let expiresAtUnixMillis: UInt64
 
     init(qrText: String, authorityOrigin: URL, nowUnixMillis: UInt64) throws {
+        try self.init(
+            qrText: qrText,
+            authorityOrigins: [authorityOrigin],
+            nowUnixMillis: nowUnixMillis
+        )
+    }
+
+    init(qrText: String, authorityOrigins: [URL], nowUnixMillis: UInt64) throws {
         guard qrText.utf8.count <= Self.maximumPayloadLength,
               let data = qrText.data(using: .utf8)
         else { throw PlatformFailure.qrPayloadUnsupported }
@@ -42,7 +50,7 @@ struct SiteRootGenesisRegistrationPresentationV1: Sendable {
               let registrationURL = URL(string: registrationURLText),
               MonasSiteRootDelegationTransport.matchesAuthority(
                   registrationURL,
-                  origin: authorityOrigin,
+                  origins: authorityOrigins,
                   expectedPath: MonasSiteRootGenesisEndpointV1.registrationPath
               ),
               case let .string(ceremonyID)? = values["app_attest_ceremony_id_b64url"],
@@ -119,9 +127,16 @@ protocol MonasSiteRootGenesisRegistering: Sendable {
 protocol MonasSiteRootCeremonyTransport: MonasSiteRootDelegationSubmitting,
     MonasSiteRootGenesisRegistering
 {
-    /// The configured, app-signed origin against which an initial QR is
-    /// checked. `nil` means the production authority is unavailable.
+    /// The first configured, app-signed origin against which an initial QR is
+    /// displayed. `nil` means the production authority is unavailable.
     var genesisAuthorityOrigin: URL? { get }
+    var genesisAuthorityOrigins: [URL] { get }
+}
+
+extension MonasSiteRootCeremonyTransport {
+    var genesisAuthorityOrigins: [URL] {
+        genesisAuthorityOrigin.map { [$0] } ?? []
+    }
 }
 
 struct MonasSiteRootGenesisRegistrationRequest: Encodable {
@@ -179,6 +194,18 @@ struct MonasSiteRootGenesisRegistrationResult {
         request: SiteRootGenesisRegistrationRequestV1,
         authorityOrigin: URL
     ) throws {
+        try self.init(
+            data: data,
+            request: request,
+            authorityOrigins: [authorityOrigin]
+        )
+    }
+
+    init(
+        data: Data,
+        request: SiteRootGenesisRegistrationRequestV1,
+        authorityOrigins: [URL]
+    ) throws {
         let values = try StrictJSONObject(data: data, maximumBytes: Self.maximumResponseBytes).values
         let required: Set<String> = [
             "schema", "canonical_delegation_base64url", "device_key_id",
@@ -196,7 +223,7 @@ struct MonasSiteRootGenesisRegistrationResult {
               let submitURL = URL(string: submitURLText),
               MonasSiteRootDelegationTransport.matchesAuthority(
                   submitURL,
-                  origin: authorityOrigin,
+                  origins: authorityOrigins,
                   expectedPath: MonasSiteRootDelegationEndpointV1.submitPath
               ),
               case let .string(reference)? = values["reference"],

@@ -4,6 +4,14 @@
 
 ### Changed
 
+- Persist local trust as a bounded installation inventory rather than a
+  single `primary` record. Multiple installations and user personas now remain
+  visible and independently addressable; selecting or revoking one record
+  cannot replace or erase another. The legacy v1 record is migration-only and
+  is never silently discarded while a new installation is added. Production
+  and passwordless Secure Enclave signing now resolve the selected
+  installation's namespace rather than a shared `primary` key namespace.
+
 - Remove the destructive local fresh-install reset. Trusted installation
   records and Secure Enclave keys are retained until an authority-approved
   replacement or revocation is completed; adding another installation or

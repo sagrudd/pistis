@@ -27,9 +27,10 @@ struct InstallationsView: View {
     let forgetExpired: (UUID) async throws -> Void
     let recoverSiteRootInstallation: () -> Void
     let reconciliationMessage: String?
-  let authorityCustodyBusy: Bool
+    let authorityCustodyBusy: Bool
     let startProviderEnrolment: () -> Void
     let continueAuthorityCustody: (InstallationSummary) -> Void
+    let selectInstallation: (UUID) async throws -> Void
 
     var body: some View {
         List(installations) { installation in
@@ -40,7 +41,8 @@ struct InstallationsView: View {
           authorityCustodyBusy: authorityCustodyBusy,
                     forgetExpired: forgetExpired,
                     startProviderEnrolment: startProviderEnrolment,
-                    continueAuthorityCustody: continueAuthorityCustody
+                    continueAuthorityCustody: continueAuthorityCustody,
+                    selectInstallation: selectInstallation
                 )
             } label: {
                 VStack(alignment: .leading, spacing: MnSpacing.x2) {
@@ -106,6 +108,7 @@ private struct InstallationDetailView: View {
     let forgetExpired: (UUID) async throws -> Void
     let startProviderEnrolment: () -> Void
     let continueAuthorityCustody: (InstallationSummary) -> Void
+    let selectInstallation: (UUID) async throws -> Void
 
     private var action: InstallationDetailAction {
         InstallationDetailAction(installation: installation)
@@ -187,6 +190,14 @@ private struct InstallationDetailView: View {
               )
                         }
                     }
+                }
+                if installation.status == "Trusted" {
+                    MnPrimaryButton("Use this installation", systemImage: "checkmark.circle") {
+                        Task { try? await selectInstallation(installation.id) }
+                    }
+                    .accessibilityHint(
+                        "Selects this trusted installation for new authority and provider requests"
+                    )
                 }
                 if installation.allowsLocalForget {
                     let isIncompatible = installation.status == "Re-enrolment required"

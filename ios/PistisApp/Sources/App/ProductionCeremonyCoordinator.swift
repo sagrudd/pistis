@@ -1,6 +1,10 @@
 import Foundation
 import PistisCore
 
+private func installationNamespace(_ data: Data) -> String {
+    data.map { String(format: "%02x", $0) }.joined()
+}
+
 @MainActor
 final class ProductionCeremonyCoordinator: ObservableObject {
     enum Phase: Equatable {
@@ -64,7 +68,7 @@ final class ProductionCeremonyCoordinator: ObservableObject {
                 userVerifiedAtMilliseconds: timestamp
             )
             let signer = try SecureEnclaveSigner(
-                namespace: "primary",
+                namespace: installationNamespace(enrollment.trust.installationID),
                 authenticationReason: decision == .approved
                     ? "Approve this Pistis authentication request"
                     : "Deny this Pistis authentication request"

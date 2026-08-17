@@ -79,7 +79,8 @@ struct RootTabView: View {
                     reconciliationMessage: reconciliationMessage,
           authorityCustodyBusy: authorityCustodyAttempt != nil,
                     startProviderEnrolment: startProviderEnrolment,
-                    continueAuthorityCustody: continueAuthorityCustody
+                    continueAuthorityCustody: continueAuthorityCustody,
+                    selectInstallation: selectInstallation
                 )
             }
             .tabItem {
@@ -369,7 +370,7 @@ struct RootTabView: View {
         let identifier = installationID.data
     guard
       let inventory = try await InstallationTrustKeychain.shared
-            .enrollmentInventoryRecord()
+            .enrollmentInventoryRecord(installationID: identifier)
         else { throw PlatformFailure.invalidConfiguration }
         switch inventory {
     case .current(let stored):
@@ -398,11 +399,27 @@ struct RootTabView: View {
         }
     }
 
+    private func selectInstallation(_ installationID: UUID) async throws {
+        try await InstallationTrustKeychain.shared.selectInstallation(
+            installationID: installationID.data
+        )
+        reconciliationMessage = "Using \(installationID.uuidString) for new requests."
+        await enrollment.refresh()
+    }
+
     private func forgetExpiredIdentity(_ externalIdentityID: UUID) async throws {
         let identifier = externalIdentityID.data
     guard
       let inventory = try await InstallationTrustKeychain.shared
-            .enrollmentInventoryRecord()
+            .enrollmentInventoryRecords()
+            .first(where: { record in
+                switch record {
+                case let .current(stored):
+                    return stored.trust.externalIdentityID == identifier
+                case let .legacy(stored):
+                    return stored.trust.externalIdentityID == identifier
+                }
+            })
         else { throw PlatformFailure.invalidConfiguration }
         switch inventory {
     case .current(let stored):

@@ -103,3 +103,11 @@ acknowledgement sequence for owner-operated private-IP HTTPS convergence.
 [ADR 0039](0039-das-replacement-receipt-attended-ceremony.md) accepts the
 one-use purpose-four iPhone ceremony that completes receipt signing and
 delivery on one retained Monas/Thesaurophylax stream before bootstrap advances.
+
+[ADR 0040](0040-site-root-authority-key-replacement.md) proposes the separate,
+HTTPS-only Site Root authority-key replacement transaction. Monas is the sole
+effective-generation record and Prosopikon/Thesaurophylax acknowledge the exact
+record before `Activated`; Pistis promotes only after that global state. It
+remains blocked on naming and accepting the typed custody/operator authorization
+artifact and must not be implemented as a boolean, QR fallback or App Attest-
+only recovery.

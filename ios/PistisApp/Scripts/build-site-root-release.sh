@@ -40,8 +40,9 @@ exec /usr/bin/xcodebuild -quiet \
     -destination 'generic/platform=iOS' \
     -derivedDataPath "$derived_data" \
     -allowProvisioningUpdates \
-    CURRENT_PROJECT_VERSION=7 \
+    CURRENT_PROJECT_VERSION=10 \
     PISTIS_MONAS_SITE_ROOT_AUTHORITY_ORIGIN='https://192.168.1.192:8443' \
+    PISTIS_MONAS_SITE_ROOT_AUTHORITY_ALTERNATE_ORIGIN='https://192.168.0.193:8443' \
     PISTIS_MONAS_SITE_ROOT_AUTHORITY_TRUST_MODE='site-root-generation-v1' \
     PISTIS_MONAS_SITE_ROOT_AUTHORITY_SPKI_SHA256='' \
     PISTIS_MONAS_SITE_ROOT_AUTHORITY_ROOT_DER_B64URL="$root_b64url" \

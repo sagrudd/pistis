@@ -129,8 +129,7 @@ private struct DERReader {
 final class PinnedEnrolmentSessionDelegate:
     NSObject, URLSessionDelegate, URLSessionTaskDelegate, @unchecked Sendable
 {
-    private let host: String
-    private let port: Int
+    private let authorities: Set<String>
     private let trustPolicy: MonasServerTrustPolicy
 
     convenience init(origin: URL, expectedSPKISHA256: Data) throws {
@@ -140,12 +139,20 @@ final class PinnedEnrolmentSessionDelegate:
         try self.init(origin: origin, trustPolicy: .bootstrapLeafSPKI(expectedSPKISHA256))
     }
 
-    init(origin: URL, trustPolicy: MonasServerTrustPolicy) throws {
-        guard let host = origin.host else {
+    convenience init(origin: URL, trustPolicy: MonasServerTrustPolicy) throws {
+        try self.init(origins: [origin], trustPolicy: trustPolicy)
+    }
+
+    init(origins: [URL], trustPolicy: MonasServerTrustPolicy) throws {
+        guard !origins.isEmpty,
+              origins.allSatisfy({ $0.scheme == "https" && $0.host != nil })
+        else {
             throw PlatformFailure.invalidConfiguration
         }
-        self.host = host
-        port = origin.port ?? 443
+        authorities = Set(origins.compactMap { origin in
+            guard let host = origin.host else { return nil }
+            return Self.authorityKey(host: host, port: origin.port ?? 443)
+        })
         self.trustPolicy = trustPolicy
     }
 
@@ -169,8 +176,12 @@ final class PinnedEnrolmentSessionDelegate:
     ) {
         guard challenge.protectionSpace.authenticationMethod
                 == NSURLAuthenticationMethodServerTrust,
-              challenge.protectionSpace.host == host,
-              challenge.protectionSpace.port == port,
+              authorities.contains(
+                  Self.authorityKey(
+                      host: challenge.protectionSpace.host,
+                      port: challenge.protectionSpace.port
+                  )
+              ),
               let trust = challenge.protectionSpace.serverTrust,
               let chain = SecTrustCopyCertificateChain(trust) as? [SecCertificate],
               let leaf = chain.first
@@ -201,7 +212,10 @@ final class PinnedEnrolmentSessionDelegate:
             }
             guard SecTrustSetPolicies(
                 trust,
-                SecPolicyCreateSSL(true, host as CFString)
+                  SecPolicyCreateSSL(
+                      true,
+                      challenge.protectionSpace.host as CFString
+                  )
             ) == errSecSuccess,
                   SecTrustSetAnchorCertificates(trust, [anchor] as CFArray) == errSecSuccess,
                   SecTrustSetAnchorCertificatesOnly(trust, true) == errSecSuccess,
@@ -214,5 +228,9 @@ final class PinnedEnrolmentSessionDelegate:
         } catch {
             completionHandler(.cancelAuthenticationChallenge, nil)
         }
+    }
+
+    private static func authorityKey(host: String, port: Int) -> String {
+        "\(host.lowercased()):\(port)"
     }
 }

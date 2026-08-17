@@ -1,5 +1,9 @@
 import Foundation
 
+private func installationNamespace(_ data: Data) -> String {
+    data.map { String(format: "%02x", $0) }.joined()
+}
+
 #if canImport(AVFoundation) && canImport(LocalAuthentication)
 import AVFoundation
 import LocalAuthentication
@@ -71,11 +75,12 @@ enum PasswordlessReadinessProbe {
     static func current(
         trustStore: any InstallationTrustStoring = InstallationTrustKeychain.shared
     ) async -> PasswordlessReadiness {
-        let hasTrust = (try? await trustStore.activeEnrollment()) != nil
+        let enrollment = try? await trustStore.activeEnrollment()
+        let hasTrust = enrollment != nil
         return PasswordlessReadiness(
             camera: camera(),
             faceID: faceID(),
-            deviceKey: deviceKey(),
+            deviceKey: deviceKey(installationID: enrollment?.trust.installationID),
             authorityKey: .init(
                 id: "authority-key",
                 title: "Installation authority",
@@ -160,11 +165,19 @@ enum PasswordlessReadinessProbe {
         #endif
     }
 
-    private static func deviceKey() -> ReadinessItem {
+    private static func deviceKey(installationID: Data?) -> ReadinessItem {
         #if canImport(LocalAuthentication) && canImport(Security)
+        guard let installationID else {
+            return .init(
+                id: "device-key",
+                title: "Device signing key",
+                detail: "Create the device signing key during enrolment.",
+                state: .actionRequired
+            )
+        }
         do {
             let signer = try SecureEnclaveSigner(
-                namespace: "primary",
+                namespace: installationNamespace(installationID),
                 authenticationReason: "Verify this Pistis request"
             )
             if try signer.hasExistingKey() {

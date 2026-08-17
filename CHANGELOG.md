@@ -2,6 +2,42 @@
 
 ## [Unreleased]
 
+### Changed
+
+- Extend the bounded `.192`/`.193` origin policy through readiness, custody,
+  installation-status, and App Attest follow-up requests. Alternate-origin
+  retry occurs only for a classified connection-unreachable error; reachable
+  HTTP denials, malformed responses, and trust failures remain terminal.
+
+- Retry an identical signed ceremony request across the other explicitly
+  pinned computer origin when the first address is unreachable. The request
+  bytes, Site Root binding, TLS policy, and endpoint path remain unchanged;
+  no new QR, host, alias, or attestation is created.
+
+- Pin the same Monas Site Root authority to a bounded pair of HTTPS origins,
+  `192.168.1.192:8443` and `192.168.0.193:8443`, so one portable computer can
+  move between its two approved network addresses without creating a second
+  authority or accepting arbitrary aliases. QR presentations, response
+  endpoints, TLS pins, custody continuation, and installation recovery all
+  accept only those two build-time origins; the selected installation's
+  address chooses which pinned origin is used for follow-up requests.
+
+- Make empty-state action buttons wrap at larger Dynamic Type sizes so their
+  accessibility labels and visible text remain fully readable.
+
+- Persist local trust as a bounded installation inventory rather than a
+  single `primary` record. Multiple installations and user personas now remain
+  visible and independently addressable; selecting or revoking one record
+  cannot replace or erase another. The legacy v1 record is migration-only and
+  is never silently discarded while a new installation is added. Production
+  and passwordless Secure Enclave signing now resolve the selected
+  installation's namespace rather than a shared `primary` key namespace.
+
+- Remove the destructive local fresh-install reset. Trusted installation
+  records and Secure Enclave keys are retained until an authority-approved
+  replacement or revocation is completed; adding another installation or
+  persona must never delete an existing one.
+
 ### Added
 
 - Add the staged App Attest replacement foundation for an already enrolled

@@ -227,6 +227,62 @@ struct LegacyAuthenticatedEnrollmentOutput: Codable, Equatable, Sendable {
 enum EnrollmentInventoryRecord: Equatable, Sendable {
     case current(AuthenticatedEnrollmentOutput)
     case legacy(LegacyAuthenticatedEnrollmentOutput)
+
+    var installationID: Data {
+        switch self {
+        case let .current(output): output.trust.installationID
+        case let .legacy(output): output.trust.installationID
+        }
+    }
+}
+
+private struct EnrollmentInventoryV2: Codable, Equatable, Sendable {
+    let storageProfile: UInt64
+    let records: [AuthenticatedEnrollmentOutput]
+    let selectedInstallationID: Data?
+
+    init(records: [AuthenticatedEnrollmentOutput], selectedInstallationID: Data?) throws {
+        guard Self.storageProfileValue == 3,
+              records.count <= 64,
+              Set(records.map { $0.trust.installationID }).count == records.count,
+              records.allSatisfy({ $0.trust.installationID.count == 16 }),
+              selectedInstallationID == nil
+                  || records.contains(where: { $0.trust.installationID == selectedInstallationID })
+        else { throw PlatformFailure.invalidConfiguration }
+        storageProfile = Self.storageProfileValue
+        self.records = records
+        self.selectedInstallationID = selectedInstallationID
+    }
+
+    private static let storageProfileValue: UInt64 = 3
+
+    private enum CodingKeys: String, CodingKey, CaseIterable {
+        case storageProfile
+        case records
+        case selectedInstallationID
+    }
+
+    init(from decoder: any Decoder) throws {
+        let untyped = try decoder.container(keyedBy: TrustCodingKey.self)
+        guard Set(untyped.allKeys.map(\.stringValue))
+            == Set(CodingKeys.allCases.map(\.rawValue))
+        else {
+            throw DecodingError.dataCorrupted(
+                .init(codingPath: decoder.codingPath, debugDescription: "invalid inventory fields")
+            )
+        }
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        guard try container.decode(UInt64.self, forKey: .storageProfile) == Self.storageProfileValue
+        else {
+            throw DecodingError.dataCorrupted(
+                .init(codingPath: decoder.codingPath, debugDescription: "invalid inventory profile")
+            )
+        }
+        try self.init(
+            records: container.decode([AuthenticatedEnrollmentOutput].self, forKey: .records),
+            selectedInstallationID: container.decodeIfPresent(Data.self, forKey: .selectedInstallationID)
+        )
+    }
 }
 
 private struct TrustCodingKey: CodingKey {
@@ -250,7 +306,11 @@ protocol InstallationTrustStoring: InstallationTrustReading {
     func revoke(installationID: Data) async throws
 }
 
-/// Keychain-backed single-device MVP trust repository.
+/// Keychain-backed multi-installation trust repository.
+///
+/// The v1 `primary` item is retained as a read-only migration source. New
+/// writes use the bounded v2 inventory so installations/personas are keyed by
+/// their installation ID instead of replacing one another.
 actor InstallationTrustKeychain: InstallationTrustStoring {
     static let shared = InstallationTrustKeychain()
     nonisolated static let enrollmentDidChangeNotification = Notification.Name(
@@ -259,77 +319,105 @@ actor InstallationTrustKeychain: InstallationTrustStoring {
 
     private let service = "org.mnemosynebiosciences.pistis.installation-trust.v1"
     private let account = "primary"
+    private let inventoryService = "org.mnemosynebiosciences.pistis.installation-trust.v2"
+    private let inventoryAccount = "inventory"
 
     func record(installationID: Data) throws -> InstallationTrustRecord? {
-        guard let output = try loadCurrent(),
-              output.trust.installationID == installationID
-        else {
-            return nil
-        }
+        guard let output = try currentRecords().first(where: {
+            $0.trust.installationID == installationID
+        }) else { return nil }
         return output.trust
     }
 
     func activeEnrollment() throws -> AuthenticatedEnrollmentOutput? {
-        guard let output = try loadCurrent(), output.trust.active,
-              Date() < output.trust.expiresAt
-        else { return nil }
-        return output
+        let records = try currentRecords()
+        let active = records.filter { $0.trust.active && Date() < $0.trust.expiresAt }
+        if active.count == 1 { return active[0] }
+        guard let selected = try loadV2Envelope()?.selectedInstallationID else { return nil }
+        return active.first { $0.trust.installationID == selected }
+    }
+
+    /// Return every locally enrolled installation. The returned array is
+    /// keyed by installation ID and may contain multiple user personas.
+    func enrollmentInventoryRecords() throws -> [EnrollmentInventoryRecord] {
+        try loadInventoryRecords()
+    }
+
+    func activeEnrollment(for installationID: Data) throws -> AuthenticatedEnrollmentOutput? {
+        try currentRecords().first {
+            $0.trust.installationID == installationID
+                && $0.trust.active
+                && Date() < $0.trust.expiresAt
+        }
     }
 
     /// Return the durable record for inventory presentation, including an
     /// expired or inactive record that must no longer authorize requests.
     func enrollmentInventoryRecord() throws -> EnrollmentInventoryRecord? {
-        try loadInventory()
+        try selectedInventoryRecord()
+    }
+
+    func enrollmentInventoryRecord(installationID: Data) throws -> EnrollmentInventoryRecord? {
+        try loadInventoryRecords().first { $0.installationID == installationID }
+    }
+
+    /// Select the installation/persona used by flows that do not carry an
+    /// explicit installation ID. Selection is local UI state only; it cannot
+    /// activate expired or legacy trust.
+    func selectInstallation(installationID: Data) throws {
+        let inventory = try loadInventoryRecords()
+        guard inventory.allSatisfy({
+            if case .current = $0 { return true }
+            return false
+        }) else { throw PlatformFailure.invalidConfiguration }
+        let records = inventory.compactMap { record -> AuthenticatedEnrollmentOutput? in
+            guard case let .current(output) = record else { return nil }
+            return output
+        }
+        guard let selected = records.first(where: {
+            $0.trust.installationID == installationID
+                && $0.trust.active
+                && Date() < $0.trust.expiresAt
+        }) else { throw PlatformFailure.invalidConfiguration }
+        try saveInventory(records: records, selectedInstallationID: selected.trust.installationID)
     }
 
     /// Whether the create-once slot is occupied, including by expired trust.
     func hasStoredEnrollment() throws -> Bool {
-        try loadInventory() != nil
+        try !loadInventoryRecords().isEmpty
     }
 
     func installAuthenticated(_ output: AuthenticatedEnrollmentOutput) throws {
-        let disposition = try Self.firstInstallDisposition(
-            existing: existingCurrentForInstall(),
-            proposed: output
-        )
-        if disposition == .idempotent {
-            NotificationCenter.default.post(
-                name: Self.enrollmentDidChangeNotification,
-                object: nil
-            )
-            return
-        }
-        let data = try JSONEncoder().encode(output)
-        guard data.count <= 16_384 else { throw PlatformFailure.invalidConfiguration }
-        #if canImport(Security)
-        let attributes: [String: Any] = [
-            kSecValueData as String: data,
-            kSecAttrAccessible as String: kSecAttrAccessibleWhenUnlockedThisDeviceOnly,
-        ]
-        let status: OSStatus
-        switch disposition {
-        case .create:
-            var insertion = baseQuery()
-            attributes.forEach { insertion[$0.key] = $0.value }
-            status = SecItemAdd(insertion as CFDictionary, nil)
-        case .replace:
-            status = SecItemUpdate(
-                baseQuery() as CFDictionary,
-                attributes as CFDictionary
-            )
-        case .idempotent:
-            return
-        }
-        guard status == errSecSuccess else {
+        let inventory = try loadInventoryRecords()
+        guard !inventory.contains(where: {
+            if case .legacy = $0 { return true }
+            return false
+        }) else {
+            // Never silently discard an incompatible legacy profile while
+            // adding another installation. The user must explicitly retire
+            // that profile through the existing guarded flow.
             throw PlatformFailure.invalidConfiguration
         }
-        NotificationCenter.default.post(
-            name: Self.enrollmentDidChangeNotification,
-            object: nil
-        )
-        #else
-        throw PlatformFailure.invalidConfiguration
-        #endif
+        var records = inventory.compactMap { record -> AuthenticatedEnrollmentOutput? in
+            guard case let .current(output) = record else { return nil }
+            return output
+        }
+        if let index = records.firstIndex(where: {
+            $0.trust.installationID == output.trust.installationID
+        }) {
+            let disposition = try Self.firstInstallDisposition(
+                existing: records[index],
+                proposed: output
+            )
+            if disposition == .idempotent {
+                try saveInventory(records: records, selectedInstallationID: output.trust.installationID)
+                return
+            }
+            records[index] = output
+        } else {
+            records.append(output)
+        }
+        try saveInventory(records: records, selectedInstallationID: output.trust.installationID)
     }
 
     enum FirstInstallDisposition: Equatable {
@@ -386,32 +474,35 @@ actor InstallationTrustKeychain: InstallationTrustStoring {
     }
 
     func revoke(installationID: Data) throws {
-        guard let current = try loadInventory() else { return }
-        let storedID: Data
-        switch current {
-        case let .current(output):
-            storedID = output.trust.installationID
-        case let .legacy(output):
-            storedID = output.trust.installationID
-        }
-        guard storedID == installationID else {
-            throw PlatformFailure.invalidConfiguration
-        }
-        try deleteStoredEnrollment()
+        var records = try loadInventoryRecords()
+        guard records.contains(where: { $0.installationID == installationID }) else { return }
+        records.removeAll { $0.installationID == installationID }
+        try saveInventory(records: records.compactMap { record in
+            guard case let .current(output) = record else { return nil }
+            return output
+        }, selectedInstallationID: records.first?.installationID)
     }
 
     /// Forget local material only when it cannot authorize. This does not
     /// represent or perform authority-side revocation.
     func forgetExpired(installationID: Data, now: Date = Date()) throws {
-        guard let current = try loadCurrent(),
-              current.trust.installationID == installationID,
+        var records = try loadInventoryRecords()
+        guard let current = records.first(where: { $0.installationID == installationID }),
+              case let .current(output) = current,
               Self.allowsLocalForget(
-                  active: current.trust.active,
-                  expiresAt: current.trust.expiresAt,
+                  active: output.trust.active,
+                  expiresAt: output.trust.expiresAt,
                   now: now
               )
         else { throw PlatformFailure.invalidConfiguration }
-        try deleteStoredEnrollment()
+        records.removeAll { $0.installationID == installationID }
+        try saveInventory(
+            records: records.compactMap { record in
+                guard case let .current(output) = record else { return nil }
+                return output
+            },
+            selectedInstallationID: records.first?.installationID
+        )
     }
 
     /// Retire the exact preceding profile. It is structurally incapable of
@@ -421,14 +512,23 @@ actor InstallationTrustKeychain: InstallationTrustStoring {
         installationID: Data,
         externalIdentityID: Data
     ) throws {
-        guard case let .legacy(current)? = try loadInventory(),
+        var records = try loadInventoryRecords()
+        guard let current = records.first(where: { $0.installationID == installationID }),
+              case let .legacy(output) = current,
               Self.matchesLegacyRemoval(
-                  current,
+                  output,
                   installationID: installationID,
                   externalIdentityID: externalIdentityID
               )
         else { throw PlatformFailure.invalidConfiguration }
-        try deleteStoredEnrollment()
+        records.removeAll { $0.installationID == installationID }
+        try saveInventory(
+            records: records.compactMap { record in
+                guard case let .current(output) = record else { return nil }
+                return output
+            },
+            selectedInstallationID: records.first?.installationID
+        )
     }
 
     static func matchesLegacyRemoval(
@@ -446,21 +546,6 @@ actor InstallationTrustKeychain: InstallationTrustStoring {
         now: Date
     ) -> Bool {
         !active || now >= expiresAt
-    }
-
-    private func deleteStoredEnrollment() throws {
-        #if canImport(Security)
-        let status = SecItemDelete(baseQuery() as CFDictionary)
-        guard status == errSecSuccess || status == errSecItemNotFound else {
-            throw PlatformFailure.invalidConfiguration
-        }
-        NotificationCenter.default.post(
-            name: Self.enrollmentDidChangeNotification,
-            object: nil
-        )
-        #else
-        throw PlatformFailure.invalidConfiguration
-        #endif
     }
 
     static func decodeInventory(_ data: Data) throws -> EnrollmentInventoryRecord {
@@ -482,21 +567,6 @@ actor InstallationTrustKeychain: InstallationTrustStoring {
         }
     }
 
-    private func existingCurrentForInstall() throws -> AuthenticatedEnrollmentOutput? {
-        switch try loadInventory() {
-        case nil:
-            return nil
-        case let .current(output):
-            return output
-        case .legacy:
-            throw PlatformFailure.invalidConfiguration
-        }
-    }
-
-    private func loadCurrent() throws -> AuthenticatedEnrollmentOutput? {
-        Self.currentEnrollment(from: try loadInventory())
-    }
-
     static func currentEnrollment(
         from inventory: EnrollmentInventoryRecord?
     ) -> AuthenticatedEnrollmentOutput? {
@@ -504,25 +574,116 @@ actor InstallationTrustKeychain: InstallationTrustStoring {
         return output
     }
 
-    private func loadInventory() throws -> EnrollmentInventoryRecord? {
+    private func currentRecords() throws -> [AuthenticatedEnrollmentOutput] {
+        try loadInventoryRecords().compactMap { record in
+            guard case let .current(output) = record else { return nil }
+            return output
+        }
+    }
+
+    private func selectedInventoryRecord() throws -> EnrollmentInventoryRecord? {
+        let records = try loadInventoryRecords()
+        guard !records.isEmpty else { return nil }
         #if canImport(Security)
+        if let selected = try loadV2Envelope()?.selectedInstallationID,
+           let record = records.first(where: { $0.installationID == selected }) {
+            return record
+        }
+        #endif
+        return records.first
+    }
+
+    private func loadInventoryRecords() throws -> [EnrollmentInventoryRecord] {
+        #if canImport(Security)
+        if let envelope = try loadV2Envelope() {
+            return envelope.records.map(EnrollmentInventoryRecord.current)
+        }
+        #endif
+        guard let legacy = try loadLegacyInventory() else { return [] }
+        return [legacy]
+    }
+
+    #if canImport(Security)
+    private func loadV2Envelope() throws -> EnrollmentInventoryV2? {
+        var query = inventoryQuery()
+        query[kSecReturnData as String] = true
+        query[kSecMatchLimit as String] = kSecMatchLimitOne
+        var result: CFTypeRef?
+        let status = SecItemCopyMatching(query as CFDictionary, &result)
+        if status == errSecItemNotFound { return nil }
+        guard status == errSecSuccess, let data = result as? Data, data.count <= 64 * 1024
+        else { throw PlatformFailure.invalidConfiguration }
+        do {
+            return try JSONDecoder().decode(EnrollmentInventoryV2.self, from: data)
+        } catch {
+            throw PlatformFailure.invalidConfiguration
+        }
+    }
+
+    private func loadLegacyInventory() throws -> EnrollmentInventoryRecord? {
         var query = baseQuery()
         query[kSecReturnData as String] = true
         query[kSecMatchLimit as String] = kSecMatchLimitOne
         var result: CFTypeRef?
         let status = SecItemCopyMatching(query as CFDictionary, &result)
         if status == errSecItemNotFound { return nil }
-        guard status == errSecSuccess, let data = result as? Data,
-              data.count <= 16_384
+        guard status == errSecSuccess, let data = result as? Data, data.count <= 16_384
         else { throw PlatformFailure.invalidConfiguration }
         do {
             return try Self.decodeInventory(data)
         } catch {
             throw PlatformFailure.invalidConfiguration
         }
-        #else
-        return nil
-        #endif
+    }
+
+    private func saveInventory(
+        records: [AuthenticatedEnrollmentOutput],
+        selectedInstallationID: Data?
+    ) throws {
+        let envelope = try EnrollmentInventoryV2(
+            records: records,
+            selectedInstallationID: selectedInstallationID
+        )
+        let data = try JSONEncoder().encode(envelope)
+        guard data.count <= 64 * 1024 else { throw PlatformFailure.invalidConfiguration }
+        let attributes: [String: Any] = [
+            kSecValueData as String: data,
+            kSecAttrAccessible as String: kSecAttrAccessibleWhenUnlockedThisDeviceOnly,
+        ]
+        let query = inventoryQuery()
+        let status = SecItemAdd(
+            query.merging(attributes) { _, new in new } as CFDictionary,
+            nil
+        )
+        let finalStatus: OSStatus
+        if status == errSecDuplicateItem {
+            finalStatus = SecItemUpdate(query as CFDictionary, attributes as CFDictionary)
+        } else {
+            finalStatus = status
+        }
+        guard finalStatus == errSecSuccess else {
+            throw PlatformFailure.invalidConfiguration
+        }
+        NotificationCenter.default.post(
+            name: Self.enrollmentDidChangeNotification,
+            object: nil
+        )
+    }
+
+    private func inventoryQuery() -> [String: Any] {
+        [
+            kSecClass as String: kSecClassGenericPassword,
+            kSecAttrService as String: inventoryService,
+            kSecAttrAccount as String: inventoryAccount,
+            kSecAttrSynchronizable as String: false,
+        ]
+    }
+    #else
+    private func loadLegacyInventory() throws -> EnrollmentInventoryRecord? { nil }
+    #endif
+
+    private func loadInventory() throws -> EnrollmentInventoryRecord? {
+        try selectedInventoryRecord()
     }
 
     private func baseQuery() -> [String: Any] {

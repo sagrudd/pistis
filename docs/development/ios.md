@@ -334,6 +334,19 @@ rerun the full ceremony rather than interpreting readiness as acceptance.
 
 ## GitHub enrolment boundary
 
+The release build may pin more than one HTTPS origin for the same portable
+Monas computer. The current profile pins `https://192.168.1.192:8443` and
+`https://192.168.0.193:8443` to the same Site Root identity and TLS policy.
+This is a bounded address set, not discovery: QR and follow-up requests may
+use either listed address, while every unlisted host remains rejected.
+If the signed request's listed address is unreachable, the client may retry
+the identical bytes at the other listed address; it never rewrites the signed
+payload or creates a new ceremony.
+
+The same bounded policy applies to readiness, custody/status reads, and the
+subsequent App Attest session. A reachable HTTP denial, malformed response, or
+TLS/trust failure is terminal and is never replayed at the other address.
+
 The Identities screen exposes only the accepted server-driven first-device
 surface. It scans and verifies the ADR 0029 version-4 presentation before
 network use. The app displays the verified installation and enables **Begin

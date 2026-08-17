@@ -270,8 +270,9 @@ struct ScanView: View {
                     return
                 }
                 siteRootCeremony.accept(qrText: payload.text)
-                if let expectedSiteRootAuthorityHost,
-                   siteRootCeremony.presentedReview?.destination != expectedSiteRootAuthorityHost
+                if let review = siteRootCeremony.presentedReview,
+                   let pinned = siteRootTransport as? MonasSiteRootDelegationTransport,
+                   !pinned.isConfiguredAuthorityHost(review.destination)
                 {
                     siteRootCeremony.reset()
                     scanFailure = .siteRootAuthorityUnavailable

@@ -8,12 +8,22 @@
 ## Context
 
 Pistis now distinguishes three real failures of the enrolled Site Root
-Secure Enclave key: missing, invalidated and mismatched. The existing genesis
-registration is intentionally immutable and the current App Attest replacement
-route requires a signature from that Site Root key. Reusing either route would
-therefore make recovery impossible when the phone no longer has the enrolled
-key, while resetting genesis or deleting a Keychain item would orphan the
-server's authority history.
+Secure Enclave key: missing, invalidated and mismatched. The same condition
+occurs when an iPhone is lost or stolen. The existing genesis registration is
+intentionally immutable and the current App Attest replacement route requires
+a signature from that Site Root key. Reusing either route would therefore make
+recovery impossible when the phone no longer has the enrolled key, while
+resetting genesis or deleting a Keychain item would orphan the server's
+authority history.
+
+The retained permitted-user and persona database is still valuable: it records
+which human identities and installation relationships may be re-established.
+The phone-held Site Root key is an installation authority, not a per-user
+credential. The user/persona records and their grants therefore survive device
+wipe, destruction or theft. The database is not, by itself, a signing
+authority. A replacement flow must revoke the lost installation, preserve
+those records, and require an independent typed custody/operator authorization
+before binding a new phone.
 
 The portable-computer deployment also has more than one bounded origin. The
 origin is transport configuration, not a new authority: every replacement
@@ -30,10 +40,15 @@ missing certificate, origin or TLS trust configuration.
 
 1. A fixed, selector-free operator command verifies the protected registered
    and completed genesis, the active App Attest registration/counter, the
-   Prosopikon installation/device projection and a typed, package-owned
-   custody/operator authorization artifact. It then records one durable
-   `Requested` intent containing the old Site Root generation, candidate
-   generation, installation/domain bindings, challenge and expiry.
+   Prosopikon installation/device projection, the retained permitted-user and
+   persona records, and a typed, package-owned custody/operator authorization
+   artifact. It durably revokes a lost/stolen installation before binding a new
+   phone, then records one `Requested` intent containing the old Site Root
+   generation, candidate generation, replacement installation binding, the
+   selected persona set, challenge and expiry. A normal replacement may be
+   authorised by another still-active trusted installation; only when every
+   trusted installation is lost does the independent recovery-custodian path
+   apply.
 2. Pistis creates a fresh candidate Secure Enclave key in a distinct pending
    namespace after Face ID. It signs the exact canonical replacement transcript
    and retains the canonical submission before network delivery. The old key
@@ -78,6 +93,13 @@ is not sufficient recovery authority.
 - Wrong installation/device/domain, generation, old/candidate key, App Attest
   counter, custody artifact, purpose, expiry, nonce, signature, content type,
   method, canonical encoding or trailing bytes deny without state change.
+- A revoked or stolen installation cannot submit, observe as active, or be
+  rebound; its permitted-user/persona records remain available for the explicit
+  replacement binding and are never deleted as part of device revocation.
+- The schema is installation- and persona-scoped, not a singleton user row:
+  multiple permitted users, personas and active installations may coexist
+  according to policy. Wiping one phone never deletes another installation or
+  a user's grants.
 - Only one live intent exists across `Requested`, `Accepted` and `Published`.
   Expiry, denial, replay and concurrent submissions settle durably. Accepted
   retry and Observe are byte/idempotent.

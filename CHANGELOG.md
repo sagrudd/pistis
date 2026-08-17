@@ -4,6 +4,9 @@
 
 ### Changed
 
+- Make empty-state action buttons wrap at larger Dynamic Type sizes so their
+  accessibility labels and visible text remain fully readable.
+
 - Persist local trust as a bounded installation inventory rather than a
   single `primary` record. Multiple installations and user personas now remain
   visible and independently addressable; selecting or revoking one record

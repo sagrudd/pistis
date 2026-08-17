@@ -48,14 +48,15 @@ missing certificate, origin or TLS trust configuration.
    `Quarantined` state, invalidates its sessions and pending ceremonies, and
    records one `Requested` intent containing the old Site Root generation,
    candidate generation, replacement installation binding, exact
-   principal/external-identity target, an exact digest and type for the
-   independent authorizer evidence, challenge and expiry. A normal replacement
-   requires a purpose-specific signature from an active device for that exact
-   principal/external identity, or an explicitly authorised administrator
-   recovery artifact. When every trusted installation is lost, the independent
-   recovery-custodian path applies. None of these authorizer artifacts may be
-   supplied by, or inferred from, the fresh candidate phone's App Attest
-   registration.
+   principal/external-identity target, challenge and expiry. The independent
+   authorizer record binds its exact device, installation, identity binding,
+   policy generation, revocation generation, purpose, artifact type and
+   evidence digest. A normal replacement requires a purpose-specific signature
+   from an active device for that exact principal/external identity, or an
+   explicitly authorised administrator recovery artifact. When every trusted
+   installation is lost, the independent recovery-custodian path applies. None
+   of these authorizer artifacts may be supplied by, or inferred from, the
+   fresh candidate phone's App Attest registration.
 2. Pistis creates fresh candidate Secure Enclave and App Attest keys in
    distinct pending namespaces after Face ID, and starts a fresh
    purpose-separated custody/recovery-seed bundle for the replacement phone.
@@ -65,14 +66,22 @@ missing certificate, origin or TLS trust configuration.
    be reused. The submission carries the fresh candidate App Attest and custody
    bundle separately from the already-verified authorizer evidence; proving
    possession of either candidate key is not recovery authorization.
+   When the retained external-identity provider is available, the candidate
+   must also complete fresh authentication that resolves to the exact retained
+   provider, issuer and immutable subject binding. Provider authentication is
+   corroborating evidence, not sufficient recovery authority. Loss or
+   unavailability of that provider is a separate governed recovery policy and
+   cannot be silently treated as success by this protocol.
 3. Monas is the sole system of record for the effective Site Root generation.
    It verifies the candidate proof, the purpose-specific recovery authorizer,
    fresh candidate App Attest registration/attestation and all genesis/Pros/
    custody cross-bindings. One immediate transaction records the candidate
    Site Root, App Attest and custody generations as staged and marks the intent
-   `Accepted`; the old Site Root remains active and the candidate is not yet an
-   effective authority. Genesis evidence and prior generations remain
-   immutable.
+   `Accepted`; the candidate is not yet an effective authority. The previously
+   activated Site Root remains only the server-side trust anchor and historic
+   effective generation needed for validation and rollback-safe convergence;
+   quarantine already denies every current-operation proof originating from
+   the stolen phone. Genesis evidence and prior generations remain immutable.
 4. Prosopikon and Thesaurophylax are read-only consumers of the authenticated
    Monas generation record; they do not maintain an independently mutable
    current Site Root key. Each must acknowledge the exact generation digest in
@@ -120,6 +129,14 @@ is not sufficient recovery authority.
   distinct typed fields and verification paths. A candidate App Attest
   registration, Secure Enclave signature, Face ID result or custody bundle
   cannot satisfy, replace or select the recovery authorizer.
+- Authorizer verification requires exact equality for authorizer device,
+  installation, identity binding, policy generation, revocation generation,
+  recovery purpose, artifact type and evidence digest. Missing, stale,
+  substituted or cross-principal fields deny without state change.
+- When its retained provider remains available, fresh authentication must
+  resolve to the exact retained provider, issuer and immutable external subject.
+  Provider loss uses a separately accepted policy; this flow neither invents a
+  substitute provider nor permits a caller-selected external identity.
 - A fresh phone must present its own App Attest registration and custody bundle;
   the stolen phone's old assertion, Site Root key and recovery seed are never
   treated as available evidence.
@@ -131,10 +148,12 @@ is not sufficient recovery authority.
   Expiry, denial, replay and concurrent submissions settle durably. Accepted
   retry and Observe are byte/idempotent.
 - Quarantine immediately makes the stolen installation's App Attest and
-  custody evidence ineligible to authorize new work, while preserving their
+  custody evidence, Site Root signatures and every other phone-originated
+  proof ineligible to authorize current operations, while preserving their
   immutable records for rollback-safe adjudication. Before `Activated` they
-  are not terminally revoked and the previously activated Site Root generation
-  remains the effective server authority.
+  are not terminally revoked; the previously activated Site Root remains only
+  the server-side trust anchor and historic effective generation needed to
+  validate and converge the governed transition.
 - At `Activated`, old Site Root signatures deny, the predecessor App Attest and
   custody generations become terminally revoked, and the fresh candidate App
   Attest counter begins from its independently attested registration state.

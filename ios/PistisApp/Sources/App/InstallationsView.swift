@@ -25,6 +25,7 @@ struct InstallationsView: View {
     let installations: [InstallationSummary]
     let loadFailure: Bool
     let forgetExpired: (UUID) async throws -> Void
+    let resetForFreshInstallation: (UUID) async throws -> Void
     let recoverSiteRootInstallation: () -> Void
     let reconciliationMessage: String?
   let authorityCustodyBusy: Bool
@@ -39,6 +40,7 @@ struct InstallationsView: View {
           reconciliationMessage: reconciliationMessage,
           authorityCustodyBusy: authorityCustodyBusy,
                     forgetExpired: forgetExpired,
+                    resetForFreshInstallation: resetForFreshInstallation,
                     startProviderEnrolment: startProviderEnrolment,
                     continueAuthorityCustody: continueAuthorityCustody
                 )
@@ -104,6 +106,7 @@ private struct InstallationDetailView: View {
   let reconciliationMessage: String?
   let authorityCustodyBusy: Bool
     let forgetExpired: (UUID) async throws -> Void
+    let resetForFreshInstallation: (UUID) async throws -> Void
     let startProviderEnrolment: () -> Void
     let continueAuthorityCustody: (InstallationSummary) -> Void
 
@@ -207,6 +210,23 @@ private struct InstallationDetailView: View {
                                     "This removes only the trust and device key stored on this phone. Authority records and server sessions are unchanged."
                             ) {
                                 try await forgetExpired(installation.id)
+                            }
+                        }
+                    }
+                }
+                if installation.status == "Trusted" {
+                    MnPanel {
+                        VStack(alignment: .leading, spacing: MnSpacing.x3) {
+                            MnStatusLabel(text: "Fresh local installation", kind: .warning)
+                            Text(
+                                "This removes only the cached installation record and its local Secure Enclave key from this iPhone. It does not revoke authority-side history or create a replacement; the next step must be a new attended enrolment or key-replacement ceremony."
+                            )
+                            DestructiveConfirmationButton(
+                                label: "Start fresh on this iPhone",
+                                confirmationTitle: "Start a fresh local installation?",
+                                confirmationMessage: "Face ID will be required. Only this phone's local trust record and device key are removed; Monas authority state is unchanged."
+                            ) {
+                                try await resetForFreshInstallation(installation.id)
                             }
                         }
                     }

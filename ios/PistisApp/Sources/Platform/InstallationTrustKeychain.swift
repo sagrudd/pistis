@@ -400,6 +400,26 @@ actor InstallationTrustKeychain: InstallationTrustStoring {
         try deleteStoredEnrollment()
     }
 
+    /// Remove the complete local installation record for an explicitly
+    /// attended fresh-install reset. This is local-only: authority-side
+    /// registration, audit history, and server sessions are untouched.
+    func resetForFreshInstallation(installationID: Data) throws {
+        guard let current = try loadInventory() else {
+            throw PlatformFailure.invalidConfiguration
+        }
+        let storedID: Data
+        switch current {
+        case let .current(output):
+            storedID = output.trust.installationID
+        case let .legacy(output):
+            storedID = output.trust.installationID
+        }
+        guard storedID == installationID else {
+            throw PlatformFailure.invalidConfiguration
+        }
+        try deleteStoredEnrollment()
+    }
+
     /// Forget local material only when it cannot authorize. This does not
     /// represent or perform authority-side revocation.
     func forgetExpired(installationID: Data, now: Date = Date()) throws {

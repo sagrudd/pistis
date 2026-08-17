@@ -4,6 +4,12 @@
 
 ### Added
 
+- Add an explicit Face ID-protected local fresh-install reset for a trusted
+  installation. The action removes only the phone's cached enrolment and
+  namespaced Secure Enclave key; it never revokes or edits authority-side
+  state, and the UI explains that a new attended enrolment or replacement is
+  still required.
+
 - Add the staged App Attest replacement foundation for an already enrolled
   physical iPhone. Pistis strictly parses the purpose-separated PXAR/v1
   offline carrier, requires the protected Site, installation, device,

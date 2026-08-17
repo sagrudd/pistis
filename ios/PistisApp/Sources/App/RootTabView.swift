@@ -75,6 +75,7 @@ struct RootTabView: View {
                     installations: projection.installations,
                     loadFailure: enrollment.state == .failed,
                     forgetExpired: forgetExpired,
+                    resetForFreshInstallation: resetForFreshInstallation,
                     recoverSiteRootInstallation: recoverSiteRootInstallation,
                     reconciliationMessage: reconciliationMessage,
           authorityCustodyBusy: authorityCustodyAttempt != nil,
@@ -396,6 +397,40 @@ struct RootTabView: View {
                 authenticationReason: "Remove this incompatible Pistis enrolment"
             )
         }
+    }
+
+    private func resetForFreshInstallation(_ installationID: UUID) async throws {
+        let identifier = installationID.data
+        guard case let .current(stored)? = try await InstallationTrustKeychain.shared
+            .enrollmentInventoryRecord(),
+              stored.trust.installationID == identifier
+        else { throw PlatformFailure.invalidConfiguration }
+
+        let ceremony = try await FaceIDCeremonyContext.authenticate(
+            reason: "Start a fresh Pistis installation on this iPhone"
+        )
+        let signer = try SecureEnclaveSigner(
+            namespace: hexadecimal(identifier),
+            authenticationReason: "Confirm the existing Pistis installation key"
+        )
+        _ = try signer.publicKey(using: ceremony)
+        try await InstallationTrustKeychain.shared.resetForFreshInstallation(
+            installationID: identifier
+        )
+        try signer.deleteLocalKey()
+        try? LocalHistoryRepository.shared.record(
+            HistoryEvent(
+                id: UUID(),
+                action: "Fresh local installation started",
+                installation: stored.trust.displayName,
+                occurredAt: Date().formatted(date: .abbreviated, time: .standard),
+                decision: "Completed locally",
+                signature: "Face ID verified",
+                transfer: "No authority action requested",
+                verification: "Local trust and device key removed"
+            )
+        )
+        await enrollment.refresh()
     }
 
     private func forgetExpiredIdentity(_ externalIdentityID: UUID) async throws {

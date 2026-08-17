@@ -7,6 +7,18 @@ enum PlatformFailure: Error, Equatable, Sendable {
     case keyCreationFailed
     case keyNotFound
     case keyInvalidated
+    /// The Site Root Secure Enclave key required by a received ceremony is
+    /// not present under the reviewed namespace. This is distinct from a
+    /// generic device-key lookup failure so operators do not misdiagnose a
+    /// valid QR as an unsupported carrier.
+    case siteRootAuthorityKeyMissing
+    /// The received ceremony names a different Site Root public key than the
+    /// one held by this installation. No proof may be emitted in this case.
+    case siteRootAuthorityKeyMismatch
+    /// The Site Root key exists but Secure Enclave reports that its biometric
+    /// binding is invalidated. Recovery must use the reviewed replacement or
+    /// re-enrolment flow; the key is never silently replaced here.
+    case siteRootAuthorityKeyInvalidated
     case publicKeyExtractionFailed
     case userVerificationUnavailable
     case userVerificationNotEnrolled
@@ -78,6 +90,12 @@ extension PlatformFailure {
             "Pistis could not create the protected device key."
         case .keyInvalidated:
             "The protected device key is no longer valid. Remove the expired identity before enrolling again."
+        case .siteRootAuthorityKeyMissing:
+            "This iPhone has no Site Root authority key for this installation. No proof was submitted; use the governed Site Root recovery flow."
+        case .siteRootAuthorityKeyMismatch:
+            "This iPhone's Site Root authority key does not match Monas. No proof was submitted; use the governed authority replacement flow."
+        case .siteRootAuthorityKeyInvalidated:
+            "This iPhone's Site Root authority key was invalidated by Secure Enclave. No proof was submitted; use the governed authority replacement flow."
         case .userVerificationNotEnrolled:
             "Face ID is not enrolled. Configure Face ID in Settings, then try again."
         case .userVerificationLockedOut:

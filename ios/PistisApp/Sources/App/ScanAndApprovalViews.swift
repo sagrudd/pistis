@@ -239,7 +239,9 @@ struct ScanView: View {
             scanFailure = nil
             if payload.text.hasPrefix(SiteX509FirstProvisionOfflineProfileV2.presentationQRPrefix) {
                 siteX509Offline.accept(qrText: payload.text)
-                if case .failed = siteX509Offline.phase { scanFailure = .qrPayloadUnsupported }
+                if case .failed = siteX509Offline.phase {
+                    scanFailure = siteX509Offline.failure ?? .productionEnvelopeUnavailable
+                }
                 return
             }
             if payload.text.hasPrefix("{") {
@@ -338,7 +340,7 @@ struct ScanView: View {
             scanning = false
             siteX509Offline.accept(fileBytes: bytes)
             if case .failed = siteX509Offline.phase {
-                scanFailure = .qrPayloadUnsupported
+                scanFailure = siteX509Offline.failure ?? .productionEnvelopeUnavailable
             } else {
                 scanFailure = nil
             }
@@ -514,7 +516,8 @@ private struct SiteX509FirstProvisionOfflineReviewView: View {
                         }
                     case .failed:
                         MnStatusLabel(text: "Approval stopped safely", kind: .danger)
-                        Text("No authority, trust exception or replacement enrolment was created.")
+                        Text(coordinator.failure?.safeUserMessage
+                             ?? "No authority, trust exception or replacement enrolment was created.")
                     case .idle: EmptyView()
                     }
                 }.padding(MnMetrics.screenGutter)

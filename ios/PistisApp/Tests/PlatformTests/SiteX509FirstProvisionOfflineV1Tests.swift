@@ -117,6 +117,46 @@ final class SiteX509FirstProvisionOfflineV2Tests: XCTestCase {
         ))
     }
 
+    func testAuthorityKeyClassificationIsPureAndFailClosed() throws {
+        let expected = Data(repeating: 0x11, count: 33)
+        let expectedID = Data(SHA256.hash(data: expected))
+        XCTAssertEqual(
+            SecureEnclaveSiteX509FirstProvisionOfflineProducerV2
+                .siteRootAuthorityKeyValidationFailure(
+                    expectedPublicKey: expected,
+                    expectedKeyID: expectedID,
+                    actualPublicKey: nil
+                ),
+            .siteRootAuthorityKeyMissing
+        )
+        XCTAssertEqual(
+            SecureEnclaveSiteX509FirstProvisionOfflineProducerV2
+                .siteRootAuthorityKeyValidationFailure(
+                    expectedPublicKey: expected,
+                    expectedKeyID: expectedID,
+                    actualPublicKey: Data(repeating: 0x22, count: 33)
+                ),
+            .siteRootAuthorityKeyMismatch
+        )
+        XCTAssertEqual(
+            SecureEnclaveSiteX509FirstProvisionOfflineProducerV2
+                .siteRootAuthorityKeyValidationFailure(
+                    expectedPublicKey: expected,
+                    expectedKeyID: Data(repeating: 0x33, count: 32),
+                    actualPublicKey: expected
+                ),
+            .siteRootAuthorityKeyMismatch
+        )
+        XCTAssertNil(
+            SecureEnclaveSiteX509FirstProvisionOfflineProducerV2
+                .siteRootAuthorityKeyValidationFailure(
+                    expectedPublicKey: expected,
+                    expectedKeyID: expectedID,
+                    actualPublicKey: expected
+                )
+        )
+    }
+
     @MainActor
     func testCoordinatorUsesSameBoundedParserForRawFile() throws {
         let coordinator = SiteX509FirstProvisionOfflineCoordinator()
@@ -132,6 +172,7 @@ final class SiteX509FirstProvisionOfflineV2Tests: XCTestCase {
             nowUnixSeconds: 1_001
         )
         XCTAssertEqual(coordinator.phase, .failed)
+        XCTAssertEqual(coordinator.failure, .qrPayloadUnsupported)
         XCTAssertNil(coordinator.presentedReview)
     }
 

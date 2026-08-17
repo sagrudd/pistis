@@ -366,6 +366,18 @@ final class PlatformPolicyTests: XCTestCase {
             PlatformFailure.enrolmentStorageFailed.safeUserMessage
                 .contains("retain it securely")
         )
+        XCTAssertTrue(
+            PlatformFailure.siteRootAuthorityKeyMissing.safeUserMessage
+                .contains("no Site Root authority key")
+        )
+        XCTAssertTrue(
+            PlatformFailure.siteRootAuthorityKeyMismatch.safeUserMessage
+                .contains("does not match Monas")
+        )
+        XCTAssertTrue(
+            PlatformFailure.siteRootAuthorityKeyInvalidated.safeUserMessage
+                .contains("invalidated by Secure Enclave")
+        )
     }
 
     func testPasswordlessReadinessRequiresEveryIndependentGate() {

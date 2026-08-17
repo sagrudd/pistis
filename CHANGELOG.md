@@ -4,6 +4,12 @@
 
 ### Changed
 
+- Preserve and surface the exact Site Root authority-key failure during the
+  PXFP2 approval path. Missing, Secure-Enclave-invalidated, and server/local
+  public-key mismatch are now distinct fail-closed outcomes; none emits a
+  proof or silently creates/replaces a key. The release is Pistis 0.19.3
+  (iOS build 11).
+
 - Extend the bounded `.192`/`.193` origin policy through readiness, custody,
   installation-status, and App Attest follow-up requests. Alternate-origin
   retry occurs only for a classified connection-unreachable error; reachable

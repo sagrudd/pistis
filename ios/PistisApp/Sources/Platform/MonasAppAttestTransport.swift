@@ -217,7 +217,9 @@ struct MonasAppAttestTransport: Sendable {
               authorityOrigins.allSatisfy(Self.isValidOrigin),
               Set(authorityOrigins.map(\.absoluteString)).count == authorityOrigins.count
         else { throw PlatformFailure.appAttestInvalidInput }
-        self.authorityOrigins = authorityOrigins
+        self.authorityOrigins = [authorityOrigin] + authorityOrigins.filter {
+            $0.absoluteString != authorityOrigin.absoluteString
+        }
         configuration.httpShouldSetCookies = false
         configuration.urlCache = nil
         configuration.requestCachePolicy = .reloadIgnoringLocalCacheData

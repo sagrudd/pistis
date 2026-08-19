@@ -35,6 +35,7 @@ final class SiteRootConvergenceCoordinator: ObservableObject {
     private enum Pending {
         case provision(SiteRootBundleReceiptProvisionPresentationV1)
         case siteX509(SiteX509FirstProvisionPresentationV1)
+        case siteX509Broker(SiteX509FirstProvisionBrokerPresentationV1)
         case acknowledgement(SiteRootConvergenceAckPresentationV2)
     }
 
@@ -51,7 +52,19 @@ final class SiteRootConvergenceCoordinator: ObservableObject {
         do {
             let seconds = try Self.nowSeconds()
             let review: SiteRootConvergenceReview
-            if qrText.contains(SiteRootConvergenceProfileV2.x509ProvisionSchema) {
+            if qrText.contains(SiteRootConvergenceProfileV2.x509BrokerProvisionSchema) {
+                let presentation = try SiteX509FirstProvisionBrokerPresentationV1(
+                    qrText: qrText, nowUnixSeconds: seconds
+                )
+                pending = .siteX509Broker(presentation)
+                review = SiteRootConvergenceReview(
+                    site: presentation.siteUUID,
+                    expiresAt: Date(timeIntervalSince1970: TimeInterval(
+                        presentation.expiresAtUnixSeconds
+                    )),
+                    kind: .siteX509Provision(generation: presentation.generation)
+                )
+            } else if qrText.contains(SiteRootConvergenceProfileV2.x509ProvisionSchema) {
                 let presentation = try SiteX509FirstProvisionPresentationV1(
                     qrText: qrText, nowUnixSeconds: seconds
                 )
@@ -115,6 +128,7 @@ final class SiteRootConvergenceCoordinator: ObservableObject {
                     self.phase = .unlockingBundleReceipt
                 }
             case let .siteX509(value): try await service.provisionSiteX509(value)
+            case let .siteX509Broker(value): try await service.provisionSiteX509Broker(value)
             case let .acknowledgement(value): try await service.acknowledge(value)
             }
             self.pending = nil

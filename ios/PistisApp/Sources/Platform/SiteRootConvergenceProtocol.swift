@@ -19,6 +19,14 @@ enum SiteRootConvergenceProfileV2 {
     static let x509IssuerPurpose = "site-x509-issuer-first-provision"
     static let x509SubmitPath = "/v1/pistis/site-x509-first-provision/submit"
     static let x509ContentType = "application/vnd.mnemosyne.pxfp.v1"
+    static let x509BrokerProvisionSchema =
+        "monas.site-x509-first-provision-broker-presentation.v1"
+    static let x509BrokerSubmissionSchema =
+        "mnemosyne.monas.first-install-broker.pistis-site-x509-first-provision-submission.v1"
+    static let x509BrokerPurpose = "site-x509-first-provision"
+    static let x509BrokerOrigin = "https://install.mnemosyne.co.uk"
+    static let x509BrokerSubmitPath =
+        "/api/first-install/v1/pistis/site-x509-first-provision/submit"
 }
 
 struct SiteX509FirstProvisionPresentationV1: Equatable, Sendable {
@@ -68,6 +76,67 @@ struct SiteX509FirstProvisionPresentationV1: Equatable, Sendable {
         self.challenge = challenge
         expiresAtUnixSeconds = expiry
         self.generation = generation
+    }
+}
+
+struct SiteX509FirstProvisionBrokerPresentationV1: Equatable, Sendable {
+    static let roles = ["site-x509-root-first-provision", "site-x509-issuer-first-provision"]
+
+    let siteUUID: String
+    let transactionUUID: String
+    let challenge: Data
+    let correlation: Data
+    let expiresAtUnixSeconds: UInt64
+    let generation: UInt64
+    let submissionURL: URL
+
+    init(qrText: String, nowUnixSeconds: UInt64) throws {
+        let object = try SiteRootConvergenceEncoding.object(qrText, maximumBytes: 8_192)
+        guard Set(object.keys) == [
+            "schema", "purpose", "site_uuid", "transaction_uuid", "generation",
+            "canonical_challenge_b64url", "correlation_b64url", "roles",
+            "expires_at_unix_seconds", "submission_url",
+        ],
+        SiteRootConvergenceEncoding.string(object, "schema")
+            == SiteRootConvergenceProfileV2.x509BrokerProvisionSchema,
+        SiteRootConvergenceEncoding.string(object, "purpose")
+            == SiteRootConvergenceProfileV2.x509BrokerPurpose,
+        let siteText = SiteRootConvergenceEncoding.string(object, "site_uuid"),
+        let siteBytes = SiteRootConvergenceEncoding.uuidBytes(siteText),
+        let transactionText = SiteRootConvergenceEncoding.string(object, "transaction_uuid"),
+        let transaction = SiteRootConvergenceEncoding.uuidBytes(transactionText),
+        let challenge = SiteRootConvergenceEncoding.bytes(
+            object, "canonical_challenge_b64url", maximum: 2_048, nonzero: true
+        ),
+        let correlation = SiteRootConvergenceEncoding.bytes(
+            object, "correlation_b64url", count: 32, nonzero: true
+        ),
+        let expiry = SiteRootConvergenceEncoding.positiveUInt64(
+            object, "expires_at_unix_seconds"
+        ),
+        nowUnixSeconds < expiry, expiry - nowUnixSeconds <= 300,
+        let generation = SiteRootConvergenceEncoding.positiveUInt64(object, "generation"),
+        SiteRootConvergenceEncoding.stringArray(object, "roles") == Self.roles,
+        let urlText = SiteRootConvergenceEncoding.string(object, "submission_url"),
+        let submissionURL = URL(string: urlText),
+        let brokerOrigin = URL(string: SiteRootConvergenceProfileV2.x509BrokerOrigin),
+        SiteRootConvergenceEncoding.matches(
+            submissionURL, origin: brokerOrigin,
+            path: SiteRootConvergenceProfileV2.x509BrokerSubmitPath
+        ) else { throw PlatformFailure.qrPayloadUnsupported }
+        let parsed = try SiteX509FirstProvisionChallengeV1(
+            challenge, nowUnixSeconds: nowUnixSeconds
+        )
+        guard parsed.siteUUID == siteBytes, parsed.transactionID == transaction,
+              parsed.generation == generation, parsed.expiresAtUnixSeconds == expiry
+        else { throw PlatformFailure.qrPayloadUnsupported }
+        siteUUID = siteText
+        transactionUUID = transactionText
+        self.challenge = challenge
+        self.correlation = correlation
+        expiresAtUnixSeconds = expiry
+        self.generation = generation
+        self.submissionURL = submissionURL
     }
 }
 

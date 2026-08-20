@@ -32,7 +32,8 @@ require_text ios/PistisApp/Sources/Platform/SiteRootGenesisRegistration.swift 'm
 require_text ios/PistisCore/Sources/PistisCore/FirstDevicePresentation.swift 'text.hasPrefix("PISTIS1:")'
 require_text ios/PistisCore/Sources/PistisCore/FirstDevicePresentation.swift 'pistis.first-device-presentation.v3'
 require_text ios/PistisApp/Sources/App/FirstDeviceEnrolmentView.swift 'FirstDevicePresentationV4.verify'
-require_text ios/PistisApp/Sources/App/ScanAndApprovalViews.swift 'GenericScanRoute.classify(payload.text) == .firstDeviceEnrolment'
+require_text ios/PistisApp/Sources/App/ScanAndApprovalViews.swift 'switch GenericScanRoute.classify(payload.text)'
+require_text ios/PistisApp/Sources/App/ScanAndApprovalViews.swift 'case .invalidFirstDevicePresentation:'
 require_text ios/PistisApp/Sources/App/ScanAndApprovalViews.swift 'FirstDeviceEnrolmentView(initialQRText: request.qrText)'
 
 printf 'first-device QR contract: OK\n'

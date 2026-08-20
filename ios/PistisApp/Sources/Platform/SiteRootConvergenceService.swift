@@ -848,6 +848,15 @@ struct SiteRootConvergenceServiceV2: Sendable {
         try await transport.submitSiteX509FirstProvisionBroker(presentation, detachedCOSE: cose)
     }
 
+    static func validateBrokerEnrolledSiteRootPublicKeyID(
+        _ expectedKeyID: Data?, actualPublicKeyCompressedSEC1: Data
+    ) throws {
+        guard let expectedKeyID else { return }
+        guard Data(SHA256.hash(data: actualPublicKeyCompressedSEC1)) == expectedKeyID else {
+            throw PlatformFailure.siteRootAuthorityKeyMismatch
+        }
+    }
+
     private static func makeBrokerProof(
         _ presentation: SiteX509FirstProvisionBrokerPresentationV1
     ) async throws -> Data {
@@ -860,6 +869,10 @@ struct SiteRootConvergenceServiceV2: Sendable {
         )
         guard try siteRoot.hasExistingKey() else { throw PlatformFailure.keyNotFound }
         let publicKey = try siteRoot.publicKey(using: ceremony)
+        try validateBrokerEnrolledSiteRootPublicKeyID(
+            presentation.enrolledSiteRootPublicKeyID,
+            actualPublicKeyCompressedSEC1: publicKey.compressedSEC1
+        )
         let target = Data(SHA256.hash(data: publicKey.compressedSEC1))
         let protected = try DetachedES256Cose.protectedHeaders(
             kid: target, contentType: SiteRootConvergenceProfileV2.x509ContentType

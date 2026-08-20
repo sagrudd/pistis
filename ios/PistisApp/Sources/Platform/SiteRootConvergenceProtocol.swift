@@ -87,22 +87,28 @@ struct SiteX509FirstProvisionPresentationV1: Equatable, Sendable {
 
 struct SiteX509FirstProvisionBrokerPresentationV1: Equatable, Sendable {
     static let roles = ["site-x509-root-first-provision", "site-x509-issuer-first-provision"]
+    private static let enrolledSiteRootPublicKeyIDField =
+        "enrolled_site_root_public_key_id_b64url"
 
     let siteUUID: String
     let transactionUUID: String
     let challenge: Data
     let correlation: Data
+    let enrolledSiteRootPublicKeyID: Data?
     let expiresAtUnixSeconds: UInt64
     let generation: UInt64
     let submissionURL: URL
 
     init(qrText: String, nowUnixSeconds: UInt64) throws {
         let object = try SiteRootConvergenceEncoding.object(qrText, maximumBytes: 8_192)
-        guard Set(object.keys) == [
+        let requiredFields: Set<String> = [
             "schema", "purpose", "site_uuid", "transaction_uuid", "generation",
             "canonical_challenge_b64url", "correlation_b64url", "roles",
             "expires_at_unix_seconds", "submission_url",
-        ],
+        ]
+        let allowedFields = requiredFields.union([Self.enrolledSiteRootPublicKeyIDField])
+        guard Set(object.keys).isSuperset(of: requiredFields),
+              Set(object.keys).isSubset(of: allowedFields),
         SiteRootConvergenceEncoding.string(object, "schema")
             == SiteRootConvergenceProfileV2.x509BrokerProvisionSchema,
         SiteRootConvergenceEncoding.string(object, "purpose")
@@ -130,6 +136,15 @@ struct SiteX509FirstProvisionBrokerPresentationV1: Equatable, Sendable {
             submissionURL, origin: brokerOrigin,
             path: SiteRootConvergenceProfileV2.x509BrokerSubmitPath
         ) else { throw PlatformFailure.qrPayloadUnsupported }
+        let enrolledSiteRootPublicKeyID: Data?
+        if object[Self.enrolledSiteRootPublicKeyIDField] == nil {
+            enrolledSiteRootPublicKeyID = nil
+        } else {
+            guard let value = SiteRootConvergenceEncoding.bytes(
+                object, Self.enrolledSiteRootPublicKeyIDField, count: 32, nonzero: true
+            ) else { throw PlatformFailure.qrPayloadUnsupported }
+            enrolledSiteRootPublicKeyID = value
+        }
         let parsed = try SiteX509FirstProvisionChallengeV1(
             challenge, nowUnixSeconds: nowUnixSeconds
         )
@@ -140,6 +155,7 @@ struct SiteX509FirstProvisionBrokerPresentationV1: Equatable, Sendable {
         transactionUUID = transactionText
         self.challenge = challenge
         self.correlation = correlation
+        self.enrolledSiteRootPublicKeyID = enrolledSiteRootPublicKeyID
         expiresAtUnixSeconds = expiry
         self.generation = generation
         self.submissionURL = submissionURL

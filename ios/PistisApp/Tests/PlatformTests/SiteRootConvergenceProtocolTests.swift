@@ -1,4 +1,5 @@
 import Foundation
+import CryptoKit
 import XCTest
 @testable import Pistis
 
@@ -120,6 +121,64 @@ final class SiteRootConvergenceProtocolTests: XCTestCase {
             SiteRootConvergenceProfileV2.x509BrokerOrigin,
             "https://install.mnemosyne.co.uk"
         )
+    }
+
+    func testBrokerPresentationAcceptsOptionalEnrolledSiteRootPublicKeyID() throws {
+        let keyID = Data(repeating: 0x2a, count: 32)
+        let presentation = try brokerPresentation(enrolledKeyID: keyID)
+        XCTAssertEqual(presentation.enrolledSiteRootPublicKeyID, keyID)
+    }
+
+    func testBrokerPresentationRejectsMalformedOptionalEnrolledSiteRootPublicKeyID() {
+        for value in [
+            SiteRootConvergenceEncoding.encode(Data(repeating: 0x2a, count: 31)),
+            SiteRootConvergenceEncoding.encode(Data(repeating: 0x2a, count: 33)),
+            "\(SiteRootConvergenceEncoding.encode(Data(repeating: 0x2a, count: 32)))=",
+        ] {
+            XCTAssertThrowsError(try SiteX509FirstProvisionBrokerPresentationV1(
+                qrText: brokerQR(enrolledKeyIDB64URL: value), nowUnixSeconds: nowSeconds
+            ))
+        }
+    }
+
+    func testBrokerEnrolledSiteRootPublicKeyIDAcceptsMatchingKey() throws {
+        let publicKey = try P256.Signing.PrivateKey(
+            rawRepresentation: Data(repeating: 7, count: 32)
+        ).publicKey.compressedRepresentation
+        let keyID = Data(SHA256.hash(data: publicKey))
+        XCTAssertNoThrow(try SiteRootConvergenceServiceV2
+            .validateBrokerEnrolledSiteRootPublicKeyID(
+                keyID, actualPublicKeyCompressedSEC1: publicKey
+            ))
+    }
+
+    func testBrokerEnrolledSiteRootPublicKeyIDMismatchStopsBeforeSubmission() async throws {
+        let publicKey = try P256.Signing.PrivateKey(
+            rawRepresentation: Data(repeating: 7, count: 32)
+        ).publicKey.compressedRepresentation
+        let presentation = try brokerPresentation(enrolledKeyID: Data(repeating: 0x2a, count: 32))
+        let recorder = BrokerAttemptRecorder()
+        let transport = RecordingBrokerTransport(recorder: recorder)
+        let service = SiteRootConvergenceServiceV2(
+            transport: transport,
+            brokerProofFactory: { value in
+                try SiteRootConvergenceServiceV2.validateBrokerEnrolledSiteRootPublicKeyID(
+                    value.enrolledSiteRootPublicKeyID,
+                    actualPublicKeyCompressedSEC1: publicKey
+                )
+                await recorder.record("proof")
+                return Data([0x01])
+            }
+        )
+
+        do {
+            try await service.provisionSiteX509Broker(presentation)
+            XCTFail("a mismatched enrolled Site Root key ID must deny the proof")
+        } catch let failure as PlatformFailure {
+            XCTAssertEqual(failure, .siteRootAuthorityKeyMismatch)
+        }
+        let events = await recorder.events()
+        XCTAssertEqual(events, ["reserve"])
     }
 
     func testBrokerTransportUsesAttemptThenSubmissionEndpointsAndExactProfiles() async throws {
@@ -274,27 +333,37 @@ final class SiteRootConvergenceProtocolTests: XCTestCase {
         return value
     }
 
-    private func brokerPresentation() throws -> SiteX509FirstProvisionBrokerPresentationV1 {
-        let site = Data(repeating: 2, count: 16)
-        let transaction = Data(repeating: 3, count: 16)
-        return try SiteX509FirstProvisionBrokerPresentationV1(
-            qrText: json([
-                "schema": SiteRootConvergenceProfileV2.x509BrokerProvisionSchema,
-                "purpose": SiteRootConvergenceProfileV2.x509BrokerPurpose,
-                "site_uuid": "02020202-0202-0202-0202-020202020202",
-                "transaction_uuid": "03030303-0303-0303-0303-030303030303",
-                "generation": 4,
-                "canonical_challenge_b64url": b64(
-                    x509Challenge(site: site, transaction: transaction, generation: 4)
-                ),
-                "correlation_b64url": b64(Data(repeating: 4, count: 32)),
-                "roles": SiteX509FirstProvisionBrokerPresentationV1.roles,
-                "expires_at_unix_seconds": nowSeconds + 120,
-                "submission_url": SiteRootConvergenceProfileV2.x509BrokerOrigin
-                    + SiteRootConvergenceProfileV2.x509BrokerSubmitPath,
-            ]),
+    private func brokerPresentation(
+        enrolledKeyID: Data? = nil
+    ) throws -> SiteX509FirstProvisionBrokerPresentationV1 {
+        try SiteX509FirstProvisionBrokerPresentationV1(
+            qrText: brokerQR(enrolledKeyIDB64URL: enrolledKeyID.map(b64)),
             nowUnixSeconds: nowSeconds
         )
+    }
+
+    private func brokerQR(enrolledKeyIDB64URL: String? = nil) -> String {
+        let site = Data(repeating: 2, count: 16)
+        let transaction = Data(repeating: 3, count: 16)
+        var object: [String: Any] = [
+            "schema": SiteRootConvergenceProfileV2.x509BrokerProvisionSchema,
+            "purpose": SiteRootConvergenceProfileV2.x509BrokerPurpose,
+            "site_uuid": "02020202-0202-0202-0202-020202020202",
+            "transaction_uuid": "03030303-0303-0303-0303-030303030303",
+            "generation": 4,
+            "canonical_challenge_b64url": b64(
+                x509Challenge(site: site, transaction: transaction, generation: 4)
+            ),
+            "correlation_b64url": b64(Data(repeating: 4, count: 32)),
+            "roles": SiteX509FirstProvisionBrokerPresentationV1.roles,
+            "expires_at_unix_seconds": nowSeconds + 120,
+            "submission_url": SiteRootConvergenceProfileV2.x509BrokerOrigin
+                + SiteRootConvergenceProfileV2.x509BrokerSubmitPath,
+        ]
+        if let enrolledKeyIDB64URL {
+            object["enrolled_site_root_public_key_id_b64url"] = enrolledKeyIDB64URL
+        }
+        return json(object)
     }
 
     private func field(_ tag: UInt8, _ value: Data) -> Data {

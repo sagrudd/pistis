@@ -4,6 +4,12 @@
 
 ### Changed
 
+- Enforce the optional `enrolled_site_root_public_key_id_b64url` broker
+  presentation binding in Pistis. When present, it must be canonical base64url
+  for one 32-byte key ID and must match the SHA-256 digest of the loaded
+  compressed Secure Enclave Site Root public key; mismatches fail before proof
+  submission. The iOS app release is Pistis 0.19.7 (iOS build 13).
+
 - Reserve the protected first-install Site X.509 QR before Face ID and App
   Attest. A failed or interrupted approval is terminal for that presentation;
   replay returns a clear reissue instruction and cannot submit a second proof.

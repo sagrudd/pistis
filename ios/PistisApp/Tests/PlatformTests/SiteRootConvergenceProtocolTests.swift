@@ -129,6 +129,17 @@ final class SiteRootConvergenceProtocolTests: XCTestCase {
         XCTAssertEqual(presentation.enrolledSiteRootPublicKeyID, keyID)
     }
 
+    func testBrokerPresentationAcceptsTheFullServerIssuedLifetime() throws {
+        let presentation = try brokerPresentation(expiryOffset: 900)
+        XCTAssertEqual(presentation.expiresAtUnixSeconds, nowSeconds + 900)
+    }
+
+    func testBrokerPresentationRejectsALifetimeBeyondTheServerContract() {
+        XCTAssertThrowsError(try SiteX509FirstProvisionBrokerPresentationV1(
+            qrText: brokerQR(expiryOffset: 901), nowUnixSeconds: nowSeconds
+        ))
+    }
+
     func testBrokerPresentationRejectsMissingEnrolledSiteRootPublicKeyID() {
         XCTAssertThrowsError(try SiteX509FirstProvisionBrokerPresentationV1(
             qrText: brokerQR(enrolledKeyIDB64URL: nil), nowUnixSeconds: nowSeconds
@@ -320,7 +331,12 @@ final class SiteRootConvergenceProtocolTests: XCTestCase {
         return value
     }
 
-    private func x509Challenge(site: Data, transaction: Data, generation: UInt64) -> Data {
+    private func x509Challenge(
+        site: Data,
+        transaction: Data,
+        generation: UInt64,
+        expiryOffset: UInt64 = 120
+    ) -> Data {
         var value = Data("PXFP/v1\u{1}".utf8)
         value += field(1, Data(SiteRootConvergenceProfileV2.x509Purpose.utf8))
         value += field(2, site)
@@ -334,21 +350,27 @@ final class SiteRootConvergenceProtocolTests: XCTestCase {
         value += field(10, Data([3]) + Data(repeating: 9, count: 32))
         value += field(11, Data(repeating: 10, count: 32))
         value += field(12, Data(repeating: 11, count: 32))
-        value += field(13, u64(nowSeconds + 120))
+        value += field(13, u64(nowSeconds + expiryOffset))
         value += field(14, Data(repeating: 12, count: 32))
         return value
     }
 
     private func brokerPresentation(
-        enrolledKeyID: Data? = Data(repeating: 0x2a, count: 32)
+        enrolledKeyID: Data? = Data(repeating: 0x2a, count: 32),
+        expiryOffset: UInt64 = 120
     ) throws -> SiteX509FirstProvisionBrokerPresentationV1 {
         try SiteX509FirstProvisionBrokerPresentationV1(
-            qrText: brokerQR(enrolledKeyIDB64URL: enrolledKeyID.map(b64)),
+            qrText: brokerQR(
+                enrolledKeyIDB64URL: enrolledKeyID.map(b64), expiryOffset: expiryOffset
+            ),
             nowUnixSeconds: nowSeconds
         )
     }
 
-    private func brokerQR(enrolledKeyIDB64URL: String? = nil) -> String {
+    private func brokerQR(
+        enrolledKeyIDB64URL: String? = nil,
+        expiryOffset: UInt64 = 120
+    ) -> String {
         let site = Data(repeating: 2, count: 16)
         let transaction = Data(repeating: 3, count: 16)
         var object: [String: Any] = [
@@ -358,11 +380,14 @@ final class SiteRootConvergenceProtocolTests: XCTestCase {
             "transaction_uuid": "03030303-0303-0303-0303-030303030303",
             "generation": 4,
             "canonical_challenge_b64url": b64(
-                x509Challenge(site: site, transaction: transaction, generation: 4)
+                x509Challenge(
+                    site: site, transaction: transaction, generation: 4,
+                    expiryOffset: expiryOffset
+                )
             ),
             "correlation_b64url": b64(Data(repeating: 4, count: 32)),
             "roles": SiteX509FirstProvisionBrokerPresentationV1.roles,
-            "expires_at_unix_seconds": nowSeconds + 120,
+            "expires_at_unix_seconds": nowSeconds + expiryOffset,
             "submission_url": SiteRootConvergenceProfileV2.x509BrokerOrigin
                 + SiteRootConvergenceProfileV2.x509BrokerSubmitPath,
         ]

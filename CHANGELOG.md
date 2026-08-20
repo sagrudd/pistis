@@ -4,6 +4,11 @@
 
 ### Changed
 
+- Align the protected pre-native Site X.509 parser with the reviewed server
+  contract: the browser code keeps its five-minute redemption window, while
+  the post-redemption QR may remain valid for up to 900 seconds. Release
+  0.19.9 is iOS build 15.
+
 - Make the Pistis release host-agnostic (0.19.8, iOS build 14). Customer host
   origin, TLS pins, Site Root certificates, generations and installation
   identity are runtime attended-install data, never compiled into

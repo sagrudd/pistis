@@ -33,6 +33,10 @@ enum SiteRootConvergenceProfileV2 {
     static let x509BrokerResponseSchema = "mnemosyne.monas.first-install-broker.response.v1"
     static let x509BrokerSubmitPath =
         "/api/first-install/v1/pistis/site-x509-first-provision/submit"
+    /// The broker code expires after five minutes, but the protected
+    /// pre-native Site X.509 transaction is issued by Thesaurophylax after
+    /// redemption and has its own reviewed fifteen-minute lifetime.
+    static let x509MaximumPresentationLifetimeSeconds: UInt64 = 900
 }
 
 struct SiteX509FirstProvisionPresentationV1: Equatable, Sendable {
@@ -65,7 +69,8 @@ struct SiteX509FirstProvisionPresentationV1: Equatable, Sendable {
         let expiry = SiteRootConvergenceEncoding.positiveUInt64(
             object, "expires_at_unix_seconds"
         ),
-        nowUnixSeconds < expiry, expiry - nowUnixSeconds <= 300,
+        nowUnixSeconds < expiry,
+        expiry - nowUnixSeconds <= SiteRootConvergenceProfileV2.x509MaximumPresentationLifetimeSeconds,
         let generation = SiteRootConvergenceEncoding.positiveUInt64(object, "generation"),
         SiteRootConvergenceEncoding.stringArray(object, "roles") == Self.roles,
         SiteRootConvergenceEncoding.string(object, "submission_path")
@@ -125,7 +130,8 @@ struct SiteX509FirstProvisionBrokerPresentationV1: Equatable, Sendable {
         let expiry = SiteRootConvergenceEncoding.positiveUInt64(
             object, "expires_at_unix_seconds"
         ),
-        nowUnixSeconds < expiry, expiry - nowUnixSeconds <= 300,
+        nowUnixSeconds < expiry,
+        expiry - nowUnixSeconds <= SiteRootConvergenceProfileV2.x509MaximumPresentationLifetimeSeconds,
         let generation = SiteRootConvergenceEncoding.positiveUInt64(object, "generation"),
         SiteRootConvergenceEncoding.stringArray(object, "roles") == Self.roles,
         let urlText = SiteRootConvergenceEncoding.string(object, "submission_url"),
@@ -192,7 +198,8 @@ private struct SiteX509FirstProvisionChallengeV1 {
               rootPublic != issuerPublic, rootSPKI != issuerSPKI, rootObject != issuerObject,
               let generation = SiteRootConvergenceEncoding.uint64(generationBytes), generation > 0,
               let expiry = SiteRootConvergenceEncoding.uint64(expiryBytes),
-              nowUnixSeconds < expiry, expiry - nowUnixSeconds <= 300
+              nowUnixSeconds < expiry,
+              expiry - nowUnixSeconds <= SiteRootConvergenceProfileV2.x509MaximumPresentationLifetimeSeconds
         else { throw PlatformFailure.qrPayloadUnsupported }
         siteUUID = site
         transactionID = transaction

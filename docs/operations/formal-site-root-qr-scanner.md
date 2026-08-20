@@ -79,16 +79,31 @@ server denial or duplicate submission, show a safe failure state and discard
 all transient data. A new Monas ceremony is required; no retry, manual repair,
 local queue or offline authorization is permitted.
 
+## First-install QR regression gate
+
+The first-install route carries two deliberately different QR families:
+
+* the initial ``monas.site-root-genesis-registration-presentation.v1`` JSON
+  presentation, which is routed to the Site Root/App Attest coordinator; and
+* the later signed ``PISTIS1`` v4/kind-3 first-device presentation, which is
+  verified by ``FirstDevicePresentationV4`` before provider enrolment.
+
+Run ``scripts/verify-first-device-qr-contract.sh`` in every release build.
+The iOS platform tests must also pass, including the regression test proving
+that the attended scanner accepts both families and rejects a plain URL. A
+build that only accepts ``PISTIS1`` is incomplete: it cannot perform the
+initial Site Root ceremony on a new iPhone.
+
 ## Current versus required
 
 | Capability | State |
 | --- | --- |
 | Separate Secure Enclave Site Root key/proof producer | merged client boundary |
 | Exact QR envelope and Monas submission contract | documented |
-| Camera scanner, QR decoding and review UI | not implemented for this profile |
-| HTTPS submission transport/status display | not implemented for this profile |
-| App Attest registration/assertion | contract only |
-| Monas durable live ceremony/replay service | not implemented |
+| Camera scanner, QR decoding and review UI | merged for the attended route |
+| HTTPS submission transport/status display | merged for the attended route |
+| App Attest registration/assertion | implemented behind reviewed gates |
+| Monas durable live ceremony/replay service | implemented behind reviewed gates |
 | Attended physical-iPhone qualification dossier | not run |
 
 The iOS project deliberately carries no Apple team, credential, profile,

@@ -149,6 +149,23 @@ final class PlatformPolicyTests: XCTestCase {
         XCTAssertTrue(transport is UnavailableMonasSiteRootDelegationTransport)
     }
 
+    func testScannerRoutesBothAttendedCeremonyQRFamilies() {
+        let compatibility = QRPayloadProfile.pistisAuthenticationOrMonasSiteRoot
+
+        XCTAssertTrue(
+            compatibility.accepts(
+                "{\"schema\":\"monas.site-root-genesis-registration-presentation.v1\"}"
+            )
+        )
+        XCTAssertTrue(compatibility.accepts("PISTIS1:bounded-frame.0123456789abcdef"))
+        XCTAssertFalse(compatibility.accepts("https://install.mnemosyne.co.uk"))
+        XCTAssertFalse(
+            QRPayloadProfile.pistisAuthenticationV2.accepts(
+                "{\"schema\":\"monas.site-root-genesis-registration-presentation.v1\"}"
+            )
+        )
+    }
+
     func testAppleAppAttestRegistrationEnvelopeUsesReviewedV1Contract() throws {
         let appleKeyID = Data(repeating: 0x11, count: 32).base64EncodedString()
         let envelope = try AppleAppAttestRegistrationEnvelope(

@@ -25,6 +25,9 @@ protocol MonasSiteRootConvergenceSubmitting: Sendable {
         _ presentation: SiteX509FirstProvisionPresentationV1,
         detachedCOSE: Data
     ) async throws
+    func reserveSiteX509FirstProvisionBroker(
+        _ presentation: SiteX509FirstProvisionBrokerPresentationV1
+    ) async throws
     func submitSiteX509FirstProvisionBroker(
         _ presentation: SiteX509FirstProvisionBrokerPresentationV1,
         detachedCOSE: Data
@@ -53,12 +56,24 @@ struct MonasSiteX509FirstProvisionBrokerTransport: MonasSiteRootConvergenceSubmi
         guard let origin = URL(string: SiteRootConvergenceProfileV2.x509BrokerOrigin),
               MonasSiteRootDelegationTransport.isValidOrigin(origin)
         else { throw PlatformFailure.invalidConfiguration }
-        authorityOrigin = origin
         let configuration = URLSessionConfiguration.ephemeral
         configuration.httpShouldSetCookies = false
         configuration.urlCache = nil
         configuration.requestCachePolicy = .reloadIgnoringLocalCacheData
-        session = URLSession(configuration: configuration)
+        authorityOrigin = origin
+        session = URLSession(
+            configuration: configuration,
+            delegate: RedirectRejectingSessionDelegate(),
+            delegateQueue: nil
+        )
+    }
+
+    init(session: URLSession) throws {
+        guard let origin = URL(string: SiteRootConvergenceProfileV2.x509BrokerOrigin),
+              MonasSiteRootDelegationTransport.isValidOrigin(origin)
+        else { throw PlatformFailure.invalidConfiguration }
+        authorityOrigin = origin
+        self.session = session
     }
 
     func submitBundleReceiptProvision(
@@ -75,12 +90,51 @@ struct MonasSiteX509FirstProvisionBrokerTransport: MonasSiteRootConvergenceSubmi
         throw PlatformFailure.siteRootAuthorityUnavailable
     }
 
+    func reserveSiteX509FirstProvisionBroker(
+        _ presentation: SiteX509FirstProvisionBrokerPresentationV1
+    ) async throws {
+        guard let brokerOrigin = URL(string: SiteRootConvergenceProfileV2.x509BrokerOrigin),
+              SiteRootConvergenceEncoding.matches(
+                  presentation.submissionURL, origin: brokerOrigin,
+                  path: SiteRootConvergenceProfileV2.x509BrokerSubmitPath
+              ) else { throw PlatformFailure.invalidConfiguration }
+        let endpoint = try fixedEndpoint(SiteRootConvergenceProfileV2.x509BrokerAttemptPath)
+        let body: [String: Any] = [
+            "schema": SiteRootConvergenceProfileV2.x509BrokerAttemptSchema,
+            "purpose": SiteRootConvergenceProfileV2.x509BrokerPurpose,
+            "correlation_b64url": SiteRootConvergenceEncoding.encode(
+                presentation.correlation
+            ),
+            "site_uuid": presentation.siteUUID,
+            "transaction_uuid": presentation.transactionUUID,
+            "generation": presentation.generation,
+            "canonical_challenge_b64url": SiteRootConvergenceEncoding.encode(
+                presentation.challenge
+            ),
+            "roles": SiteX509FirstProvisionBrokerPresentationV1.roles,
+        ]
+        let data = try await postAttemptJSON(body, endpoint: endpoint, maximum: 8_192)
+        let object: [String: StrictJSONObject.Value]
+        do { object = try StrictJSONObject(data: data, maximumBytes: 1_024).values }
+        catch { throw PlatformFailure.siteRootAuthorityUnavailable }
+        guard Set(object.keys) == ["schema", "state"],
+              SiteRootConvergenceEncoding.string(object, "schema")
+                == SiteRootConvergenceProfileV2.x509BrokerResponseSchema,
+              SiteRootConvergenceEncoding.string(object, "state")
+                == SiteRootConvergenceProfileV2.x509BrokerAttemptResponseState
+        else { throw PlatformFailure.siteRootAuthorityUnavailable }
+    }
+
     func submitSiteX509FirstProvisionBroker(
         _ presentation: SiteX509FirstProvisionBrokerPresentationV1,
         detachedCOSE: Data
     ) async throws {
         guard !detachedCOSE.isEmpty, detachedCOSE.count <= 4_096,
-              presentation.submissionURL == authorityOrigin
+              let brokerOrigin = URL(string: SiteRootConvergenceProfileV2.x509BrokerOrigin),
+              SiteRootConvergenceEncoding.matches(
+                  presentation.submissionURL, origin: brokerOrigin,
+                  path: SiteRootConvergenceProfileV2.x509BrokerSubmitPath
+              )
         else { throw PlatformFailure.invalidConfiguration }
         let body: [String: Any] = [
             "schema": SiteRootConvergenceProfileV2.x509BrokerSubmissionSchema,
@@ -120,7 +174,7 @@ struct MonasSiteX509FirstProvisionBrokerTransport: MonasSiteRootConvergenceSubmi
             let object = try StrictJSONObject(data: data, maximumBytes: 1_024).values
             guard Set(object.keys) == ["schema", "state"],
                   case let .string(schema)? = object["schema"],
-                  schema == "mnemosyne.monas.first-install-broker.response.v1",
+                  schema == SiteRootConvergenceProfileV2.x509BrokerResponseSchema,
                   case let .string(state)? = object["state"], state == "accepted"
             else { throw PlatformFailure.siteRootAuthorityUnavailable }
         } catch let failure as PlatformFailure {
@@ -151,6 +205,93 @@ struct MonasSiteX509FirstProvisionBrokerTransport: MonasSiteRootConvergenceSubmi
     ) async throws {
         throw PlatformFailure.siteRootAuthorityUnavailable
     }
+
+    private func fixedEndpoint(_ path: String) throws -> URL {
+        var components = URLComponents(
+            string: SiteRootConvergenceProfileV2.x509BrokerOrigin
+        )
+        components?.path = path
+        components?.query = nil
+        components?.fragment = nil
+        guard let endpoint = components?.url else {
+            throw PlatformFailure.invalidConfiguration
+        }
+        return endpoint
+    }
+
+    private func postJSON(
+        _ object: [String: Any], endpoint: URL, maximum: Int
+    ) async throws -> Data {
+        guard JSONSerialization.isValidJSONObject(object) else {
+            throw PlatformFailure.invalidConfiguration
+        }
+        let body = try JSONSerialization.data(withJSONObject: object, options: [.sortedKeys])
+        guard body.count <= maximum else { throw PlatformFailure.invalidConfiguration }
+        var request = URLRequest(url: endpoint)
+        request.httpMethod = "POST"
+        request.timeoutInterval = 15
+        request.httpBody = body
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.setValue("application/json", forHTTPHeaderField: "Accept")
+        request.setValue("no-store", forHTTPHeaderField: "Cache-Control")
+        do {
+            let (data, rawResponse) = try await session.data(for: request)
+            guard let response = rawResponse as? HTTPURLResponse,
+                  response.url == endpoint,
+                  response.statusCode == 202, data.count <= 1_024,
+                  response.value(forHTTPHeaderField: "Cache-Control")?
+                    .lowercased().contains("no-store") == true
+            else { throw PlatformFailure.siteRootAuthorityUnavailable }
+            return data
+        } catch let failure as PlatformFailure {
+            throw failure
+        } catch {
+            throw PlatformFailure.siteRootAuthorityUnavailable
+        }
+    }
+
+    private func postAttemptJSON(
+        _ object: [String: Any], endpoint: URL, maximum: Int
+    ) async throws -> Data {
+        guard JSONSerialization.isValidJSONObject(object) else {
+            throw PlatformFailure.invalidConfiguration
+        }
+        let body = try JSONSerialization.data(withJSONObject: object, options: [.sortedKeys])
+        guard body.count <= maximum else { throw PlatformFailure.invalidConfiguration }
+        var request = URLRequest(url: endpoint)
+        request.httpMethod = "POST"
+        request.timeoutInterval = 15
+        request.httpBody = body
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.setValue("application/json", forHTTPHeaderField: "Accept")
+        request.setValue("no-store", forHTTPHeaderField: "Cache-Control")
+        do {
+            let (data, rawResponse) = try await session.data(for: request)
+            guard let response = rawResponse as? HTTPURLResponse,
+                  response.url == endpoint,
+                  data.count <= 1_024,
+                  response.value(forHTTPHeaderField: "Cache-Control")?
+                    .lowercased().contains("no-store") == true
+            else { throw PlatformFailure.siteRootAuthorityUnavailable }
+            if response.statusCode == 409 {
+                let object = try StrictJSONObject(data: data, maximumBytes: 1_024).values
+                guard Set(object.keys) == ["schema", "state"],
+                      SiteRootConvergenceEncoding.string(object, "schema")
+                        == SiteRootConvergenceProfileV2.x509BrokerResponseSchema,
+                      SiteRootConvergenceEncoding.string(object, "state") == "attempted"
+                else { throw PlatformFailure.siteRootAuthorityUnavailable }
+                throw PlatformFailure.siteX509PresentationAlreadyAttempted
+            }
+            guard response.statusCode == 202 else {
+                throw PlatformFailure.siteRootAuthorityUnavailable
+            }
+            return data
+        } catch let failure as PlatformFailure {
+            throw failure
+        } catch {
+            throw PlatformFailure.siteRootAuthorityUnavailable
+        }
+    }
 }
 
 struct MonasSiteRootConvergenceTransport: MonasSiteRootConvergenceSubmitting, Sendable {
@@ -176,7 +317,11 @@ struct MonasSiteRootConvergenceTransport: MonasSiteRootConvergenceSubmitting, Se
         configuration.httpShouldSetCookies = false
         configuration.urlCache = nil
         configuration.requestCachePolicy = .reloadIgnoringLocalCacheData
-        brokerSession = URLSession(configuration: configuration)
+        brokerSession = URLSession(
+            configuration: configuration,
+            delegate: RedirectRejectingSessionDelegate(),
+            delegateQueue: nil
+        )
         session = URLSession(
             configuration: configuration,
             delegate: try PinnedEnrolmentSessionDelegate(
@@ -251,6 +396,43 @@ struct MonasSiteRootConvergenceTransport: MonasSiteRootConvergenceSubmitting, Se
         else { throw PlatformFailure.siteRootAuthorityUnavailable }
     }
 
+    func reserveSiteX509FirstProvisionBroker(
+        _ presentation: SiteX509FirstProvisionBrokerPresentationV1
+    ) async throws {
+        guard let brokerOrigin = URL(string: SiteRootConvergenceProfileV2.x509BrokerOrigin),
+              SiteRootConvergenceEncoding.matches(
+                  presentation.submissionURL, origin: brokerOrigin,
+                  path: SiteRootConvergenceProfileV2.x509BrokerSubmitPath
+              ) else { throw PlatformFailure.invalidConfiguration }
+        let endpoint = try fixedBrokerEndpoint(
+            SiteRootConvergenceProfileV2.x509BrokerAttemptPath
+        )
+        let body: [String: Any] = [
+            "schema": SiteRootConvergenceProfileV2.x509BrokerAttemptSchema,
+            "purpose": SiteRootConvergenceProfileV2.x509BrokerPurpose,
+            "correlation_b64url": SiteRootConvergenceEncoding.encode(
+                presentation.correlation
+            ),
+            "site_uuid": presentation.siteUUID,
+            "transaction_uuid": presentation.transactionUUID,
+            "generation": presentation.generation,
+            "canonical_challenge_b64url": SiteRootConvergenceEncoding.encode(
+                presentation.challenge
+            ),
+            "roles": SiteX509FirstProvisionBrokerPresentationV1.roles,
+        ]
+        let data = try await postBrokerAttemptJSON(
+            body, endpoint: endpoint, maximum: 8_192
+        )
+        let object = try strictObject(data)
+        guard Set(object.keys) == ["schema", "state"],
+              SiteRootConvergenceEncoding.string(object, "schema")
+                == SiteRootConvergenceProfileV2.x509BrokerResponseSchema,
+              SiteRootConvergenceEncoding.string(object, "state")
+                == SiteRootConvergenceProfileV2.x509BrokerAttemptResponseState
+        else { throw PlatformFailure.siteRootAuthorityUnavailable }
+    }
+
     func submitSiteX509FirstProvisionBroker(
         _ presentation: SiteX509FirstProvisionBrokerPresentationV1,
         detachedCOSE: Data
@@ -282,7 +464,7 @@ struct MonasSiteRootConvergenceTransport: MonasSiteRootConvergenceSubmitting, Se
         let object = try strictObject(data)
         guard Set(object.keys) == ["schema", "state"],
               SiteRootConvergenceEncoding.string(object, "schema")
-                == "mnemosyne.monas.first-install-broker.response.v1",
+                == SiteRootConvergenceProfileV2.x509BrokerResponseSchema,
               SiteRootConvergenceEncoding.string(object, "state") == "accepted"
         else { throw PlatformFailure.siteRootAuthorityUnavailable }
     }
@@ -440,6 +622,45 @@ struct MonasSiteRootConvergenceTransport: MonasSiteRootConvergenceSubmitting, Se
         catch { throw PlatformFailure.siteRootAuthorityUnavailable }
     }
 
+    private func postBrokerAttemptJSON(
+        _ object: [String: Any], endpoint: URL, maximum: Int
+    ) async throws -> Data {
+        guard JSONSerialization.isValidJSONObject(object) else {
+            throw PlatformFailure.invalidConfiguration
+        }
+        let body = try JSONSerialization.data(withJSONObject: object, options: [.sortedKeys])
+        guard body.count <= maximum else { throw PlatformFailure.invalidConfiguration }
+        var request = URLRequest(url: endpoint)
+        request.httpMethod = "POST"
+        request.timeoutInterval = 15
+        request.httpBody = body
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.setValue("application/json", forHTTPHeaderField: "Accept")
+        request.setValue("no-store", forHTTPHeaderField: "Cache-Control")
+        do {
+            let (data, rawResponse) = try await brokerSession.data(for: request)
+            guard let http = rawResponse as? HTTPURLResponse, http.url == endpoint,
+                  data.count <= 1_024,
+                  http.value(forHTTPHeaderField: "Cache-Control")?
+                    .lowercased().contains("no-store") == true
+            else { throw PlatformFailure.siteRootAuthorityUnavailable }
+            if http.statusCode == 409 {
+                let object = try StrictJSONObject(data: data, maximumBytes: 1_024).values
+                guard Set(object.keys) == ["schema", "state"],
+                      SiteRootConvergenceEncoding.string(object, "schema")
+                        == SiteRootConvergenceProfileV2.x509BrokerResponseSchema,
+                      SiteRootConvergenceEncoding.string(object, "state") == "attempted"
+                else { throw PlatformFailure.siteRootAuthorityUnavailable }
+                throw PlatformFailure.siteX509PresentationAlreadyAttempted
+            }
+            guard http.statusCode == 202 else {
+                throw PlatformFailure.siteRootAuthorityUnavailable
+            }
+            return data
+        } catch let failure as PlatformFailure { throw failure }
+        catch { throw PlatformFailure.siteRootAuthorityUnavailable }
+    }
+
     private func response(_ request: URLRequest, endpoint: URL, maximum: Int) async throws
         -> Data
     {
@@ -465,6 +686,19 @@ struct MonasSiteRootConvergenceTransport: MonasSiteRootConvergenceSubmitting, Se
         else { throw PlatformFailure.invalidConfiguration }
         components.path = path
         guard let endpoint = components.url else { throw PlatformFailure.invalidConfiguration }
+        return endpoint
+    }
+
+    private func fixedBrokerEndpoint(_ path: String) throws -> URL {
+        var components = URLComponents(
+            string: SiteRootConvergenceProfileV2.x509BrokerOrigin
+        )
+        components?.path = path
+        components?.query = nil
+        components?.fragment = nil
+        guard let endpoint = components?.url else {
+            throw PlatformFailure.invalidConfiguration
+        }
         return endpoint
     }
 }
@@ -532,13 +766,20 @@ final class SiteRootConvergenceAckStoreV2: @unchecked Sendable {
 struct SiteRootConvergenceServiceV2: Sendable {
     private let transport: any MonasSiteRootConvergenceSubmitting
     private let store: SiteRootConvergenceAckStoreV2
+    private let brokerProofFactory: @Sendable (
+        SiteX509FirstProvisionBrokerPresentationV1
+    ) async throws -> Data
 
     init(
         transport: any MonasSiteRootConvergenceSubmitting,
-        store: SiteRootConvergenceAckStoreV2 = SiteRootConvergenceAckStoreV2()
+        store: SiteRootConvergenceAckStoreV2 = SiteRootConvergenceAckStoreV2(),
+        brokerProofFactory: @escaping @Sendable (
+            SiteX509FirstProvisionBrokerPresentationV1
+        ) async throws -> Data = SiteRootConvergenceServiceV2.makeBrokerProof
     ) {
         self.transport = transport
         self.store = store
+        self.brokerProofFactory = brokerProofFactory
     }
 
     @MainActor
@@ -598,6 +839,18 @@ struct SiteRootConvergenceServiceV2: Sendable {
     func provisionSiteX509Broker(
         _ presentation: SiteX509FirstProvisionBrokerPresentationV1
     ) async throws {
+        // The fixed broker reservation is deliberately the first side effect.
+        // It consumes the QR even when Face ID, App Attest, signing, or the
+        // later proof submission fails; a failed authorization must not make
+        // the same protected presentation reusable.
+        try await transport.reserveSiteX509FirstProvisionBroker(presentation)
+        let cose = try await brokerProofFactory(presentation)
+        try await transport.submitSiteX509FirstProvisionBroker(presentation, detachedCOSE: cose)
+    }
+
+    private static func makeBrokerProof(
+        _ presentation: SiteX509FirstProvisionBrokerPresentationV1
+    ) async throws -> Data {
         let ceremony = try await FaceIDCeremonyContext.authenticate(
             reason: "Approve fresh Site X.509 root and issuer custody"
         )
@@ -616,7 +869,7 @@ struct SiteRootConvergenceServiceV2: Sendable {
         )
         let signature = try siteRoot.sign(message: structure, using: ceremony)
         let cose = try DetachedES256Cose.envelope(protected: protected, signature: signature)
-        try await transport.submitSiteX509FirstProvisionBroker(presentation, detachedCOSE: cose)
+        return cose
     }
 
     func acknowledge(_ presentation: SiteRootConvergenceAckPresentationV2) async throws {

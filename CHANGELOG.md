@@ -4,6 +4,10 @@
 
 ### Changed
 
+- Reserve the protected first-install Site X.509 QR before Face ID and App
+  Attest. A failed or interrupted approval is terminal for that presentation;
+  replay returns a clear reissue instruction and cannot submit a second proof.
+
 - Preserve and surface the exact Site Root authority-key failure during the
   PXFP2 approval path. Missing, Secure-Enclave-invalidated, and server/local
   public-key mismatch are now distinct fail-closed outcomes; none emits a

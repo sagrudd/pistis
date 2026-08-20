@@ -97,6 +97,122 @@ final class SiteRootConvergenceProtocolTests: XCTestCase {
         ))
     }
 
+    func testBrokerAttemptProfileUsesFixedEndpointAndReservationSchema() throws {
+        XCTAssertEqual(
+            SiteRootConvergenceProfileV2.x509BrokerAttemptSchema,
+            "mnemosyne.monas.first-install-broker.pistis-site-x509-first-provision-attempt.v1"
+        )
+        XCTAssertEqual(
+            SiteRootConvergenceProfileV2.x509BrokerAttemptPath,
+            "/api/first-install/v1/pistis/site-x509-first-provision/attempt"
+        )
+        XCTAssertEqual(
+            SiteRootConvergenceProfileV2.x509BrokerAttemptResponseState,
+            "reserved"
+        )
+
+        let presentation = try brokerPresentation()
+        XCTAssertEqual(
+            presentation.submissionURL.path,
+            SiteRootConvergenceProfileV2.x509BrokerSubmitPath
+        )
+        XCTAssertEqual(
+            SiteRootConvergenceProfileV2.x509BrokerOrigin,
+            "https://install.mnemosyne.co.uk"
+        )
+    }
+
+    func testBrokerTransportUsesAttemptThenSubmissionEndpointsAndExactProfiles() async throws {
+        BrokerTransportURLProtocol.reset()
+        let configuration = URLSessionConfiguration.ephemeral
+        configuration.protocolClasses = [BrokerTransportURLProtocol.self]
+        let transport = try MonasSiteX509FirstProvisionBrokerTransport(
+            session: URLSession(configuration: configuration)
+        )
+        let presentation = try brokerPresentation()
+
+        try await transport.reserveSiteX509FirstProvisionBroker(presentation)
+        try await transport.submitSiteX509FirstProvisionBroker(
+            presentation, detachedCOSE: Data([0x01, 0x02])
+        )
+
+        let requests = BrokerTransportURLProtocol.requests()
+        XCTAssertEqual(
+            requests.map { $0.url?.path },
+            [
+                SiteRootConvergenceProfileV2.x509BrokerAttemptPath,
+                SiteRootConvergenceProfileV2.x509BrokerSubmitPath,
+            ]
+        )
+        for request in requests {
+            XCTAssertEqual(request.httpMethod, "POST")
+            XCTAssertEqual(request.value(forHTTPHeaderField: "Content-Type"), "application/json")
+            XCTAssertEqual(request.value(forHTTPHeaderField: "Accept"), "application/json")
+            XCTAssertEqual(request.value(forHTTPHeaderField: "Cache-Control"), "no-store")
+        }
+
+        let attempt = try XCTUnwrap(jsonObject(requests[0]))
+        XCTAssertEqual(
+            Set(attempt.keys),
+            [
+                "schema", "purpose", "correlation_b64url", "site_uuid", "transaction_uuid",
+                "generation", "canonical_challenge_b64url", "roles",
+            ]
+        )
+        XCTAssertEqual(
+            attempt["schema"] as? String,
+            SiteRootConvergenceProfileV2.x509BrokerAttemptSchema
+        )
+        XCTAssertEqual(
+            attempt["purpose"] as? String,
+            SiteRootConvergenceProfileV2.x509BrokerPurpose
+        )
+        XCTAssertEqual(
+            attempt["roles"] as? [String],
+            SiteX509FirstProvisionBrokerPresentationV1.roles
+        )
+
+        let submission = try XCTUnwrap(jsonObject(requests[1]))
+        XCTAssertEqual(
+            Set(submission.keys),
+            [
+                "schema", "purpose", "correlation_b64url", "site_uuid", "transaction_uuid",
+                "generation", "canonical_challenge_b64url", "roles",
+                "detached_cose_sign1_b64url",
+            ]
+        )
+        XCTAssertEqual(
+            submission["schema"] as? String,
+            SiteRootConvergenceProfileV2.x509BrokerSubmissionSchema
+        )
+    }
+
+    func testBrokerApprovalReservesBeforeProtectedProofAndCannotBeReplayed() async throws {
+        let recorder = BrokerAttemptRecorder()
+        let transport = RecordingBrokerTransport(recorder: recorder)
+        let service = SiteRootConvergenceServiceV2(
+            transport: transport,
+            brokerProofFactory: { _ in
+                await recorder.record("proof")
+                return Data([0x01])
+            }
+        )
+        let presentation = try brokerPresentation()
+
+        try await service.provisionSiteX509Broker(presentation)
+        let firstEvents = await recorder.events()
+        XCTAssertEqual(firstEvents, ["reserve", "proof", "submit"])
+
+        do {
+            try await service.provisionSiteX509Broker(presentation)
+            XCTFail("a reserved broker presentation must not be reusable")
+        } catch let failure as PlatformFailure {
+            XCTAssertEqual(failure, .siteRootAuthorityUnavailable)
+        }
+        let replayEvents = await recorder.events()
+        XCTAssertEqual(replayEvents, ["reserve", "proof", "submit", "reserve"])
+    }
+
     func testPurposeSpecificProtectedHeadersAreCanonical() throws {
         let kid = Data(repeating: 9, count: 8)
         let contentType = SiteRootConvergenceProfileV2.pxraContentType
@@ -158,6 +274,29 @@ final class SiteRootConvergenceProtocolTests: XCTestCase {
         return value
     }
 
+    private func brokerPresentation() throws -> SiteX509FirstProvisionBrokerPresentationV1 {
+        let site = Data(repeating: 2, count: 16)
+        let transaction = Data(repeating: 3, count: 16)
+        return try SiteX509FirstProvisionBrokerPresentationV1(
+            qrText: json([
+                "schema": SiteRootConvergenceProfileV2.x509BrokerProvisionSchema,
+                "purpose": SiteRootConvergenceProfileV2.x509BrokerPurpose,
+                "site_uuid": "02020202-0202-0202-0202-020202020202",
+                "transaction_uuid": "03030303-0303-0303-0303-030303030303",
+                "generation": 4,
+                "canonical_challenge_b64url": b64(
+                    x509Challenge(site: site, transaction: transaction, generation: 4)
+                ),
+                "correlation_b64url": b64(Data(repeating: 4, count: 32)),
+                "roles": SiteX509FirstProvisionBrokerPresentationV1.roles,
+                "expires_at_unix_seconds": nowSeconds + 120,
+                "submission_url": SiteRootConvergenceProfileV2.x509BrokerOrigin
+                    + SiteRootConvergenceProfileV2.x509BrokerSubmitPath,
+            ]),
+            nowUnixSeconds: nowSeconds
+        )
+    }
+
     private func field(_ tag: UInt8, _ value: Data) -> Data {
         Data([tag, UInt8(value.count >> 8), UInt8(truncatingIfNeeded: value.count)]) + value
     }
@@ -170,5 +309,155 @@ final class SiteRootConvergenceProtocolTests: XCTestCase {
 
     private func json(_ object: [String: Any]) -> String {
         String(data: try! JSONSerialization.data(withJSONObject: object), encoding: .utf8)!
+    }
+
+    private func jsonObject(_ request: URLRequest) throws -> [String: Any] {
+        let body = try XCTUnwrap(request.httpBody)
+        return try XCTUnwrap(
+            JSONSerialization.jsonObject(with: body) as? [String: Any]
+        )
+    }
+}
+
+private actor BrokerAttemptRecorder {
+    private var values: [String] = []
+    private var reservationCount = 0
+
+    func record(_ value: String) {
+        values.append(value)
+    }
+
+    func reserve() throws {
+        reservationCount += 1
+        values.append("reserve")
+        guard reservationCount == 1 else {
+            throw PlatformFailure.siteRootAuthorityUnavailable
+        }
+    }
+
+    func events() -> [String] { values }
+}
+
+private struct RecordingBrokerTransport: MonasSiteRootConvergenceSubmitting {
+    let authorityOrigin = URL(string: SiteRootConvergenceProfileV2.x509BrokerOrigin)!
+    let recorder: BrokerAttemptRecorder
+
+    func submitBundleReceiptProvision(
+        _: SiteRootBundleReceiptProvisionPresentationV1,
+        detachedCOSE _: Data
+    ) async throws -> UInt64 {
+        throw PlatformFailure.siteRootAuthorityUnavailable
+    }
+
+    func submitSiteX509FirstProvision(
+        _: SiteX509FirstProvisionPresentationV1,
+        detachedCOSE _: Data
+    ) async throws {
+        throw PlatformFailure.siteRootAuthorityUnavailable
+    }
+
+    func reserveSiteX509FirstProvisionBroker(
+        _: SiteX509FirstProvisionBrokerPresentationV1
+    ) async throws {
+        try await recorder.reserve()
+    }
+
+    func submitSiteX509FirstProvisionBroker(
+        _: SiteX509FirstProvisionBrokerPresentationV1,
+        detachedCOSE _: Data
+    ) async throws {
+        await recorder.record("submit")
+    }
+
+    func registerAckKey(
+        _: SiteRootConvergenceAckRegistrationV2
+    ) async throws -> SiteRootConvergenceAckRegistrationResultV2 {
+        throw PlatformFailure.siteRootAuthorityUnavailable
+    }
+
+    func submitAck(_: Data, endpoint _: URL) async throws {
+        throw PlatformFailure.siteRootAuthorityUnavailable
+    }
+
+    func fetchBundleReceiptUnlock(
+        nowUnixSeconds _: UInt64
+    ) async throws -> IphoneMediatedCustodyRewrapPresentationV1 {
+        throw PlatformFailure.siteRootAuthorityUnavailable
+    }
+
+    func submitBundleReceiptUnlock(
+        _: IphoneMediatedCustodyRewrapSubmissionV1
+    ) async throws {
+        throw PlatformFailure.siteRootAuthorityUnavailable
+    }
+}
+
+private final class BrokerTransportURLProtocol: URLProtocol, @unchecked Sendable {
+    private static let lock = NSLock()
+    nonisolated(unsafe) private static var capturedRequests: [URLRequest] = []
+
+    static func reset() {
+        lock.lock()
+        capturedRequests = []
+        lock.unlock()
+    }
+
+    static func requests() -> [URLRequest] {
+        lock.lock()
+        defer { lock.unlock() }
+        return capturedRequests
+    }
+
+    override class func canInit(with request: URLRequest) -> Bool {
+        request.url?.host == "install.mnemosyne.co.uk"
+    }
+
+    override class func canonicalRequest(for request: URLRequest) -> URLRequest { request }
+
+    override func startLoading() {
+        guard let url = request.url else {
+            client?.urlProtocol(self, didFailWithError: PlatformFailure.invalidConfiguration)
+            return
+        }
+        Self.lock.lock()
+        var captured = request
+        captured.httpBody = request.httpBody ?? Self.readBody(from: request.httpBodyStream)
+        Self.capturedRequests.append(captured)
+        Self.lock.unlock()
+
+        let state = url.path == SiteRootConvergenceProfileV2.x509BrokerAttemptPath
+            ? SiteRootConvergenceProfileV2.x509BrokerAttemptResponseState
+            : "accepted"
+        let body = Data(
+            "{\"schema\":\"\(SiteRootConvergenceProfileV2.x509BrokerResponseSchema)\",\"state\":\"\(state)\"}".utf8
+        )
+        let response = HTTPURLResponse(
+            url: url,
+            statusCode: 202,
+            httpVersion: nil,
+            headerFields: [
+                "Cache-Control": "no-store",
+                "Content-Type": "application/json",
+            ]
+        )!
+        client?.urlProtocol(self, didReceive: response, cacheStoragePolicy: .notAllowed)
+        client?.urlProtocol(self, didLoad: body)
+        client?.urlProtocolDidFinishLoading(self)
+    }
+
+    override func stopLoading() {}
+
+    private static func readBody(from stream: InputStream?) -> Data? {
+        guard let stream else { return nil }
+        stream.open()
+        defer { stream.close() }
+        var data = Data()
+        var buffer = [UInt8](repeating: 0, count: 1_024)
+        while stream.hasBytesAvailable {
+            let count = stream.read(&buffer, maxLength: buffer.count)
+            guard count > 0 else { break }
+            data.append(buffer, count: count)
+        }
+        return data
     }
 }

@@ -25,6 +25,12 @@ enum SiteRootConvergenceProfileV2 {
         "mnemosyne.monas.first-install-broker.pistis-site-x509-first-provision-submission.v1"
     static let x509BrokerPurpose = "site-x509-first-provision"
     static let x509BrokerOrigin = "https://install.mnemosyne.co.uk"
+    static let x509BrokerAttemptSchema =
+        "mnemosyne.monas.first-install-broker.pistis-site-x509-first-provision-attempt.v1"
+    static let x509BrokerAttemptPath =
+        "/api/first-install/v1/pistis/site-x509-first-provision/attempt"
+    static let x509BrokerAttemptResponseState = "reserved"
+    static let x509BrokerResponseSchema = "mnemosyne.monas.first-install-broker.response.v1"
     static let x509BrokerSubmitPath =
         "/api/first-install/v1/pistis/site-x509-first-provision/submit"
 }

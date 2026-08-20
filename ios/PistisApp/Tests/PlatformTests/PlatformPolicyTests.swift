@@ -1,9 +1,63 @@
+import CryptoKit
 import Foundation
 import PistisCore
 import XCTest
 @testable import Pistis
 
 final class PlatformPolicyTests: XCTestCase {
+    func testScannerAcceptsEveryAttendedFirstInstallQRFamily() {
+        let compatibility = QRPayloadProfile.pistisAuthenticationOrMonasSiteRoot
+
+        XCTAssertTrue(
+            compatibility.accepts(
+                "{\"schema\":\"monas.site-x509-first-provision-broker-presentation.v1\"}"
+            )
+        )
+        XCTAssertTrue(
+            compatibility.accepts(
+                "{\"schema\":\"monas.site-root-genesis-registration-presentation.v1\"}"
+            )
+        )
+        XCTAssertTrue(compatibility.accepts("PXFP2:P:bounded-presentation"))
+        XCTAssertTrue(compatibility.accepts("PISTIS1:bounded-frame.0123456789abcdef"))
+        XCTAssertFalse(compatibility.accepts("https://install.mnemosyne.co.uk"))
+        XCTAssertFalse(
+            QRPayloadProfile.pistisAuthenticationV2.accepts(
+                "{\"schema\":\"monas.site-x509-first-provision-broker-presentation.v1\"}"
+            )
+        )
+    }
+
+    @MainActor
+    func testCommittedProviderIdentitySkipsRepeatedGitHubPrompt() async {
+        let flow = FirstDeviceEnrolmentFlow()
+        let prompt = GitHubDeviceAuthorizationPrompt(
+            userCode: "REC0-VERY",
+            verificationURI: URL(string: "https://github.com/login/device")!,
+            expiresInSeconds: 300,
+            intervalSeconds: 1
+        )
+
+        await flow.applyProviderStatus(
+            .verified(
+                numericSubject: 3_848_500,
+                displayLogin: "sagrudd",
+                policyGeneration: 1,
+                authorityChallenge: Data(repeating: 0x44, count: 32),
+                authorityChallengeExpiresAtMilliseconds: 1_900_000_000_000
+            ),
+            pendingPrompt: prompt
+        )
+
+        XCTAssertNil(flow.prompt)
+        XCTAssertEqual(flow.verifiedSubject, 3_848_500)
+        XCTAssertEqual(flow.displayLogin, "sagrudd")
+        XCTAssertEqual(
+            flow.status,
+            "Review the verified GitHub account before enrolling"
+        )
+    }
+
     func testPKCEFixture() throws {
         let verifier = "dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk"
         XCTAssertEqual(
@@ -122,6 +176,8 @@ final class PlatformPolicyTests: XCTestCase {
             infoDictionary: [
                 MonasSiteRootAuthorityConfiguration.infoDictionaryKey:
                     "https://monas.example.test",
+                MonasSiteRootAuthorityConfiguration.trustModeInfoDictionaryKey:
+                    MonasSiteRootAuthorityConfiguration.bootstrapTrustMode,
                 MonasSiteRootAuthorityConfiguration.spkiInfoDictionaryKey:
                     "ERERERERERERERERERERERERERERERERERERERERERE",
             ]
@@ -144,26 +200,99 @@ final class PlatformPolicyTests: XCTestCase {
         }
     }
 
+    func testMonasSiteRootAuthorityConfigurationPinsPortableComputerOrigins() throws {
+        let configuration = try MonasSiteRootAuthorityConfiguration(infoDictionary: [
+            MonasSiteRootAuthorityConfiguration.infoDictionaryKey:
+                "https://192.168.1.192:8443",
+            MonasSiteRootAuthorityConfiguration.alternateInfoDictionaryKey:
+                "https://192.168.0.193:8443",
+            MonasSiteRootAuthorityConfiguration.trustModeInfoDictionaryKey:
+                MonasSiteRootAuthorityConfiguration.bootstrapTrustMode,
+            MonasSiteRootAuthorityConfiguration.spkiInfoDictionaryKey:
+                "ERERERERERERERERERERERERERERERERERERERERERE",
+        ])
+
+        XCTAssertEqual(
+            configuration.authorityOrigins.map(\.absoluteString),
+            ["https://192.168.1.192:8443", "https://192.168.0.193:8443"]
+        )
+        XCTAssertTrue(
+            MonasSiteRootDelegationTransport.matchesAuthority(
+                URL(string: "https://192.168.1.192:8443/auth/pistis/v1")!,
+                origins: configuration.authorityOrigins,
+                expectedPath: "/auth/pistis/v1"
+            )
+        )
+        XCTAssertTrue(
+            MonasSiteRootDelegationTransport.matchesAuthority(
+                URL(string: "https://192.168.0.193:8443/auth/pistis/v1")!,
+                origins: configuration.authorityOrigins,
+                expectedPath: "/auth/pistis/v1"
+            )
+        )
+        XCTAssertFalse(
+            MonasSiteRootDelegationTransport.matchesAuthority(
+                URL(string: "https://192.168.0.194:8443/auth/pistis/v1")!,
+                origins: configuration.authorityOrigins,
+                expectedPath: "/auth/pistis/v1"
+            )
+        )
+        let transport = try configuration.makeTransport()
+        XCTAssertTrue(transport.isConfiguredAuthorityHost("192.168.1.192"))
+        XCTAssertTrue(transport.isConfiguredAuthorityHost("192.168.0.193"))
+        XCTAssertFalse(transport.isConfiguredAuthorityHost("192.168.0.194"))
+        XCTAssertNoThrow(try transport.appAttestTransport(authorityHost: "192.168.0.193"))
+        XCTAssertThrowsError(try transport.appAttestTransport(authorityHost: "192.168.0.194"))
+    }
+
+    func testMonasSiteRootAuthorityConfigurationAcceptsOnlyOneRootGeneration() throws {
+        let fixture = URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent()
+            .appendingPathComponent("../Fixtures/pistis-example-test.der")
+            .standardizedFileURL
+        let rootDER = try Data(contentsOf: fixture)
+        let fingerprint = Data(SHA256.hash(data: rootDER))
+        let root = policyBase64URL(rootDER)
+        let digest = policyBase64URL(fingerprint)
+        let valid: [String: Any] = [
+            MonasSiteRootAuthorityConfiguration.infoDictionaryKey:
+                "https://192.168.1.192:8443",
+            MonasSiteRootAuthorityConfiguration.trustModeInfoDictionaryKey:
+                MonasSiteRootAuthorityConfiguration.siteRootTrustMode,
+            MonasSiteRootAuthorityConfiguration.spkiInfoDictionaryKey: "",
+            MonasSiteRootAuthorityConfiguration.rootDERInfoDictionaryKey: root,
+            MonasSiteRootAuthorityConfiguration.rootFingerprintInfoDictionaryKey: digest,
+            MonasSiteRootAuthorityConfiguration.rootGenerationInfoDictionaryKey: "7",
+        ]
+        let configuration = try MonasSiteRootAuthorityConfiguration(infoDictionary: valid)
+        XCTAssertEqual(
+            configuration.trustPolicy,
+            .siteRootGeneration(
+                rootDER: rootDER,
+                fingerprintSHA256: fingerprint,
+                generation: 7
+            )
+        )
+        XCTAssertNoThrow(try configuration.makeTransport())
+
+        for mutation in [
+            [MonasSiteRootAuthorityConfiguration.spkiInfoDictionaryKey:
+                "ERERERERERERERERERERERERERERERERERERERERERE"],
+            [MonasSiteRootAuthorityConfiguration.rootGenerationInfoDictionaryKey: "0"],
+            [MonasSiteRootAuthorityConfiguration.rootFingerprintInfoDictionaryKey:
+                policyBase64URL(Data(repeating: 0x44, count: 32))],
+        ] {
+            var hostile = valid
+            hostile.merge(mutation) { _, changed in changed }
+            XCTAssertThrowsError(
+                try MonasSiteRootAuthorityConfiguration(infoDictionary: hostile)
+            )
+        }
+    }
+
     func testMonasSiteRootTransportFactoryFailsClosedWithoutBuildConfiguration() {
         let transport = ProductionMonasSiteRootTransportFactory.make(infoDictionary: [:])
         XCTAssertTrue(transport is UnavailableMonasSiteRootDelegationTransport)
-    }
-
-    func testScannerRoutesBothAttendedCeremonyQRFamilies() {
-        let compatibility = QRPayloadProfile.pistisAuthenticationOrMonasSiteRoot
-
-        XCTAssertTrue(
-            compatibility.accepts(
-                "{\"schema\":\"monas.site-root-genesis-registration-presentation.v1\"}"
-            )
-        )
-        XCTAssertTrue(compatibility.accepts("PISTIS1:bounded-frame.0123456789abcdef"))
-        XCTAssertFalse(compatibility.accepts("https://install.mnemosyne.co.uk"))
-        XCTAssertFalse(
-            QRPayloadProfile.pistisAuthenticationV2.accepts(
-                "{\"schema\":\"monas.site-root-genesis-registration-presentation.v1\"}"
-            )
-        )
     }
 
     func testAppleAppAttestRegistrationEnvelopeUsesReviewedV1Contract() throws {
@@ -251,6 +380,26 @@ final class PlatformPolicyTests: XCTestCase {
         )
         XCTAssertTrue(
             PlatformFailure.userVerificationLockedOut.safeUserMessage.contains("Face ID")
+        )
+        XCTAssertTrue(
+            PlatformFailure.enrolmentReceiptInvalid.safeUserMessage
+                .contains("signed response did not verify")
+        )
+        XCTAssertTrue(
+            PlatformFailure.enrolmentStorageFailed.safeUserMessage
+                .contains("retain it securely")
+        )
+        XCTAssertTrue(
+            PlatformFailure.siteRootAuthorityKeyMissing.safeUserMessage
+                .contains("no Site Root authority key")
+        )
+        XCTAssertTrue(
+            PlatformFailure.siteRootAuthorityKeyMismatch.safeUserMessage
+                .contains("does not match Monas")
+        )
+        XCTAssertTrue(
+            PlatformFailure.siteRootAuthorityKeyInvalidated.safeUserMessage
+                .contains("invalidated by Secure Enclave")
         )
     }
 
@@ -447,6 +596,23 @@ final class PlatformPolicyTests: XCTestCase {
         )
     }
 
+    func testCanonicalHTTPSHostAcceptsOnlyUnambiguousPinnedIPv4() {
+        XCTAssertEqual(
+            CanonicalHTTPSHost.parse("192.168.1.192"),
+            "192.168.1.192"
+        )
+        for rejected in [
+            "192.168.1", "192.168.001.192", "192.168.1.256",
+            "0x7f.0.0.1", "0177.0.0.1", "+192.168.1.192",
+            "192.168.1.192.", "2001:db8::1",
+        ] {
+            XCTAssertNil(CanonicalHTTPSHost.parse(rejected), rejected)
+        }
+        XCTAssertNoThrow(
+            try AuthenticationResponseTransport(allowedHosts: ["192.168.1.192"])
+        )
+    }
+
     func testTransportRejectsNonCanonicalAllowedHosts() {
         for host in [
             "Jenkins.mnemosyne.test",
@@ -454,7 +620,6 @@ final class PlatformPolicyTests: XCTestCase {
             "jenkins..mnemosyne.test",
             "jenkins.mnemosyne.test/path",
             "jënkins.mnemosyne.test",
-            "127.0.0.1",
             "2130706433",
             "0x7f000001",
             "0177.0.0.1",
@@ -562,6 +727,38 @@ final class PlatformPolicyTests: XCTestCase {
         ) { error in
             XCTAssertEqual(error as? PlatformFailure, .invalidConfiguration)
         }
+    }
+
+    func testFirstDeviceInstallAcceptsOnlyGenerationAdvancedReplacement() throws {
+        let first = try enrollmentOutput(marker: 1)
+        let replacement = try replacementOutput(for: first, marker: 20)
+        XCTAssertEqual(
+            try InstallationTrustKeychain.firstInstallDisposition(
+                existing: first,
+                proposed: replacement
+            ),
+            .replace
+        )
+
+        let wrongIdentity = try enrollmentOutput(marker: 2)
+        XCTAssertThrowsError(
+            try InstallationTrustKeychain.firstInstallDisposition(
+                existing: first,
+                proposed: wrongIdentity
+            )
+        )
+
+        let generationJump = try replacementOutput(
+            for: first,
+            marker: 21,
+            revocationGeneration: first.trust.revocationGeneration + 2
+        )
+        XCTAssertThrowsError(
+            try InstallationTrustKeychain.firstInstallDisposition(
+                existing: first,
+                proposed: generationJump
+            )
+        )
     }
 
     func testUnenrolledKeyCleanupRetainsRetriesAndNeverDeletesActiveKey() {
@@ -726,6 +923,13 @@ final class PlatformPolicyTests: XCTestCase {
     }
 }
 
+private func policyBase64URL(_ data: Data) -> String {
+    data.base64EncodedString()
+        .replacingOccurrences(of: "+", with: "-")
+        .replacingOccurrences(of: "/", with: "_")
+        .replacingOccurrences(of: "=", with: "")
+}
+
 private func enrollmentOutput(marker: UInt8)
     throws -> AuthenticatedEnrollmentOutput
 {
@@ -756,6 +960,41 @@ private func enrollmentOutput(marker: UInt8)
             externalIdentityID: trust.externalIdentityID
         ),
         allowedHosts: ["pistis.example.test"]
+    )
+}
+
+private func replacementOutput(
+    for existing: AuthenticatedEnrollmentOutput,
+    marker: UInt8,
+    revocationGeneration: UInt64? = nil
+) throws -> AuthenticatedEnrollmentOutput {
+    let old = existing.trust
+    let trust = try InstallationTrustRecord(
+        installationID: old.installationID,
+        displayName: old.displayName,
+        audience: old.audience,
+        authorisedProductAudiences: old.authorisedProductAudiences,
+        userID: old.userID,
+        externalIdentityID: old.externalIdentityID,
+        fingerprint: old.fingerprint,
+        installationKeyID: old.installationKeyID,
+        installationPublicKey: old.installationPublicKey,
+        authorityKeyID: old.authorityKeyID,
+        authorityReceipt: Data([marker]),
+        policyGeneration: old.policyGeneration,
+        revocationGeneration: revocationGeneration ?? old.revocationGeneration + 1,
+        expiresAt: old.expiresAt.addingTimeInterval(3_600),
+        active: true
+    )
+    return try AuthenticatedEnrollmentOutput(
+        trust: trust,
+        responseContext: DeviceResponseContext(
+            deviceID: Data(repeating: marker, count: 16),
+            deviceKeyID: Data(repeating: marker &+ 1, count: 32),
+            userID: trust.userID,
+            externalIdentityID: trust.externalIdentityID
+        ),
+        allowedHosts: existing.allowedHosts
     )
 }
 

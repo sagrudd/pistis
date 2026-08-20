@@ -90,6 +90,7 @@ Architecture and operations
    protocol/README
    protocol/domain-model
    protocol/action-approval
+   protocol/site-origin-relocation-approval-v1
    protocol
    crypto
    encoding

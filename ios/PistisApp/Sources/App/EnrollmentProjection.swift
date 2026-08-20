@@ -24,6 +24,7 @@ struct EnrollmentProjection: Equatable {
     init(
         enrollment: AuthenticatedEnrollmentOutput,
         retainedHistory: [HistoryEvent] = [],
+        incompleteSiteRootInstallations: [IncompleteSiteRootInstallation] = [],
         now: Date = Date()
     ) {
         let trust = enrollment.trust
@@ -41,9 +42,9 @@ struct EnrollmentProjection: Equatable {
                 stableSubject: stableSubject,
                 status: isCurrent ? "Enrolled" : "Expired",
                 allowsLocalForget: !isCurrent
-            ),
+      )
         ]
-        installations = [
+    installations = Self.coalescing(
             InstallationSummary(
                 id: installationID,
                 name: trust.displayName,
@@ -52,8 +53,8 @@ struct EnrollmentProjection: Equatable {
                 status: isCurrent ? "Trusted" : "Expired",
                 lastUsed: "Not used yet",
                 allowsLocalForget: !isCurrent
-            ),
-        ]
+      ), with: incompleteSiteRootInstallations
+    )
         let enrolmentEvent = HistoryEvent(
             id: Self.uuid(enrollment.responseContext.deviceID),
             action: "Device enrolled",
@@ -69,7 +70,8 @@ struct EnrollmentProjection: Equatable {
 
     init(
         legacyEnrollment: LegacyAuthenticatedEnrollmentOutput,
-        retainedHistory: [HistoryEvent] = []
+        retainedHistory: [HistoryEvent] = [],
+        incompleteSiteRootInstallations: [IncompleteSiteRootInstallation] = []
     ) {
         let trust = legacyEnrollment.trust
         let externalIdentityID = Self.uuid(trust.externalIdentityID)
@@ -85,9 +87,9 @@ struct EnrollmentProjection: Equatable {
                 stableSubject: stableSubject,
                 status: "Re-enrolment required",
                 allowsLocalForget: true
-            ),
+      )
         ]
-        installations = [
+    installations = Self.coalescing(
             InstallationSummary(
                 id: installationID,
                 name: trust.displayName,
@@ -96,8 +98,8 @@ struct EnrollmentProjection: Equatable {
                 status: "Re-enrolment required",
                 lastUsed: "Unavailable",
                 allowsLocalForget: true
-            ),
-        ]
+      ), with: incompleteSiteRootInstallations
+    )
         let event = HistoryEvent(
             id: Self.uuid(legacyEnrollment.responseContext.deviceID),
             action: "Legacy enrolment detected",
@@ -114,26 +116,74 @@ struct EnrollmentProjection: Equatable {
     init(
         inventory: EnrollmentInventoryRecord,
         retainedHistory: [HistoryEvent] = [],
+        incompleteSiteRootInstallations: [IncompleteSiteRootInstallation] = [],
         now: Date = Date()
     ) {
         switch inventory {
-        case let .current(enrollment):
+    case .current(let enrollment):
             self.init(
                 enrollment: enrollment,
                 retainedHistory: retainedHistory,
+                incompleteSiteRootInstallations: incompleteSiteRootInstallations,
                 now: now
             )
-        case let .legacy(enrollment):
+    case .legacy(let enrollment):
             self.init(
                 legacyEnrollment: enrollment,
-                retainedHistory: retainedHistory
+                retainedHistory: retainedHistory,
+                incompleteSiteRootInstallations: incompleteSiteRootInstallations
             )
         }
     }
 
-    init(retainedHistory: [HistoryEvent]) {
+    /// Build one projection for every locally retained installation.  Each
+    /// installation is projected independently so a second persona cannot
+    /// replace or hide the first one in the dashboard.
+    init(
+        inventories: [EnrollmentInventoryRecord],
+        retainedHistory: [HistoryEvent] = [],
+        incompleteSiteRootInstallations: [IncompleteSiteRootInstallation] = [],
+        now: Date = Date()
+    ) {
+        var projectedIdentities: [IdentitySummary] = []
+        var projectedInstallations: [InstallationSummary] = []
+        var projectedHistory = retainedHistory
+        for inventory in inventories {
+            let projection = EnrollmentProjection(
+                inventory: inventory,
+                retainedHistory: [],
+                incompleteSiteRootInstallations: [],
+                now: now
+            )
+            projectedIdentities.append(contentsOf: projection.identities)
+            projectedInstallations.append(contentsOf: projection.installations)
+            projectedHistory.append(contentsOf: projection.history)
+        }
+
+        var identityIDs = Set<UUID>()
+        identities = projectedIdentities.filter { identityIDs.insert($0.id).inserted }
+        var installationIDs = Set<UUID>()
+        var mergedInstallations = projectedInstallations.filter {
+            installationIDs.insert($0.id).inserted
+        }
+        let authenticatedHosts = Set(
+            mergedInstallations.map { $0.localAlias.lowercased() }
+        )
+        mergedInstallations.append(contentsOf: Self.incompleteInstallations(
+            incompleteSiteRootInstallations.filter {
+                !authenticatedHosts.contains($0.authorityHost.lowercased())
+            }
+        ))
+        installations = mergedInstallations
+        history = Self.mergeHistory(projectedHistory)
+    }
+
+    init(
+        retainedHistory: [HistoryEvent],
+        incompleteSiteRootInstallations: [IncompleteSiteRootInstallation] = []
+    ) {
         identities = []
-        installations = []
+        installations = Self.incompleteInstallations(incompleteSiteRootInstallations)
         history = Self.mergeHistory(retainedHistory)
     }
 
@@ -164,6 +214,39 @@ struct EnrollmentProjection: Equatable {
         }.joined(separator: " ")
     }
 
+    private static func incompleteInstallations(
+        _ records: [IncompleteSiteRootInstallation]
+    ) -> [InstallationSummary] {
+        records.map { record in
+            InstallationSummary(
+                id: record.id,
+                name: "Monas Site Root",
+                localAlias: record.authorityHost,
+                fingerprint: record.redactedReference,
+                status: "Setup in progress",
+        lastUsed:
+          "Ceremony verified \(record.recordedAt.formatted(date: .abbreviated, time: .shortened))",
+                allowsLocalForget: false,
+                evidenceLabel: "Verified ceremony reference",
+                setupPhase: record.setupPhase
+            )
+        }
+    }
+
+  private static func coalescing(
+    _ authenticated: InstallationSummary,
+    with records: [IncompleteSiteRootInstallation]
+  ) -> [InstallationSummary] {
+    let canonical = try? IncompleteSiteRootInstallation.canonicalHost(authenticated.localAlias)
+    guard let index = records.firstIndex(where: { $0.authorityHost == canonical }) else {
+      return [authenticated] + incompleteInstallations(records)
+    }
+    return [authenticated]
+      + incompleteInstallations(
+        records.enumerated().compactMap { $0.offset == index ? nil : $0.element }
+      )
+  }
+
     private static func mergeHistory(_ events: [HistoryEvent]) -> [HistoryEvent] {
         var seen = Set<UUID>()
         return events.reversed().filter { seen.insert($0.id).inserted }
@@ -179,42 +262,66 @@ final class EnrollmentProjectionStore: ObservableObject {
     }
 
     @Published private(set) var state: State = .loading
-    private let loadEnrollment: () async throws -> EnrollmentInventoryRecord?
+    private let loadEnrollments: () async throws -> [EnrollmentInventoryRecord]
     private let loadHistory: () async throws -> [HistoryEvent]
+  private let loadIncompleteSiteRootInstallations:
+    () async throws -> [IncompleteSiteRootInstallation]
     private let recordHistory: (HistoryEvent) async throws -> Void
 
     init(
         loadEnrollment: @escaping () async throws -> EnrollmentInventoryRecord?,
+        loadInventoryRecords:
+            (() async throws -> [EnrollmentInventoryRecord])? = nil,
         loadHistory: @escaping () async throws -> [HistoryEvent] = { [] },
+    loadIncompleteSiteRootInstallations:
+      @escaping () async throws -> [IncompleteSiteRootInstallation] = { [] },
         recordHistory: @escaping (HistoryEvent) async throws -> Void = { _ in }
     ) {
-        self.loadEnrollment = loadEnrollment
+        if let loadInventoryRecords {
+            self.loadEnrollments = loadInventoryRecords
+        } else {
+            self.loadEnrollments = {
+                guard let enrollment = try await loadEnrollment() else { return [] }
+                return [enrollment]
+            }
+        }
         self.loadHistory = loadHistory
+        self.loadIncompleteSiteRootInstallations = loadIncompleteSiteRootInstallations
         self.recordHistory = recordHistory
     }
 
     convenience init() {
-        self.init {
-            try await InstallationTrustKeychain.shared.enrollmentInventoryRecord()
-        } loadHistory: {
+        self.init(loadEnrollment: { nil }, loadInventoryRecords: {
+            try await InstallationTrustKeychain.shared.enrollmentInventoryRecords()
+        }, loadHistory: {
             try LocalHistoryRepository.shared.records()
-        } recordHistory: {
+        }, loadIncompleteSiteRootInstallations: {
+            try SiteRootInstallationRepository.shared.records()
+        }, recordHistory: {
             try LocalHistoryRepository.shared.record($0)
-        }
+        })
     }
 
     func refresh() async {
         do {
-            let stored = try await loadEnrollment()
-            if let stored,
-               let event = EnrollmentProjection(inventory: stored).history.first
-            {
-                try await recordHistory(event)
+            let stored = try await loadEnrollments()
+            for inventory in stored {
+                if let event = EnrollmentProjection(inventory: inventory).history.first {
+                    try await recordHistory(event)
+                }
             }
             let history = try await loadHistory()
-            let projection = stored.map {
-                EnrollmentProjection(inventory: $0, retainedHistory: history)
-            } ?? EnrollmentProjection(retainedHistory: history)
+            let incomplete = try await loadIncompleteSiteRootInstallations()
+            let projection = stored.isEmpty
+                ? EnrollmentProjection(
+                retainedHistory: history,
+                incompleteSiteRootInstallations: incomplete
+            )
+                : EnrollmentProjection(
+                    inventories: stored,
+                    retainedHistory: history,
+                    incompleteSiteRootInstallations: incomplete
+                )
             state = .loaded(projection)
         } catch {
             state = .failed

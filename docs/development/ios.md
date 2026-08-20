@@ -80,19 +80,21 @@ persist the challenge, attestation object, or any private key; the operating
 system owns the private App Attest key. Pistis stores only the opaque Apple key
 identifier in a device-only Keychain item.
 
-For an assertion, the only accepted input is the verified, server-issued
-Monas ceremony bootstrap: exact HTTPS origin and SPKI SHA-256, a non-zero
-16-byte ceremony identifier, and a non-zero 32-byte challenge digest. Pistis
-forms `mnemosyne.pistis.site-trust-app-attest-client-data.v1\\0 || digest`,
-hashes it with SHA-256, calls `DCAppAttestService.generateAssertion`, then
-posts strict JSON only to `/v1/pistis/site-trust/app-attest/assertion` on the
-pinned origin. Registration uses its distinct exact endpoint. Both transports
+For custody rotation, Pistis first fetches the fresh server-owned challenge
+from the fixed `authority-custody-rotation/v2/assertion-challenge` route over
+the already retained HTTPS origin and SPKI pin. It strictly validates the
+installation, Site Trust, production App ID, registered key, ceremony, issue
+time, expiry, and exact 32-byte client-data hash. It passes that hash unchanged
+to `DCAppAttestService.generateAssertion`, posts strict JSON only to
+`/v1/pistis/site-trust/app-attest/assertion`, and requires an empty `202
+no-store` response before invoking v2 begin/complete. Registration uses its
+distinct exact endpoint. Both transports
 reject redirects, cookies, cache, generic COSE, browser/QR/free-text input,
 and local identity. Registration accepts only an empty ``202 no-store``;
 assertion accepts only the exact pinned terminal custody-presentation response
 and never exposes a Monas session credential.
 
-The only Site Root submission success response is
+The ordinary Site Root submission success response is
 ``monas.pistis.site-trust-app-attest-bootstrap.v1``. Pistis rejects a coarse
 receipt, every missing or additional field, an expired response, non-canonical
 base64url, zero or incorrectly sized bootstrap material, and an origin other
@@ -107,14 +109,30 @@ session credential.
 
 The signed Pistis build supplies exactly one public
 ``PistisMonasSiteRootAuthorityOrigin`` value through the Xcode
-``PISTIS_MONAS_SITE_ROOT_AUTHORITY_ORIGIN`` build setting and its exact
-``PistisMonasSiteRootAuthoritySPKISHA256`` value through
-``PISTIS_MONAS_SITE_ROOT_AUTHORITY_SPKI_SHA256``. The origin must be exact
-HTTPS without path, query, fragment, or credentials; the pin must be a
-canonical non-zero 32-byte base64url digest. Neither is a secret, but together
-they are a deployment commitment: QR, browser, local-network and user input
-cannot override them. An absent or unresolved setting leaves the Site Root
-authority unavailable.
+``PISTIS_MONAS_SITE_ROOT_AUTHORITY_ORIGIN`` build setting and one exclusive
+trust mode through ``PISTIS_MONAS_SITE_ROOT_AUTHORITY_TRUST_MODE``. Before
+PXFP, ``bootstrap-leaf-spki-v1`` requires the exact canonical non-zero
+32-byte base64url leaf digest in
+``PISTIS_MONAS_SITE_ROOT_AUTHORITY_SPKI_SHA256`` and requires every Site-root
+field to be empty.
+
+After PXFP, the replacement Release build uses
+``site-root-generation-v1``. It requires the exact canonical root DER and its
+SHA-256 digest in
+``PISTIS_MONAS_SITE_ROOT_AUTHORITY_ROOT_DER_B64URL`` and
+``PISTIS_MONAS_SITE_ROOT_AUTHORITY_ROOT_SHA256_B64URL``, plus the positive
+``PISTIS_MONAS_SITE_ROOT_AUTHORITY_ROOT_GENERATION``. The SPKI setting must be
+empty. Pistis validates the digest and certificate object before constructing
+the transport, then applies normal TLS hostname/private-IP and validity policy
+while allowing a chain only to that exact root. It does not accept the prior
+leaf, platform roots, another Site generation, or a dual fallback.
+
+These fields are not secret, but together they are a signed deployment
+commitment: QR, browser, local-network and user input cannot override them. An
+absent, mixed, unresolved or inconsistent setting leaves the Site Root
+authority unavailable. The PXFP public root artefact may be encoded for the
+Release build with ``openssl base64 -A | tr '+/' '-_' | tr -d '='``; the
+independently recorded root generation and SHA-256 digest remain mandatory.
 
 For the first Site Root device only, the existing unified scanner accepts the
 strict ``monas.site-root-genesis-registration-presentation.v1`` QR. The QR
@@ -125,9 +143,22 @@ or reuses the separate Secure Enclave Site Root key and Pistis sends only its
 typed public registration and the genuine App Attest registration through the
 compiled SPKI pin. Monas atomically returns the one-time canonical delegation
 bound to that same public key; Pistis then follows the ordinary detached proof
-flow. This first-device POST is the sole App Attest registration: the
-subsequent Site Root bootstrap is assertion-only, so Pistis must never submit
-the registration a second time.
+flow. This first-device POST is the sole App Attest registration. Its initial
+proof endpoint returns only an exact empty `204 No Content` after Monas has
+created Site Trust and custody; this is a successful, non-authorising
+incomplete-installation transition, not a bootstrap or session. Pistis retains
+the completion screen and records only a redacted `Setup in progress`
+Installation, then routes explicitly to that record. It must not reset the
+scanner or claim identity, session, custody-presentation, or approval
+completion. A later Site Root bootstrap is assertion-only, so Pistis must never
+submit the registration a second time.
+
+That incomplete Installation now has one explicit next action: it switches to
+the existing first-device provider-enrolment scanner. The scanner still
+requires a new authority-signed presentation before it contacts Monas. The
+redacted local Site Root record never chooses the authority, TLS pin,
+invitation, provider identity or credential, and cannot turn setup progress
+into a session or enrolment.
 
 After a signed Site Root proof receives the short-lived bootstrap, Pistis
 constructs the existing SPKI-pinned App Attest transport. The terminal
@@ -303,13 +334,27 @@ rerun the full ceremony rather than interpreting readiness as acceptance.
 
 ## GitHub enrolment boundary
 
+The release build may pin more than one HTTPS origin for the same portable
+Monas computer. The current profile pins `https://192.168.1.192:8443` and
+`https://192.168.0.193:8443` to the same Site Root identity and TLS policy.
+This is a bounded address set, not discovery: QR and follow-up requests may
+use either listed address, while every unlisted host remains rejected.
+If the signed request's listed address is unreachable, the client may retry
+the identical bytes at the other listed address; it never rewrites the signed
+payload or creates a new ceremony.
+
+The same bounded policy applies to readiness, custody/status reads, and the
+subsequent App Attest session. A reachable HTTP denial, malformed response, or
+TLS/trust failure is terminal and is never replayed at the other address.
+
 The Identities screen exposes only the accepted server-driven first-device
 surface. It scans and verifies the ADR 0029 version-4 presentation before
-network use. The app then asks “Do you really trust this host?” and requires
-the three words displayed independently beside the CLI QR to be typed into
-three separate fields. It does not create a URL session, contact the host, or
-create the Face-ID-protected Secure Enclave key until those words match and
-the user selects **Trust this host**.
+network use. The app displays the verified installation and enables **Begin
+secure enrolment** only after the authority signature, application digest,
+canonical HTTPS origin and complete TLS SPKI pin verify. It does not contact
+the host or create the Face-ID-protected Secure Enclave key before that
+attended action. The derived words remain optional operator diagnostics, not
+authority input.
 
 The resulting ephemeral URL session accepts only the exact signed host and
 port, refuses redirects, extracts the leaf certificate's exact DER

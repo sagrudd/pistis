@@ -64,6 +64,30 @@ final class AppAttestAssertionTransportTests: XCTestCase {
         }
     }
 
+    func testRelocationAssertionUsesExactRegisteredKeyAndServerCompatibleHash() async throws {
+        let key = Data(repeating: 0x11, count: 32)
+        let keyID = key.base64EncodedString()
+        let service = RecordingAppAttestService(keyID: keyID)
+        let client = AppleAppAttestClient(
+            service: service, keyIDStore: FixedKeyIDStore(keyID: keyID)
+        )
+        let hash = Data(repeating: 0x44, count: 32)
+        _ = try await client.prepareSiteOriginRelocationAssertion(
+            ceremonyID: Data(repeating: 0x22, count: 16),
+            expectedKeyID: key, clientDataHash: hash
+        )
+        XCTAssertEqual(service.assertionHash, hash)
+        do {
+            _ = try await client.prepareSiteOriginRelocationAssertion(
+                ceremonyID: Data(repeating: 0x22, count: 16),
+                expectedKeyID: Data(repeating: 0x12, count: 32), clientDataHash: hash
+            )
+            XCTFail("substituted App Attest key unexpectedly accepted")
+        } catch {
+            XCTAssertEqual(error as? PlatformFailure, .appAttestUnavailable)
+        }
+    }
+
     func testAssertionEnvelopeRejectsZeroOrOversizedInputs() {
         XCTAssertThrowsError(try AppleAppAttestAssertionEnvelope(
             ceremonyID: Data(repeating: 0, count: 16), assertion: Data([1])
@@ -102,6 +126,51 @@ final class AppAttestAssertionTransportTests: XCTestCase {
         )
         XCTAssertEqual(Set(object.keys), ["profile", "ceremony_id_b64url", "assertion_b64url"])
         XCTAssertNil(request.value(forHTTPHeaderField: "Authorization"))
+    }
+
+    func testRotationFetchUsesFreshServerHashThenArmsOnlyThroughExactAssertionIngress() async throws {
+        AssertionURLProtocol.reset()
+        let configuration = URLSessionConfiguration.ephemeral
+        configuration.protocolClasses = [AssertionURLProtocol.self]
+        let transport = try MonasAppAttestTransport(
+            bootstrap: bootstrap(), configuration: configuration
+        )
+        let challenge = try await transport.fetchCustodyRotationAssertionChallengeV2(
+            nowUnixSeconds: 150
+        )
+        let fetch = try XCTUnwrap(AssertionURLProtocol.lastRequest())
+        XCTAssertEqual(fetch.httpMethod, "GET")
+        XCTAssertEqual(fetch.url?.path,
+                       "/v1/pistis/site-trust/authority-custody-rotation/v2/assertion-challenge")
+        XCTAssertNil(fetch.value(forHTTPHeaderField: "Cookie"))
+        XCTAssertNil(fetch.value(forHTTPHeaderField: "Authorization"))
+
+        let keyID = Data(repeating: 0x11, count: 32).base64EncodedString()
+        let service = RecordingAppAttestService(keyID: keyID)
+        let client = AppleAppAttestClient(
+            service: service, keyIDStore: FixedKeyIDStore(keyID: keyID)
+        )
+        let envelope = try await client.prepareCustodyRotationAssertion(challenge: challenge)
+        XCTAssertEqual(service.assertionHash, Data(repeating: 0x33, count: 32))
+        try await transport.submitAssertion(envelope)
+        let post = try XCTUnwrap(AssertionURLProtocol.lastRequest())
+        XCTAssertEqual(post.httpMethod, "POST")
+        XCTAssertEqual(post.url?.path, "/v1/pistis/site-trust/app-attest/assertion")
+        XCTAssertNil(post.value(forHTTPHeaderField: "Cookie"))
+        XCTAssertNil(post.value(forHTTPHeaderField: "Authorization"))
+    }
+
+    func testRotationChallengeRejectsReplayWindowMismatchAndUnknownFields() throws {
+        XCTAssertThrowsError(try CustodyRotationAppAttestChallengeV2(
+            data: AssertionURLProtocol.challengeData(expires: 150), nowUnixSeconds: 150
+        ))
+        var object = try XCTUnwrap(JSONSerialization.jsonObject(
+            with: AssertionURLProtocol.challengeData(expires: 200)
+        ) as? [String: Any])
+        object["device_id"] = "invented"
+        XCTAssertThrowsError(try CustodyRotationAppAttestChallengeV2(
+            data: JSONSerialization.data(withJSONObject: object), nowUnixSeconds: 150
+        ))
     }
 
     func testRegistrationUsesItsDistinctPinnedJSONEndpoint() async throws {
@@ -257,11 +326,15 @@ private final class AssertionURLProtocol: URLProtocol, @unchecked Sendable {
         Self.requestValue = request
         Self.bodyValue = request.httpBody ?? readBodyStream(request.httpBodyStream)
         Self.lock.unlock()
+        let isChallenge = request.url?.path.hasSuffix("/assertion-challenge") == true
         let response = HTTPURLResponse(
-            url: request.url!, statusCode: 202, httpVersion: "HTTP/1.1",
+            url: request.url!, statusCode: isChallenge ? 200 : 202, httpVersion: "HTTP/1.1",
             headerFields: ["Cache-Control": "no-store"]
         )!
         client?.urlProtocol(self, didReceive: response, cacheStoragePolicy: .notAllowed)
+        if isChallenge {
+            client?.urlProtocol(self, didLoad: Self.challengeData(expires: 200))
+        }
         client?.urlProtocolDidFinishLoading(self)
     }
 
@@ -281,6 +354,25 @@ private final class AssertionURLProtocol: URLProtocol, @unchecked Sendable {
         lock.lock(); defer { lock.unlock() }
         requestValue = nil
         bodyValue = nil
+    }
+
+    static func challengeData(expires: UInt64) -> Data {
+        func b64(_ data: Data) -> String {
+            data.base64EncodedString().replacingOccurrences(of: "+", with: "-")
+                .replacingOccurrences(of: "/", with: "_")
+                .replacingOccurrences(of: "=", with: "")
+        }
+        return try! JSONSerialization.data(withJSONObject: [
+            "schema": "monas.first-authority-custody-app-attest-challenge.v2",
+            "installation_id_b64url": b64(Data(repeating: 1, count: 16)),
+            "site_trust_domain": "site-demo",
+            "ceremony_id_b64url": b64(Data(repeating: 2, count: 16)),
+            "client_data_hash_b64url": b64(Data(repeating: 0x33, count: 32)),
+            "app_identifier": "C7A6NQTSY4.org.mnemosynebiosciences.pistis",
+            "key_id_b64url": b64(Data(repeating: 0x11, count: 32)),
+            "issued_at_unix_seconds": 100,
+            "expires_at_unix_seconds": expires,
+        ])
     }
 }
 

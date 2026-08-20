@@ -8,9 +8,6 @@ import PistisCore
 struct FirstDeviceEnrolmentView: View {
     @StateObject private var flow = FirstDeviceEnrolmentFlow()
     @Environment(\.openURL) private var openURL
-    @State private var trustWordOne = ""
-    @State private var trustWordTwo = ""
-    @State private var trustWordThree = ""
 
     var body: some View {
         ScrollView {
@@ -46,32 +43,24 @@ struct FirstDeviceEnrolmentView: View {
                                 label: "Authority",
                                 value: flow.presentation?.httpsOrigin.host ?? ""
                             )
-                            if !flow.hostTrustConfirmed {
-                                Text("Do you really trust this host?")
+                            if flow.prompt == nil && flow.verifiedSubject == nil {
+                                Text("Cryptographic host identity verified")
                                     .font(.headline)
                                 Text(
-                                    "Type the three words shown beside the QR on the host. Pistis will not contact the host until all three match."
+                                    "The signed installation identity, application configuration, HTTPS origin and certificate key have been verified."
                                 )
                                 .font(.footnote)
-                                HStack {
-                                    trustWordField("Word 1", text: $trustWordOne)
-                                    trustWordField("Word 2", text: $trustWordTwo)
-                                    trustWordField("Word 3", text: $trustWordThree)
-                                }
                                 MnEvidenceRow(
                                     label: "Certificate key",
                                     value: flow.presentation?.tlsSPKISHA256
                                         .hexadecimal ?? ""
                                 )
-                                Button("Trust this host") {
-                                    flow.confirmHostTrust(words: [
-                                        trustWordOne,
-                                        trustWordTwo,
-                                        trustWordThree,
-                                    ])
+                                Button("Begin secure enrolment") {
+                                    Task { await flow.begin() }
                                 }
                                 .buttonStyle(.borderedProminent)
                                 .tint(MnColor.action)
+                                .disabled(flow.busy)
                             } else if let prompt = flow.prompt {
                                 Text(prompt.userCode)
                                     .font(.system(.title2, design: .monospaced).weight(.bold))
@@ -112,13 +101,6 @@ struct FirstDeviceEnrolmentView: View {
                                     .tint(MnColor.action)
                                     .disabled(flow.busy)
                                 }
-                            } else {
-                                Button("Begin secure enrolment") {
-                                    Task { await flow.begin() }
-                                }
-                                .buttonStyle(.borderedProminent)
-                                .tint(MnColor.action)
-                                .disabled(flow.busy)
                             }
                         }
                     }
@@ -134,26 +116,15 @@ struct FirstDeviceEnrolmentView: View {
         .mnScreenBackground()
     }
 
-    private func trustWordField(
-        _ label: String,
-        text: Binding<String>
-    ) -> some View {
-        TextField(label, text: text)
-            .textInputAutocapitalization(.never)
-            .autocorrectionDisabled()
-            .textFieldStyle(.roundedBorder)
-            .accessibilityLabel(label)
-    }
 }
 
 @MainActor
-private final class FirstDeviceEnrolmentFlow: ObservableObject {
+final class FirstDeviceEnrolmentFlow: ObservableObject {
     @Published private(set) var presentation: VerifiedFirstDevicePresentation?
     @Published private(set) var prompt: GitHubDeviceAuthorizationPrompt?
     @Published private(set) var verifiedSubject: UInt64?
     @Published private(set) var displayLogin: String?
     @Published private(set) var enrolmentComplete = false
-    @Published private(set) var hostTrustConfirmed = false
     @Published private(set) var status = "Ready to scan"
     @Published private(set) var failure: PlatformFailure?
     @Published private(set) var busy = false
@@ -177,39 +148,18 @@ private final class FirstDeviceEnrolmentFlow: ObservableObject {
                 now: Date()
             )
             presentation = verified
-            status = "Compare the three host verification words"
-            failure = nil
-        } catch {
-            fail(error)
-        }
-    }
-
-    func confirmHostTrust(words: [String]) {
-        guard !hostTrustConfirmed, let presentation, words.count == 3 else {
-            return
-        }
-        let entered = words.map {
-            $0.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
-        }
-        guard entered == presentation.trustWords else {
-            failure = .invalidConfiguration
-            status = "Verification words do not match. Do not trust this host."
-            return
-        }
-        do {
             transport = try ServerDrivenEnrolmentTransport(
-                presentation: presentation
+                presentation: verified
             )
-            hostTrustConfirmed = true
+            status = "Cryptographic host identity verified"
             failure = nil
-            status = "Host trust confirmed; no network request has been sent"
         } catch {
             fail(error)
         }
     }
 
     func begin() async {
-        guard !busy, hostTrustConfirmed, let presentation, let transport else {
+        guard !busy, let presentation, let transport else {
             return
         }
         busy = true
@@ -245,8 +195,11 @@ private final class FirstDeviceEnrolmentFlow: ObservableObject {
             )
             self.handle = handle
             beginRetry.markAccepted()
-            prompt = handle.prompt
-            status = "Open GitHub and approve the displayed code"
+            let initialStatus = try await transport.status(handle)
+            await applyProviderStatus(
+                initialStatus,
+                pendingPrompt: handle.prompt
+            )
             failure = nil
         } catch {
             if retainExactAttempt {
@@ -269,42 +222,57 @@ private final class FirstDeviceEnrolmentFlow: ObservableObject {
         busy = true
         defer { busy = false }
         do {
-            switch try await transport.status(handle) {
-            case let .pending(pollAfter):
-                status = "GitHub approval is pending; retry in \(pollAfter / 1_000) seconds"
-            case let .verified(
-                subject,
-                login,
-                policyGeneration,
-                authorityChallenge,
-                challengeExpiry
-            ):
-                let approval = VerifiedProviderApproval(
-                    subject: subject,
-                    login: login,
-                    policyGeneration: policyGeneration,
-                    authorityChallenge: authorityChallenge,
-                    challengeExpiry: challengeExpiry
-                )
-                approvalGate.recordProviderVerification(approval)
-                verifiedSubject = subject
-                displayLogin = login
-                prompt = nil
-                status = "Review the verified GitHub account before enrolling"
-            case .denied:
-                status = "GitHub denied this request"
-                await discardUnenrolledKey(after: .denied)
-            case .cancelled:
-                status = "Enrolment was cancelled"
-                await discardUnenrolledKey(after: .cancelled)
-            case .expired:
-                status = "The enrolment request expired"
-                await discardUnenrolledKey(after: .expired)
-            case .consumed:
-                status = "Enrolment was consumed; retain this key and recover the receipt"
-            }
+            await applyProviderStatus(
+                try await transport.status(handle),
+                pendingPrompt: nil
+            )
         } catch {
             fail(error)
+        }
+    }
+
+    func applyProviderStatus(
+        _ providerStatus: ProviderVerificationStatus,
+        pendingPrompt: GitHubDeviceAuthorizationPrompt?
+    ) async {
+        switch providerStatus {
+        case let .pending(pollAfter):
+            if let pendingPrompt {
+                prompt = pendingPrompt
+                status = "Open GitHub and approve the displayed code"
+            } else {
+                status = "GitHub approval is pending; retry in \(pollAfter / 1_000) seconds"
+            }
+        case let .verified(
+            subject,
+            login,
+            policyGeneration,
+            authorityChallenge,
+            challengeExpiry
+        ):
+            let approval = VerifiedProviderApproval(
+                subject: subject,
+                login: login,
+                policyGeneration: policyGeneration,
+                authorityChallenge: authorityChallenge,
+                challengeExpiry: challengeExpiry
+            )
+            approvalGate.recordProviderVerification(approval)
+            verifiedSubject = subject
+            displayLogin = login
+            prompt = nil
+            status = "Review the verified GitHub account before enrolling"
+        case .denied:
+            status = "GitHub denied this request"
+            await discardUnenrolledKey(after: .denied)
+        case .cancelled:
+            status = "Enrolment was cancelled"
+            await discardUnenrolledKey(after: .cancelled)
+        case .expired:
+            status = "The enrolment request expired"
+            await discardUnenrolledKey(after: .expired)
+        case .consumed:
+            status = "Enrolment was consumed; retain this key and recover the receipt"
         }
     }
 
@@ -355,7 +323,6 @@ private final class FirstDeviceEnrolmentFlow: ObservableObject {
         verifiedSubject = nil
         displayLogin = nil
         enrolmentComplete = false
-        hostTrustConfirmed = false
         pendingRegistration = nil
         beginRetry.reset()
         approvalGate = AttendedEnrolmentGate()
@@ -432,7 +399,11 @@ private final class FirstDeviceEnrolmentFlow: ObservableObject {
             ),
             allowedHosts: receipt.allowedHTTPSHosts
         )
-        try await InstallationTrustKeychain.shared.installAuthenticated(output)
+        do {
+            try await InstallationTrustKeychain.shared.installAuthenticated(output)
+        } catch {
+            throw PlatformFailure.enrolmentStorageFailed
+        }
         pendingRegistration = nil
     }
 

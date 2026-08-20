@@ -160,7 +160,8 @@ struct MnEmptyState: View {
                     Button(actionTitle, action: action)
                         .font(.headline)
                         .foregroundStyle(MnColor.action)
-                        .frame(minHeight: MnMetrics.minimumTarget)
+                        .frame(maxWidth: .infinity, minHeight: MnMetrics.minimumTarget)
+                        .fixedSize(horizontal: false, vertical: true)
                 }
             }
         }

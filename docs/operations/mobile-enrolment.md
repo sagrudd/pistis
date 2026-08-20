@@ -32,11 +32,11 @@ review and the evidence gates in that ADR.
    environment value, file, URL, clipboard, ticket, log, or retained
    screenshot.
 5. On the phone, scan the QR, check the displayed installation and origin,
-   type the three words shown independently by the CLI, and select **Trust
-   this host**. No certificate profile, Certificate Trust Settings change,
-   browser warning, or public certificate authority is required. A mismatch
-   is a stop condition: do not retry with words supplied by the phone or the
-   network host.
+   and select **Begin secure enrolment** only after Pistis reports that the
+   signed host identity and certificate key were verified. No certificate
+   profile, Certificate Trust Settings change, browser warning, or public
+   certificate authority is required. A signature, application-digest,
+   origin, or TLS-key mismatch is a stop condition.
 6. Have the user complete the foreground GitHub App Device Flow. The phone
    calls only the signed-origin begin/status/cancel/confirm routes. The
    installation-local adapter owns GitHub polling and clears its transient
@@ -112,6 +112,19 @@ independently verifies the canonical ADR 0025 registration under the Secure
 Enclave device key, verifies the receipt only under the committed
 mobile-receipt key, and then performs one create-once Keychain installation.
 An exact replay is idempotent; a different stored enrolment is never replaced.
+
+## Retained confirmation verification
+
+Monas may later verify the exact four-field provider confirmation only through
+the ``pistis-monas`` retained-receipt verifier. It pins the canonical authority
+bundle, expected installation identifier and canonical HTTPS host before it
+accepts any mobile bytes. The verifier checks both strict COSE envelopes and
+their registration-digest binding, then returns typed installation, principal,
+external-identity, device, key and generation facts plus a receipt SHA-256
+reference. It exposes neither raw COSE envelope and retains no local Keychain
+claim, browser state, credential, session or mutable authority. A substituted
+bundle, receipt, registration, installation, host, expiry or signature fails
+closed.
 
 GitHub success first renders the immutable login and numeric subject together
 with the installation context. The user must press the separate confirmation

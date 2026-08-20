@@ -77,7 +77,7 @@ On malformed QR, changed digest/origin/context, expired/cancelled ceremony,
 network error, unavailable Secure Enclave, failed local authentication,
 server denial or duplicate submission, show a safe failure state and discard
 all transient data. A new Monas ceremony is required; no retry, manual repair,
-local queue or offline authorization is permitted.
+local queue or offline authorisation is permitted.
 
 ## First-install QR regression gate
 

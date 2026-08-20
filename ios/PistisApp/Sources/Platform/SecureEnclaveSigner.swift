@@ -44,6 +44,59 @@ enum KeyAssurance: String, Equatable, Sendable {
     case secureEnclaveFaceIDCurrentSet
 }
 
+/// One explicitly evaluated Face ID context for a bounded multi-key ceremony.
+///
+/// The context is never cached by the application and must not escape the
+/// immediate registration-and-approval operation. Reusing it lets Security
+/// consume one fresh biometric result across distinct Secure Enclave keys
+/// without presenting a sequence of indistinguishable prompts.
+final class FaceIDCeremonyContext: @unchecked Sendable {
+    fileprivate let value: LAContext
+
+    private init(_ value: LAContext) { self.value = value }
+
+    static func authenticate(reason: String) async throws -> FaceIDCeremonyContext {
+        guard !reason.isEmpty else { throw PlatformFailure.invalidConfiguration }
+        let context = LAContext()
+        context.localizedCancelTitle = "Deny"
+        context.localizedReason = reason
+        context.interactionNotAllowed = false
+        var error: NSError?
+        guard context.canEvaluatePolicy(
+            .deviceOwnerAuthenticationWithBiometrics, error: &error
+        ), context.biometryType == .faceID else {
+            throw map(error)
+        }
+        do {
+            guard try await context.evaluatePolicy(
+                .deviceOwnerAuthenticationWithBiometrics,
+                localizedReason: reason
+            ), context.biometryType == .faceID else {
+                throw PlatformFailure.userVerificationCancelled
+            }
+            return FaceIDCeremonyContext(context)
+        } catch let failure as PlatformFailure {
+            throw failure
+        } catch let error as LAError {
+            throw map(error as NSError)
+        } catch {
+            throw PlatformFailure.userVerificationUnavailable
+        }
+    }
+
+    private static func map(_ error: NSError?) -> PlatformFailure {
+        guard let error, let code = LAError.Code(rawValue: error.code) else {
+            return .userVerificationUnavailable
+        }
+        switch code {
+        case .biometryNotEnrolled: return .userVerificationNotEnrolled
+        case .biometryLockout: return .userVerificationLockedOut
+        case .userCancel, .appCancel, .systemCancel: return .userVerificationCancelled
+        default: return .userVerificationUnavailable
+        }
+    }
+}
+
 /// Non-secret output from one physical-device interoperability probe.
 ///
 /// This value is input to offline Rust verification and the reviewed evidence
@@ -117,12 +170,54 @@ final class SecureEnclaveSigner: @unchecked Sendable {
         return try devicePublicKey(from: privateKey)
     }
 
+    /// Create or load this exact key under an already evaluated ceremony.
+    func create(using ceremony: FaceIDCeremonyContext) throws -> DevicePublicKey {
+        guard SecureEnclaveSigner.secureEnclaveIsAvailable else {
+            throw PlatformFailure.secureHardwareUnavailable
+        }
+        if try keyExists() {
+            return try publicKey(using: ceremony)
+        }
+        var accessError: Unmanaged<CFError>?
+        guard let access = SecAccessControlCreateWithFlags(
+            kCFAllocatorDefault,
+            kSecAttrAccessibleWhenUnlockedThisDeviceOnly,
+            [.privateKeyUsage, .biometryCurrentSet],
+            &accessError
+        ) else { throw PlatformFailure.keyCreationFailed }
+        let privateAttributes: [CFString: Any] = [
+            kSecAttrIsPermanent: true,
+            kSecAttrApplicationTag: applicationTag,
+            kSecAttrAccessControl: access,
+        ]
+        let attributes: [CFString: Any] = [
+            kSecAttrKeyType: kSecAttrKeyTypeECSECPrimeRandom,
+            kSecAttrKeySizeInBits: 256,
+            kSecAttrTokenID: kSecAttrTokenIDSecureEnclave,
+            kSecUseAuthenticationContext: ceremony.value,
+            kSecPrivateKeyAttrs: privateAttributes,
+        ]
+        var creationError: Unmanaged<CFError>?
+        guard let privateKey = SecKeyCreateRandomKey(
+            attributes as CFDictionary, &creationError
+        ) else { throw PlatformFailure.keyCreationFailed }
+        return try devicePublicKey(from: privateKey)
+    }
+
     func publicKey() throws -> DevicePublicKey {
         let context = LAContext()
         context.localizedReason = authenticationReason
         guard let privateKey = try findPrivateKey(authenticationContext: context) else {
             throw PlatformFailure.keyNotFound
         }
+        return try devicePublicKey(from: privateKey)
+    }
+
+    /// Load this key through the already evaluated ceremony context.
+    func publicKey(using ceremony: FaceIDCeremonyContext) throws -> DevicePublicKey {
+        guard let privateKey = try findPrivateKey(
+            authenticationContext: ceremony.value
+        ) else { throw PlatformFailure.keyNotFound }
         return try devicePublicKey(from: privateKey)
     }
 
@@ -211,6 +306,26 @@ final class SecureEnclaveSigner: @unchecked Sendable {
         return try P256Format.rawSignature(fromStrictDER: der)
     }
 
+    /// Sign through an already evaluated, operation-scoped Face ID context.
+    func sign(message: Data, using ceremony: FaceIDCeremonyContext) throws -> Data {
+        guard SecureEnclaveSigner.secureEnclaveIsAvailable else {
+            throw PlatformFailure.secureHardwareUnavailable
+        }
+        guard let privateKey = try findPrivateKey(
+            authenticationContext: ceremony.value
+        ) else { throw PlatformFailure.keyNotFound }
+        var signingError: Unmanaged<CFError>?
+        guard let der = SecKeyCreateSignature(
+            privateKey,
+            .ecdsaSignatureMessageX962SHA256,
+            message as CFData,
+            &signingError
+        ) as Data? else {
+            throw mapSecurityError(signingError?.takeRetainedValue())
+        }
+        return try P256Format.rawSignature(fromStrictDER: der)
+    }
+
     /// Derives one raw P-256 ECDH secret with the enrolled Secure Enclave key.
     ///
     /// The peer key is public, canonical compressed SEC1 material supplied by
@@ -254,6 +369,47 @@ final class SecureEnclaveSigner: @unchecked Sendable {
             &publicKeyError
         ) else { throw PlatformFailure.invalidConfiguration }
 
+        var exchangeError: Unmanaged<CFError>?
+        guard let secret = SecKeyCopyKeyExchangeResult(
+            privateKey,
+            SecKeyAlgorithm.ecdhKeyExchangeStandard,
+            peer,
+            [:] as CFDictionary,
+            &exchangeError
+        ) as Data?, secret.count == 32, !secret.allSatisfy({ $0 == 0 })
+        else { throw mapSecurityError(exchangeError?.takeRetainedValue()) }
+        return secret
+    }
+
+    /// Derive through one already evaluated, operation-scoped Face ID context.
+    /// This is used only when one reviewed ceremony must sign and rewrap one
+    /// exact record under a single, visibly named user approval.
+    func deriveECDHSharedSecret(
+        peerPublicCompressedSEC1: Data,
+        using ceremony: FaceIDCeremonyContext
+    ) throws -> Data {
+        guard SecureEnclaveSigner.secureEnclaveIsAvailable,
+              let peerPublicKey = try? P256.KeyAgreement.PublicKey(
+                  compressedRepresentation: peerPublicCompressedSEC1
+              )
+        else { throw PlatformFailure.secureHardwareUnavailable }
+        guard let privateKey = try findPrivateKey(
+            authenticationContext: ceremony.value
+        ) else { throw PlatformFailure.keyNotFound }
+        guard SecKeyIsAlgorithmSupported(
+            privateKey, .keyExchange, SecKeyAlgorithm.ecdhKeyExchangeStandard
+        ) else { throw PlatformFailure.secureHardwareUnavailable }
+        let attributes: [CFString: Any] = [
+            kSecAttrKeyType: kSecAttrKeyTypeECSECPrimeRandom,
+            kSecAttrKeyClass: kSecAttrKeyClassPublic,
+            kSecAttrKeySizeInBits: 256,
+        ]
+        var publicKeyError: Unmanaged<CFError>?
+        guard let peer = SecKeyCreateWithData(
+            peerPublicKey.x963Representation as CFData,
+            attributes as CFDictionary,
+            &publicKeyError
+        ) else { throw PlatformFailure.invalidConfiguration }
         var exchangeError: Unmanaged<CFError>?
         guard let secret = SecKeyCopyKeyExchangeResult(
             privateKey,

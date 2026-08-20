@@ -44,10 +44,22 @@ closed. This scanner is separate from the legacy `PISTIS1` v2 approval flow.
 
 ## Monas transport compatibility
 
-The iOS adapter accepts a configured HTTPS authority origin, never an origin
-selected by a QR code. It accepts only the following exact paths with no
-query, fragment, user-info, redirect, cookie, cache, or alternate-host
-fallback:
+The iOS adapter accepts a bounded build-configured set of HTTPS authority
+origins for one portable computer, never an origin selected by a QR code. The
+shipped profile contains `https://192.168.1.192:8443` and
+`https://192.168.0.193:8443`; the same pinned TLS policy and Site Root identity
+apply to both. It accepts only the following exact paths with no query,
+fragment, user-info, redirect, cookie, cache, or unlisted-host fallback:
+
+When the signed endpoint's listed address is unreachable, the client may retry
+the identical signed bytes at the other listed origin. It never rewrites the
+signed delegation, creates a second ceremony, or accepts a host outside this
+bounded set.
+
+Readiness, custody/status, and the later App Attest requests use the same
+bounded set. Failover is limited to a classified connection-unreachable
+condition; a reachable denial, malformed response, or TLS/trust failure is
+terminal and is not replayed.
 
 - `GET /auth/pistis/v1/site-root-delegation/readiness` returning exactly
   `monas.site-root-delegation-readiness.v1` with `state`, `live_ceremony`,

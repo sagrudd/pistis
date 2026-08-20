@@ -70,10 +70,12 @@ phone presents:
 - a three-word verification phrase; and
 - an explicit statement that trust applies only inside Pistis.
 
-The terminal displays the same three words outside the QR. The user types the
-three words into separate fields on the phone. Only an exact match enables
-**Trust this host**. Scanning alone acquires the material; explicit comparison
-and confirmation establish the human decision.
+The terminal may display the same three words outside the QR as operator
+diagnostics. Following project-owner review on 10 August 2026, the phone does
+not require them to be retyped: the user instead starts enrolment only after
+Pistis has verified the purpose-separated authority signature, application
+digest, canonical HTTPS origin and complete TLS SPKI pin. Scanning alone never
+contacts the host.
 
 The phrase is a usability check over the authenticated binding. It is not a
 replacement for the authority signature, 256-bit TLS pin, one-use invitation,
@@ -169,6 +171,23 @@ exception permits addressing; it does not supply trust or allow cleartext.
 The accepted digest is stored in Keychain only as part of the fully verified
 mobile-enrolment receipt. Before completion it remains bounded, foreground,
 and ephemeral.
+
+### Versioned endpoint identity variants
+
+`SiteTrustEndpointIdentityV1` is the common producer and consumer validator
+for the signed HTTPS origin. Its host is exactly one typed variant: a canonical
+lower-case DNS name, a canonical IPv4 address, or a canonical bracketed IPv6
+address. The authority-side allowed-host value must exactly equal that
+variant's canonical host serialization. Expanded IPv4, expanded or uppercase
+IPv6, zone identifiers, DNS trailing dots, default-port aliases, credentials,
+paths, queries and fragments are rejected rather than normalised.
+
+Every variant requires the same non-zero 32-byte `tls_spki_sha256` commitment,
+certificate validity and TLS server suitability checks described above. An IP
+literal is therefore an addressing option for a local-only installation, not
+a CA fallback, hostname-verification exception, or weaker trust mode. The
+presentation signature, five-minute expiry and one-use authority transaction
+remain unchanged.
 
 ### Android app-scoped TLS authentication
 

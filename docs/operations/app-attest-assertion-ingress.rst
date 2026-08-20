@@ -41,6 +41,17 @@ facts:
 * the reviewed Apple trust-anchor manifest digest; and
 * the expected distributed application bundle version.
 
+After a process restart, Monas may reconstruct that same opaque acceptance only
+through ``resume_durable_registration_for_custody_rotation``.  Its input is
+limited to the server-owned custody-rotation request and the already verified
+durable genesis-registration fields.  Pistis revalidates the canonical ceremony,
+Site Trust domain, Monas-local admission purpose, installation and key, the
+uncompressed P-256 certificate public key, exact packaged manifest digest,
+bundle version, and retained counter.  No raw Apple registration object is
+accepted or replayed, and the resumed value carries no browser/session identity
+or authority.  A stale counter is still rejected by the existing assertion
+verifier and Monas atomic transaction after restart.
+
 No HTTP client, browser, local Unix user, PAM helper, CLI, cookie, raw Apple
 object, or operating-system identity can substitute for that factory.  If the
 registration, trust material, or atomic Monas store is unavailable, the
@@ -57,10 +68,15 @@ bounded definite CBOR assertion object containing exactly ``signature`` and
 * the registered P-256 key's DER signature over
   ``SHA-256(authenticatorData || SHA-256(clientData))``;
 * the authenticator RP-ID hash for the exact production App ID;
-* user-present plus extension flags;
+* Apple's closed App Attest authenticator-data shape: the exact 37-byte form
+  has no extension-data bit, while an extension-bearing form must have that
+  bit and the strict extension map. The user-present and
+  attested-credential-data bits are advisory rather than App Attest acceptance
+  criteria; all other flag bits are rejected;
 * a non-zero counter strictly greater than the server-held previous counter;
-* the exact production distribution category (TestFlight, App Store, or
-  enterprise/ad-hoc) and expected bundle version in Apple's extension map; and
+* for the iOS 27 form, the exact production distribution category (TestFlight,
+  App Store, or enterprise/ad-hoc) and expected bundle version in Apple's
+  extension map; and
 * the exact server-held challenge binding.
 
 ``clientData`` is never accepted from the client.  It is defined as the bytes

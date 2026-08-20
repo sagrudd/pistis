@@ -150,6 +150,7 @@ impl SiteTrustCanonicalPayloadV1 {
         if !matches!(
             values[7].as_str(),
             "monas-local"
+                | "monas:site-trust:mtgs-recovery:v1"
                 | "oikodome-local"
                 | "dasobjectstore-local"
                 | "phoreus-registry-local"
@@ -161,10 +162,10 @@ impl SiteTrustCanonicalPayloadV1 {
         ) {
             return Err(SiteTrustCanonicalPayloadErrorV1::UnsupportedAudienceOrPurpose);
         }
-        if values
-            .iter()
-            .any(|value| contains_prohibited_material(value))
-        {
+        if values.iter().enumerate().any(|(index, value)| {
+            contains_prohibited_material(value)
+                && !(index == 7 && value == "monas:site-trust:mtgs-recovery:v1")
+        }) {
             return Err(SiteTrustCanonicalPayloadErrorV1::ProhibitedMaterial);
         }
         if !valid_intent_reference(&values[12]) {

@@ -1,6 +1,7 @@
 import Foundation
 import PistisCore
 import XCTest
+
 @testable import Pistis
 
 @MainActor
@@ -19,7 +20,7 @@ final class EnrollmentProjectionTests: XCTestCase {
 
         await store.refresh()
 
-        guard case let .loaded(projection) = store.state else {
+    guard case .loaded(let projection) = store.state else {
             return XCTFail("verified enrollment was not loaded")
         }
         XCTAssertEqual(projection.identities.count, 1)
@@ -48,6 +49,34 @@ final class EnrollmentProjectionTests: XCTestCase {
             String(describing: projection).contains(
                 enrollment.trust.authorityReceipt.base64EncodedString()
             )
+        )
+    }
+
+    func testMultipleInstallationsAndPersonasRemainVisibleTogether() async throws {
+        let first = try fixtureEnrollment()
+        let second = try fixtureEnrollment(
+            installationByte: 0x21,
+            userByte: 0x22,
+            identityByte: 0x23
+        )
+        let store = EnrollmentProjectionStore(loadEnrollment: { nil }, loadInventoryRecords: {
+            [.current(first), .current(second)]
+        })
+
+        await store.refresh()
+
+        guard case .loaded(let projection) = store.state else {
+            return XCTFail("multi-installation inventory was not loaded")
+        }
+        XCTAssertEqual(projection.installations.count, 2)
+        XCTAssertEqual(projection.identities.count, 2)
+        XCTAssertEqual(
+            Set(projection.installations.map(\.id)).count,
+            2
+        )
+        XCTAssertEqual(
+            Set(projection.identities.map(\.id)).count,
+            2
         )
     }
 
@@ -187,6 +216,113 @@ final class EnrollmentProjectionTests: XCTestCase {
         XCTAssertEqual(projection.history, [event])
     }
 
+    func testCompletedSiteRootCeremonyProjectsAnIncompleteInstallationOnly() throws {
+        let installation = try IncompleteSiteRootInstallation(
+            id: UUID(uuidString: "00000000-0000-0000-0000-000000000001")!,
+            authorityHost: "monas.example.test",
+            redactedReference: "abc123…def4",
+            recordedAt: Date(timeIntervalSince1970: 1_000)
+        )
+
+        let projection = EnrollmentProjection(
+            retainedHistory: [],
+            incompleteSiteRootInstallations: [installation]
+        )
+
+        XCTAssertTrue(projection.identities.isEmpty)
+        XCTAssertEqual(projection.installations.count, 1)
+        XCTAssertEqual(projection.installations[0].name, "Monas Site Root")
+        XCTAssertEqual(projection.installations[0].status, "Setup in progress")
+        XCTAssertEqual(
+            projection.installations[0].evidenceLabel,
+            "Verified ceremony reference"
+        )
+        XCTAssertFalse(projection.installations[0].allowsLocalForget)
+        XCTAssertNotEqual(projection.installations[0].status, "Trusted")
+    }
+
+    func testIncompleteSiteRootInstallationDoesNotChangeTrustedEnrollment() throws {
+        let incomplete = try IncompleteSiteRootInstallation(
+            authorityHost: "monas.example.test",
+            redactedReference: "abc123…def4",
+            recordedAt: Date(timeIntervalSince1970: 1_000)
+        )
+        let projection = EnrollmentProjection(
+            enrollment: try fixtureEnrollment(),
+            incompleteSiteRootInstallations: [incomplete]
+        )
+
+        XCTAssertEqual(projection.installations.count, 2)
+        XCTAssertEqual(
+            projection.installations.filter { $0.status == "Trusted" }.count,
+            1
+        )
+        XCTAssertEqual(
+            projection.installations.filter { $0.status == "Setup in progress" }.count,
+            1
+        )
+    }
+
+  func testMatchingSetupProgressCoalescesWithAuthenticatedInstallation() throws {
+    let incomplete = try IncompleteSiteRootInstallation(
+      authorityHost: "PISTIS.EXAMPLE.TEST.", redactedReference: "abc123…def4",
+      setupPhase: .identityEnrolmentRequired
+    )
+    let projection = EnrollmentProjection(
+      enrollment: try fixtureEnrollment(),
+      incompleteSiteRootInstallations: [incomplete]
+    )
+
+    XCTAssertEqual(projection.installations.count, 1)
+    XCTAssertEqual(projection.identities.count, 1)
+    XCTAssertNil(projection.installations[0].setupPhase)
+    XCTAssertEqual(projection.installations[0].status, "Trusted")
+    XCTAssertEqual(
+      InstallationDetailAction(installation: projection.installations[0]),
+      .reconcileAuthorityCustody
+    )
+  }
+
+    func testLegacySetupProgressRequiresAuthorityCustodyBeforeIdentity() throws {
+        let installation = try IncompleteSiteRootInstallation(
+            authorityHost: "monas.example.test",
+            redactedReference: "abc123…def4",
+            recordedAt: Date(timeIntervalSince1970: 1_000)
+        )
+        let projection = EnrollmentProjection(
+            retainedHistory: [],
+            incompleteSiteRootInstallations: [installation]
+        )
+
+        XCTAssertEqual(
+            InstallationDetailAction(installation: try XCTUnwrap(projection.installations.first)),
+            .continueAuthorityCustody
+        )
+    }
+
+    func testCompletedAuthorityCustodyOffersIdentityContinuation() throws {
+        let installation = try IncompleteSiteRootInstallation(
+            authorityHost: "monas.example.test", redactedReference: "abc123…def4",
+            setupPhase: .identityEnrolmentRequired
+        )
+        let projection = EnrollmentProjection(
+            retainedHistory: [], incompleteSiteRootInstallations: [installation]
+        )
+        XCTAssertEqual(
+            InstallationDetailAction(installation: try XCTUnwrap(projection.installations.first)),
+            .continueIdentitySetup
+        )
+    }
+
+    func testTrustedInstallationOffersLiveAuthorityCustodyReconciliation() throws {
+        let projection = EnrollmentProjection(enrollment: try fixtureEnrollment())
+
+        XCTAssertEqual(
+            InstallationDetailAction(installation: try XCTUnwrap(projection.installations.first)),
+            .reconcileAuthorityCustody
+        )
+    }
+
     func testLocalForgetPolicyNeverAllowsCurrentActiveTrust() {
         let now = Date(timeIntervalSince1970: 1_000)
 
@@ -242,16 +378,20 @@ final class EnrollmentProjectionTests: XCTestCase {
     }
 
     private func fixtureEnrollment(
-        expiresAt: Date = Date(timeIntervalSince1970: 2_000_000_000)
+        expiresAt: Date = Date(timeIntervalSince1970: 2_000_000_000),
+        installationByte: UInt8 = 0x01,
+        userByte: UInt8 = 0x02,
+        identityByte: UInt8 = 0x03
     ) throws -> AuthenticatedEnrollmentOutput {
         try AuthenticatedEnrollmentOutput(
             trust: InstallationTrustRecord(
-                installationID: Data(repeating: 0x01, count: 16),
-                displayName: "Laboratory Jenkins",
+                installationID: Data(repeating: installationByte, count: 16),
+                displayName: installationByte == 0x01
+                    ? "Laboratory Jenkins" : "Remote Jenkins",
                 audience: "prosopikon:pistis:enrolment",
                 authorisedProductAudiences: ["jenkins"],
-                userID: Data(repeating: 0x02, count: 16),
-                externalIdentityID: Data(repeating: 0x03, count: 16),
+                userID: Data(repeating: userByte, count: 16),
+                externalIdentityID: Data(repeating: identityByte, count: 16),
                 fingerprint: Data(repeating: 0x04, count: 32),
                 installationKeyID: Data(repeating: 0x05, count: 32),
                 installationPublicKey: Data([0x02]) + Data(repeating: 0x06, count: 32),
@@ -263,10 +403,10 @@ final class EnrollmentProjectionTests: XCTestCase {
                 active: true
             ),
             responseContext: DeviceResponseContext(
-                deviceID: Data(repeating: 0x09, count: 16),
+                deviceID: Data(repeating: installationByte + 8, count: 16),
                 deviceKeyID: Data(repeating: 0x0a, count: 32),
-                userID: Data(repeating: 0x02, count: 16),
-                externalIdentityID: Data(repeating: 0x03, count: 16)
+                userID: Data(repeating: userByte, count: 16),
+                externalIdentityID: Data(repeating: identityByte, count: 16)
             ),
             allowedHosts: ["pistis.example.test"]
         )

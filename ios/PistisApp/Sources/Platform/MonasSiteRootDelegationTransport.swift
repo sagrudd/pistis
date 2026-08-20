@@ -9,6 +9,12 @@ import Foundation
 enum MonasSiteRootDelegationEndpointV1 {
     static let readinessPath = "/auth/pistis/v1/site-root-delegation/readiness"
     static let submitPath = "/auth/pistis/site-root-delegations/v1/submit"
+    static let installationStatusPath = "/auth/pistis/site-root-genesis/v1/installation-status"
+}
+
+struct MonasSiteRootInstallationStatusV1: Sendable {
+    let redactedReference: String
+    let registeredAt: Date
 }
 
 enum MonasSiteRootDelegationReadinessStateV1: String, Decodable, Equatable, Sendable {
@@ -37,70 +43,275 @@ protocol MonasSiteRootDelegationReadinessChecking: Sendable {
 
 /// HTTPS-only Monas Site Root transport.
 ///
-/// The configured origin is enrolment/trust input, never QR input.  The QR
-/// submission URL must exactly match that origin and the reviewed v1 path.
-/// Redirects, cookies, caches, unexpected JSON and all non-success statuses
-/// deny without retrying another endpoint.
+/// The configured origins are enrolment/trust input, never QR input.  A QR
+/// submission URL must exactly match one of those origins and the reviewed v1
+/// path. Redirects, cookies, caches, unexpected JSON and all non-success
+/// statuses deny without selecting an unpinned endpoint.
 struct MonasSiteRootDelegationTransport: MonasSiteRootCeremonyTransport,
     MonasSiteRootDelegationReadinessChecking, Sendable
 {
+    private enum OriginAttemptFailure: Error {
+        case unreachable
+        case rejected(PlatformFailure)
+    }
+
     private static let maximumResponseBytes = 1_024
     private static let maximumSubmissionBytes = 90_000
 
-    private let authorityOrigin: URL
+    private let authorityOrigins: [URL]
+    private let trustPolicy: MonasServerTrustPolicy
     private let session: URLSession
 
+    private var authorityOrigin: URL { authorityOrigins[0] }
     var genesisAuthorityOrigin: URL? { authorityOrigin }
+    var genesisAuthorityOrigins: [URL] { authorityOrigins }
+    var authorityHost: String? { authorityOrigin.host }
+
+    /// Returns true only for a host explicitly committed by the app build.
+    /// This lets one physical computer move between its two pinned addresses
+    /// without treating a selected installation's alias as a new authority.
+    func isConfiguredAuthorityHost(_ host: String) -> Bool {
+        guard let canonical = try? IncompleteSiteRootInstallation.canonicalHost(host)
+        else { return false }
+        return authorityOrigins.contains { $0.host?.lowercased() == canonical }
+    }
+
+    enum AuthorityCustodyStatusV2: Equatable {
+        case appAttestAssertionRequired
+        case initialRotationRequired
+        case recoveryRequired
+        case ready
+    }
 
     init(
         authorityOrigin: URL,
         expectedSPKISHA256: Data,
         configuration: URLSessionConfiguration = .ephemeral
     ) throws {
-        guard Self.isValidOrigin(authorityOrigin),
-              expectedSPKISHA256.count == 32,
+        guard expectedSPKISHA256.count == 32,
               !expectedSPKISHA256.allSatisfy({ $0 == 0 })
+        else { throw PlatformFailure.invalidConfiguration }
+        try self.init(
+            authorityOrigins: [authorityOrigin],
+            trustPolicy: .bootstrapLeafSPKI(expectedSPKISHA256),
+            configuration: configuration
+        )
+    }
+
+    init(
+        authorityOrigin: URL,
+        trustPolicy: MonasServerTrustPolicy,
+        configuration: URLSessionConfiguration = .ephemeral
+    ) throws {
+        try self.init(
+            authorityOrigins: [authorityOrigin],
+            trustPolicy: trustPolicy,
+            configuration: configuration
+        )
+    }
+
+    init(
+        authorityOrigins: [URL],
+        trustPolicy: MonasServerTrustPolicy,
+        configuration: URLSessionConfiguration = .ephemeral
+    ) throws {
+        guard !authorityOrigins.isEmpty,
+              authorityOrigins.count <= 4,
+              authorityOrigins.allSatisfy(Self.isValidOrigin),
+              Set(authorityOrigins.map(\.absoluteString)).count == authorityOrigins.count
         else {
             throw PlatformFailure.invalidConfiguration
         }
-        self.authorityOrigin = authorityOrigin
+        self.authorityOrigins = authorityOrigins
+        self.trustPolicy = trustPolicy
         configuration.httpShouldSetCookies = false
         configuration.urlCache = nil
         configuration.requestCachePolicy = .reloadIgnoringLocalCacheData
         self.session = URLSession(
             configuration: configuration,
             delegate: try PinnedEnrolmentSessionDelegate(
-                origin: authorityOrigin,
-                expectedSPKISHA256: expectedSPKISHA256
+                origins: authorityOrigins,
+                trustPolicy: trustPolicy
             ),
             delegateQueue: nil
         )
     }
 
-    func readiness() async throws -> MonasSiteRootDelegationReadinessV1 {
-        let endpoint = try endpoint(path: MonasSiteRootDelegationEndpointV1.readinessPath)
-        var request = URLRequest(url: endpoint)
-        request.httpMethod = "GET"
-        request.setValue("application/json", forHTTPHeaderField: "Accept")
-        request.setValue("no-store", forHTTPHeaderField: "Cache-Control")
-        request.timeoutInterval = 15
-        let (data, _) = try await requestData(request, expectedURL: endpoint)
-        do {
-            return try JSONDecoder().decode(MonasReadinessResponse.self, from: data).value
-        } catch {
+    func appAttestTransport(authorityHost: String? = nil) throws -> MonasAppAttestTransport {
+        try MonasAppAttestTransport(
+            authorityOrigin: try endpointOrigin(for: authorityHost),
+            authorityOrigins: authorityOrigins,
+            trustPolicy: trustPolicy
+        )
+    }
+
+    func siteRootConvergenceTransport(authorityHost: String? = nil) throws
+        -> MonasSiteRootConvergenceTransport
+    {
+        try MonasSiteRootConvergenceTransport(
+            authorityOrigin: try endpointOrigin(for: authorityHost),
+            trustPolicy: trustPolicy
+        )
+    }
+
+    /// Creates the relocation transport for the proposal-derived target while
+    /// preserving this installation's authenticated Site-root trust policy.
+    /// It never copies the obsolete source leaf pin to a different origin.
+    func siteOriginRelocationTransport(
+        targetOrigin: URL
+    ) throws -> MonasSiteOriginRelocationTransportV1 {
+        guard case .siteRootGeneration = trustPolicy else {
             throw PlatformFailure.siteRootAuthorityUnavailable
         }
+        return try MonasSiteOriginRelocationTransportV1(
+            targetOrigin: targetOrigin, trustPolicy: trustPolicy
+        )
+    }
+
+    func readiness() async throws -> MonasSiteRootDelegationReadinessV1 {
+        let endpoint = try endpoint(path: MonasSiteRootDelegationEndpointV1.readinessPath)
+        var lastFailure = PlatformFailure.siteRootAuthorityUnavailable
+        for candidate in candidateEndpoints(
+            endpoint,
+            expectedPath: MonasSiteRootDelegationEndpointV1.readinessPath
+        ) {
+            var request = URLRequest(url: candidate)
+            request.httpMethod = "GET"
+            request.setValue("application/json", forHTTPHeaderField: "Accept")
+            request.setValue("no-store", forHTTPHeaderField: "Cache-Control")
+            request.timeoutInterval = 15
+            do {
+                let (data, _) = try await requestData(request, expectedURL: candidate)
+                return try JSONDecoder().decode(MonasReadinessResponse.self, from: data).value
+            } catch OriginAttemptFailure.unreachable {
+                lastFailure = .siteRootAuthorityUnavailable
+            } catch OriginAttemptFailure.rejected(let failure) {
+                throw failure
+            } catch let failure as PlatformFailure {
+                throw failure
+            } catch {
+                throw PlatformFailure.siteRootAuthorityUnavailable
+            }
+        }
+        throw lastFailure
+    }
+
+    func authorityCustodyStatusV2(authorityHost: String? = nil) async throws
+        -> AuthorityCustodyStatusV2
+    {
+        let path = "/v1/pistis/site-trust/authority-custody/v2/status"
+        let endpoint = try endpoint(
+            path: path,
+            authorityHost: authorityHost
+        )
+        var lastFailure = PlatformFailure.siteRootAuthorityUnavailable
+        for candidate in candidateEndpoints(endpoint, expectedPath: path) {
+            var request = URLRequest(url: candidate)
+            request.httpMethod = "GET"
+            request.setValue("application/json", forHTTPHeaderField: "Accept")
+            request.setValue("no-store", forHTTPHeaderField: "Cache-Control")
+            request.timeoutInterval = 15
+            do {
+                let (data, response) = try await originData(for: request)
+                guard let http = response as? HTTPURLResponse,
+                      http.url == candidate,
+                      data.count <= 1_024,
+                      http.value(forHTTPHeaderField: "Cache-Control")?
+                        .lowercased().contains("no-store") == true
+                else { throw PlatformFailure.siteRootAuthorityUnavailable }
+                if http.statusCode == 503, data.isEmpty {
+                    return .appAttestAssertionRequired
+                }
+                guard http.statusCode == 200 else {
+                    throw PlatformFailure.siteRootAuthorityUnavailable
+                }
+                guard let object = try JSONSerialization.jsonObject(with: data) as? [String: Any],
+                      Set(object.keys) == ["schema", "state"],
+                      object["schema"] as? String == "monas.first-authority-custody-status.v2",
+                      let state = object["state"] as? String
+                else { throw PlatformFailure.siteRootAuthorityUnavailable }
+                switch state {
+                case "initial-rotation-required": return .initialRotationRequired
+                case "recovery-required": return .recoveryRequired
+                case "ready": return .ready
+                default: throw PlatformFailure.siteRootAuthorityUnavailable
+                }
+            } catch OriginAttemptFailure.unreachable {
+                lastFailure = .siteRootAuthorityUnavailable
+            } catch OriginAttemptFailure.rejected(let failure) {
+                throw failure
+            } catch let failure as PlatformFailure {
+                throw failure
+            } catch {
+                throw PlatformFailure.siteRootAuthorityUnavailable
+            }
+        }
+        throw lastFailure
+    }
+
+    /// Reads only a matching, already proof-consumed Site Root lifecycle
+    /// record. This is display reconciliation, never session or authority.
+    func installationStatus(
+        siteRootDeviceKeyID: String,
+        authorityHost: String? = nil
+    ) async throws -> MonasSiteRootInstallationStatusV1? {
+        guard !siteRootDeviceKeyID.isEmpty,
+              siteRootDeviceKeyID.utf8.count <= 128,
+              siteRootDeviceKeyID.utf8.allSatisfy({
+                  ($0 >= 48 && $0 <= 57) || ($0 >= 65 && $0 <= 90)
+                      || ($0 >= 97 && $0 <= 122) || [45, 46, 58, 95].contains($0)
+              })
+        else { throw PlatformFailure.invalidConfiguration }
+        let endpoint = try endpoint(
+            path: MonasSiteRootDelegationEndpointV1.installationStatusPath,
+            authorityHost: authorityHost
+        )
+        var lastFailure = PlatformFailure.siteRootAuthorityUnavailable
+        for candidate in candidateEndpoints(
+            endpoint,
+            expectedPath: MonasSiteRootDelegationEndpointV1.installationStatusPath
+        ) {
+            var request = URLRequest(url: candidate)
+            request.httpMethod = "GET"
+            request.timeoutInterval = 15
+            request.setValue("application/json", forHTTPHeaderField: "Accept")
+            request.setValue("no-store", forHTTPHeaderField: "Cache-Control")
+            request.setValue(siteRootDeviceKeyID, forHTTPHeaderField: "X-Pistis-Site-Root-Key-ID")
+            do {
+                let (data, response) = try await originData(for: request)
+                guard let http = response as? HTTPURLResponse, http.url == candidate else {
+                    throw PlatformFailure.siteRootAuthorityUnavailable
+                }
+                if http.statusCode == 404, data.isEmpty { return nil }
+                guard http.statusCode == 200, data.count <= Self.maximumResponseBytes else {
+                    throw PlatformFailure.siteRootAuthorityUnavailable
+                }
+                return try MonasInstallationStatusResponse(data: data).value
+            } catch OriginAttemptFailure.unreachable {
+                lastFailure = .siteRootAuthorityUnavailable
+            } catch OriginAttemptFailure.rejected(let failure) {
+                throw failure
+            } catch let failure as PlatformFailure {
+                throw failure
+            } catch {
+                throw PlatformFailure.siteRootAuthorityUnavailable
+            }
+        }
+        throw lastFailure
     }
 
     /// Submits one detached iPhone proof and accepts only the exact bootstrap
     /// response defined by Monas. The bootstrap remains a stack-local value and
     /// must immediately construct the separately pinned App Attest transport.
+    /// This method deliberately rejects the static initial-ceremony response:
+    /// accepting that response here would silently downgrade a live App Attest
+    /// ceremony into a proof-only completion.
     func submit(_ request: MonasSiteRootDelegationSubmissionRequestV1) async throws
         -> MonasAppAttestCeremonyBootstrap
     {
         guard Self.matchesAuthority(
             request.endpoint,
-            origin: authorityOrigin,
+            origins: authorityOrigins,
             expectedPath: MonasSiteRootDelegationEndpointV1.submitPath
         ) else { throw PlatformFailure.siteRootAuthorityUnavailable }
 
@@ -113,32 +324,103 @@ struct MonasSiteRootDelegationTransport: MonasSiteRootCeremonyTransport,
         guard body.count <= Self.maximumSubmissionBytes else {
             throw PlatformFailure.invalidConfiguration
         }
-        var urlRequest = URLRequest(url: request.endpoint)
-        urlRequest.httpMethod = "POST"
-        urlRequest.httpBody = body
-        urlRequest.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        urlRequest.setValue("application/json", forHTTPHeaderField: "Accept")
-        urlRequest.setValue("no-store", forHTTPHeaderField: "Cache-Control")
-        urlRequest.timeoutInterval = 15
         guard let nowUnixMillis = Self.nowUnixMillis() else {
             throw PlatformFailure.siteRootAuthorityUnavailable
         }
-        let (data, _) = try await requestData(
-            urlRequest,
-            expectedURL: request.endpoint,
-            expectedStatus: 200
-        )
-        do {
-            return try MonasAppAttestBootstrapResponse(
-                data: data,
-                authorityOrigin: authorityOrigin,
-                nowUnixMillis: nowUnixMillis
-            ).bootstrap
-        } catch let failure as PlatformFailure {
-            throw failure
-        } catch {
-            throw PlatformFailure.siteRootAuthorityUnavailable
+        var lastFailure = PlatformFailure.siteRootAuthorityUnavailable
+        for endpoint in candidateEndpoints(
+            request.endpoint,
+            expectedPath: MonasSiteRootDelegationEndpointV1.submitPath
+        ) {
+            var urlRequest = URLRequest(url: endpoint)
+            urlRequest.httpMethod = "POST"
+            urlRequest.httpBody = body
+            urlRequest.setValue("application/json", forHTTPHeaderField: "Content-Type")
+            urlRequest.setValue("application/json", forHTTPHeaderField: "Accept")
+            urlRequest.setValue("no-store", forHTTPHeaderField: "Cache-Control")
+            urlRequest.timeoutInterval = 15
+            do {
+                let (data, _) = try await requestData(
+                    urlRequest,
+                    expectedURL: endpoint,
+                    expectedStatus: 200
+                )
+                return try MonasAppAttestBootstrapResponse(
+                    data: data,
+                    authorityOrigins: authorityOrigins,
+                    nowUnixMillis: nowUnixMillis
+                ).bootstrap
+            } catch OriginAttemptFailure.unreachable {
+                lastFailure = .siteRootAuthorityUnavailable
+            } catch OriginAttemptFailure.rejected(let failure) {
+                throw failure
+            } catch let failure as PlatformFailure {
+                throw failure
+            } catch {
+                throw PlatformFailure.siteRootAuthorityUnavailable
+            }
         }
+        throw lastFailure
+    }
+
+    /// Completes only the attended, first-device static Site Root ceremony.
+    ///
+    /// The fixed initial Monas route returns an empty ``204 No Content`` only
+    /// after it has atomically consumed the signed Site Root proof and created
+    /// the Site Trust authority/custody record.  This is not a bootstrap and
+    /// cannot start App Attest; it records an incomplete installation for the
+    /// later protected App Attest session ceremony. Any body, alternate 2xx
+    /// response, redirect, cookie or endpoint mismatch is terminal.
+    func submitInitialStaticCompletion(
+        _ request: MonasSiteRootDelegationSubmissionRequestV1
+    ) async throws {
+        guard Self.matchesAuthority(
+            request.endpoint,
+            origins: authorityOrigins,
+            expectedPath: MonasSiteRootDelegationEndpointV1.submitPath
+        ) else { throw PlatformFailure.siteRootAuthorityUnavailable }
+
+        let body: Data
+        do {
+            body = try JSONEncoder().encode(MonasSubmissionRequest(request.submission))
+        } catch {
+            throw PlatformFailure.invalidConfiguration
+        }
+        guard body.count <= Self.maximumSubmissionBytes else {
+            throw PlatformFailure.invalidConfiguration
+        }
+        var lastFailure = PlatformFailure.siteRootAuthorityUnavailable
+        for endpoint in candidateEndpoints(
+            request.endpoint,
+            expectedPath: MonasSiteRootDelegationEndpointV1.submitPath
+        ) {
+            var urlRequest = URLRequest(url: endpoint)
+            urlRequest.httpMethod = "POST"
+            urlRequest.httpBody = body
+            urlRequest.setValue("application/json", forHTTPHeaderField: "Content-Type")
+            urlRequest.setValue("application/json", forHTTPHeaderField: "Accept")
+            urlRequest.setValue("no-store", forHTTPHeaderField: "Cache-Control")
+            urlRequest.timeoutInterval = 15
+            do {
+                let (data, response) = try await session.data(for: urlRequest)
+                guard let http = response as? HTTPURLResponse,
+                      http.statusCode == 204,
+                      http.url == endpoint,
+                      data.isEmpty,
+                      http.value(forHTTPHeaderField: "Set-Cookie") == nil
+                else { throw PlatformFailure.siteRootAuthorityUnavailable }
+                return
+            } catch OriginAttemptFailure.unreachable {
+                lastFailure = .siteRootAuthorityUnavailable
+            } catch OriginAttemptFailure.rejected(let failure) {
+                throw failure
+            } catch let failure as PlatformFailure {
+                throw failure
+            } catch {
+                throw PlatformFailure.siteRootAuthorityUnavailable
+            }
+        }
+        throw lastFailure
     }
 
     /// Posts the sole public first-device registration to the fixed, pinned
@@ -149,7 +431,7 @@ struct MonasSiteRootDelegationTransport: MonasSiteRootCeremonyTransport,
     {
         guard Self.matchesAuthority(
             request.presentation.registrationURL,
-            origin: authorityOrigin,
+            origins: authorityOrigins,
             expectedPath: MonasSiteRootGenesisEndpointV1.registrationPath
         ) else { throw PlatformFailure.siteRootAuthorityUnavailable }
         let body: Data
@@ -161,37 +443,74 @@ struct MonasSiteRootDelegationTransport: MonasSiteRootCeremonyTransport,
         guard !body.isEmpty, body.count <= Self.maximumSubmissionBytes else {
             throw PlatformFailure.invalidConfiguration
         }
-        var urlRequest = URLRequest(url: request.presentation.registrationURL)
-        urlRequest.httpMethod = "POST"
-        urlRequest.httpBody = body
-        urlRequest.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        urlRequest.setValue("application/json", forHTTPHeaderField: "Accept")
-        urlRequest.setValue("no-store", forHTTPHeaderField: "Cache-Control")
-        urlRequest.timeoutInterval = 15
-        let (data, _) = try await requestData(
-            urlRequest,
-            expectedURL: request.presentation.registrationURL,
-            expectedStatus: 200,
-            maximumResponseBytes: Self.maximumSubmissionBytes
-        )
-        do {
-            return try MonasSiteRootGenesisRegistrationResult(
-                data: data,
-                request: request,
-                authorityOrigin: authorityOrigin
-            ).presentation
-        } catch let failure as PlatformFailure {
-            throw failure
-        } catch {
-            throw PlatformFailure.siteRootAuthorityUnavailable
+        var lastFailure = PlatformFailure.siteRootAuthorityUnavailable
+        for endpoint in candidateEndpoints(
+            request.presentation.registrationURL,
+            expectedPath: MonasSiteRootGenesisEndpointV1.registrationPath
+        ) {
+            var urlRequest = URLRequest(url: endpoint)
+            urlRequest.httpMethod = "POST"
+            urlRequest.httpBody = body
+            urlRequest.setValue("application/json", forHTTPHeaderField: "Content-Type")
+            urlRequest.setValue("application/json", forHTTPHeaderField: "Accept")
+            urlRequest.setValue("no-store", forHTTPHeaderField: "Cache-Control")
+            urlRequest.timeoutInterval = 15
+            do {
+                let (data, _) = try await requestData(
+                    urlRequest,
+                    expectedURL: endpoint,
+                    expectedStatus: 200,
+                    maximumResponseBytes: Self.maximumSubmissionBytes
+                )
+                return try MonasSiteRootGenesisRegistrationResult(
+                    data: data,
+                    request: request,
+                    authorityOrigins: authorityOrigins
+                ).presentation
+            } catch OriginAttemptFailure.unreachable {
+                lastFailure = .siteRootAuthorityUnavailable
+            } catch OriginAttemptFailure.rejected(let failure) {
+                throw failure
+            } catch let failure as PlatformFailure {
+                throw failure
+            } catch {
+                throw PlatformFailure.siteRootAuthorityUnavailable
+            }
         }
+        throw lastFailure
     }
 
-    private func endpoint(path: String) throws -> URL {
-        guard let endpoint = URL(string: path, relativeTo: authorityOrigin)?.absoluteURL,
-              Self.matchesAuthority(endpoint, origin: authorityOrigin, expectedPath: path)
+    private func endpoint(path: String, authorityHost: String? = nil) throws -> URL {
+        let origin = try endpointOrigin(for: authorityHost)
+        guard let endpoint = URL(string: path, relativeTo: origin)?.absoluteURL,
+              Self.matchesAuthority(endpoint, origin: origin, expectedPath: path)
         else { throw PlatformFailure.invalidConfiguration }
         return endpoint
+    }
+
+    private func endpointOrigin(for host: String?) throws -> URL {
+        guard let host else { return authorityOrigin }
+        guard let origin = authorityOrigins.first(where: {
+            $0.host?.lowercased() == (try? IncompleteSiteRootInstallation.canonicalHost(host))
+        }) else { throw PlatformFailure.siteRootAuthorityUnavailable }
+        return origin
+    }
+
+    /// Returns the signed endpoint first, followed only by the other origins
+    /// committed in this build. The request body is byte-identical for every
+    /// candidate; no QR value or endpoint outside the pinned set is accepted.
+    private func candidateEndpoints(_ endpoint: URL, expectedPath: String) -> [URL] {
+        guard Self.matchesAuthority(endpoint, origins: authorityOrigins, expectedPath: expectedPath)
+        else { return [] }
+        var candidates = [endpoint]
+        for origin in authorityOrigins {
+            guard origin.host != endpoint.host || origin.port != endpoint.port,
+                  let candidate = URL(string: expectedPath, relativeTo: origin)?.absoluteURL,
+                  Self.matchesAuthority(candidate, origin: origin, expectedPath: expectedPath)
+            else { continue }
+            candidates.append(candidate)
+        }
+        return candidates
     }
 
     private func requestData(
@@ -211,22 +530,58 @@ struct MonasSiteRootDelegationTransport: MonasSiteRootCeremonyTransport,
             else { throw PlatformFailure.siteRootAuthorityUnavailable }
             return (data, response)
         } catch let failure as PlatformFailure {
-            throw failure
+            throw OriginAttemptFailure.rejected(failure)
         } catch {
-            throw PlatformFailure.siteRootAuthorityUnavailable
+            if Self.isOriginUnreachable(error) {
+                throw OriginAttemptFailure.unreachable
+            }
+            throw OriginAttemptFailure.rejected(.siteRootAuthorityUnavailable)
         }
     }
 
-    fileprivate static func isValidOrigin(_ value: URL) -> Bool {
+    private static func isOriginUnreachable(_ error: Error) -> Bool {
+        guard let urlError = error as? URLError else { return false }
+        switch urlError.code {
+        case .cannotConnectToHost, .cannotFindHost, .dnsLookupFailed,
+             .networkConnectionLost, .notConnectedToInternet, .resourceUnavailable,
+             .timedOut:
+            return true
+        default:
+            return false
+        }
+    }
+
+    private func originData(for request: URLRequest) async throws -> (Data, URLResponse) {
+        do {
+            return try await session.data(for: request)
+        } catch {
+            if Self.isOriginUnreachable(error) {
+                throw OriginAttemptFailure.unreachable
+            }
+            throw OriginAttemptFailure.rejected(.siteRootAuthorityUnavailable)
+        }
+    }
+
+    static func isValidOrigin(_ value: URL) -> Bool {
         value.scheme == "https" && value.host != nil && value.user == nil
             && value.password == nil && value.query == nil && value.fragment == nil
             && value.path.isEmpty
     }
 
     static func matchesAuthority(_ value: URL, origin: URL, expectedPath: String) -> Bool {
-        value.scheme == "https" && value.host == origin.host && value.port == origin.port
+        matchesAuthority(value, origins: [origin], expectedPath: expectedPath)
+    }
+
+    static func matchesAuthority(
+        _ value: URL,
+        origins: [URL],
+        expectedPath: String
+    ) -> Bool {
+        origins.contains { origin in
+            value.scheme == "https" && value.host == origin.host && value.port == origin.port
             && value.user == nil && value.password == nil && value.query == nil
             && value.fragment == nil && value.path == expectedPath
+        }
     }
 
     private static func nowUnixMillis() -> UInt64? {
@@ -234,6 +589,60 @@ struct MonasSiteRootDelegationTransport: MonasSiteRootCeremonyTransport,
         guard value.isFinite, value >= 0, value <= Double(UInt64.max) else { return nil }
         return UInt64(value)
     }
+}
+
+struct MonasInstallationStatusResponse: Decodable {
+    let schema: String
+    let state: String
+    let redactedReference: String
+    let registeredAtUnixMillis: UInt64
+
+    private enum CodingKeys: String, CodingKey, CaseIterable {
+        case schema, state
+        case redactedReference = "redacted_reference"
+        case registeredAtUnixMillis = "registered_at_unix_millis"
+    }
+
+    init(data: Data) throws {
+        let decoder = JSONDecoder()
+        let keys = try decoder.decode(StrictKeys.self, from: data)
+        guard keys.values == Set(CodingKeys.allCases.map(\.rawValue)) else {
+            throw PlatformFailure.siteRootAuthorityUnavailable
+        }
+        let decoded = try decoder.decode(Self.self, from: data)
+        self = decoded
+    }
+
+    var value: MonasSiteRootInstallationStatusV1 {
+        get throws {
+            guard schema == "monas.site-root-genesis-installation-status.v1",
+                  ["proof-consumed", "completed"].contains(state),
+                  !redactedReference.isEmpty, redactedReference.utf8.count <= 64,
+                  redactedReference.unicodeScalars.allSatisfy({
+                      CharacterSet.alphanumerics.contains($0)
+                          || $0 == "." || $0 == "-" || $0 == "…"
+                  })
+            else { throw PlatformFailure.siteRootAuthorityUnavailable }
+            return MonasSiteRootInstallationStatusV1(
+                redactedReference: redactedReference,
+                registeredAt: Date(timeIntervalSince1970: TimeInterval(registeredAtUnixMillis) / 1_000)
+            )
+        }
+    }
+
+    private struct StrictKeys: Decodable {
+        let values: Set<String>
+        init(from decoder: any Decoder) throws {
+            values = Set(try decoder.container(keyedBy: DynamicKey.self).allKeys.map(\.stringValue))
+        }
+    }
+}
+
+private struct DynamicKey: CodingKey {
+    let stringValue: String
+    let intValue: Int? = nil
+    init?(stringValue: String) { self.stringValue = stringValue }
+    init?(intValue: Int) { return nil }
 }
 
 private struct MonasReadinessResponse: Decodable {
@@ -300,6 +709,14 @@ private struct MonasAppAttestBootstrapResponse {
     let bootstrap: MonasAppAttestCeremonyBootstrap
 
     init(data: Data, authorityOrigin: URL, nowUnixMillis: UInt64) throws {
+        try self.init(
+            data: data,
+            authorityOrigins: [authorityOrigin],
+            nowUnixMillis: nowUnixMillis
+        )
+    }
+
+    init(data: Data, authorityOrigins: [URL], nowUnixMillis: UInt64) throws {
         let decoder = JSONDecoder()
         let response: WireResponse
         do {
@@ -311,7 +728,9 @@ private struct MonasAppAttestBootstrapResponse {
               let origin = URL(string: response.httpsOrigin),
               MonasSiteRootDelegationTransport.isValidOrigin(origin),
               response.httpsOrigin == origin.absoluteString,
-              origin.absoluteString == authorityOrigin.absoluteString,
+              authorityOrigins.contains(where: {
+                  origin.absoluteString == $0.absoluteString
+              }),
               let spki = Self.decodeCanonicalBase64URL(
                   response.tlsSPKISHA256B64URL,
                   exactLength: 32

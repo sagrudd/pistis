@@ -8,6 +8,13 @@ enum IphoneMediatedCustodyRewrapPurposeV1 {
     static let value = "thesaurophylax.iphone-mediated-custody-rewrap-unlock.v1"
 }
 
+enum SiteRootBundleReceiptRewrapV1 {
+    static let purpose = "thesaurophylax.site-root-bundle-receipt-rewrap.v1"
+    static let challengeSchema = Data(
+        "thesaurophylax.site-root-bundle-receipt-rewrap.v1\0".utf8
+    )
+}
+
 /// Exact public material for one server-owned custody-rewrap attempt.
 ///
 /// A reviewed fixed-peer authority obtains these values from protected current
@@ -44,7 +51,8 @@ struct IphoneMediatedCustodyRewrapPresentationV1: Sendable {
         expiresAtUnixSeconds: UInt64,
         existingHostEphemeralPublicSEC1: Data,
         existingEncryptedRecord: Data,
-        freshHostEphemeralPublicSEC1: Data
+        freshHostEphemeralPublicSEC1: Data,
+        expectedChallengeSchema: Data? = nil
     ) throws {
         guard correlation.count == 16,
               !correlation.allSatisfy({ $0 == 0 }),
@@ -78,7 +86,11 @@ struct IphoneMediatedCustodyRewrapPresentationV1: Sendable {
         self.existingEncryptedRecord = existingEncryptedRecord
         self.freshHostEphemeralPublicSEC1 = freshHostEphemeralPublicSEC1
         guard let expectedCanonicalChallenge = try? SecureEnclaveIphoneMediatedCustodyRewrapProducer
-            .canonicalChallenge(for: self), expectedCanonicalChallenge == canonicalChallenge
+            .canonicalChallenge(
+                for: self,
+                schema: expectedChallengeSchema
+                    ?? SecureEnclaveIphoneMediatedCustodyRewrapProducer.challengeSchema
+            ), expectedCanonicalChallenge == canonicalChallenge
         else { throw PlatformFailure.custodyRewrapUnavailable }
     }
 
@@ -138,7 +150,7 @@ struct UnavailableIphoneMediatedCustodyRewrapTransport:
 /// to the fresh host public key.  It neither stores, logs, returns, nor
 /// projects the seed into SwiftUI state.
 final class SecureEnclaveIphoneMediatedCustodyRewrapProducer: @unchecked Sendable {
-    private static let challengeSchema = Data(
+    static let challengeSchema = Data(
         "thesaurophylax.iphone-mediated-custody-rewrap.v1\0".utf8
     )
     private static let wrapHKDFInfo = Data(
@@ -232,7 +244,17 @@ final class SecureEnclaveIphoneMediatedCustodyRewrapProducer: @unchecked Sendabl
     static func canonicalChallenge(
         for presentation: IphoneMediatedCustodyRewrapPresentationV1
     ) throws -> Data {
-        var result = challengeSchema
+        try canonicalChallenge(for: presentation, schema: challengeSchema)
+    }
+
+    static func canonicalChallenge(
+        for presentation: IphoneMediatedCustodyRewrapPresentationV1,
+        schema: Data
+    ) throws -> Data {
+        guard !schema.isEmpty, schema.count <= 128 else {
+            throw PlatformFailure.custodyRewrapUnavailable
+        }
+        var result = schema
         try append(tag: 1, value: Data(presentation.siteTrustDomain.utf8), to: &result)
         try append(tag: 2, value: Data(presentation.keyGeneration.utf8), to: &result)
         try append(tag: 3, value: Data(presentation.deviceKeyID.utf8), to: &result)
@@ -312,6 +334,104 @@ final class SecureEnclaveIphoneMediatedCustodyRewrapProducer: @unchecked Sendabl
 
     private static func hexadecimal(_ value: Data) -> String {
         value.map { String(format: "%02x", $0) }.joined()
+    }
+}
+
+/// Dedicated PXRB receipt-generation producer. It shares only reviewed crypto
+/// primitives with the older generic flow; its proof purpose, challenge
+/// domain, generation namespace and wrap AAD are fixed independently.
+final class SecureEnclaveSiteRootBundleReceiptRewrapProducerV1: @unchecked Sendable {
+    private let signer: SecureEnclaveSigner
+
+    init() throws {
+        signer = try SecureEnclaveSigner(
+            namespace: "site-root-delegation-v1",
+            authenticationReason: "Unlock the Site Root receipt authority"
+        )
+    }
+
+    func produce(
+        _ presentation: IphoneMediatedCustodyRewrapPresentationV1,
+        using ceremony: FaceIDCeremonyContext
+    ) throws -> IphoneMediatedCustodyRewrapSubmissionV1 {
+        guard presentation.keyGeneration.hasPrefix("site-root-bundle-receipt-") else {
+            throw PlatformFailure.custodyRewrapUnavailable
+        }
+        let publicKey = try signer.publicKey(using: ceremony).compressedSEC1
+        let deviceID = "site-root-" + Data(SHA256.hash(data: publicKey)).map {
+            String(format: "%02x", $0)
+        }.joined()
+        guard deviceID == presentation.deviceKeyID else {
+            throw PlatformFailure.custodyRewrapUnavailable
+        }
+        let protected = try DetachedES256Cose.protectedHeaders(kid: presentation.deviceKeyID)
+        let structure = try DetachedES256Cose.signatureStructure(
+            protected: protected, payload: presentation.canonicalChallenge
+        )
+        let signature = try signer.sign(message: structure, using: ceremony)
+        let cose = try DetachedES256Cose.envelope(protected: protected, signature: signature)
+
+        var oldShared = try signer.deriveECDHSharedSecret(
+            peerPublicCompressedSEC1: presentation.existingHostEphemeralPublicSEC1,
+            using: ceremony
+        )
+        defer { Self.zeroize(&oldShared) }
+        let oldAAD = Self.aad(presentation, host: presentation.existingHostEphemeralPublicSEC1)
+        let oldKey = SecureEnclaveIphoneMediatedCustodyRewrapProducer.portableWrapKey(
+            sharedSecret: oldShared, aadDigest: oldAAD
+        )
+        var seed = try SecureEnclaveIphoneMediatedCustodyRewrapProducer.open(
+            presentation.existingEncryptedRecord, key: oldKey, aadDigest: oldAAD
+        )
+        defer { Self.zeroize(&seed) }
+        guard seed.count == 32,
+              let signing = try? Curve25519.Signing.PrivateKey(rawRepresentation: seed),
+              signing.publicKey.rawRepresentation == presentation.expectedEd25519PublicKey
+        else { throw PlatformFailure.custodyRewrapUnavailable }
+
+        var freshShared = try signer.deriveECDHSharedSecret(
+            peerPublicCompressedSEC1: presentation.freshHostEphemeralPublicSEC1,
+            using: ceremony
+        )
+        defer { Self.zeroize(&freshShared) }
+        let freshAAD = Self.aad(presentation, host: presentation.freshHostEphemeralPublicSEC1)
+        let freshKey = SecureEnclaveIphoneMediatedCustodyRewrapProducer.portableWrapKey(
+            sharedSecret: freshShared, aadDigest: freshAAD
+        )
+        let ciphertext = try SecureEnclaveIphoneMediatedCustodyRewrapProducer.seal(
+            seed, key: freshKey, aadDigest: freshAAD
+        )
+        return IphoneMediatedCustodyRewrapSubmissionV1(
+            correlation: presentation.correlation,
+            canonicalPayload: presentation.canonicalChallenge,
+            deviceKeyID: presentation.deviceKeyID,
+            delegationSerial: presentation.delegationSerial,
+            siteTrustDomain: presentation.siteTrustDomain,
+            purpose: SiteRootBundleReceiptRewrapV1.purpose,
+            coseSign1: cose,
+            rewrappedCiphertext: ciphertext
+        )
+    }
+
+    static func aad(
+        _ presentation: IphoneMediatedCustodyRewrapPresentationV1,
+        host: Data
+    ) -> Data {
+        var material = Data()
+        for value in [
+            Data(SiteRootBundleReceiptRewrapV1.purpose.utf8),
+            Data(presentation.siteTrustDomain.utf8), Data(presentation.keyGeneration.utf8),
+            Data(presentation.deviceKeyID.utf8), host,
+        ] {
+            material.append(contentsOf: UInt32(value.count).bigEndianBytes)
+            material.append(value)
+        }
+        return Data(SHA256.hash(data: material))
+    }
+
+    private static func zeroize(_ value: inout Data) {
+        guard !value.isEmpty else { return }
+        value.resetBytes(in: value.startIndex ..< value.endIndex)
     }
 }
 

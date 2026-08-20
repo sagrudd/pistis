@@ -4,6 +4,40 @@ import XCTest
 @testable import Pistis
 
 final class SiteRootAppAttestBootstrapTransportTests: XCTestCase {
+    func testCustodyFailureStagesAreStableAndRedacted() {
+        XCTAssertEqual(
+            AuthorityCustodyContinuationStage.allCases.map(\.rawValue),
+            [
+                "initial-status", "fetch-challenge", "generate-assertion",
+                "submit-assertion", "resolve-custody-lifecycle", "prepare-custody",
+                "begin-custody", "complete-custody", "retain-completion",
+            ]
+        )
+        for stage in AuthorityCustodyContinuationStage.allCases {
+            XCTAssertTrue(stage.failureMessage.contains(stage.rawValue))
+            XCTAssertFalse(stage.failureMessage.contains("https://"))
+            XCTAssertFalse(stage.failureMessage.contains("key"))
+            XCTAssertFalse(stage.failureMessage.contains("token"))
+        }
+    }
+
+    func testAcceptedAssertionUsesExactObservedRecoveryLifecycle() throws {
+        let transition = try AuthorityCustodyAcceptedAssertionTransitionV2.next(
+            after: .appAttestAssertionRequired,
+            observedLifecycle: .recoveryRequired
+        )
+
+        XCTAssertEqual(transition.status, .recoveryRequired)
+        XCTAssertEqual(transition.stage, .prepareCustody)
+        XCTAssertNotEqual(transition.stage, .fetchChallenge)
+        XCTAssertThrowsError(
+            try AuthorityCustodyAcceptedAssertionTransitionV2.next(
+                after: .appAttestAssertionRequired,
+                observedLifecycle: .appAttestAssertionRequired
+            )
+        )
+    }
+
     override func tearDown() {
         BootstrapURLProtocol.reset()
         super.tearDown()
@@ -76,6 +110,109 @@ final class SiteRootAppAttestBootstrapTransportTests: XCTestCase {
         try await assertSubmissionDenied(response: extended)
     }
 
+    func testAuthorityCustodyStatusUsesOnlyFixedNoStoreState() async throws {
+        let response = Data(
+            #"{"schema":"monas.first-authority-custody-status.v2","state":"recovery-required"}"#.utf8
+        )
+        BootstrapURLProtocol.configure(response: response, status: 200)
+        let configuration = URLSessionConfiguration.ephemeral
+        configuration.protocolClasses = [BootstrapURLProtocol.self]
+        let transport = try MonasSiteRootDelegationTransport(
+            authorityOrigin: try XCTUnwrap(URL(string: "https://monas.example.test")),
+            expectedSPKISHA256: Data(repeating: 0x11, count: 32),
+            configuration: configuration
+        )
+        let status = try await transport.authorityCustodyStatusV2()
+        XCTAssertEqual(status, .recoveryRequired)
+        let request = try XCTUnwrap(BootstrapURLProtocol.requests().first)
+        XCTAssertEqual(
+            request.url?.path, "/v1/pistis/site-trust/authority-custody/v2/status"
+        )
+        XCTAssertEqual(request.httpMethod, "GET")
+        XCTAssertNil(request.value(forHTTPHeaderField: "Cookie"))
+        XCTAssertNil(request.value(forHTTPHeaderField: "Authorization"))
+
+        BootstrapURLProtocol.configure(
+            response: Data(
+                #"{"schema":"monas.first-authority-custody-status.v2","state":"unknown"}"#.utf8
+            ), status: 200
+        )
+        do {
+            _ = try await transport.authorityCustodyStatusV2()
+            XCTFail("unknown custody status unexpectedly selected a mode")
+        } catch {
+            XCTAssertEqual(error as? PlatformFailure, .siteRootAuthorityUnavailable)
+        }
+    }
+
+    func testAuthorityCustodyStatusTreatsEmptyNoStore503AsAssertionRequired() async throws {
+        BootstrapURLProtocol.configure(response: Data(), status: 503)
+        let configuration = URLSessionConfiguration.ephemeral
+        configuration.protocolClasses = [BootstrapURLProtocol.self]
+        let transport = try MonasSiteRootDelegationTransport(
+            authorityOrigin: try XCTUnwrap(URL(string: "https://monas.example.test")),
+            expectedSPKISHA256: Data(repeating: 0x11, count: 32),
+            configuration: configuration
+        )
+
+        let status = try await transport.authorityCustodyStatusV2()
+        XCTAssertEqual(status, .appAttestAssertionRequired)
+    }
+
+    func testAuthorityCustodyStatusRejects503WithBody() async throws {
+        BootstrapURLProtocol.configure(response: Data("unexpected".utf8), status: 503)
+        let configuration = URLSessionConfiguration.ephemeral
+        configuration.protocolClasses = [BootstrapURLProtocol.self]
+        let transport = try MonasSiteRootDelegationTransport(
+            authorityOrigin: try XCTUnwrap(URL(string: "https://monas.example.test")),
+            expectedSPKISHA256: Data(repeating: 0x11, count: 32),
+            configuration: configuration
+        )
+
+        do {
+            _ = try await transport.authorityCustodyStatusV2()
+            XCTFail("non-empty unavailable response selected an assertion state")
+        } catch {
+            XCTAssertEqual(error as? PlatformFailure, .siteRootAuthorityUnavailable)
+        }
+    }
+
+    func testInitialStaticCeremonyAcceptsOnlyAnEmpty204Completion() async throws {
+        BootstrapURLProtocol.configure(response: Data(), status: 204)
+        let configuration = URLSessionConfiguration.ephemeral
+        configuration.protocolClasses = [BootstrapURLProtocol.self]
+        let transport = try MonasSiteRootDelegationTransport(
+            authorityOrigin: try XCTUnwrap(URL(string: "https://monas.example.test")),
+            expectedSPKISHA256: Data(repeating: 0x11, count: 32),
+            configuration: configuration
+        )
+
+        try await transport.submitInitialStaticCompletion(submissionRequest())
+
+        let requests = BootstrapURLProtocol.requests()
+        XCTAssertEqual(requests.count, 1)
+        XCTAssertEqual(requests[0].url?.path, MonasSiteRootDelegationEndpointV1.submitPath)
+        XCTAssertNil(requests[0].value(forHTTPHeaderField: "Cookie"))
+        XCTAssertNil(requests[0].value(forHTTPHeaderField: "Authorization"))
+    }
+
+    func testInitialStaticCeremonyRejectsBootstrapAndNonempty204() async throws {
+        try await assertInitialStaticCompletionDenied(
+            response: responseJSON(
+                origin: "https://monas.example.test",
+                spki: Data(repeating: 0x11, count: 32),
+                ceremonyID: Data(repeating: 0x22, count: 16),
+                challenge: Data(repeating: 0x33, count: 32),
+                expiresAt: nowMillis() + 60_000
+            ),
+            status: 200
+        )
+        try await assertInitialStaticCompletionDenied(
+            response: Data("unexpected".utf8),
+            status: 204
+        )
+    }
+
     func testAlternateOriginNoncanonicalOrExpiredBootstrapIsTerminal() async throws {
         let alternateOrigin = responseJSON(
             origin: "https://other.example.test",
@@ -118,6 +255,23 @@ final class SiteRootAppAttestBootstrapTransportTests: XCTestCase {
         do {
             _ = try await transport.submit(submissionRequest())
             XCTFail("only the exact bootstrap response may be accepted")
+        } catch {
+            XCTAssertEqual(error as? PlatformFailure, .siteRootAuthorityUnavailable)
+        }
+    }
+
+    private func assertInitialStaticCompletionDenied(response: Data, status: Int) async throws {
+        BootstrapURLProtocol.configure(response: response, status: status)
+        let configuration = URLSessionConfiguration.ephemeral
+        configuration.protocolClasses = [BootstrapURLProtocol.self]
+        let transport = try MonasSiteRootDelegationTransport(
+            authorityOrigin: try XCTUnwrap(URL(string: "https://monas.example.test")),
+            expectedSPKISHA256: Data(repeating: 0x11, count: 32),
+            configuration: configuration
+        )
+        do {
+            try await transport.submitInitialStaticCompletion(submissionRequest())
+            XCTFail("only an empty static completion may be accepted")
         } catch {
             XCTAssertEqual(error as? PlatformFailure, .siteRootAuthorityUnavailable)
         }
@@ -190,7 +344,7 @@ private final class BootstrapURLProtocol: URLProtocol, @unchecked Sendable {
             url: request.url!,
             statusCode: assertion ? 202 : configuredStatus,
             httpVersion: "HTTP/1.1",
-            headerFields: assertion ? ["Cache-Control": "no-store"] : nil
+            headerFields: ["Cache-Control": "no-store"]
         )!
         client?.urlProtocol(self, didReceive: response, cacheStoragePolicy: .notAllowed)
         if !assertion {

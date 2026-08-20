@@ -179,12 +179,19 @@ struct MonasSiteRootDelegationSubmissionRequestV1: Sendable {
 /// Boundary for the separately reviewed Monas Site Root submission transport.
 ///
 /// The UI depends on this protocol rather than treating QR text as a network
-/// capability. A successful response is the exact, short-lived bootstrap that
-/// must be consumed immediately by the separately pinned App Attest transport;
-/// it is not a receipt, fact, session, or browser credential.
+/// capability. A successful normal response is the exact, short-lived
+/// bootstrap that must be consumed immediately by the separately pinned App
+/// Attest transport; it is not a receipt, fact, session, or browser
+/// credential. The attended initial Site Root ceremony has a distinct,
+/// terminal completion response because it establishes the Site Trust
+/// authority before the later App Attest session ceremony exists.
 protocol MonasSiteRootDelegationSubmitting: Sendable {
     func submit(_ request: MonasSiteRootDelegationSubmissionRequestV1) async throws
         -> MonasAppAttestCeremonyBootstrap
+
+    func submitInitialStaticCompletion(
+        _ request: MonasSiteRootDelegationSubmissionRequestV1
+    ) async throws
 }
 
 struct UnavailableMonasSiteRootDelegationTransport: MonasSiteRootCeremonyTransport {
@@ -193,6 +200,10 @@ struct UnavailableMonasSiteRootDelegationTransport: MonasSiteRootCeremonyTranspo
     func submit(_: MonasSiteRootDelegationSubmissionRequestV1) async throws
         -> MonasAppAttestCeremonyBootstrap
     {
+        throw PlatformFailure.productionEnvelopeUnavailable
+    }
+
+    func submitInitialStaticCompletion(_: MonasSiteRootDelegationSubmissionRequestV1) async throws {
         throw PlatformFailure.productionEnvelopeUnavailable
     }
 
@@ -220,6 +231,21 @@ final class SecureEnclaveSiteRootProofProducer: @unchecked Sendable {
 
     func register() throws -> SiteRootKeyRegistrationV1 {
         let publicKey = try signer.create()
+        let digest = SHA256.hash(data: publicKey.compressedSEC1)
+        return SiteRootKeyRegistrationV1(
+            schema: SiteRootKeyRegistrationV1.schema,
+            deviceKeyID: "site-root-" + Data(digest).hexadecimalString,
+            publicKeyCompressedSEC1: publicKey.compressedSEC1,
+            secureEnclaveAttestation: "not-asserted"
+        )
+    }
+
+    /// Loads an already registered Site Root public key without creating a
+    /// new key or producing a proof. This supports only non-authorising local
+    /// lifecycle reconciliation after an application update.
+    func existingRegistration() throws -> SiteRootKeyRegistrationV1? {
+        guard try signer.hasExistingKey() else { return nil }
+        let publicKey = try signer.publicKey()
         let digest = SHA256.hash(data: publicKey.compressedSEC1)
         return SiteRootKeyRegistrationV1(
             schema: SiteRootKeyRegistrationV1.schema,
@@ -265,6 +291,15 @@ enum DetachedES256Cose {
         return Data([0xa2, 0x01, 0x26, 0x04]) + cborByteString(bytes)
     }
 
+    static func protectedHeaders(kid: Data, contentType: String) throws -> Data {
+        guard !kid.isEmpty, kid.count <= 128,
+              !contentType.isEmpty, contentType.utf8.count <= 128
+        else { throw PlatformFailure.invalidConfiguration }
+        // Canonical protected map: alg (-7), content type, key identifier.
+        return Data([0xa3, 0x01, 0x26, 0x03]) + cborText(contentType)
+            + Data([0x04]) + cborByteString(kid)
+    }
+
     static func signatureStructure(protected: Data, payload: Data) throws -> Data {
         guard !payload.isEmpty, payload.count <= SiteRootDelegationPresentationV1.maximumPayloadLength else {
             throw PlatformFailure.invalidConfiguration
@@ -293,9 +328,19 @@ enum DetachedES256Cose {
         } else if count <= Int(UInt8.max) {
             result = Data([major << 5 | 24, UInt8(count)])
         } else if count <= Int(UInt16.max) {
-            result = Data([major << 5 | 25, UInt8(count >> 8), UInt8(count)])
+            result = Data([
+                major << 5 | 25,
+                UInt8(truncatingIfNeeded: count >> 8),
+                UInt8(truncatingIfNeeded: count),
+            ])
         } else {
-            result = Data([major << 5 | 26, UInt8(count >> 24), UInt8(count >> 16), UInt8(count >> 8), UInt8(count)])
+            result = Data([
+                major << 5 | 26,
+                UInt8(truncatingIfNeeded: count >> 24),
+                UInt8(truncatingIfNeeded: count >> 16),
+                UInt8(truncatingIfNeeded: count >> 8),
+                UInt8(truncatingIfNeeded: count),
+            ])
         }
         result.append(bytes)
         return result

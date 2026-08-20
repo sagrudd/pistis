@@ -114,7 +114,7 @@ final class ServerDrivenEnrolmentTransportTests: XCTestCase {
         } catch {
             XCTAssertEqual(
                 error as? PlatformFailure,
-                .productionEnvelopeUnavailable
+                .enrolmentReceiptInvalid
             )
         }
         let bodies = EnrolmentURLProtocol.recordedBodies()

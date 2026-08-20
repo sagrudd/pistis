@@ -10,12 +10,16 @@
 
 mod app_attest_session_handoff;
 mod binding;
+mod mobile_enrolment_receipt;
 mod physical_iphone_vector;
 mod readiness;
 mod session;
+mod site_origin_relocation_approval;
+mod site_root_genesis_device_binding;
 mod site_trust;
 mod site_trust_assertion_ingress;
 mod site_trust_registration_acceptance;
+mod site_x509_first_provision_offline_approval;
 
 pub use app_attest_session_handoff::{
     MONAS_APP_ATTEST_SESSION_HANDOFF_PROFILE_V1, MonasAppAttestSessionHandoffErrorV1,
@@ -24,6 +28,11 @@ pub use app_attest_session_handoff::{
 pub use binding::{
     BindingExpectation, BindingFailure, BindingResolver, BindingState, Generation,
     OperationPurpose, ResolvedBinding,
+};
+pub use mobile_enrolment_receipt::{
+    ExpectedProviderEnrolmentConfirmationV2, MobileEnrolmentReceiptErrorV2,
+    PISTIS_MOBILE_ENROLMENT_RECEIPT_PROFILE_V2, ProviderEnrolmentConfirmResponseV2,
+    VerifiedMobileEnrolmentReceiptV2, verify_provider_enrolment_confirm_response_v2,
 };
 pub use physical_iphone_vector::{
     MONAS_APP_ATTEST_VERIFIER_PROFILE_V1, PHYSICAL_IPHONE_APP_ATTEST_VECTOR_PROFILE_V1,
@@ -41,6 +50,17 @@ pub use session::{
     AuditCorrelationId, HostSessionError, HostSessionIssuer, HostSessionOutcome,
     HostSessionRequest, SessionIdDigest,
 };
+pub use site_origin_relocation_approval::{
+    PISTIS_SITE_ORIGIN_RELOCATION_AUDIENCE_V1, PROXENOS_SITE_ORIGIN_RELOCATION_PURPOSE_V1,
+    SiteOriginRelocationAppAttestAcceptanceV1, SiteOriginRelocationAppAttestOutcomeV1,
+    SiteOriginRelocationAppAttestRequestV1, SiteOriginRelocationApprovalErrorV1,
+    SiteOriginRelocationProposalV1, site_origin_relocation_client_data_hash_v1,
+};
+pub use site_root_genesis_device_binding::{
+    ExpectedSiteRootGenesisDeviceBindingV1, SITE_ROOT_GENESIS_DEVICE_BINDING_PROFILE_V1,
+    SiteRootGenesisBindingContextV1, SiteRootGenesisDeviceBindingErrorV1,
+    VerifiedSiteRootGenesisDeviceBindingV1, decode_and_verify_site_root_genesis_device_binding_v1,
+};
 pub use site_trust::{
     AppleAppAttestAssertionV1, AppleAppAttestVerifierV1, AttestationVerificationFailureV1,
     SiteTrustAttestationChallengeDigestV1, SiteTrustAttestationRequestV1,
@@ -52,17 +72,45 @@ pub use site_trust::{
     issue_site_trust_human_authority_fact_v1,
 };
 pub use site_trust_assertion_ingress::{
+    CustodyRotationAppAttestFailureStageV1, CustodyRotationAppAttestOutcomeV1,
+    CustodyRotationAppAttestRequestV1, MONAS_MTGS_RECOVERY_AUDIENCE_V1,
     MONAS_PRODUCTION_APP_ATTEST_APP_IDENTIFIER_V1, MonasSiteTrustAppAttestAtomicStoreV1,
     MonotonicAppAttestCounterV1, ProductionAppleAppAttestAssertionVerifierV1,
-    SITE_TRUST_APP_ATTEST_ASSERTION_INGRESS_PROFILE_V1, ServerHeldMonasAppAttestAcceptanceV1,
+    SITE_TRUST_APP_ATTEST_ASSERTION_INGRESS_PROFILE_V1,
+    ServerHeldCustodyRotationAppAttestAcceptanceV1, ServerHeldMonasAppAttestAcceptanceV1,
     SiteTrustAppAttestAssertionIngressErrorV1, SiteTrustAppAttestAssertionIngressOutcomeV1,
     SiteTrustAppAttestAssertionRedactedVectorV1, SiteTrustAppAttestMobileSubmissionV1,
     decode_site_trust_app_attest_mobile_submission_v1,
     issue_site_trust_human_authority_fact_from_server_held_app_attest_assertion_v1,
+    verify_custody_rotation_app_attest_assertion_diagnostic_v1,
+    verify_custody_rotation_app_attest_assertion_v1,
+    verify_site_origin_relocation_app_attest_assertion_v1,
 };
 pub use site_trust_registration_acceptance::{
     MONAS_APP_ATTEST_REVIEWED_MANIFEST_PROFILE_V1, PISTIS_APP_ATTEST_REGISTRATION_PROFILE_V1,
     ProductionAppleAppAttestAcceptanceFactoryV1, SiteTrustAppAttestRegistrationErrorV1,
     SiteTrustAppAttestRegistrationSubmissionV1,
     decode_site_trust_app_attest_registration_submission_v1,
+};
+pub use site_x509_first_provision_offline_approval::{
+    SiteX509FirstProvisionOfflineAppAttestAcceptanceV2,
+    SiteX509FirstProvisionOfflineAppAttestOutcomeV2, SiteX509FirstProvisionOfflineApprovalErrorV2,
+    encode_site_x509_first_provision_offline_approval_v2,
+    verify_site_x509_first_provision_offline_app_attest_assertion_v2,
+};
+pub use thesaurophylax_api::site_x509_first_provision_offline_v2::{
+    SITE_X509_FIRST_PROVISION_APP_ATTEST_TRANSCRIPT_V2,
+    SITE_X509_FIRST_PROVISION_OFFLINE_AUDIENCE_V2,
+    SITE_X509_FIRST_PROVISION_OFFLINE_MAXIMUM_QR_TEXT_V2,
+    SITE_X509_FIRST_PROVISION_OFFLINE_PRESENTATION_QR_PREFIX_V2,
+    SITE_X509_FIRST_PROVISION_OFFLINE_PURPOSE_V2,
+    SITE_X509_FIRST_PROVISION_OFFLINE_RESPONSE_QR_PREFIX_V2,
+    SiteX509FirstProvisionOfflineBindingV2, SiteX509FirstProvisionOfflineContextV2,
+    SiteX509FirstProvisionOfflinePresentationV2, SiteX509FirstProvisionOfflineResponseV2,
+    SiteX509FirstProvisionOfflineServiceV2,
+    decode_site_x509_first_provision_offline_presentation_qr_text_v2,
+    decode_site_x509_first_provision_offline_response_qr_text_v2,
+    encode_site_x509_first_provision_offline_presentation_qr_text_v2,
+    encode_site_x509_first_provision_offline_response_qr_text_v2,
+    site_x509_first_provision_app_attest_client_data_hash_v2,
 };

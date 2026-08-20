@@ -1,52 +1,113 @@
 import Foundation
 
-/// Public, signed application configuration for the one Monas Site Root
-/// authority that this Pistis build may contact.
+/// Public, signed application configuration for one Monas Site Root authority
+/// reachable at a bounded set of explicitly pinned network origins.
 ///
 /// The value is a build-time deployment commitment, not QR, browser, local
 /// network, account, or user input. Missing or malformed configuration keeps
 /// the Site Root transport unavailable rather than selecting an authority.
 struct MonasSiteRootAuthorityConfiguration: Sendable {
     static let infoDictionaryKey = "PistisMonasSiteRootAuthorityOrigin"
+    static let alternateInfoDictionaryKey = "PistisMonasSiteRootAuthorityAlternateOrigin"
+    static let trustModeInfoDictionaryKey = "PistisMonasSiteRootAuthorityTrustMode"
     static let spkiInfoDictionaryKey = "PistisMonasSiteRootAuthoritySPKISHA256"
+    static let rootDERInfoDictionaryKey = "PistisMonasSiteRootAuthorityRootDERB64URL"
+    static let rootFingerprintInfoDictionaryKey =
+        "PistisMonasSiteRootAuthorityRootSHA256B64URL"
+    static let rootGenerationInfoDictionaryKey = "PistisMonasSiteRootAuthorityRootGeneration"
+
+    static let bootstrapTrustMode = "bootstrap-leaf-spki-v1"
+    static let siteRootTrustMode = "site-root-generation-v1"
 
     let authorityOrigin: URL
-    let tlsSPKISHA256: Data
+    let authorityOrigins: [URL]
+    let trustPolicy: MonasServerTrustPolicy
 
     init(rawValue: String, spkiB64URL: String) throws {
-        guard !rawValue.isEmpty,
-              !rawValue.contains("$("),
-              let authorityOrigin = URL(string: rawValue),
-              authorityOrigin.absoluteString == rawValue,
-              authorityOrigin.scheme == "https",
-              authorityOrigin.host != nil,
-              authorityOrigin.user == nil,
-              authorityOrigin.password == nil,
-              authorityOrigin.path.isEmpty,
-              authorityOrigin.query == nil,
-              authorityOrigin.fragment == nil,
-              let tlsSPKISHA256 = Self.decodeCanonicalBase64URL(spkiB64URL),
+        guard let tlsSPKISHA256 = Self.decodeCanonicalBase64URL(spkiB64URL),
               tlsSPKISHA256.count == 32,
               !tlsSPKISHA256.allSatisfy({ $0 == 0 })
         else { throw PlatformFailure.invalidConfiguration }
-        self.authorityOrigin = authorityOrigin
-        self.tlsSPKISHA256 = tlsSPKISHA256
+        try self.init(rawValue: rawValue, trustPolicy: .bootstrapLeafSPKI(tlsSPKISHA256))
     }
 
     init(infoDictionary: [String: Any]) throws {
         guard let rawValue = infoDictionary[Self.infoDictionaryKey] as? String,
-              let spkiB64URL = infoDictionary[Self.spkiInfoDictionaryKey] as? String
+              let trustMode = infoDictionary[Self.trustModeInfoDictionaryKey] as? String
         else {
             throw PlatformFailure.invalidConfiguration
         }
-        try self.init(rawValue: rawValue, spkiB64URL: spkiB64URL)
+        let alternate = (infoDictionary[Self.alternateInfoDictionaryKey] as? String)
+            .flatMap { $0.isEmpty ? nil : $0 }
+        let rawOrigins = [rawValue] + (alternate.map { [$0] } ?? [])
+        switch trustMode {
+        case Self.bootstrapTrustMode:
+            guard let spki = infoDictionary[Self.spkiInfoDictionaryKey] as? String,
+                  Self.empty(infoDictionary[Self.rootDERInfoDictionaryKey]),
+                  Self.empty(infoDictionary[Self.rootFingerprintInfoDictionaryKey]),
+                  Self.empty(infoDictionary[Self.rootGenerationInfoDictionaryKey])
+            else { throw PlatformFailure.invalidConfiguration }
+            let tlsSPKI = try Self.decodeSPKI(spki)
+            try self.init(
+                rawValues: rawOrigins,
+                trustPolicy: .bootstrapLeafSPKI(tlsSPKI)
+            )
+        case Self.siteRootTrustMode:
+            guard Self.empty(infoDictionary[Self.spkiInfoDictionaryKey]),
+                  let rootText = infoDictionary[Self.rootDERInfoDictionaryKey] as? String,
+                  let fingerprintText = infoDictionary[Self.rootFingerprintInfoDictionaryKey]
+                    as? String,
+                  let generationText = infoDictionary[Self.rootGenerationInfoDictionaryKey]
+                    as? String,
+                  let generation = UInt64(generationText), generation > 0,
+                  let rootDER = Self.decodeCanonicalBase64URL(rootText),
+                  let fingerprint = Self.decodeCanonicalBase64URL(fingerprintText)
+            else { throw PlatformFailure.invalidConfiguration }
+            try self.init(
+                rawValues: rawOrigins,
+                trustPolicy: MonasServerTrustPolicy(
+                    siteRootDER: rootDER,
+                    fingerprintSHA256: fingerprint,
+                    generation: generation
+                )
+            )
+        default:
+            throw PlatformFailure.invalidConfiguration
+        }
+    }
+
+    private init(rawValue: String, trustPolicy: MonasServerTrustPolicy) throws {
+        guard !rawValue.isEmpty, !rawValue.contains("$("),
+              let origin = URL(string: rawValue), origin.absoluteString == rawValue,
+              origin.scheme == "https", origin.host != nil,
+              origin.user == nil, origin.password == nil, origin.path.isEmpty,
+              origin.query == nil, origin.fragment == nil
+        else { throw PlatformFailure.invalidConfiguration }
+        authorityOrigin = origin
+        authorityOrigins = [origin]
+        self.trustPolicy = trustPolicy
+    }
+
+    private init(rawValues: [String], trustPolicy: MonasServerTrustPolicy) throws {
+        let origins = try rawValues.map(Self.parseOrigin)
+        guard !origins.isEmpty,
+              origins.count <= 4,
+              Set(origins.map(\.absoluteString)).count == origins.count
+        else { throw PlatformFailure.invalidConfiguration }
+        authorityOrigin = origins[0]
+        authorityOrigins = origins
+        self.trustPolicy = trustPolicy
     }
 
     func makeTransport() throws -> MonasSiteRootDelegationTransport {
         try MonasSiteRootDelegationTransport(
-            authorityOrigin: authorityOrigin,
-            expectedSPKISHA256: tlsSPKISHA256
+            authorityOrigins: authorityOrigins,
+            trustPolicy: trustPolicy
         )
+    }
+
+    private static func empty(_ value: Any?) -> Bool {
+        value == nil || (value as? String)?.isEmpty == true
     }
 
     private static func decodeCanonicalBase64URL(_ value: String) -> Data? {
@@ -67,6 +128,21 @@ struct MonasSiteRootAuthorityConfiguration: Sendable {
                   .replacingOccurrences(of: "=", with: "") == value
         else { return nil }
         return decoded
+    }
+
+    private static func decodeSPKI(_ value: String) throws -> Data {
+        guard let decoded = decodeCanonicalBase64URL(value), decoded.count == 32,
+              !decoded.allSatisfy({ $0 == 0 })
+        else { throw PlatformFailure.invalidConfiguration }
+        return decoded
+    }
+
+    private static func parseOrigin(_ rawValue: String) throws -> URL {
+        guard !rawValue.isEmpty, !rawValue.contains("$("),
+              let origin = URL(string: rawValue), origin.absoluteString == rawValue,
+              MonasSiteRootDelegationTransport.isValidOrigin(origin)
+        else { throw PlatformFailure.invalidConfiguration }
+        return origin
     }
 }
 

@@ -290,9 +290,27 @@ final class PlatformPolicyTests: XCTestCase {
         }
     }
 
-    func testMonasSiteRootTransportFactoryFailsClosedWithoutBuildConfiguration() {
-        let transport = ProductionMonasSiteRootTransportFactory.make(infoDictionary: [:])
+    func testMonasSiteRootTransportFactoryFailsClosedUntilRuntimeProfileIsVerified() {
+        let transport = ProductionMonasSiteRootTransportFactory.make()
         XCTAssertTrue(transport is UnavailableMonasSiteRootDelegationTransport)
+    }
+
+    func testRuntimeProfileFactoryDoesNotMakeBundleConfigurationAuthoritative() throws {
+        let transport = ProductionMonasSiteRootTransportFactory.make(
+            verifiedRuntimeProfile: [
+                MonasSiteRootAuthorityConfiguration.infoDictionaryKey:
+                    "https://host-a.example.test",
+                MonasSiteRootAuthorityConfiguration.trustModeInfoDictionaryKey:
+                    MonasSiteRootAuthorityConfiguration.bootstrapTrustMode,
+                MonasSiteRootAuthorityConfiguration.spkiInfoDictionaryKey:
+                    "ERERERERERERERERERERERERERERERERERERERERERE",
+            ]
+        )
+        XCTAssertTrue(transport is MonasSiteRootDelegationTransport)
+        XCTAssertFalse(
+            ProductionMonasSiteRootTransportFactory.make()
+                is MonasSiteRootDelegationTransport
+        )
     }
 
     func testFirstProvisionBrokerTransportUsesOnlyTheFixedInstallOrigin() throws {

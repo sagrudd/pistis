@@ -849,9 +849,8 @@ struct SiteRootConvergenceServiceV2: Sendable {
     }
 
     static func validateBrokerEnrolledSiteRootPublicKeyID(
-        _ expectedKeyID: Data?, actualPublicKeyCompressedSEC1: Data
+        _ expectedKeyID: Data, actualPublicKeyCompressedSEC1: Data
     ) throws {
-        guard let expectedKeyID else { return }
         guard Data(SHA256.hash(data: actualPublicKeyCompressedSEC1)) == expectedKeyID else {
             throw PlatformFailure.siteRootAuthorityKeyMismatch
         }

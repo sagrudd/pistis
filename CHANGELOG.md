@@ -4,11 +4,17 @@
 
 ### Changed
 
+- Make the Pistis release host-agnostic (0.19.8, iOS build 14). Customer host
+  origin, TLS pins, Site Root certificates, generations and installation
+  identity are runtime attended-install data, never compiled into
+  ``Info.plist``. The generic binary remains capable of onboarding multiple
+  hosts through the fixed install broker.
+
 - Enforce the optional `enrolled_site_root_public_key_id_b64url` broker
   presentation binding in Pistis. When present, it must be canonical base64url
   for one 32-byte key ID and must match the SHA-256 digest of the loaded
   compressed Secure Enclave Site Root public key; mismatches fail before proof
-  submission. The iOS app release is Pistis 0.19.7 (iOS build 13).
+  submission.
 
 - Reserve the protected first-install Site X.509 QR before Face ID and App
   Attest. A failed or interrupted approval is terminal for that presentation;

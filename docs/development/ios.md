@@ -105,53 +105,40 @@ session credential. The assertion result is a custody presentation only after
 Monas has retained its protected server-side session; it is never a browser or
 session credential.
 
-### Production Site Root composition
+### Host-agnostic Site Root composition
 
-The signed Pistis build supplies exactly one public
-``PistisMonasSiteRootAuthorityOrigin`` value through the Xcode
-``PISTIS_MONAS_SITE_ROOT_AUTHORITY_ORIGIN`` build setting and one exclusive
-trust mode through ``PISTIS_MONAS_SITE_ROOT_AUTHORITY_TRUST_MODE``. Before
-PXFP, ``bootstrap-leaf-spki-v1`` requires the exact canonical non-zero
-32-byte base64url leaf digest in
-``PISTIS_MONAS_SITE_ROOT_AUTHORITY_SPKI_SHA256`` and requires every Site-root
-field to be empty.
+The released Pistis binary contains only the reviewed Pistis/App Attest
+application identity and the global ``install.mnemosyne.co.uk`` broker
+identity. It contains no customer hostname, IP address, TLS certificate, Site
+Root key, root generation, or installation identity. The old
+``PISTIS_MONAS_SITE_ROOT_*`` build settings and ``Info.plist`` fields are not
+part of the release contract.
 
-After PXFP, the replacement Release build uses
-``site-root-generation-v1``. It requires the exact canonical root DER and its
-SHA-256 digest in
-``PISTIS_MONAS_SITE_ROOT_AUTHORITY_ROOT_DER_B64URL`` and
-``PISTIS_MONAS_SITE_ROOT_AUTHORITY_ROOT_SHA256_B64URL``, plus the positive
-``PISTIS_MONAS_SITE_ROOT_AUTHORITY_ROOT_GENERATION``. The SPKI setting must be
-empty. Pistis validates the digest and certificate object before constructing
-the transport, then applies normal TLS hostname/private-IP and validity policy
-while allowing a chain only to that exact root. It does not accept the prior
-leaf, platform roots, another Site generation, or a dual fallback.
+The attended installation service supplies the deployment-specific facts at
+runtime. The host registers a one-use transaction with the fixed broker; the
+broker relays a signed host-binding presentation containing the installation
+identity, Site Trust Domain, canonical HTTPS origin, TLS trust material,
+generation, transaction binding, application identity and short expiry. Pistis
+verifies the signature and exact binding before contacting the host, displays
+the host identity and trust words, and requires Face ID before creating the
+Secure Enclave/App Attest identity. A plain HTTPS URL or an unsigned broker
+``state=accepted`` response is never sufficient.
 
-These fields are not secret, but together they are a signed deployment
-commitment: QR, browser, local-network and user input cannot override them. An
-absent, mixed, unresolved or inconsistent setting leaves the Site Root
-authority unavailable. The PXFP public root artefact may be encoded for the
-Release build with ``openssl base64 -A | tr '+/' '-_' | tr -d '='``; the
-independently recorded root generation and SHA-256 digest remain mandatory.
+The verified runtime profile is retained per installation in protected local
+storage only after the host accepts the signed completion receipt. Multiple
+hosts therefore use the same binary and remain separate records; selecting a
+host selects its verified profile rather than an operator-entered hostname.
+Replays, expiry, changed origin, changed TLS material, changed installation or
+transaction, cross-host substitution, and downgrade all fail closed.
 
-For the first Site Root device only, the existing unified scanner accepts the
-strict ``monas.site-root-genesis-registration-presentation.v1`` QR. The QR
-must name that compiled authority's one fixed registration route, an unexpired
-reference, Site Trust Domain, and exact 16-byte App Attest ceremony plus
-pre-derived 32-byte client-data hash. After explicit review, Face ID creates
-or reuses the separate Secure Enclave Site Root key and Pistis sends only its
-typed public registration and the genuine App Attest registration through the
-compiled SPKI pin. Monas atomically returns the one-time canonical delegation
-bound to that same public key; Pistis then follows the ordinary detached proof
-flow. This first-device POST is the sole App Attest registration. Its initial
-proof endpoint returns only an exact empty `204 No Content` after Monas has
-created Site Trust and custody; this is a successful, non-authorising
-incomplete-installation transition, not a bootstrap or session. Pistis retains
-the completion screen and records only a redacted `Setup in progress`
-Installation, then routes explicitly to that record. It must not reset the
-scanner or claim identity, session, custody-presentation, or approval
-completion. A later Site Root bootstrap is assertion-only, so Pistis must never
-submit the registration a second time.
+For the first Site Root device, the brokered QR is the only supported route.
+After explicit review, Face ID creates the separate Secure Enclave Site Root
+key and Pistis submits only the typed public registration and genuine App
+Attest registration through the broker. Monas returns the one-time delegation
+bound to that same runtime host profile. The initial proof establishes Site
+Trust and custody; the later signed first-device identity receipt establishes
+the usable Pistis installation. Neither stage is represented as complete until
+its own server-side receipt has been accepted.
 
 That incomplete Installation now has one explicit next action: it switches to
 the existing first-device provider-enrolment scanner. The scanner still

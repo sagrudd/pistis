@@ -123,10 +123,16 @@ final class SiteRootConvergenceProtocolTests: XCTestCase {
         )
     }
 
-    func testBrokerPresentationAcceptsOptionalEnrolledSiteRootPublicKeyID() throws {
+    func testBrokerPresentationRequiresEnrolledSiteRootPublicKeyID() throws {
         let keyID = Data(repeating: 0x2a, count: 32)
         let presentation = try brokerPresentation(enrolledKeyID: keyID)
         XCTAssertEqual(presentation.enrolledSiteRootPublicKeyID, keyID)
+    }
+
+    func testBrokerPresentationRejectsMissingEnrolledSiteRootPublicKeyID() {
+        XCTAssertThrowsError(try SiteX509FirstProvisionBrokerPresentationV1(
+            qrText: brokerQR(enrolledKeyIDB64URL: nil), nowUnixSeconds: nowSeconds
+        ))
     }
 
     func testBrokerPresentationRejectsMalformedOptionalEnrolledSiteRootPublicKeyID() {
@@ -334,7 +340,7 @@ final class SiteRootConvergenceProtocolTests: XCTestCase {
     }
 
     private func brokerPresentation(
-        enrolledKeyID: Data? = nil
+        enrolledKeyID: Data? = Data(repeating: 0x2a, count: 32)
     ) throws -> SiteX509FirstProvisionBrokerPresentationV1 {
         try SiteX509FirstProvisionBrokerPresentationV1(
             qrText: brokerQR(enrolledKeyIDB64URL: enrolledKeyID.map(b64)),

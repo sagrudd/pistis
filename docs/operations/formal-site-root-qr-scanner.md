@@ -98,7 +98,8 @@ this fixed order:
   existing first-device flow and begins the bounded GitHub device exchange;
   ordinary authentication ``PISTIS1`` frames remain on the login route.
 
-Run ``scripts/verify-first-device-qr-contract.sh`` in every release build.
+Run ``scripts/verify-first-device-qr-contract.sh`` and
+``scripts/verify-host-agnostic-app-contract.sh`` in every release build.
 The iOS platform tests must also pass, including the regression test proving
 that the attended scanner accepts all three families and rejects a plain URL.
 A build that only accepts ``PISTIS1`` is incomplete: it cannot perform the

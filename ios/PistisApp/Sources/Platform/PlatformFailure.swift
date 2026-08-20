@@ -34,6 +34,9 @@ enum PlatformFailure: Error, Equatable, Sendable {
     case cameraUnavailable
     case qrPayloadTooLarge
     case qrPayloadUnsupported
+    /// A first-device presentation was recognisable as a Pistis invitation but
+    /// failed verification. It must never fall through to ordinary login.
+    case invalidFirstDevicePresentation
     case operationCancelled
     case productionEnvelopeUnavailable
     case siteRootAuthorityUnavailable
@@ -64,6 +67,8 @@ extension PlatformFailure {
             "This QR code is larger than the Pistis safety limit."
         case .qrPayloadUnsupported:
             "This is not a supported Pistis QR code."
+        case .invalidFirstDevicePresentation:
+            "This first-device invitation could not be verified. Request a newly issued QR from Monas."
         case .operationCancelled:
             "Scanning stopped before a code was captured."
         case .enrolmentRequired:

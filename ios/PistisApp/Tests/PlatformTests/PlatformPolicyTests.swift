@@ -687,7 +687,11 @@ final class PlatformPolicyTests: XCTestCase {
             XCTAssertNil(CanonicalHTTPSHost.parse(rejected), rejected)
         }
         XCTAssertNoThrow(
-            try AuthenticationResponseTransport(allowedHosts: ["192.168.1.192"])
+            try AuthenticationResponseTransport(
+                allowedHosts: ["192.168.1.192"],
+                httpsOrigin: "https://192.168.1.192",
+                tlsSPKISHA256: Data(repeating: 0x01, count: 32)
+            )
         )
     }
 
@@ -705,7 +709,11 @@ final class PlatformPolicyTests: XCTestCase {
             "::1",
         ] {
             XCTAssertThrowsError(
-                try AuthenticationResponseTransport(allowedHosts: [host]),
+                try AuthenticationResponseTransport(
+                    allowedHosts: [host],
+                    httpsOrigin: "https://pistis.example.test",
+                    tlsSPKISHA256: Data(repeating: 0x01, count: 32)
+                ),
                 "non-canonical host unexpectedly accepted: \(host)"
             )
         }
@@ -765,7 +773,9 @@ final class PlatformPolicyTests: XCTestCase {
         let output = try AuthenticatedEnrollmentOutput(
             trust: trust,
             responseContext: context,
-            allowedHosts: ["jenkins.mnemosyne.test"]
+            allowedHosts: ["jenkins.mnemosyne.test"],
+            httpsOrigin: "https://jenkins.mnemosyne.test",
+            tlsSPKISHA256: Data(repeating: 0x0a, count: 32)
         )
         var object = try XCTUnwrap(
             JSONSerialization.jsonObject(with: JSONEncoder().encode(output))
@@ -1037,7 +1047,9 @@ private func enrollmentOutput(marker: UInt8)
             userID: trust.userID,
             externalIdentityID: trust.externalIdentityID
         ),
-        allowedHosts: ["pistis.example.test"]
+        allowedHosts: ["pistis.example.test"],
+        httpsOrigin: "https://pistis.example.test",
+        tlsSPKISHA256: Data(repeating: 0x0b, count: 32)
     )
 }
 
@@ -1072,7 +1084,9 @@ private func replacementOutput(
             userID: trust.userID,
             externalIdentityID: trust.externalIdentityID
         ),
-        allowedHosts: existing.allowedHosts
+        allowedHosts: existing.allowedHosts,
+        httpsOrigin: existing.httpsOrigin,
+        tlsSPKISHA256: existing.tlsSPKISHA256
     )
 }
 

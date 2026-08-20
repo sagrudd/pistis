@@ -14,21 +14,36 @@ struct AuthenticatedEnrollmentOutput: Codable, Equatable, Sendable {
     let trust: InstallationTrustRecord
     let responseContext: DeviceResponseContext
     let allowedHosts: Set<String>
+    /// The exact HTTPS origin authenticated by the signed first-device
+    /// presentation. Host allow-lists alone are insufficient for later
+    /// authentication because they do not bind the endpoint to the presented
+    /// certificate key.
+    let httpsOrigin: String
+    /// SHA-256 of the exact DER SubjectPublicKeyInfo for the presented TLS
+    /// leaf. This is public endpoint identity, not a credential.
+    let tlsSPKISHA256: Data
 
     init(
         trust: InstallationTrustRecord,
         responseContext: DeviceResponseContext,
-        allowedHosts: Set<String>
+        allowedHosts: Set<String>,
+        httpsOrigin: String,
+        tlsSPKISHA256: Data
     ) throws {
         guard trust.userID == responseContext.userID,
               trust.externalIdentityID == responseContext.externalIdentityID,
               !allowedHosts.isEmpty,
-              allowedHosts.allSatisfy({ CanonicalHTTPSHost.parse($0) != nil })
+              allowedHosts.allSatisfy({ CanonicalHTTPSHost.parse($0) != nil }),
+              let canonicalOrigin = CanonicalHTTPSOrigin.parse(httpsOrigin),
+              tlsSPKISHA256.count == 32,
+              !tlsSPKISHA256.allSatisfy({ $0 == 0 })
         else { throw PlatformFailure.invalidConfiguration }
-        storageProfile = 2
+        storageProfile = 3
         self.trust = trust
         self.responseContext = responseContext
         self.allowedHosts = allowedHosts
+        self.httpsOrigin = canonicalOrigin
+        self.tlsSPKISHA256 = tlsSPKISHA256
     }
 
     private enum CodingKeys: String, CodingKey, CaseIterable {
@@ -36,6 +51,8 @@ struct AuthenticatedEnrollmentOutput: Codable, Equatable, Sendable {
         case trust
         case responseContext
         case allowedHosts
+        case httpsOrigin
+        case tlsSPKISHA256
     }
 
     init(from decoder: any Decoder) throws {
@@ -48,7 +65,7 @@ struct AuthenticatedEnrollmentOutput: Codable, Equatable, Sendable {
             )
         }
         let container = try decoder.container(keyedBy: CodingKeys.self)
-        guard try container.decode(UInt64.self, forKey: .storageProfile) == 2 else {
+        guard try container.decode(UInt64.self, forKey: .storageProfile) == 3 else {
             throw DecodingError.dataCorrupted(
                 .init(codingPath: decoder.codingPath, debugDescription: "invalid storage profile")
             )
@@ -59,7 +76,9 @@ struct AuthenticatedEnrollmentOutput: Codable, Equatable, Sendable {
                 DeviceResponseContext.self,
                 forKey: .responseContext
             ),
-            allowedHosts: container.decode(Set<String>.self, forKey: .allowedHosts)
+            allowedHosts: container.decode(Set<String>.self, forKey: .allowedHosts),
+            httpsOrigin: container.decode(String.self, forKey: .httpsOrigin),
+            tlsSPKISHA256: container.decode(Data.self, forKey: .tlsSPKISHA256)
         )
     }
 }
@@ -463,6 +482,8 @@ actor InstallationTrustKeychain: InstallationTrustStoring {
               new.expiresAt >= old.expiresAt,
               new.active,
               existing.allowedHosts == proposed.allowedHosts,
+              existing.httpsOrigin == proposed.httpsOrigin,
+              existing.tlsSPKISHA256 == proposed.tlsSPKISHA256,
               existing.responseContext.userID == proposed.responseContext.userID,
               existing.responseContext.externalIdentityID
                   == proposed.responseContext.externalIdentityID,

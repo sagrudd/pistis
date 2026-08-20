@@ -4,6 +4,12 @@
 
 ### Changed
 
+- Bind later authentication to the exact HTTPS origin and TLS leaf SPKI
+  authenticated during first-device enrolment. Current trust records now carry
+  those public endpoint facts, pre-binding records fail closed, and changed
+  certificates or endpoint origins cannot receive an authentication response
+  (0.20.3, iOS build 19).
+
 - Route fresh-device Site Root genesis through the fixed, host-agnostic
   `https://install.mnemosyne.co.uk` broker. Registration, delegation polling
   and initial static proof relay use the PHP/Rust correlation contract; no

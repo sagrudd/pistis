@@ -16,6 +16,38 @@ final class PinnedServerTrustTests: XCTestCase {
         )
     }
 
+    func testLaterAuthenticationRejectsChangedCertificateSPKI() throws {
+        let certificate = try fixture()
+        let expected = Data(SHA256.hash(data: try CertificateSPKI.extract(from: certificate)))
+        XCTAssertTrue(
+            PinnedEnrolmentSessionDelegate.matchesSPKI(
+                certificateDER: certificate,
+                expectedSPKISHA256: expected
+            )
+        )
+        XCTAssertFalse(
+            PinnedEnrolmentSessionDelegate.matchesSPKI(
+                certificateDER: certificate,
+                expectedSPKISHA256: Data(repeating: 0, count: 32)
+            )
+        )
+    }
+
+    func testLaterAuthenticationRejectsEndpointOutsidePersistedOrigin() async throws {
+        let transport = try AuthenticationResponseTransport(
+            allowedHosts: ["monas.example.test"],
+            httpsOrigin: "https://monas.example.test",
+            tlsSPKISHA256: Data(repeating: 0x11, count: 32)
+        )
+        let endpoint = try XCTUnwrap(URL(string: "https://attacker.example.test/auth"))
+        do {
+            _ = try await transport.status(at: endpoint)
+            XCTFail("endpoint outside the signed origin unexpectedly reached transport")
+        } catch {
+            XCTAssertEqual(error as? PlatformFailure, .invalidConfiguration)
+        }
+    }
+
     func testRejectsEveryCertificateTruncationAndNonMinimalLength() throws {
         let certificate = try fixture()
         for length in 0 ..< certificate.count {

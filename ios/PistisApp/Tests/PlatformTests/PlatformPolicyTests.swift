@@ -65,6 +65,13 @@ final class PlatformPolicyTests: XCTestCase {
         )
     }
 
+    func testGenericScannerRejectsMalformedFirstDevicePresentation() {
+        XCTAssertEqual(
+            GenericScanRoute.classify("PISTIS1:not-a-verified-presentation"),
+            .invalidFirstDevicePresentation
+        )
+    }
+
     @MainActor
     func testCommittedProviderIdentitySkipsRepeatedGitHubPrompt() async {
         let flow = FirstDeviceEnrolmentFlow()
@@ -435,6 +442,10 @@ final class PlatformPolicyTests: XCTestCase {
         XCTAssertEqual(
             PlatformFailure.qrPayloadUnsupported.safeUserMessage,
             "This is not a supported Pistis QR code."
+        )
+        XCTAssertEqual(
+            PlatformFailure.invalidFirstDevicePresentation.safeUserMessage,
+            "This first-device invitation could not be verified. Request a newly issued QR from Monas."
         )
         XCTAssertFalse(
             PlatformFailure.signingFailed.safeUserMessage.localizedCaseInsensitiveContains(

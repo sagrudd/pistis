@@ -15,6 +15,7 @@ import PistisCore
 /// cannot be upgraded into a different route.
 enum GenericScanRoute: Equatable {
     case firstDeviceEnrolment
+    case invalidFirstDevicePresentation
     case ordinaryAuthentication
 
     static func classify(_ text: String, now: Date = Date()) -> Self {
@@ -28,8 +29,43 @@ enum GenericScanRoute: Equatable {
             )
             return .firstDeviceEnrolment
         } catch {
-            return .ordinaryAuthentication
+            // Both first-device and ordinary authentication use the same
+            // PISTIS1 transport prefix. Only a payload which is neither a
+            // verified first-device presentation nor a valid ordinary
+            // authentication challenge is a malformed first-device route.
+            do {
+                _ = try ProductionQRV2.decodeChallenge(text)
+                return .ordinaryAuthentication
+            } catch {
+                // Older ordinary-authentication fixtures use the same
+                // transport with its legacy checksum. Preserve that route by
+                // recognising its authenticated outer-frame shape; the
+                // ordinary ceremony still performs the complete verification.
+                if isOrdinaryAuthenticationFrame(text) {
+                    return .ordinaryAuthentication
+                }
+                return .invalidFirstDevicePresentation
+            }
         }
+    }
+
+    private static func isOrdinaryAuthenticationFrame(_ text: String) -> Bool {
+        guard let separator = text.lastIndex(of: "."),
+              text.hasPrefix("PISTIS1:")
+        else { return false }
+        let bodyStart = text.index(text.startIndex, offsetBy: 8)
+        let body = String(text[bodyStart ..< separator])
+        var padded = body.replacingOccurrences(of: "-", with: "+")
+            .replacingOccurrences(of: "_", with: "/")
+        padded += String(repeating: "=", count: (4 - padded.count % 4) % 4)
+        guard let frame = Data(base64Encoded: padded) else { return false }
+        if frame.first == 0xa3 {
+            return true
+        }
+        // The original ordinary-authentication frame is a four-entry map
+        // whose first two pairs are version 1/kind 1. First-device frames use
+        // version 4/kind 3 and therefore cannot satisfy this shape.
+        return frame.starts(with: [0xa4, 0x00, 0x01, 0x01, 0x01, 0x02])
     }
 }
 
@@ -332,9 +368,15 @@ struct ScanView: View {
                 }
                 return
             }
-            if GenericScanRoute.classify(payload.text) == .firstDeviceEnrolment {
+            switch GenericScanRoute.classify(payload.text) {
+            case .firstDeviceEnrolment:
                 firstDeviceScanRequest = FirstDeviceScanRequest(qrText: payload.text)
                 return
+            case .invalidFirstDevicePresentation:
+                scanFailure = .invalidFirstDevicePresentation
+                return
+            case .ordinaryAuthentication:
+                break
             }
             Task {
                 await ceremony.accept(qrText: payload.text)

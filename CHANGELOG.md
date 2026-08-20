@@ -4,6 +4,11 @@
 
 ### Changed
 
+- Route a verified first-device `PISTIS1` enrolment presentation scanned from
+  the generic Scan surface into the existing first-device flow, automatically
+  starting the GitHub device prompt while preserving Site Root JSON and
+  ordinary authentication routing (0.19.10, iOS build 16).
+
 - Align the protected pre-native Site X.509 parser with the reviewed server
   contract: the browser code keeps its five-minute redemption window, while
   the post-redemption QR may remain valid for up to 900 seconds. Release

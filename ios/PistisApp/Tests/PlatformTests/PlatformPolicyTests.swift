@@ -28,6 +28,43 @@ final class PlatformPolicyTests: XCTestCase {
         )
     }
 
+    func testGenericScannerRoutesVerifiedFirstDevicePresentationToEnrolment() throws {
+        let fixtureURL = URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent()
+            .appendingPathComponent(
+                "../../../../fixtures/protocol-v4/first-device/presentation-positive.json"
+            )
+            .standardizedFileURL
+        let object = try XCTUnwrap(
+            JSONSerialization.jsonObject(with: Data(contentsOf: fixtureURL))
+                as? [String: Any]
+        )
+        let qrText = try XCTUnwrap(object["qr_text"] as? String)
+        let nowMilliseconds = try XCTUnwrap(object["now_ms"] as? NSNumber)
+        let now = Date(timeIntervalSince1970: nowMilliseconds.doubleValue / 1_000)
+
+        XCTAssertEqual(
+            GenericScanRoute.classify(qrText, now: now),
+            .firstDeviceEnrolment
+        )
+    }
+
+    func testGenericScannerLeavesOrdinaryAuthenticationPresentationOnLoginRoute() throws {
+        let fixtureURL = URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent()
+            .appendingPathComponent(
+                "../../../../fixtures/protocol-v1/qr/challenge-minimal.qr.txt"
+            )
+            .standardizedFileURL
+        let qrText = try String(contentsOf: fixtureURL, encoding: .utf8)
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+
+        XCTAssertEqual(
+            GenericScanRoute.classify(qrText),
+            .ordinaryAuthentication
+        )
+    }
+
     @MainActor
     func testCommittedProviderIdentitySkipsRepeatedGitHubPrompt() async {
         let flow = FirstDeviceEnrolmentFlow()

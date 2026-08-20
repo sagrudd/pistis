@@ -89,7 +89,10 @@ The first-install route carries three deliberately different QR families:
 * the subsequent ``monas.site-root-genesis-registration-presentation.v1`` JSON
   presentation, which is routed to the Site Root/App Attest coordinator; and
 * the later signed ``PISTIS1`` v4/kind-3 first-device presentation, which is
-  verified by ``FirstDevicePresentationV4`` before provider enrolment.
+  verified by ``FirstDevicePresentationV4`` before provider enrolment. When
+  this presentation is captured by the generic Scan surface, Pistis opens the
+  existing first-device flow and begins the bounded GitHub device exchange;
+  ordinary authentication ``PISTIS1`` frames remain on the login route.
 
 Run ``scripts/verify-first-device-qr-contract.sh`` in every release build.
 The iOS platform tests must also pass, including the regression test proving

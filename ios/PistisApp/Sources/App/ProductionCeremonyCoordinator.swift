@@ -82,7 +82,9 @@ final class ProductionCeremonyCoordinator: ObservableObject {
                   let submitEndpoint = challenge.endpointHints.first
             else { throw PlatformFailure.invalidConfiguration }
             let transport = try AuthenticationResponseTransport(
-                allowedHosts: enrollment.allowedHosts
+                allowedHosts: enrollment.allowedHosts,
+                httpsOrigin: enrollment.httpsOrigin,
+                tlsSPKISHA256: enrollment.tlsSPKISHA256
             )
             var status = try await transport.submit(envelope: envelope, to: submitEndpoint)
             let statusEndpoint = challenge.endpointHints.dropFirst().first

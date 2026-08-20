@@ -413,7 +413,9 @@ final class FirstDeviceEnrolmentFlow: ObservableObject {
                 userID: receipt.userID,
                 externalIdentityID: receipt.externalIdentityID
             ),
-            allowedHosts: receipt.allowedHTTPSHosts
+            allowedHosts: receipt.allowedHTTPSHosts,
+            httpsOrigin: presentation.httpsOrigin.absoluteString,
+            tlsSPKISHA256: presentation.tlsSPKISHA256
         )
         do {
             try await InstallationTrustKeychain.shared.installAuthenticated(output)

@@ -52,6 +52,24 @@ final class EnrollmentProjectionTests: XCTestCase {
         )
     }
 
+    func testPreTLSBindingEnrollmentRecordFailsClosedOnDecode() throws {
+        let enrollment = try fixtureEnrollment()
+        var object = try XCTUnwrap(
+            JSONSerialization.jsonObject(with: JSONEncoder().encode(enrollment))
+                as? [String: Any]
+        )
+        object["storageProfile"] = 2
+        object.removeValue(forKey: "httpsOrigin")
+        object.removeValue(forKey: "tlsSPKISHA256")
+
+        XCTAssertThrowsError(
+            try JSONDecoder().decode(
+                AuthenticatedEnrollmentOutput.self,
+                from: JSONSerialization.data(withJSONObject: object)
+            )
+        )
+    }
+
     func testMultipleInstallationsAndPersonasRemainVisibleTogether() async throws {
         let first = try fixtureEnrollment()
         let second = try fixtureEnrollment(
@@ -408,7 +426,9 @@ final class EnrollmentProjectionTests: XCTestCase {
                 userID: Data(repeating: userByte, count: 16),
                 externalIdentityID: Data(repeating: identityByte, count: 16)
             ),
-            allowedHosts: ["pistis.example.test"]
+            allowedHosts: ["pistis.example.test"],
+            httpsOrigin: "https://pistis.example.test",
+            tlsSPKISHA256: Data(repeating: 0x0b, count: 32)
         )
     }
 

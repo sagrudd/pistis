@@ -189,45 +189,56 @@ final class PinnedEnrolmentSessionDelegate:
             completionHandler(.cancelAuthenticationChallenge, nil)
             return
         }
-        do {
-            let anchor: SecCertificate
-            switch trustPolicy {
-            case let .bootstrapLeafSPKI(expectedSPKISHA256):
-                let certificateDER = SecCertificateCopyData(leaf) as Data
-                let spki = try CertificateSPKI.extract(from: certificateDER)
-                guard Data(SHA256.hash(data: spki)) == expectedSPKISHA256 else {
-                    completionHandler(.cancelAuthenticationChallenge, nil)
-                    return
-                }
-                anchor = leaf
-            case let .siteRootGeneration(rootDER, fingerprintSHA256, generation):
-                guard generation > 0,
-                      Data(SHA256.hash(data: rootDER)) == fingerprintSHA256,
-                      let root = SecCertificateCreateWithData(nil, rootDER as CFData)
-                else {
-                    completionHandler(.cancelAuthenticationChallenge, nil)
-                    return
-                }
-                anchor = root
+        let anchor: SecCertificate
+        switch trustPolicy {
+        case let .bootstrapLeafSPKI(expectedSPKISHA256):
+            let certificateDER = SecCertificateCopyData(leaf) as Data
+            guard Self.matchesSPKI(
+                certificateDER: certificateDER,
+                expectedSPKISHA256: expectedSPKISHA256
+            ) else {
+                completionHandler(.cancelAuthenticationChallenge, nil)
+                return
             }
-            guard SecTrustSetPolicies(
-                trust,
-                  SecPolicyCreateSSL(
-                      true,
-                      challenge.protectionSpace.host as CFString
-                  )
-            ) == errSecSuccess,
-                  SecTrustSetAnchorCertificates(trust, [anchor] as CFArray) == errSecSuccess,
-                  SecTrustSetAnchorCertificatesOnly(trust, true) == errSecSuccess,
-                  SecTrustEvaluateWithError(trust, nil)
+            anchor = leaf
+        case let .siteRootGeneration(rootDER, fingerprintSHA256, generation):
+            guard generation > 0,
+                  Data(SHA256.hash(data: rootDER)) == fingerprintSHA256,
+                  let root = SecCertificateCreateWithData(nil, rootDER as CFData)
             else {
                 completionHandler(.cancelAuthenticationChallenge, nil)
                 return
             }
-            completionHandler(.useCredential, URLCredential(trust: trust))
-        } catch {
-            completionHandler(.cancelAuthenticationChallenge, nil)
+            anchor = root
         }
+        guard SecTrustSetPolicies(
+            trust,
+              SecPolicyCreateSSL(
+                  true,
+                  challenge.protectionSpace.host as CFString
+              )
+        ) == errSecSuccess,
+              SecTrustSetAnchorCertificates(trust, [anchor] as CFArray) == errSecSuccess,
+              SecTrustSetAnchorCertificatesOnly(trust, true) == errSecSuccess,
+              SecTrustEvaluateWithError(trust, nil)
+        else {
+            completionHandler(.cancelAuthenticationChallenge, nil)
+            return
+        }
+        completionHandler(.useCredential, URLCredential(trust: trust))
+    }
+
+    /// Testable, fail-closed certificate-key comparison shared by the
+    /// bootstrap leaf policy. A changed certificate or SPKI cannot pass by
+    /// retaining the same hostname.
+    static func matchesSPKI(
+        certificateDER: Data,
+        expectedSPKISHA256: Data
+    ) -> Bool {
+        guard expectedSPKISHA256.count == 32,
+              let spki = try? CertificateSPKI.extract(from: certificateDER)
+        else { return false }
+        return Data(SHA256.hash(data: spki)) == expectedSPKISHA256
     }
 
     private static func authorityKey(host: String, port: Int) -> String {

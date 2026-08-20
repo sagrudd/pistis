@@ -125,6 +125,59 @@ enum CanonicalHTTPSHost {
     }
 }
 
+/// Canonical HTTPS origin from the signed first-device presentation.
+///
+/// An origin is stored as its exact canonical spelling, including an explicit
+/// non-default port when present. This prevents later authentication from
+/// silently changing the authority while retaining the same hostname.
+enum CanonicalHTTPSOrigin {
+    static func parse(_ value: String) -> String? {
+        guard value == value.lowercased(),
+              value.utf8.count <= 255,
+              value.unicodeScalars.allSatisfy(\.isASCII),
+              !value.contains("%"),
+              let url = URL(string: value),
+              let components = URLComponents(
+                  url: url,
+                  resolvingAgainstBaseURL: false
+              ),
+              components.scheme == "https",
+              components.user == nil,
+              components.password == nil,
+              components.path.isEmpty,
+              components.query == nil,
+              components.fragment == nil,
+              let host = components.host,
+              components.percentEncodedHost == host,
+              components.port != 443,
+              components.string == value,
+              CanonicalHTTPSHost.parse(host) != nil
+        else { return nil }
+        return value
+    }
+
+    static func from(_ endpoint: URL) -> String? {
+        guard let components = URLComponents(
+            url: endpoint,
+            resolvingAgainstBaseURL: false
+        ),
+            components.scheme == "https",
+            components.user == nil,
+            components.password == nil,
+            components.fragment == nil,
+            let host = components.host,
+            components.percentEncodedHost == host,
+            CanonicalHTTPSHost.parse(host) != nil
+        else { return nil }
+        var origin = components
+        origin.path = ""
+        origin.query = nil
+        origin.fragment = nil
+        guard let value = origin.string else { return nil }
+        return parse(value)
+    }
+}
+
 /// Redirects are refused at the URL loading boundary. Validating only the final
 /// response URL would be too late because URLSession may already have replayed
 /// a signed POST body to the redirect target.
@@ -149,22 +202,36 @@ struct AuthenticationResponseTransport: Sendable {
     static let maximumResponseBytes = 2_048
 
     private let allowedHosts: Set<String>
+    private let httpsOrigin: String
     private let session: URLSession
 
     init(
         allowedHosts: Set<String>,
+        httpsOrigin: String,
+        tlsSPKISHA256: Data,
         configuration: URLSessionConfiguration = .ephemeral
     ) throws {
         let canonicalHosts = Set(allowedHosts.compactMap(CanonicalHTTPSHost.parse))
-        guard !allowedHosts.isEmpty, canonicalHosts.count == allowedHosts.count
+        guard !allowedHosts.isEmpty,
+              canonicalHosts.count == allowedHosts.count,
+              let canonicalOrigin = CanonicalHTTPSOrigin.parse(httpsOrigin),
+              let originURL = URL(string: canonicalOrigin),
+              let originHost = CanonicalHTTPSHost.from(originURL),
+              canonicalHosts.contains(originHost),
+              tlsSPKISHA256.count == 32,
+              !tlsSPKISHA256.allSatisfy({ $0 == 0 })
         else { throw PlatformFailure.invalidConfiguration }
         self.allowedHosts = canonicalHosts
+        self.httpsOrigin = canonicalOrigin
         configuration.httpShouldSetCookies = false
         configuration.urlCache = nil
         configuration.requestCachePolicy = .reloadIgnoringLocalCacheData
         session = URLSession(
             configuration: configuration,
-            delegate: RedirectRejectingSessionDelegate(),
+            delegate: try PinnedEnrolmentSessionDelegate(
+                origin: originURL,
+                expectedSPKISHA256: tlsSPKISHA256
+            ),
             delegateQueue: nil
         )
     }
@@ -202,7 +269,8 @@ struct AuthenticationResponseTransport: Sendable {
               endpoint.password == nil,
               endpoint.fragment == nil,
               let host = CanonicalHTTPSHost.from(endpoint),
-              allowedHosts.contains(host)
+              allowedHosts.contains(host),
+              CanonicalHTTPSOrigin.from(endpoint) == httpsOrigin
         else { throw PlatformFailure.invalidConfiguration }
     }
 

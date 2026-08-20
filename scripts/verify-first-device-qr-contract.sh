@@ -21,6 +21,8 @@ require_text ios/PistisApp/Sources/App/ScanAndApprovalViews.swift 'profile: .pis
 require_text ios/PistisApp/Sources/App/ScanAndApprovalViews.swift 'siteRootConvergence.accept(qrText: payload.text)'
 require_text ios/PistisApp/Sources/App/ScanAndApprovalViews.swift 'siteRootCeremony.accept(qrText: payload.text)'
 require_text ios/PistisApp/Sources/App/SiteRootConvergenceCoordinator.swift 'case siteX509Broker(SiteX509FirstProvisionBrokerPresentationV1)'
+require_text ios/PistisApp/Sources/App/ScanAndApprovalViews.swift 'MonasSiteX509FirstProvisionBrokerTransport'
+require_text ios/PistisApp/Sources/Platform/SiteRootConvergenceService.swift 'MonasSiteX509FirstProvisionBrokerTransport'
 require_text ios/PistisApp/Sources/Platform/SiteRootConvergenceProtocol.swift 'x509BrokerProvisionSchema ='
 require_text ios/PistisApp/Sources/App/SiteX509FirstProvisionOfflineCoordinator.swift 'SiteX509FirstProvisionOfflinePresentationV2'
 require_text ios/PistisApp/Sources/Platform/SiteRootGenesisRegistration.swift 'monas.site-root-genesis-registration-presentation.v1'

@@ -81,18 +81,23 @@ local queue or offline authorisation is permitted.
 
 ## First-install QR regression gate
 
-The first-install route carries two deliberately different QR families:
+The first-install route carries three deliberately different QR families:
 
-* the initial ``monas.site-root-genesis-registration-presentation.v1`` JSON
+* the initial ``monas.site-x509-first-provision-broker-presentation.v1`` JSON
+  presentation, which is submitted only to the fixed install broker and does
+  not require the later appliance authority profile;
+* the subsequent ``monas.site-root-genesis-registration-presentation.v1`` JSON
   presentation, which is routed to the Site Root/App Attest coordinator; and
 * the later signed ``PISTIS1`` v4/kind-3 first-device presentation, which is
   verified by ``FirstDevicePresentationV4`` before provider enrolment.
 
 Run ``scripts/verify-first-device-qr-contract.sh`` in every release build.
 The iOS platform tests must also pass, including the regression test proving
-that the attended scanner accepts both families and rejects a plain URL. A
-build that only accepts ``PISTIS1`` is incomplete: it cannot perform the
-initial Site Root ceremony on a new iPhone.
+that the attended scanner accepts all three families and rejects a plain URL.
+A build that only accepts ``PISTIS1`` is incomplete: it cannot perform the
+initial Site Root ceremony on a new iPhone. A build without a customer Site
+Root profile may perform only the fixed broker phase; direct Site Root
+submissions remain unavailable until the signed host profile is present.
 
 ## Current versus required
 

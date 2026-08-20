@@ -39,13 +39,16 @@ final class SiteRootConvergenceCoordinator: ObservableObject {
         case acknowledgement(SiteRootConvergenceAckPresentationV2)
     }
 
-    init(transport: (any MonasSiteRootConvergenceSubmitting)?) {
-        authorityOrigin = transport?.authorityOrigin
+    init(
+        transport: (any MonasSiteRootConvergenceSubmitting)?,
+        authorityOrigin: URL? = nil
+    ) {
+        self.authorityOrigin = authorityOrigin ?? transport?.authorityOrigin
         service = transport.map { SiteRootConvergenceServiceV2(transport: $0) }
     }
 
     func accept(qrText: String) {
-        guard phase == .idle, service != nil, let authorityOrigin else {
+        guard phase == .idle, service != nil else {
             phase = .failed(.siteRootAuthorityUnavailable)
             return
         }
@@ -91,6 +94,9 @@ final class SiteRootConvergenceCoordinator: ObservableObject {
                     )
                 )
             } else {
+                guard let authorityOrigin else {
+                    throw PlatformFailure.siteRootAuthorityUnavailable
+                }
                 let presentation = try SiteRootConvergenceAckPresentationV2(
                     qrText: qrText,
                     authorityOrigin: authorityOrigin,

@@ -295,6 +295,14 @@ final class PlatformPolicyTests: XCTestCase {
         XCTAssertTrue(transport is UnavailableMonasSiteRootDelegationTransport)
     }
 
+    func testFirstProvisionBrokerTransportUsesOnlyTheFixedInstallOrigin() throws {
+        let transport = try MonasSiteX509FirstProvisionBrokerTransport()
+        XCTAssertEqual(
+            transport.authorityOrigin.absoluteString,
+            SiteRootConvergenceProfileV2.x509BrokerOrigin
+        )
+    }
+
     func testAppleAppAttestRegistrationEnvelopeUsesReviewedV1Contract() throws {
         let appleKeyID = Data(repeating: 0x11, count: 32).base64EncodedString()
         let envelope = try AppleAppAttestRegistrationEnvelope(

@@ -1,11 +1,12 @@
 import Foundation
 
-/// Public, signed application configuration for one Monas Site Root authority
-/// reachable at a bounded set of explicitly pinned network origins.
+/// A verified runtime profile for one Monas Site Root authority.
 ///
-/// The value is a build-time deployment commitment, not QR, browser, local
-/// network, account, or user input. Missing or malformed configuration keeps
-/// the Site Root transport unavailable rather than selecting an authority.
+/// This type deliberately has no production path from `Info.plist`. Customer
+/// host identity is established by the signed attended-install presentation
+/// and is supplied to this parser only after that presentation has been
+/// verified. A generic Pistis binary therefore remains usable with many
+/// installations and hosts.
 struct MonasSiteRootAuthorityConfiguration: Sendable {
     static let infoDictionaryKey = "PistisMonasSiteRootAuthorityOrigin"
     static let alternateInfoDictionaryKey = "PistisMonasSiteRootAuthorityAlternateOrigin"
@@ -146,15 +147,23 @@ struct MonasSiteRootAuthorityConfiguration: Sendable {
     }
 }
 
-/// Constructs the sole Site Root transport at application composition. A
-/// failed configuration is represented only by the existing unavailable
-/// transport; it never becomes a caller-selectable endpoint.
+/// The generic app has no authority selected at launch. The brokered
+/// first-install path supplies the host profile at runtime; until that profile
+/// is verified, direct Site Root transport is intentionally unavailable.
 enum ProductionMonasSiteRootTransportFactory {
+    static func make() -> any MonasSiteRootCeremonyTransport {
+        (try? MonasSiteRootGenesisBrokerTransport())
+            ?? UnavailableMonasSiteRootDelegationTransport()
+    }
+
+    /// Constructs a transport only from an already verified runtime profile.
+    /// This is kept separate from app launch so a QR or local hostname cannot
+    /// silently become an authority merely by being present in the bundle.
     static func make(
-        infoDictionary: [String: Any] = Bundle.main.infoDictionary ?? [:]
+        verifiedRuntimeProfile: [String: Any]
     ) -> any MonasSiteRootCeremonyTransport {
         guard let configuration = try? MonasSiteRootAuthorityConfiguration(
-            infoDictionary: infoDictionary
+            infoDictionary: verifiedRuntimeProfile
         ), let transport = try? configuration.makeTransport()
         else { return UnavailableMonasSiteRootDelegationTransport() }
         return transport

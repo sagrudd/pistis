@@ -7,6 +7,37 @@ import UIKit
 #endif
 import PistisCore
 
+/// The generic scanner's bounded discriminator for the two `PISTIS1` uses.
+///
+/// First-device presentations are verified before they are handed to the
+/// enrolment view. Ordinary authentication frames continue to the existing
+/// production ceremony, and malformed or expired enrolment frames therefore
+/// cannot be upgraded into a different route.
+enum GenericScanRoute: Equatable {
+    case firstDeviceEnrolment
+    case ordinaryAuthentication
+
+    static func classify(_ text: String, now: Date = Date()) -> Self {
+        guard text.hasPrefix("PISTIS1:") else { return .ordinaryAuthentication }
+        do {
+            _ = try FirstDevicePresentationV4.verify(
+                qrText: text,
+                expectedAppConfigurationDigest:
+                    GitHubEnrolmentConfiguration.reviewedAppConfigurationDigest,
+                now: now
+            )
+            return .firstDeviceEnrolment
+        } catch {
+            return .ordinaryAuthentication
+        }
+    }
+}
+
+private struct FirstDeviceScanRequest: Identifiable {
+    let id = UUID()
+    let qrText: String
+}
+
 struct ScanView: View {
     @StateObject private var ceremony = ProductionCeremonyCoordinator()
     @StateObject private var siteRootCeremony: SiteRootDelegationCoordinator
@@ -22,6 +53,7 @@ struct ScanView: View {
     @State private var scanning = true
     @State private var importingOfflinePresentation = false
     @State private var importingAppAttestReplacement = false
+    @State private var firstDeviceScanRequest: FirstDeviceScanRequest?
     @State private var scanFailure: PlatformFailure?
     @State private var readiness = PasswordlessReadiness.checking
 
@@ -56,10 +88,21 @@ struct ScanView: View {
             authorityOrigin: siteRootTransport.genesisAuthorityOrigin,
             service: recoveryService
         ))
-        let convergenceTransport = (siteRootTransport as? MonasSiteRootDelegationTransport)
-            .flatMap { try? $0.siteRootConvergenceTransport() }
+        let convergenceTransport: (any MonasSiteRootConvergenceSubmitting)?
+        let convergenceAuthorityOrigin: URL?
+        if let pinned = siteRootTransport as? MonasSiteRootDelegationTransport {
+            convergenceTransport = try? pinned.siteRootConvergenceTransport()
+            convergenceAuthorityOrigin = pinned.genesisAuthorityOrigin
+        } else {
+            // The fixed install broker is the only allowed first-phase
+            // transport before the customer appliance has a Site Root
+            // authority profile. Direct authority phases remain unavailable.
+            convergenceTransport = try? MonasSiteX509FirstProvisionBrokerTransport()
+            convergenceAuthorityOrigin = nil
+        }
         _siteRootConvergence = StateObject(wrappedValue: SiteRootConvergenceCoordinator(
-            transport: convergenceTransport
+            transport: convergenceTransport,
+            authorityOrigin: convergenceAuthorityOrigin
         ))
         _siteOriginRelocation = StateObject(wrappedValue: SiteOriginRelocationCoordinator(
             authorityTransport: siteRootTransport as? MonasSiteRootDelegationTransport
@@ -215,6 +258,9 @@ struct ScanView: View {
                 transport: appAttestReplacementTransport
             )
         }
+        .sheet(item: $firstDeviceScanRequest) { request in
+            FirstDeviceEnrolmentView(initialQRText: request.qrText)
+        }
         .fileImporter(
             isPresented: $importingOfflinePresentation,
             allowedContentTypes: [.data],
@@ -252,7 +298,8 @@ struct ScanView: View {
                     }
                     return
                 }
-                if payload.text.contains(SiteRootConvergenceProfileV2.x509ProvisionSchema)
+                if payload.text.contains(SiteRootConvergenceProfileV2.x509BrokerProvisionSchema)
+                    || payload.text.contains(SiteRootConvergenceProfileV2.x509ProvisionSchema)
                     || payload.text.contains(SiteRootConvergenceProfileV2.provisionSchema)
                     || payload.text.contains(SiteRootConvergenceProfileV2.ackSchema)
                 {
@@ -283,6 +330,10 @@ struct ScanView: View {
                 if case let .failed(failure) = siteRootCeremony.phase {
                     scanFailure = failure
                 }
+                return
+            }
+            if GenericScanRoute.classify(payload.text) == .firstDeviceEnrolment {
+                firstDeviceScanRequest = FirstDeviceScanRequest(qrText: payload.text)
                 return
             }
             Task {

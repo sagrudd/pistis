@@ -5,6 +5,66 @@ import XCTest
 @testable import Pistis
 
 final class PlatformPolicyTests: XCTestCase {
+    func testScannerAcceptsEveryAttendedFirstInstallQRFamily() {
+        let compatibility = QRPayloadProfile.pistisAuthenticationOrMonasSiteRoot
+
+        XCTAssertTrue(
+            compatibility.accepts(
+                "{\"schema\":\"monas.site-x509-first-provision-broker-presentation.v1\"}"
+            )
+        )
+        XCTAssertTrue(
+            compatibility.accepts(
+                "{\"schema\":\"monas.site-root-genesis-registration-presentation.v1\"}"
+            )
+        )
+        XCTAssertTrue(compatibility.accepts("PXFP2:P:bounded-presentation"))
+        XCTAssertTrue(compatibility.accepts("PISTIS1:bounded-frame.0123456789abcdef"))
+        XCTAssertFalse(compatibility.accepts("https://install.mnemosyne.co.uk"))
+        XCTAssertFalse(
+            QRPayloadProfile.pistisAuthenticationV2.accepts(
+                "{\"schema\":\"monas.site-x509-first-provision-broker-presentation.v1\"}"
+            )
+        )
+    }
+
+    func testGenericScannerRoutesVerifiedFirstDevicePresentationToEnrolment() throws {
+        let fixtureURL = URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent()
+            .appendingPathComponent(
+                "../../../../fixtures/protocol-v4/first-device/presentation-positive.json"
+            )
+            .standardizedFileURL
+        let object = try XCTUnwrap(
+            JSONSerialization.jsonObject(with: Data(contentsOf: fixtureURL))
+                as? [String: Any]
+        )
+        let qrText = try XCTUnwrap(object["qr_text"] as? String)
+        let nowMilliseconds = try XCTUnwrap(object["now_ms"] as? NSNumber)
+        let now = Date(timeIntervalSince1970: nowMilliseconds.doubleValue / 1_000)
+
+        XCTAssertEqual(
+            GenericScanRoute.classify(qrText, now: now),
+            .firstDeviceEnrolment
+        )
+    }
+
+    func testGenericScannerLeavesOrdinaryAuthenticationPresentationOnLoginRoute() throws {
+        let fixtureURL = URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent()
+            .appendingPathComponent(
+                "../../../../fixtures/protocol-v1/qr/challenge-minimal.qr.txt"
+            )
+            .standardizedFileURL
+        let qrText = try String(contentsOf: fixtureURL, encoding: .utf8)
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+
+        XCTAssertEqual(
+            GenericScanRoute.classify(qrText),
+            .ordinaryAuthentication
+        )
+    }
+
     @MainActor
     func testCommittedProviderIdentitySkipsRepeatedGitHubPrompt() async {
         let flow = FirstDeviceEnrolmentFlow()
@@ -267,9 +327,39 @@ final class PlatformPolicyTests: XCTestCase {
         }
     }
 
-    func testMonasSiteRootTransportFactoryFailsClosedWithoutBuildConfiguration() {
-        let transport = ProductionMonasSiteRootTransportFactory.make(infoDictionary: [:])
-        XCTAssertTrue(transport is UnavailableMonasSiteRootDelegationTransport)
+    func testMonasSiteRootTransportFactoryUsesOnlyTheFixedGenesisBrokerUntilRuntimeProfileIsVerified() {
+        let transport = ProductionMonasSiteRootTransportFactory.make()
+        XCTAssertTrue(transport is MonasSiteRootGenesisBrokerTransport)
+        XCTAssertEqual(
+            transport.genesisAuthorityOrigin?.absoluteString,
+            MonasSiteRootGenesisBrokerEndpointV1.origin
+        )
+    }
+
+    func testRuntimeProfileFactoryDoesNotMakeBundleConfigurationAuthoritative() throws {
+        let transport = ProductionMonasSiteRootTransportFactory.make(
+            verifiedRuntimeProfile: [
+                MonasSiteRootAuthorityConfiguration.infoDictionaryKey:
+                    "https://host-a.example.test",
+                MonasSiteRootAuthorityConfiguration.trustModeInfoDictionaryKey:
+                    MonasSiteRootAuthorityConfiguration.bootstrapTrustMode,
+                MonasSiteRootAuthorityConfiguration.spkiInfoDictionaryKey:
+                    "ERERERERERERERERERERERERERERERERERERERERERE",
+            ]
+        )
+        XCTAssertTrue(transport is MonasSiteRootDelegationTransport)
+        XCTAssertTrue(
+            ProductionMonasSiteRootTransportFactory.make()
+                is MonasSiteRootGenesisBrokerTransport
+        )
+    }
+
+    func testFirstProvisionBrokerTransportUsesOnlyTheFixedInstallOrigin() throws {
+        let transport = try MonasSiteX509FirstProvisionBrokerTransport()
+        XCTAssertEqual(
+            transport.authorityOrigin.absoluteString,
+            SiteRootConvergenceProfileV2.x509BrokerOrigin
+        )
     }
 
     func testAppleAppAttestRegistrationEnvelopeUsesReviewedV1Contract() throws {

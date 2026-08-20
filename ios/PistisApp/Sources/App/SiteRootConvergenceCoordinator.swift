@@ -35,23 +35,39 @@ final class SiteRootConvergenceCoordinator: ObservableObject {
     private enum Pending {
         case provision(SiteRootBundleReceiptProvisionPresentationV1)
         case siteX509(SiteX509FirstProvisionPresentationV1)
+        case siteX509Broker(SiteX509FirstProvisionBrokerPresentationV1)
         case acknowledgement(SiteRootConvergenceAckPresentationV2)
     }
 
-    init(transport: (any MonasSiteRootConvergenceSubmitting)?) {
-        authorityOrigin = transport?.authorityOrigin
+    init(
+        transport: (any MonasSiteRootConvergenceSubmitting)?,
+        authorityOrigin: URL? = nil
+    ) {
+        self.authorityOrigin = authorityOrigin ?? transport?.authorityOrigin
         service = transport.map { SiteRootConvergenceServiceV2(transport: $0) }
     }
 
     func accept(qrText: String) {
-        guard phase == .idle, service != nil, let authorityOrigin else {
+        guard phase == .idle, service != nil else {
             phase = .failed(.siteRootAuthorityUnavailable)
             return
         }
         do {
             let seconds = try Self.nowSeconds()
             let review: SiteRootConvergenceReview
-            if qrText.contains(SiteRootConvergenceProfileV2.x509ProvisionSchema) {
+            if qrText.contains(SiteRootConvergenceProfileV2.x509BrokerProvisionSchema) {
+                let presentation = try SiteX509FirstProvisionBrokerPresentationV1(
+                    qrText: qrText, nowUnixSeconds: seconds
+                )
+                pending = .siteX509Broker(presentation)
+                review = SiteRootConvergenceReview(
+                    site: presentation.siteUUID,
+                    expiresAt: Date(timeIntervalSince1970: TimeInterval(
+                        presentation.expiresAtUnixSeconds
+                    )),
+                    kind: .siteX509Provision(generation: presentation.generation)
+                )
+            } else if qrText.contains(SiteRootConvergenceProfileV2.x509ProvisionSchema) {
                 let presentation = try SiteX509FirstProvisionPresentationV1(
                     qrText: qrText, nowUnixSeconds: seconds
                 )
@@ -78,6 +94,9 @@ final class SiteRootConvergenceCoordinator: ObservableObject {
                     )
                 )
             } else {
+                guard let authorityOrigin else {
+                    throw PlatformFailure.siteRootAuthorityUnavailable
+                }
                 let presentation = try SiteRootConvergenceAckPresentationV2(
                     qrText: qrText,
                     authorityOrigin: authorityOrigin,
@@ -115,6 +134,7 @@ final class SiteRootConvergenceCoordinator: ObservableObject {
                     self.phase = .unlockingBundleReceipt
                 }
             case let .siteX509(value): try await service.provisionSiteX509(value)
+            case let .siteX509Broker(value): try await service.provisionSiteX509Broker(value)
             case let .acknowledgement(value): try await service.acknowledge(value)
             }
             self.pending = nil

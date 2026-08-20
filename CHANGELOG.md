@@ -4,6 +4,38 @@
 
 ### Changed
 
+- Route fresh-device Site Root genesis through the fixed, host-agnostic
+  `https://install.mnemosyne.co.uk` broker. Registration, delegation polling
+  and initial static proof relay use the PHP/Rust correlation contract; no
+  QR-selected customer host is accepted. Align the broker proof envelope with
+  the completion schema consumed by the PHP relay (0.20.2, iOS build 19).
+
+- Route a verified first-device `PISTIS1` enrolment presentation scanned from
+  the generic Scan surface into the existing first-device flow, automatically
+  starting the GitHub device prompt while preserving Site Root JSON and
+  ordinary authentication routing (0.19.10, iOS build 16).
+
+- Align the protected pre-native Site X.509 parser with the reviewed server
+  contract: the browser code keeps its five-minute redemption window, while
+  the post-redemption QR may remain valid for up to 900 seconds. Release
+  0.19.9 is iOS build 15.
+
+- Make the Pistis release host-agnostic (0.19.8, iOS build 14). Customer host
+  origin, TLS pins, Site Root certificates, generations and installation
+  identity are runtime attended-install data, never compiled into
+  ``Info.plist``. The generic binary remains capable of onboarding multiple
+  hosts through the fixed install broker.
+
+- Enforce the optional `enrolled_site_root_public_key_id_b64url` broker
+  presentation binding in Pistis. When present, it must be canonical base64url
+  for one 32-byte key ID and must match the SHA-256 digest of the loaded
+  compressed Secure Enclave Site Root public key; mismatches fail before proof
+  submission.
+
+- Reserve the protected first-install Site X.509 QR before Face ID and App
+  Attest. A failed or interrupted approval is terminal for that presentation;
+  replay returns a clear reissue instruction and cannot submit a second proof.
+
 - Preserve and surface the exact Site Root authority-key failure during the
   PXFP2 approval path. Missing, Secure-Enclave-invalidated, and server/local
   public-key mismatch are now distinct fail-closed outcomes; none emits a

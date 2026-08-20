@@ -8,6 +8,11 @@ import PistisCore
 struct FirstDeviceEnrolmentView: View {
     @StateObject private var flow = FirstDeviceEnrolmentFlow()
     @Environment(\.openURL) private var openURL
+    private let initialQRText: String?
+
+    init(initialQRText: String? = nil) {
+        self.initialQRText = initialQRText
+    }
 
     var body: some View {
         ScrollView {
@@ -114,6 +119,10 @@ struct FirstDeviceEnrolmentView: View {
         }
         .navigationTitle("Enrol first device")
         .mnScreenBackground()
+        .task {
+            guard let initialQRText else { return }
+            await flow.handleInitialScanAndBegin(initialQRText)
+        }
     }
 
 }
@@ -156,6 +165,13 @@ final class FirstDeviceEnrolmentFlow: ObservableObject {
         } catch {
             fail(error)
         }
+    }
+
+    func handleInitialScanAndBegin(_ qrText: String) async {
+        guard presentation == nil else { return }
+        handleScan(.success(ScannedQRPayload(text: qrText)))
+        guard presentation != nil else { return }
+        await begin()
     }
 
     func begin() async {

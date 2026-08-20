@@ -37,6 +37,9 @@ enum PlatformFailure: Error, Equatable, Sendable {
     case operationCancelled
     case productionEnvelopeUnavailable
     case siteRootAuthorityUnavailable
+    /// The protected first-install QR was already reserved by an earlier
+    /// approval attempt and must be reissued by Monas.
+    case siteX509PresentationAlreadyAttempted
     case enrolmentBeginRetryRequired
     case enrolmentRequired
     case existingEnrolmentMustBeRemoved
@@ -75,6 +78,8 @@ extension PlatformFailure {
             "The signed enrolment response verified, but Pistis could not retain it securely on this iPhone."
         case .siteRootAuthorityUnavailable:
             "The Monas Site Root authority is unavailable. No proof was submitted."
+        case .siteX509PresentationAlreadyAttempted:
+            "This protected Site X.509 QR has already been attempted. Return to the install window and request a newly issued code and QR."
         case .secureHardwareUnavailable:
             "Secure Enclave is unavailable on this device."
         case .appAttestUnavailable:

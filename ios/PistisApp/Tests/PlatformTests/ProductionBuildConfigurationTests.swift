@@ -13,12 +13,11 @@ final class ProductionBuildConfigurationTests: XCTestCase {
         XCTAssertTrue(source.contains("PISTIS_MONAS_SITE_ROOT_AUTHORITY_SPKI_SHA256=''"))
         XCTAssertTrue(source.contains("openssl x509 -inform DER"))
         XCTAssertTrue(source.contains("openssl dgst -sha256 -binary"))
-        XCTAssertTrue(source.contains("CURRENT_PROJECT_VERSION=11"))
-        XCTAssertTrue(
-            source.contains(
-                "PISTIS_MONAS_SITE_ROOT_AUTHORITY_ALTERNATE_ORIGIN='https://192.168.0.193:8443'"
-            )
-        )
+        XCTAssertTrue(source.contains("AUTHORITY_ORIGIN [ALTERNATE_ORIGIN]"))
+        XCTAssertTrue(source.contains("PISTIS_MONAS_SITE_ROOT_AUTHORITY_ORIGIN=\"$authority_origin\""))
+        XCTAssertTrue(source.contains("PISTIS_MONAS_SITE_ROOT_AUTHORITY_ALTERNATE_ORIGIN=\"$alternate_origin\""))
+        XCTAssertFalse(source.contains("CURRENT_PROJECT_VERSION=11"))
+        XCTAssertFalse(source.contains("192.168.1.192"))
         XCTAssertFalse(source.contains("bootstrap-leaf-spki-v1"))
     }
 }

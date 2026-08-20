@@ -4,6 +4,12 @@
 
 ### Changed
 
+- Route fresh-device Site Root genesis through the fixed, host-agnostic
+  `https://install.mnemosyne.co.uk` broker. Registration, delegation polling
+  and initial static proof relay use the PHP/Rust correlation contract; no
+  QR-selected customer host is accepted. Align the broker proof envelope with
+  the completion schema consumed by the PHP relay (0.20.2, iOS build 19).
+
 - Route a verified first-device `PISTIS1` enrolment presentation scanned from
   the generic Scan surface into the existing first-device flow, automatically
   starting the GitHub device prompt while preserving Site Root JSON and

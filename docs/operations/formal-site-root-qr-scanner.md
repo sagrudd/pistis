@@ -81,14 +81,18 @@ local queue or offline authorisation is permitted.
 
 ## First-install QR regression gate
 
-The first-install route carries three deliberately different QR families:
+The first-install route carries three deliberately different QR families in
+this fixed order:
 
-* the initial ``monas.site-x509-first-provision-broker-presentation.v1`` JSON
-  presentation, which is submitted only to the fixed install broker and does
-  not require the later appliance authority profile;
-* the subsequent ``monas.site-root-genesis-registration-presentation.v1`` JSON
-  presentation, which is routed to the Site Root/App Attest coordinator; and
-* the later signed ``PISTIS1`` v4/kind-3 first-device presentation, which is
+* the initial ``monas.site-root-genesis-registration-presentation.v1`` JSON
+  presentation, which is routed to the Site Root/App Attest coordinator
+  through the fixed ``https://install.mnemosyne.co.uk`` broker. Its opaque
+  reference and correlation are relayed unchanged; the QR cannot select a
+  customer host; and
+* the subsequent ``monas.site-x509-first-provision-broker-presentation.v1``
+  JSON presentation, which is submitted only to the fixed install broker and
+  creates the reviewed native TLS profile; and
+* the final signed ``PISTIS1`` v4/kind-3 first-device presentation, which is
   verified by ``FirstDevicePresentationV4`` before provider enrolment. When
   this presentation is captured by the generic Scan surface, Pistis opens the
   existing first-device flow and begins the bounded GitHub device exchange;
@@ -98,9 +102,29 @@ Run ``scripts/verify-first-device-qr-contract.sh`` in every release build.
 The iOS platform tests must also pass, including the regression test proving
 that the attended scanner accepts all three families and rejects a plain URL.
 A build that only accepts ``PISTIS1`` is incomplete: it cannot perform the
-initial Site Root ceremony on a new iPhone. A build without a customer Site
-Root profile may perform only the fixed broker phase; direct Site Root
-submissions remain unavailable until the signed host profile is present.
+initial Site Root ceremony on a new iPhone. A fresh-device build may perform
+genesis only through the fixed broker; direct Site Root submissions remain
+available only after the signed host profile is present. The native Site X.509
+phase must complete before the final identity QR can be composed because that
+QR is bound to the reviewed native TLS leaf.
+
+For the brokered genesis phase, the fixed origin is
+https://install.mnemosyne.co.uk and the active PHP/Rust route contract is
+the plural /api/first-install/v1/site-root-genesis/ family:
+
+* POST /registrations sends exactly schema, purpose, reference,
+  correlation_b64url and registration_request_b64url and receives a generic
+  accepted response with HTTP 202;
+* POST /delegations polls with exactly schema, purpose and
+  correlation_b64url until generic ready returns delegation_b64url (or
+  returns pending, expired or consumed);
+* POST /proofs relays the initial static proof with exactly schema, purpose,
+  correlation_b64url and proof_b64url and receives generic accepted with HTTP
+  202.
+
+The QR correlation is the sole iPhone queue handle for this contract; there is
+no relay_token variant. /completions and /acknowledgements remain the
+host-post/iPhone-poll phases and are not used as the initial proof POST.
 
 ## Current versus required
 

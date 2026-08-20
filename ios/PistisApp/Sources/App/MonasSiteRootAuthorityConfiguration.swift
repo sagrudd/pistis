@@ -152,7 +152,8 @@ struct MonasSiteRootAuthorityConfiguration: Sendable {
 /// is verified, direct Site Root transport is intentionally unavailable.
 enum ProductionMonasSiteRootTransportFactory {
     static func make() -> any MonasSiteRootCeremonyTransport {
-        UnavailableMonasSiteRootDelegationTransport()
+        (try? MonasSiteRootGenesisBrokerTransport())
+            ?? UnavailableMonasSiteRootDelegationTransport()
     }
 
     /// Constructs a transport only from an already verified runtime profile.

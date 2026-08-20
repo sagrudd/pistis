@@ -327,9 +327,13 @@ final class PlatformPolicyTests: XCTestCase {
         }
     }
 
-    func testMonasSiteRootTransportFactoryFailsClosedUntilRuntimeProfileIsVerified() {
+    func testMonasSiteRootTransportFactoryUsesOnlyTheFixedGenesisBrokerUntilRuntimeProfileIsVerified() {
         let transport = ProductionMonasSiteRootTransportFactory.make()
-        XCTAssertTrue(transport is UnavailableMonasSiteRootDelegationTransport)
+        XCTAssertTrue(transport is MonasSiteRootGenesisBrokerTransport)
+        XCTAssertEqual(
+            transport.genesisAuthorityOrigin?.absoluteString,
+            MonasSiteRootGenesisBrokerEndpointV1.origin
+        )
     }
 
     func testRuntimeProfileFactoryDoesNotMakeBundleConfigurationAuthoritative() throws {
@@ -344,9 +348,9 @@ final class PlatformPolicyTests: XCTestCase {
             ]
         )
         XCTAssertTrue(transport is MonasSiteRootDelegationTransport)
-        XCTAssertFalse(
+        XCTAssertTrue(
             ProductionMonasSiteRootTransportFactory.make()
-                is MonasSiteRootDelegationTransport
+                is MonasSiteRootGenesisBrokerTransport
         )
     }
 

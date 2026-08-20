@@ -61,7 +61,8 @@ final class SiteRootDelegationCoordinator: ObservableObject {
                let firstDevice = try? SiteRootGenesisRegistrationPresentationV1(
                    qrText: qrText,
                    authorityOrigins: transport.genesisAuthorityOrigins,
-                   nowUnixMillis: nowUnixMillis
+                   nowUnixMillis: nowUnixMillis,
+                   requireCorrelation: transport.requiresGenesisCorrelation
                )
             {
                 pending = .firstDevice(firstDevice)

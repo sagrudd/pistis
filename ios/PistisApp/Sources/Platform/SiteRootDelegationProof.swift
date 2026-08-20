@@ -31,13 +31,16 @@ struct SiteRootDelegationPresentationV1: Sendable {
     let siteTrustDomain: String
     let submitURL: URL
     let reference: String
+    let correlation: Data?
 
     init(
         canonicalDelegationJSON: Data,
         deviceKeyID: String,
         siteTrustDomain: String,
         submitURL: URL,
-        reference: String
+        reference: String,
+        expectedSubmitPath: String = MonasSiteRootDelegationEndpointV1.submitPath,
+        correlation: Data? = nil
     ) throws {
         guard !canonicalDelegationJSON.isEmpty,
               canonicalDelegationJSON.count <= Self.maximumPayloadLength,
@@ -48,9 +51,13 @@ struct SiteRootDelegationPresentationV1: Sendable {
               submitURL.user == nil,
               submitURL.password == nil,
               submitURL.fragment == nil,
-              submitURL.path == "/auth/pistis/site-root-delegations/v1/submit",
+              submitURL.path == expectedSubmitPath,
               submitURL.query == nil
         else { throw PlatformFailure.invalidConfiguration }
+        if let correlation {
+            guard correlation.count == 32, !correlation.allSatisfy({ $0 == 0 })
+            else { throw PlatformFailure.invalidConfiguration }
+        }
 
         let object = try StrictJSONObject(
             data: canonicalDelegationJSON,
@@ -68,6 +75,7 @@ struct SiteRootDelegationPresentationV1: Sendable {
         self.siteTrustDomain = siteTrustDomain
         self.submitURL = submitURL
         self.reference = reference
+        self.correlation = correlation
     }
 
     private static func validIdentifier(_ value: String) -> Bool {
@@ -86,6 +94,21 @@ struct SiteRootDelegationSubmissionV1: Equatable, Sendable {
     let reference: String
     let canonicalDelegationJSON: Data
     let coseSign1: Data
+    let correlation: Data?
+
+    init(
+        schema: String,
+        reference: String,
+        canonicalDelegationJSON: Data,
+        coseSign1: Data,
+        correlation: Data? = nil
+    ) {
+        self.schema = schema
+        self.reference = reference
+        self.canonicalDelegationJSON = canonicalDelegationJSON
+        self.coseSign1 = coseSign1
+        self.correlation = correlation
+    }
 
     var coseSign1Base64URL: String {
         coseSign1.base64EncodedString()
@@ -276,7 +299,8 @@ final class SecureEnclaveSiteRootProofProducer: @unchecked Sendable {
             schema: SiteRootDelegationSubmissionV1.schema,
             reference: presentation.reference,
             canonicalDelegationJSON: presentation.canonicalDelegationJSON,
-            coseSign1: coseSign1
+            coseSign1: coseSign1,
+            correlation: presentation.correlation
         )
     }
 }

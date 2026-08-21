@@ -2,6 +2,14 @@
 
 ## [Unreleased]
 
+### Added
+
+- Add a bounded iOS onboarding event journal and the reviewed fixed-broker
+  upload path. During a protected Site Root ceremony Pistis sends only
+  redacted, fixed-vocabulary challenge events through the QR's server-issued
+  correlation; the install window projects them live, and unacknowledged local
+  rows expire after 48 hours (0.20.10, iOS build 25).
+
 ### Fixed
 
 - Bound the fresh-device Site Root broker wait to 30 seconds, preserve precise

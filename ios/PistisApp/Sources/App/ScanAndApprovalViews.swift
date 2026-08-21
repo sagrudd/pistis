@@ -359,7 +359,7 @@ struct ScanView: View {
                    let pinned = siteRootTransport as? MonasSiteRootDelegationTransport,
                    !pinned.isConfiguredAuthorityHost(review.destination)
                 {
-                    siteRootCeremony.reset()
+                    siteRootCeremony.reject(.siteRootAuthorityUnavailable)
                     scanFailure = .siteRootAuthorityUnavailable
                     return
                 }
@@ -930,7 +930,7 @@ private struct SiteRootDelegationReviewView: View {
                             Task { await coordinator.approve() }
                         }
                         Button("Deny") {
-                            coordinator.reset()
+                            coordinator.cancel()
                             dismiss()
                         }
                         .font(.headline)
@@ -1003,7 +1003,7 @@ private struct SiteRootDelegationReviewView: View {
                 ToolbarItem(placement: .cancellationAction) {
                     if !coordinator.phase.isSubmitted {
                         Button("Cancel") {
-                            coordinator.reset()
+                            coordinator.cancel()
                             dismiss()
                         }
                         .frame(minHeight: MnMetrics.minimumTarget)

@@ -67,6 +67,8 @@ enum PlatformFailure: Error, Equatable, Sendable {
     case existingEnrolmentMustBeRemoved
     case enrolmentReceiptInvalid
     case enrolmentStorageFailed
+    case onboardingEventUploadUnavailable
+    case onboardingEventUploadRejected
     case appAttestUnavailable
     case appAttestInvalidInput
     case appAttestKeyCreationFailed

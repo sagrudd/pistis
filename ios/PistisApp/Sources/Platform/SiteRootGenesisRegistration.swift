@@ -171,6 +171,10 @@ enum MonasSiteRootGenesisBrokerEndpointV1 {
         "/api/first-install/v1/pistis/site-root-genesis/completions"
     static let completionPollSchema =
         "mnemosyne.monas.first-install-broker.site-root-genesis-completion-poll.v1"
+    static let diagnosticsSchema =
+        "mnemosyne.monas.first-install-broker.site-root-genesis-diagnostics.v1"
+    static let diagnosticsPath =
+        "/api/first-install/v1/pistis/site-root-genesis/diagnostics"
     static let responseSchema = "mnemosyne.monas.first-install-broker.response.v1"
     static let maximumRegistrationBytes = 12 * 1024
     static let maximumDelegationBytes = 12 * 1024
@@ -205,6 +209,11 @@ protocol MonasSiteRootCeremonyTransport: MonasSiteRootDelegationSubmitting,
     var genesisAuthorityOrigin: URL? { get }
     var genesisAuthorityOrigins: [URL] { get }
     var requiresGenesisCorrelation: Bool { get }
+
+    /// Best-effort redacted diagnostics for the attended first-device route.
+    /// Implementations must never make event delivery a prerequisite for the
+    /// protected ceremony.
+    func uploadOnboardingEvent(_ event: OnboardingEvent, correlation: Data) async throws
 }
 
 extension MonasSiteRootCeremonyTransport {
@@ -213,6 +222,10 @@ extension MonasSiteRootCeremonyTransport {
     }
 
     var requiresGenesisCorrelation: Bool { false }
+
+    func uploadOnboardingEvent(_: OnboardingEvent, correlation _: Data) async throws {
+        throw PlatformFailure.onboardingEventUploadUnavailable
+    }
 }
 
 struct MonasSiteRootGenesisRegistrationRequest: Encodable {

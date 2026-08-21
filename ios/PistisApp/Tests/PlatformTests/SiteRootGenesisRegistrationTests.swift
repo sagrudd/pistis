@@ -197,6 +197,85 @@ final class SiteRootGenesisRegistrationTests: XCTestCase {
         XCTAssertEqual(nestedProof["reference"] as? String, delegation.reference)
     }
 
+    func testBrokerUploadsExactRedactedDiagnosticEvent() async throws {
+        GenesisBrokerURLProtocol.reset()
+        let configuration = URLSessionConfiguration.ephemeral
+        configuration.protocolClasses = [GenesisBrokerURLProtocol.self]
+        let transport = try MonasSiteRootGenesisBrokerTransport(
+            session: URLSession(configuration: configuration)
+        )
+        let correlation = Data(repeating: 0x44, count: 32)
+        let event = try OnboardingEvent(
+            id: UUID(uuidString: "00000000-0000-0000-0000-000000000003")!,
+            attemptID: UUID(uuidString: "10000000-0000-0000-0000-000000000001")!,
+            flow: .firstDeviceSiteRoot,
+            kind: .failed,
+            stage: .appAttest,
+            outcome: .failed,
+            sequence: 3,
+            elapsedMs: 1_234,
+            httpStatus: 503,
+            referenceDigest: Data(repeating: 0x11, count: 32),
+            authority: .fixedInstallBroker,
+            failure: .authorityRejected,
+            occurredAtUnixMillis: now
+        )
+
+        try await transport.uploadOnboardingEvent(event, correlation: correlation)
+
+        let request = try XCTUnwrap(GenesisBrokerURLProtocol.requests().last)
+        XCTAssertEqual(
+            request.url?.path,
+            MonasSiteRootGenesisBrokerEndpointV1.diagnosticsPath
+        )
+        let body = try XCTUnwrap(request.httpBody)
+        let object = try XCTUnwrap(JSONSerialization.jsonObject(with: body) as? [String: Any])
+        XCTAssertEqual(
+            Set(object.keys),
+            [
+                "schema", "purpose", "correlation_b64url", "event_id_b64url",
+                "sequence", "stage", "action", "outcome", "elapsed_ms",
+                "http_status", "error_code",
+            ]
+        )
+        XCTAssertEqual(
+            object["schema"] as? String,
+            MonasSiteRootGenesisBrokerEndpointV1.diagnosticsSchema
+        )
+        XCTAssertEqual(object["purpose"] as? String, "site-root-genesis")
+        XCTAssertEqual(object["sequence"] as? Int, 3)
+        XCTAssertEqual(object["stage"] as? String, "app_attest_registration")
+        XCTAssertEqual(object["action"] as? String, "response")
+        XCTAssertEqual(object["outcome"] as? String, "rejected")
+        XCTAssertEqual(object["elapsed_ms"] as? Int, 1_234)
+        XCTAssertEqual(object["http_status"] as? Int, 503)
+        XCTAssertEqual(object["error_code"] as? String, "authority_rejected")
+        XCTAssertFalse(String(decoding: body, as: UTF8.self).contains("private_key"))
+        XCTAssertFalse(String(decoding: body, as: UTF8.self).contains("cose_sign1"))
+
+        let accepted = try OnboardingEvent(
+            id: UUID(uuidString: "00000000-0000-0000-0000-000000000004")!,
+            attemptID: event.attemptID,
+            flow: .firstDeviceSiteRoot,
+            kind: .stageEntered,
+            stage: .proofResponse,
+            outcome: .accepted,
+            sequence: 4,
+            elapsedMs: 1_500,
+            httpStatus: 202,
+            authority: .fixedInstallBroker,
+            occurredAtUnixMillis: now
+        )
+        try await transport.uploadOnboardingEvent(accepted, correlation: correlation)
+        let acceptedObject = try XCTUnwrap(
+            jsonObject(try XCTUnwrap(GenesisBrokerURLProtocol.requests().last?.httpBody))
+        )
+        XCTAssertEqual(acceptedObject["stage"] as? String, "proof_response")
+        XCTAssertEqual(acceptedObject["action"] as? String, "response")
+        XCTAssertEqual(acceptedObject["outcome"] as? String, "accepted")
+        XCTAssertEqual(acceptedObject["http_status"] as? Int, 202)
+    }
+
     func testBrokerPendingPollHasABoundedWallClockAndPreciseTimeout() async throws {
         GenesisBrokerURLProtocol.reset()
         GenesisBrokerURLProtocol.mode = .pending
@@ -426,6 +505,12 @@ private final class GenesisBrokerURLProtocol: URLProtocol, @unchecked Sendable {
             status = 200
         } else if url.path == MonasSiteRootGenesisBrokerEndpointV1.proofPath {
             body = Data("{\"schema\":\"\(MonasSiteRootGenesisBrokerEndpointV1.responseSchema)\",\"state\":\"accepted\"}".utf8)
+            status = 202
+        } else if url.path == MonasSiteRootGenesisBrokerEndpointV1.diagnosticsPath {
+            let sequence = (try? JSONSerialization.jsonObject(
+                with: captured.httpBody ?? Data()
+            ) as? [String: Any])?["sequence"] as? Int ?? 0
+            body = Data("{\"schema\":\"\(MonasSiteRootGenesisBrokerEndpointV1.responseSchema)\",\"state\":\"accepted\",\"sequence\":\(sequence)}".utf8)
             status = 202
         } else {
             body = Data("{}".utf8)

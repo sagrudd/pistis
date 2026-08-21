@@ -419,6 +419,71 @@ registration, and then creates the Keychain record once. Exact replay is
 idempotent; no code path replaces a different record. Verified GitHub facts
 are rendered before a separate explicit Face ID confirmation action.
 
+## Bounded iOS onboarding diagnostics
+
+The iOS target has a client-side diagnostic outbox contract in
+`OnboardingEventJournal.swift`. It is deliberately not an analytics SDK or a
+Monas authority record. In the protected fresh-device route, the QR supplies
+the server-issued 32-byte correlation capability and
+`MonasSiteRootGenesisBrokerTransport` sends each event to the fixed
+`install.mnemosyne.co.uk` diagnostics path over the existing ephemeral,
+no-cookie, no-cache HTTPS session. Upload is best effort and never gates key
+creation, Face ID, App Attest, proof submission or installation. The outbox
+retains at most 64 closed, redacted events and 32 KiB of JSON, and purges
+entries after 48 hours. A duplicate event ID is idempotent only when the
+complete event is identical; an attempt to replace an event is rejected.
+
+The active install window displays the broker's redacted projection on every
+handoff poll. It is the immediate operator surface: each line identifies the
+closed challenge stage, start/response outcome, elapsed time, HTTP status when
+known, and a reviewed error code. It never displays QR contents, proof bytes,
+email addresses, URLs, App Attest evidence, device keys, cookies or tokens.
+
+Emit events at these exact boundaries:
+
+1. `SiteRootDelegationCoordinator.accept`: after the strict Site Root or
+   broker presentation parser accepts the QR, emit `qr_validated`. A parser
+   failure emits only a coarse failed event. `QRScannerAdapter` and
+   `ScanView.handleScan` must not retain or journal camera frames, QR text, or
+   routing substrings.
+2. `SiteRootDelegationCoordinator.approve` and its typed completion helpers:
+   emit one `stage_entered` event when the Secure Enclave key, App Attest,
+   bounded Monas delegation wait, Site Root proof, or later App Attest stage
+   begins. Emit a separate response event for each completed transport
+   boundary; the fixed broker records its known `202` registration/proof and
+   `200` delegation responses. Emit one terminal event beside the existing
+   local-history write in `recordCompletion` or `recordFailure`; use a coarse
+   failure code, never the `safeUserMessage` text.
+3. `FirstDeviceEnrolmentFlow.handleScan`: emit `qr_validated` only after
+   `FirstDevicePresentationV4.verify` succeeds. Provider verification and
+   device-registration transitions use the same closed stage values, with one
+   terminal event after the signed receipt is stored or the operation fails.
+4. `LocalHistoryRepository.record` remains a UI projection and is not an upload
+   source. Its existing redacted `HistoryEvent` values must not be expanded with
+   raw QR, invitation, provider, signature, App Attest, cookie, or token data.
+5. `MonasSiteRootDelegationTransport` remains a typed protocol transport. It
+   must not receive the journal, log request/response bodies, or emit events
+   from polling attempts. The coordinator records only the bounded stage
+   surrounding a transport call; the broker transport uploads the resulting
+   redacted event after it has been appended locally.
+
+`OnboardingEventUploadClient` remains available for future batch retry and
+tests, but the protected Site Root coordinator uses the per-event broker
+transport so that the active install window receives progress immediately.
+The server-issued correlation is transient request state only: it is not
+written to the journal, local history, QR presentation, URL query, crash
+metadata or logs. The broker transport uses the already reviewed fixed origin,
+ephemeral no-cookie/no-cache `URLSession`, redirect rejection, bounded
+request/response sizes and an exact fixed path. A successful response can
+acknowledge only the submitted sequence; failed delivery leaves the local
+redacted event available until the 48-hour purge boundary.
+
+The event body itself contains only closed enums, a local timestamp, monotonic
+elapsed duration, a random event/attempt identifier, an optional HTTP status,
+and a SHA-256 digest of an opaque reference. It contains no endpoint, host, QR,
+canonical payload, signature, private key, biometric, provider code/token,
+cookie or session capability.
+
 ## Design maintenance
 
 Changes to tokens or product presentation must be reconciled with

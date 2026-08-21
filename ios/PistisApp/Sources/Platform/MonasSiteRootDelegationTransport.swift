@@ -1006,6 +1006,51 @@ struct MonasSiteRootGenesisBrokerTransport: MonasSiteRootCeremonyTransport,
         }
     }
 
+    /// Sends one redacted iPhone-side onboarding event to the fixed install
+    /// broker. The correlation is the short-lived capability carried by the
+    /// server-issued protected QR; it is not a host credential. Delivery is
+    /// best effort and has no effect on the protected proof transaction.
+    func uploadOnboardingEvent(_ event: OnboardingEvent, correlation: Data) async throws {
+        guard Self.validCorrelation(correlation) else {
+            throw PlatformFailure.onboardingEventUploadRejected
+        }
+        let eventBytes = withUnsafeBytes(of: event.id.uuid) { Data($0) }
+        guard eventBytes.count == 16 else {
+            throw PlatformFailure.onboardingEventUploadRejected
+        }
+        let body = try JSONEncoder().encode(
+            MonasSiteRootGenesisDiagnosticRequest(
+                event: event,
+                correlation: Self.base64URL(correlation),
+                eventID: Self.base64URL(eventBytes)
+            )
+        )
+        guard body.count <= 4_096 else {
+            throw PlatformFailure.onboardingEventUploadRejected
+        }
+        let data = try await post(
+            body: body,
+            endpoint: try fixedEndpoint(MonasSiteRootGenesisBrokerEndpointV1.diagnosticsPath),
+            expectedStatus: 202,
+            maximumResponseBytes: 1_024,
+            rejection: .onboardingEventUploadRejected
+        )
+        do {
+            let object = try StrictJSONObject(data: data, maximumBytes: 1_024).values
+            guard Set(object.keys) == ["schema", "sequence", "state"],
+                  case let .string(schema)? = object["schema"],
+                  schema == MonasSiteRootGenesisBrokerEndpointV1.responseSchema,
+                  case let .string(state)? = object["state"], state == "accepted",
+                  case let .number(sequence)? = object["sequence"],
+                  UInt64(sequence) == UInt64(event.sequence)
+            else { throw PlatformFailure.onboardingEventUploadRejected }
+        } catch let failure as PlatformFailure {
+            throw failure
+        } catch {
+            throw PlatformFailure.onboardingEventUploadRejected
+        }
+    }
+
     private func fixedEndpoint(_ path: String) throws -> URL {
         guard let endpoint = URL(string: path, relativeTo: brokerOrigin)?.absoluteURL,
               Self.matchesFixedEndpoint(endpoint, path: path)
@@ -1050,6 +1095,13 @@ struct MonasSiteRootGenesisBrokerTransport: MonasSiteRootCeremonyTransport,
 
     private static func validCorrelation(_ value: Data) -> Bool {
         value.count == 32 && !value.allSatisfy({ $0 == 0 })
+    }
+
+    private static func base64URL(_ value: Data) -> String {
+        value.base64EncodedString()
+            .replacingOccurrences(of: "+", with: "-")
+            .replacingOccurrences(of: "/", with: "_")
+            .replacingOccurrences(of: "=", with: "")
     }
 
     private enum DelegationPollResponse {
@@ -1148,6 +1200,60 @@ struct MonasSiteRootGenesisBrokerTransport: MonasSiteRootCeremonyTransport,
         return MonasSiteRootDelegationTransport.matchesAuthority(
             value, origin: origin, expectedPath: path
         )
+    }
+}
+
+private struct MonasSiteRootGenesisDiagnosticRequest: Encodable {
+    let schema: String
+    let purpose: String
+    let correlationB64URL: String
+    let eventIDB64URL: String
+    let sequence: UInt32
+    let stage: String
+    let action: String
+    let outcome: String
+    let elapsedMs: UInt32
+    let httpStatus: UInt16
+    let errorCode: String
+
+    enum CodingKeys: String, CodingKey {
+        case schema, purpose
+        case correlationB64URL = "correlation_b64url"
+        case eventIDB64URL = "event_id_b64url"
+        case sequence, stage, action, outcome
+        case elapsedMs = "elapsed_ms"
+        case httpStatus = "http_status"
+        case errorCode = "error_code"
+    }
+
+    init(event: OnboardingEvent, correlation: String, eventID: String) {
+        schema = MonasSiteRootGenesisBrokerEndpointV1.diagnosticsSchema
+        purpose = "site-root-genesis"
+        correlationB64URL = correlation
+        eventIDB64URL = eventID
+        sequence = event.sequence
+        stage = switch event.stage {
+        case .qrValidation: "qr_accepted"
+        case .siteRootKey: "site_root_key"
+        case .appAttest: "app_attest_registration"
+        case .monasDelegation: "registration_post"
+        case .delegationPoll: "delegation_poll"
+        case .siteRootProof: "proof_post"
+        case .proofResponse: "proof_response"
+        case .faceID: "face_id"
+        case .providerVerification: "ceremony_complete"
+        case .deviceRegistration: "site_root_key"
+        }
+        action = event.kind == .stageEntered && event.outcome == .started ? "start" : "response"
+        outcome = switch event.outcome {
+        case .started: "started"
+        case .accepted, .succeeded: "accepted"
+        case .rejected, .failed: "rejected"
+        case .cancelled: "cancelled"
+        }
+        elapsedMs = event.elapsedMs
+        httpStatus = event.httpStatus
+        errorCode = event.failure?.rawValue ?? ""
     }
 }
 

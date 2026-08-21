@@ -112,13 +112,20 @@ final class SiteRootGenesisRegistrationTests: XCTestCase {
         )
         let request = try brokerRequest()
 
-        let delegation = try await transport.registerGenesis(request)
+        let progress = RegistrationProgressRecorder()
+        let delegation = try await transport.registerGenesis(request) { event in
+            progress.append(event)
+        }
         let correlation = try XCTUnwrap(delegation.correlation)
         XCTAssertEqual(correlation, Data(repeating: 0x44, count: 32))
         XCTAssertEqual(
             delegation.submitURL.absoluteString,
             MonasSiteRootGenesisBrokerEndpointV1.origin
                 + MonasSiteRootGenesisBrokerEndpointV1.proofPath
+        )
+        XCTAssertEqual(
+            progress.values(),
+            [.registrationAccepted, .delegationPollStarted, .delegationReady]
         )
         let submission = SiteRootDelegationSubmissionV1(
             schema: SiteRootDelegationSubmissionV1.schema,
@@ -443,6 +450,23 @@ final class SiteRootGenesisRegistrationTests: XCTestCase {
             data.append(contentsOf: buffer[0..<count])
         }
         return data
+    }
+}
+
+private final class RegistrationProgressRecorder: @unchecked Sendable {
+    private let lock = NSLock()
+    private var recorded: [SiteRootGenesisRegistrationProgressV1] = []
+
+    func append(_ value: SiteRootGenesisRegistrationProgressV1) {
+        lock.lock()
+        recorded.append(value)
+        lock.unlock()
+    }
+
+    func values() -> [SiteRootGenesisRegistrationProgressV1] {
+        lock.lock()
+        defer { lock.unlock() }
+        return recorded
     }
 }
 

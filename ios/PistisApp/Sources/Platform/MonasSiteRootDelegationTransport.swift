@@ -426,7 +426,10 @@ struct MonasSiteRootDelegationTransport: MonasSiteRootCeremonyTransport,
     /// Posts the sole public first-device registration to the fixed, pinned
     /// authority. The response may contain only the issued one-time canonical
     /// delegation and its binding facts; it cannot select a new endpoint.
-    func registerGenesis(_ request: SiteRootGenesisRegistrationRequestV1) async throws
+    func registerGenesis(
+        _ request: SiteRootGenesisRegistrationRequestV1,
+        progress: @escaping @Sendable (SiteRootGenesisRegistrationProgressV1) -> Void
+    ) async throws
         -> SiteRootDelegationPresentationV1
     {
         guard Self.matchesAuthority(
@@ -462,11 +465,14 @@ struct MonasSiteRootDelegationTransport: MonasSiteRootCeremonyTransport,
                     expectedStatus: 200,
                     maximumResponseBytes: Self.maximumSubmissionBytes
                 )
-                return try MonasSiteRootGenesisRegistrationResult(
+                let delegation = try MonasSiteRootGenesisRegistrationResult(
                     data: data,
                     request: request,
                     authorityOrigins: authorityOrigins
                 ).presentation
+                progress(.registrationAccepted)
+                progress(.delegationReady)
+                return delegation
             } catch OriginAttemptFailure.unreachable {
                 lastFailure = .siteRootAuthorityUnavailable
             } catch OriginAttemptFailure.rejected(let failure) {
@@ -870,7 +876,10 @@ struct MonasSiteRootGenesisBrokerTransport: MonasSiteRootCeremonyTransport,
         self.maximumPollDuration = maximumPollDuration
     }
 
-    func registerGenesis(_ request: SiteRootGenesisRegistrationRequestV1) async throws
+    func registerGenesis(
+        _ request: SiteRootGenesisRegistrationRequestV1,
+        progress: @escaping @Sendable (SiteRootGenesisRegistrationProgressV1) -> Void
+    ) async throws
         -> SiteRootDelegationPresentationV1
     {
         guard let correlation = request.presentation.correlation,
@@ -903,8 +912,10 @@ struct MonasSiteRootGenesisBrokerTransport: MonasSiteRootCeremonyTransport,
             rejection: .siteRootGenesisRegistrationRejected
         )
         try Self.decodeAcceptedRegistrationResponse(data)
+        progress(.registrationAccepted)
         let proofURL = try fixedEndpoint(MonasSiteRootGenesisBrokerEndpointV1.proofPath)
         let deadline = Date().addingTimeInterval(maximumPollDuration)
+        progress(.delegationPollStarted)
 
         for attempt in 0..<maximumPollAttempts {
             let remaining = deadline.timeIntervalSinceNow
@@ -926,12 +937,14 @@ struct MonasSiteRootGenesisBrokerTransport: MonasSiteRootCeremonyTransport,
             )
             switch try Self.decodeDelegationPollResponse(pollData) {
             case .ready(let delegationData):
-                return try MonasSiteRootGenesisRegistrationResult(
+                let delegation = try MonasSiteRootGenesisRegistrationResult(
                     brokerData: delegationData,
                     request: request,
                     brokerProofURL: proofURL,
                     correlation: correlation
                 ).presentation
+                progress(.delegationReady)
+                return delegation
             case .pending:
                 if attempt + 1 < maximumPollAttempts {
                     let remaining = deadline.timeIntervalSinceNow

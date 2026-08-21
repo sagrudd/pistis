@@ -230,7 +230,10 @@ struct UnavailableMonasSiteRootDelegationTransport: MonasSiteRootCeremonyTranspo
         throw PlatformFailure.productionEnvelopeUnavailable
     }
 
-    func registerGenesis(_: SiteRootGenesisRegistrationRequestV1) async throws
+    func registerGenesis(
+        _: SiteRootGenesisRegistrationRequestV1,
+        progress _: @escaping @Sendable (SiteRootGenesisRegistrationProgressV1) -> Void
+    ) async throws
         -> SiteRootDelegationPresentationV1
     {
         throw PlatformFailure.productionEnvelopeUnavailable

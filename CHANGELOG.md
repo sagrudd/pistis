@@ -2,6 +2,13 @@
 
 ## [Unreleased]
 
+### Changed
+
+- Distinguish “submitting protected registration” from “registration accepted;
+  waiting for Monas delegation” in the first Site Root ceremony. The bounded
+  event journal now records the broker's HTTP 202 before it starts the
+  delegation poll (0.20.11, iOS build 26).
+
 ### Added
 
 - Add a bounded iOS onboarding event journal and the reviewed fixed-broker

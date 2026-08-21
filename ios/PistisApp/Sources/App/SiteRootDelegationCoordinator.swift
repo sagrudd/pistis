@@ -7,6 +7,7 @@ import Foundation
 enum SiteRootFirstDeviceStage: Equatable, Sendable {
     case creatingSiteRootKey
     case preparingAppAttest
+    case submittingMonasRegistration
     case waitingForMonasDelegation
     case signingInitialProof
     case submittingInitialProof
@@ -15,6 +16,7 @@ enum SiteRootFirstDeviceStage: Equatable, Sendable {
         switch self {
         case .creatingSiteRootKey: "Creating protected Site Root key"
         case .preparingAppAttest: "Preparing Apple App Attest"
+        case .submittingMonasRegistration: "Submitting protected registration"
         case .waitingForMonasDelegation: "Waiting for Monas delegation"
         case .signingInitialProof: "Waiting for Face ID"
         case .submittingInitialProof: "Submitting initial Site Root proof"
@@ -27,6 +29,8 @@ enum SiteRootFirstDeviceStage: Equatable, Sendable {
             "Face ID protects the new Site Root key. Private key material remains on this iPhone."
         case .preparingAppAttest:
             "Apple is creating and attesting a fresh key for this one-use installation ceremony."
+        case .submittingMonasRegistration:
+            "Pistis is submitting the public registration to the fixed install service. Monas has not accepted it yet."
         case .waitingForMonasDelegation:
             "The registration was sent to the fixed Monas install service. The protected delegation wait is bounded to 30 seconds."
         case .signingInitialProof:
@@ -206,17 +210,19 @@ final class SiteRootDelegationCoordinator: ObservableObject {
                 )
                 recordEvent(kind: .stageEntered, outcome: .accepted)
                 enterStage(.monasDelegation)
-                setFirstDeviceStage(.waitingForMonasDelegation)
+                setFirstDeviceStage(.submittingMonasRegistration)
                 let delegation = try await transport.registerGenesis(
                     SiteRootGenesisRegistrationRequestV1(
                         presentation: firstDevice,
                         siteRootKey: siteRootKey,
                         appAttestRegistration: registration
-                    )
+                    ),
+                    progress: { [weak self] progress in
+                        Task { @MainActor [weak self] in
+                            self?.recordFirstDeviceRegistrationProgress(progress)
+                        }
+                    }
                 )
-                recordEvent(kind: .stageEntered, outcome: .accepted, httpStatus: 202)
-                enterStage(.delegationPoll)
-                recordEvent(kind: .stageEntered, outcome: .accepted, httpStatus: 200)
                 try await completeInitialStaticDelegation(delegation, producer: producer)
             }
         } catch let failure as PlatformFailure {
@@ -493,6 +499,21 @@ final class SiteRootDelegationCoordinator: ObservableObject {
     ) {
         eventStage = stage
         recordEvent(kind: .stageEntered, outcome: .accepted, httpStatus: httpStatus)
+    }
+
+    private func recordFirstDeviceRegistrationProgress(
+        _ progress: SiteRootGenesisRegistrationProgressV1
+    ) {
+        guard eventFlow == .firstDeviceSiteRoot else { return }
+        switch progress {
+        case .registrationAccepted:
+            setFirstDeviceStage(.waitingForMonasDelegation)
+            recordStageResponse(.monasDelegation, httpStatus: 202)
+        case .delegationPollStarted:
+            enterStage(.delegationPoll)
+        case .delegationReady:
+            recordStageResponse(.delegationPoll, httpStatus: 200)
+        }
     }
 
     private func recordEvent(

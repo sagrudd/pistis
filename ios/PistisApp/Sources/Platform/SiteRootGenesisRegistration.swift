@@ -194,10 +194,24 @@ struct SiteRootGenesisRegistrationRequestV1: Sendable {
     let appAttestRegistration: AppleAppAttestRegistrationEnvelope
 }
 
+/// Fixed milestones reported by a Site Root registration transport.
+///
+/// These values carry no QR, host, key, proof, correlation, or App Attest
+/// material. They prevent the iPhone UI from claiming that Monas is already
+/// considering a registration before the fixed broker has accepted it.
+enum SiteRootGenesisRegistrationProgressV1: Equatable, Sendable {
+    case registrationAccepted
+    case delegationPollStarted
+    case delegationReady
+}
+
 /// Monas returns a delegation only after atomically consuming the nonce-bound
 /// registration. The caller must then use the existing detached proof flow.
 protocol MonasSiteRootGenesisRegistering: Sendable {
-    func registerGenesis(_ request: SiteRootGenesisRegistrationRequestV1) async throws
+    func registerGenesis(
+        _ request: SiteRootGenesisRegistrationRequestV1,
+        progress: @escaping @Sendable (SiteRootGenesisRegistrationProgressV1) -> Void
+    ) async throws
         -> SiteRootDelegationPresentationV1
 }
 
@@ -222,6 +236,12 @@ extension MonasSiteRootCeremonyTransport {
     }
 
     var requiresGenesisCorrelation: Bool { false }
+
+    func registerGenesis(_ request: SiteRootGenesisRegistrationRequestV1) async throws
+        -> SiteRootDelegationPresentationV1
+    {
+        try await registerGenesis(request, progress: { _ in })
+    }
 
     func uploadOnboardingEvent(_: OnboardingEvent, correlation _: Data) async throws {
         throw PlatformFailure.onboardingEventUploadUnavailable

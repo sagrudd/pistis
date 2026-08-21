@@ -40,6 +40,25 @@ enum PlatformFailure: Error, Equatable, Sendable {
     case operationCancelled
     case productionEnvelopeUnavailable
     case siteRootAuthorityUnavailable
+    /// The fixed broker rejected the first-device registration before Monas
+    /// could issue a delegation. A fresh QR is required.
+    case siteRootGenesisRegistrationRejected
+    /// The fixed broker could not return a valid first-device delegation.
+    case siteRootGenesisDelegationUnavailable
+    /// The fixed broker remained pending until the bounded first-device wait
+    /// elapsed. No proof was produced.
+    case siteRootGenesisDelegationTimedOut
+    /// The broker explicitly reported that the one-use delegation is no
+    /// longer available.
+    case siteRootGenesisDelegationExpired
+    /// The broker explicitly reported that the one-use delegation was already
+    /// consumed by an earlier attempt.
+    case siteRootGenesisDelegationConsumed
+    /// The fixed broker rejected the initial static proof completion.
+    case siteRootGenesisCompletionRejected
+    /// The iPhone could not reach the fixed broker or complete its protected
+    /// TLS exchange. The stage-specific state remains visible to the user.
+    case siteRootGenesisTransportUnavailable
     /// The protected first-install QR was already reserved by an earlier
     /// approval attempt and must be reissued by Monas.
     case siteX509PresentationAlreadyAttempted
@@ -83,6 +102,20 @@ extension PlatformFailure {
             "The signed enrolment response verified, but Pistis could not retain it securely on this iPhone."
         case .siteRootAuthorityUnavailable:
             "The Monas Site Root authority is unavailable. No proof was submitted."
+        case .siteRootGenesisRegistrationRejected:
+            "Monas rejected this first-device registration. Return to the install window and request a newly issued QR. No proof was submitted."
+        case .siteRootGenesisDelegationUnavailable:
+            "Monas did not provide the protected first-device delegation. Return to the install window and request a newly issued QR. No proof was submitted."
+        case .siteRootGenesisDelegationTimedOut:
+            "Monas did not return the protected first-device delegation within 30 seconds. No proof was submitted; request a newly issued QR."
+        case .siteRootGenesisDelegationExpired:
+            "This first-device delegation has expired. Return to the install window and request a newly issued QR. No proof was submitted."
+        case .siteRootGenesisDelegationConsumed:
+            "This first-device delegation has already been consumed. Return to the install window and request a newly issued QR. No proof was submitted."
+        case .siteRootGenesisCompletionRejected:
+            "Monas rejected the initial Site Root proof completion. No proof was accepted; return to the install window and request a newly issued QR."
+        case .siteRootGenesisTransportUnavailable:
+            "Pistis could not reach the fixed Monas install service. No proof was submitted; check the connection and request a newly issued QR."
         case .siteX509PresentationAlreadyAttempted:
             "This protected Site X.509 QR has already been attempted. Return to the install window and request a newly issued code and QR."
         case .secureHardwareUnavailable:

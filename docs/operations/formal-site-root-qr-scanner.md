@@ -67,8 +67,14 @@ produce a live authority proof. It must not fall back to the existing
 ## User experience and privacy
 
 The scan surface needs accessible camera permission rationale and an explicit
-review screen before Face ID. It displays only non-secret context and a coarse
-terminal state: `pending`, `completed`, `denied`, `expired` or `cancelled`.
+review screen before Face ID. For first-device registration it also shows the
+current non-secret stage (Secure Enclave key, Apple App Attest, Monas
+delegation, Face ID signing or proof submission) and elapsed time. The fixed
+broker delegation wait is bounded to 30 seconds. Terminal failures identify
+the stage and whether registration, delegation, transport or completion was
+rejected; they do not collapse into a generic proof message. The remaining
+ceremony displays only non-secret context and a coarse terminal state:
+`pending`, `completed`, `denied`, `expired` or `cancelled`.
 Never place QR bytes, opaque references, submit URL query, COSE proof, public
 key, Apple evidence or device identifier into history, analytics, screenshots,
 clipboard, crash reports or support text.

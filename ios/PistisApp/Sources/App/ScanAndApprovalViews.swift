@@ -937,7 +937,11 @@ private struct SiteRootDelegationReviewView: View {
                         .foregroundStyle(MnColor.danger)
                         .frame(maxWidth: .infinity, minHeight: MnMetrics.minimumTarget)
                     case .registeringFirstDevice:
-                        MnStatusLabel(text: "Registering protected first device", kind: .warning)
+                        if let progress = coordinator.firstDeviceProgress {
+                            SiteRootFirstDeviceProgressView(progress: progress)
+                        } else {
+                            MnStatusLabel(text: "Registering protected first device", kind: .warning)
+                        }
                     case .signing:
                         MnStatusLabel(text: "Waiting for Face ID", kind: .warning)
                     case .attesting:
@@ -978,7 +982,10 @@ private struct SiteRootDelegationReviewView: View {
                             showInstallations()
                         }
                     case let .failed(failure):
-                        MnStatusLabel(text: "Proof was not submitted", kind: .danger)
+                        MnStatusLabel(text: "Site Root ceremony stopped safely", kind: .danger)
+                        if let progress = coordinator.firstDeviceProgress {
+                            SiteRootFirstDeviceProgressView(progress: progress, terminal: true)
+                        }
                         Text(failure.safeUserMessage)
                         MnPrimaryButton("Done") {
                             coordinator.reset()
@@ -1004,6 +1011,44 @@ private struct SiteRootDelegationReviewView: View {
                 }
             }
             .mnScreenBackground()
+        }
+    }
+}
+
+private struct SiteRootFirstDeviceProgressView: View {
+    let progress: SiteRootFirstDeviceProgress
+    var terminal = false
+
+    var body: some View {
+        TimelineView(.periodic(from: Date(), by: 1)) { context in
+            MnPanel {
+                VStack(alignment: .leading, spacing: MnSpacing.x2) {
+                    HStack(alignment: .firstTextBaseline, spacing: MnSpacing.x2) {
+                        MnStatusLabel(
+                            text: terminal
+                                ? "Stopped at \(progress.stage.title)"
+                                : progress.stage.title,
+                            kind: terminal ? .danger : .warning
+                        )
+                        Spacer(minLength: 0)
+                        if !terminal {
+                            ProgressView()
+                                .controlSize(.small)
+                                .accessibilityLabel("Operation in progress")
+                        }
+                    }
+                    Text(progress.stage.detail)
+                        .font(.footnote)
+                        .fixedSize(horizontal: false, vertical: true)
+                    Text(
+                        "\(progress.elapsedDescription(at: context.date)) · "
+                            + progress.stageElapsedDescription(at: context.date)
+                    )
+                        .font(.caption)
+                        .foregroundStyle(MnColor.textPrimary)
+                        .monospacedDigit()
+                }
+            }
         }
     }
 }

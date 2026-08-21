@@ -829,6 +829,9 @@ struct MonasSiteRootGenesisBrokerTransport: MonasSiteRootCeremonyTransport,
 {
     private let brokerOrigin: URL
     private let session: URLSession
+    private let maximumPollAttempts: Int
+    private let pollDelayNanoseconds: UInt64
+    private let maximumPollDuration: TimeInterval
 
     var genesisAuthorityOrigin: URL? { brokerOrigin }
     var requiresGenesisCorrelation: Bool { true }
@@ -841,20 +844,30 @@ struct MonasSiteRootGenesisBrokerTransport: MonasSiteRootCeremonyTransport,
         configuration.httpShouldSetCookies = false
         configuration.urlCache = nil
         configuration.requestCachePolicy = .reloadIgnoringLocalCacheData
-        brokerOrigin = origin
-        session = URLSession(
+        let session = URLSession(
             configuration: configuration,
             delegate: RedirectRejectingSessionDelegate(),
             delegateQueue: nil
         )
+        try self.init(session: session)
     }
 
-    init(session: URLSession) throws {
+    init(
+        session: URLSession,
+        maximumPollAttempts: Int = MonasSiteRootGenesisBrokerEndpointV1.maximumPollAttempts,
+        pollDelayNanoseconds: UInt64 = 100_000_000,
+        maximumPollDuration: TimeInterval = MonasSiteRootGenesisBrokerEndpointV1.maximumPollDurationSeconds
+    ) throws {
         guard let origin = URL(string: MonasSiteRootGenesisBrokerEndpointV1.origin),
-              MonasSiteRootDelegationTransport.isValidOrigin(origin)
+              MonasSiteRootDelegationTransport.isValidOrigin(origin),
+              maximumPollAttempts > 0,
+              maximumPollDuration > 0
         else { throw PlatformFailure.invalidConfiguration }
         brokerOrigin = origin
         self.session = session
+        self.maximumPollAttempts = maximumPollAttempts
+        self.pollDelayNanoseconds = pollDelayNanoseconds
+        self.maximumPollDuration = maximumPollDuration
     }
 
     func registerGenesis(_ request: SiteRootGenesisRegistrationRequestV1) async throws
@@ -866,7 +879,7 @@ struct MonasSiteRootGenesisBrokerTransport: MonasSiteRootCeremonyTransport,
                   request.presentation.registrationURL,
                   path: MonasSiteRootGenesisBrokerEndpointV1.registrationPath
               )
-        else { throw PlatformFailure.siteRootAuthorityUnavailable }
+        else { throw PlatformFailure.siteRootGenesisRegistrationRejected }
 
         let body: Data
         do {
@@ -886,12 +899,18 @@ struct MonasSiteRootGenesisBrokerTransport: MonasSiteRootCeremonyTransport,
             body: body,
             endpoint: endpoint,
             expectedStatus: 202,
-            maximumResponseBytes: 1_024
+            maximumResponseBytes: 1_024,
+            rejection: .siteRootGenesisRegistrationRejected
         )
         try Self.decodeAcceptedRegistrationResponse(data)
         let proofURL = try fixedEndpoint(MonasSiteRootGenesisBrokerEndpointV1.proofPath)
+        let deadline = Date().addingTimeInterval(maximumPollDuration)
 
-        for attempt in 0..<MonasSiteRootGenesisBrokerEndpointV1.maximumPollAttempts {
+        for attempt in 0..<maximumPollAttempts {
+            let remaining = deadline.timeIntervalSinceNow
+            guard remaining > 0 else {
+                throw PlatformFailure.siteRootGenesisDelegationTimedOut
+            }
             let pollBody = try JSONEncoder().encode(
                 MonasSiteRootGenesisBrokerDelegationPollRequest(correlation: correlation)
             )
@@ -901,7 +920,9 @@ struct MonasSiteRootGenesisBrokerTransport: MonasSiteRootCeremonyTransport,
                     MonasSiteRootGenesisBrokerEndpointV1.delegationPollPath
                 ),
                 expectedStatus: 200,
-                maximumResponseBytes: MonasSiteRootGenesisBrokerEndpointV1.maximumDelegationBytes
+                maximumResponseBytes: MonasSiteRootGenesisBrokerEndpointV1.maximumDelegationBytes,
+                timeoutInterval: min(15, remaining),
+                rejection: .siteRootGenesisDelegationUnavailable
             )
             switch try Self.decodeDelegationPollResponse(pollData) {
             case .ready(let delegationData):
@@ -912,12 +933,21 @@ struct MonasSiteRootGenesisBrokerTransport: MonasSiteRootCeremonyTransport,
                     correlation: correlation
                 ).presentation
             case .pending:
-                if attempt + 1 < MonasSiteRootGenesisBrokerEndpointV1.maximumPollAttempts {
-                    try await Task.sleep(nanoseconds: 100_000_000)
+                if attempt + 1 < maximumPollAttempts {
+                    let remaining = deadline.timeIntervalSinceNow
+                    guard remaining > 0 else {
+                        throw PlatformFailure.siteRootGenesisDelegationTimedOut
+                    }
+                    try await Task.sleep(
+                        nanoseconds: min(
+                            pollDelayNanoseconds,
+                            UInt64(remaining * 1_000_000_000)
+                        )
+                    )
                 }
             }
         }
-        throw PlatformFailure.siteRootAuthorityUnavailable
+        throw PlatformFailure.siteRootGenesisDelegationTimedOut
     }
 
     /// The normal App Attest bootstrap submission is an enrolled-authority
@@ -937,7 +967,7 @@ struct MonasSiteRootGenesisBrokerTransport: MonasSiteRootCeremonyTransport,
                   request.endpoint,
                   path: MonasSiteRootGenesisBrokerEndpointV1.proofPath
               )
-        else { throw PlatformFailure.siteRootAuthorityUnavailable }
+        else { throw PlatformFailure.siteRootGenesisCompletionRejected }
 
         let body: Data
         do {
@@ -959,7 +989,8 @@ struct MonasSiteRootGenesisBrokerTransport: MonasSiteRootCeremonyTransport,
             body: body,
             endpoint: endpoint,
             expectedStatus: 202,
-            maximumResponseBytes: 1_024
+            maximumResponseBytes: 1_024,
+            rejection: .siteRootGenesisCompletionRejected
         )
         do {
             let object = try StrictJSONObject(data: data, maximumBytes: 1_024).values
@@ -967,11 +998,11 @@ struct MonasSiteRootGenesisBrokerTransport: MonasSiteRootCeremonyTransport,
                   case let .string(schema)? = object["schema"],
                   schema == MonasSiteRootGenesisBrokerEndpointV1.responseSchema,
                   case let .string(state)? = object["state"], state == "accepted"
-            else { throw PlatformFailure.siteRootAuthorityUnavailable }
+            else { throw PlatformFailure.siteRootGenesisCompletionRejected }
         } catch let failure as PlatformFailure {
             throw failure
         } catch {
-            throw PlatformFailure.siteRootAuthorityUnavailable
+            throw PlatformFailure.siteRootGenesisCompletionRejected
         }
     }
 
@@ -986,11 +1017,13 @@ struct MonasSiteRootGenesisBrokerTransport: MonasSiteRootCeremonyTransport,
         body: Data,
         endpoint: URL,
         expectedStatus: Int,
-        maximumResponseBytes: Int
+        maximumResponseBytes: Int,
+        timeoutInterval: TimeInterval = 15,
+        rejection: PlatformFailure
     ) async throws -> Data {
         var request = URLRequest(url: endpoint)
         request.httpMethod = "POST"
-        request.timeoutInterval = 15
+        request.timeoutInterval = timeoutInterval
         request.httpBody = body
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.setValue("application/json", forHTTPHeaderField: "Accept")
@@ -1004,12 +1037,14 @@ struct MonasSiteRootGenesisBrokerTransport: MonasSiteRootCeremonyTransport,
                   response.value(forHTTPHeaderField: "Cache-Control")?
                     .lowercased().contains("no-store") == true,
                   response.value(forHTTPHeaderField: "Set-Cookie") == nil
-            else { throw PlatformFailure.siteRootAuthorityUnavailable }
+            else { throw rejection }
             return data
         } catch let failure as PlatformFailure {
             throw failure
+        } catch is CancellationError {
+            throw PlatformFailure.operationCancelled
         } catch {
-            throw PlatformFailure.siteRootAuthorityUnavailable
+            throw PlatformFailure.siteRootGenesisTransportUnavailable
         }
     }
 
@@ -1029,11 +1064,11 @@ struct MonasSiteRootGenesisBrokerTransport: MonasSiteRootCeremonyTransport,
                   case let .string(schema)? = object["schema"],
                   schema == MonasSiteRootGenesisBrokerEndpointV1.responseSchema,
                   case let .string(state)? = object["state"], state == "accepted"
-            else { throw PlatformFailure.siteRootAuthorityUnavailable }
+            else { throw PlatformFailure.siteRootGenesisRegistrationRejected }
         } catch let failure as PlatformFailure {
             throw failure
         } catch {
-            throw PlatformFailure.siteRootAuthorityUnavailable
+            throw PlatformFailure.siteRootGenesisRegistrationRejected
         }
     }
 
@@ -1048,11 +1083,11 @@ struct MonasSiteRootGenesisBrokerTransport: MonasSiteRootCeremonyTransport,
             guard case let .string(schema)? = object["schema"],
                   schema == MonasSiteRootGenesisBrokerEndpointV1.responseSchema,
                   case let .string(state)? = object["state"]
-            else { throw PlatformFailure.siteRootAuthorityUnavailable }
+            else { throw PlatformFailure.siteRootGenesisDelegationUnavailable }
             switch state {
             case "pending":
                 guard Set(object.keys) == ["schema", "state"] else {
-                    throw PlatformFailure.siteRootAuthorityUnavailable
+                    throw PlatformFailure.siteRootGenesisDelegationUnavailable
                 }
                 return .pending
             case "ready":
@@ -1061,20 +1096,25 @@ struct MonasSiteRootGenesisBrokerTransport: MonasSiteRootCeremonyTransport,
                       let delegation = decodeCanonicalBase64URL(encoded),
                       !delegation.isEmpty,
                       delegation.count <= MonasSiteRootGenesisBrokerEndpointV1.maximumDelegationBytes
-                else { throw PlatformFailure.siteRootAuthorityUnavailable }
+                else { throw PlatformFailure.siteRootGenesisDelegationUnavailable }
                 return .ready(delegation)
-            case "expired", "consumed":
+            case "expired":
                 guard Set(object.keys) == ["schema", "state"] else {
-                    throw PlatformFailure.siteRootAuthorityUnavailable
+                    throw PlatformFailure.siteRootGenesisDelegationUnavailable
                 }
-                throw PlatformFailure.siteRootAuthorityUnavailable
+                throw PlatformFailure.siteRootGenesisDelegationExpired
+            case "consumed":
+                guard Set(object.keys) == ["schema", "state"] else {
+                    throw PlatformFailure.siteRootGenesisDelegationUnavailable
+                }
+                throw PlatformFailure.siteRootGenesisDelegationConsumed
             default:
-                throw PlatformFailure.siteRootAuthorityUnavailable
+                throw PlatformFailure.siteRootGenesisDelegationUnavailable
             }
         } catch let failure as PlatformFailure {
             throw failure
         } catch {
-            throw PlatformFailure.siteRootAuthorityUnavailable
+            throw PlatformFailure.siteRootGenesisDelegationUnavailable
         }
     }
 

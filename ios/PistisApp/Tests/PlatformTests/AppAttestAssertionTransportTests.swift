@@ -97,11 +97,26 @@ final class AppAttestAssertionTransportTests: XCTestCase {
             )
             XCTFail("failed Apple attestation unexpectedly produced a registration")
         } catch {
-            XCTAssertEqual(error as? PlatformFailure, .appAttestKeyCreationFailed)
+            XCTAssertEqual(error as? PlatformFailure, .appAttestAttestationFailed)
         }
 
         XCTAssertEqual(service.generatedKeyCount, 1)
         XCTAssertEqual(store.keyID, staleKeyID)
+    }
+
+    func testRawAppAttestAssertionErrorMapsToTheAssertionStage() async throws {
+        let keyID = Data(repeating: 0x11, count: 32).base64EncodedString()
+        let client = AppleAppAttestClient(
+            service: FailingAttestationService(keyID: keyID),
+            keyIDStore: FixedKeyIDStore(keyID: keyID)
+        )
+
+        do {
+            _ = try await client.prepareAssertion(bootstrap: try bootstrap())
+            XCTFail("raw App Attest assertion error unexpectedly succeeded")
+        } catch {
+            XCTAssertEqual(error as? PlatformFailure, .appAttestAssertionFailed)
+        }
     }
 
     func testRelocationAssertionUsesExactRegisteredKeyAndServerCompatibleHash() async throws {
@@ -381,11 +396,11 @@ private final class FailingAttestationService: AppleAppAttestServicing, @uncheck
     }
 
     func attestKey(_: String, clientDataHash _: Data) async throws -> Data {
-        throw PlatformFailure.appAttestKeyCreationFailed
+        throw NSError(domain: "DCError", code: 2)
     }
 
     func generateAssertion(_: String, clientDataHash _: Data) async throws -> Data {
-        throw PlatformFailure.appAttestKeyCreationFailed
+        throw NSError(domain: "DCError", code: 3)
     }
 }
 

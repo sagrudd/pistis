@@ -176,6 +176,10 @@ enum MonasSiteRootGenesisBrokerEndpointV1 {
     static let maximumDelegationBytes = 12 * 1024
     static let maximumProofBytes = 4 * 1024
     static let maximumPollAttempts = 300
+    /// Poll count is a protocol safety ceiling. The transport also enforces
+    /// this wall-clock bound so slow or unreachable requests cannot strand an
+    /// attended ceremony for minutes.
+    static let maximumPollDurationSeconds: TimeInterval = 30
 }
 
 /// Typed, public-only first-device registration. Neither this object nor its

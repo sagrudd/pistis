@@ -4,6 +4,60 @@ import Foundation
 ///
 /// This coordinator is intentionally separate from `ProductionCeremonyCoordinator`:
 /// v2 Pistis authentication must not acquire Site Root semantics by accident.
+enum SiteRootFirstDeviceStage: Equatable, Sendable {
+    case creatingSiteRootKey
+    case preparingAppAttest
+    case waitingForMonasDelegation
+    case signingInitialProof
+    case submittingInitialProof
+
+    var title: String {
+        switch self {
+        case .creatingSiteRootKey: "Creating protected Site Root key"
+        case .preparingAppAttest: "Preparing Apple App Attest"
+        case .waitingForMonasDelegation: "Waiting for Monas delegation"
+        case .signingInitialProof: "Waiting for Face ID"
+        case .submittingInitialProof: "Submitting initial Site Root proof"
+        }
+    }
+
+    var detail: String {
+        switch self {
+        case .creatingSiteRootKey:
+            "Face ID protects the new Site Root key. Private key material remains on this iPhone."
+        case .preparingAppAttest:
+            "Apple is creating and attesting a fresh key for this one-use installation ceremony."
+        case .waitingForMonasDelegation:
+            "The registration was sent to the fixed Monas install service. The protected delegation wait is bounded to 30 seconds."
+        case .signingInitialProof:
+            "Approve the exact delegation with Face ID when prompted."
+        case .submittingInitialProof:
+            "Monas is accepting the signed proof. Do not scan the QR again."
+        }
+    }
+}
+
+struct SiteRootFirstDeviceProgress: Equatable, Sendable {
+    let stage: SiteRootFirstDeviceStage
+    let startedAt: Date
+    let stageStartedAt: Date
+
+    func elapsedDescription(at date: Date) -> String {
+        let elapsed = max(0, Int(date.timeIntervalSince(startedAt)))
+        let minutes = elapsed / 60
+        let seconds = elapsed % 60
+        if minutes == 0 {
+            return "\(seconds)s elapsed"
+        }
+        return "\(minutes)m \(seconds)s elapsed"
+    }
+
+    func stageElapsedDescription(at date: Date) -> String {
+        let elapsed = max(0, Int(date.timeIntervalSince(stageStartedAt)))
+        return "\(elapsed)s in this step"
+    }
+}
+
 @MainActor
 final class SiteRootDelegationCoordinator: ObservableObject {
     /// The confirmed server state shown after an attended ceremony.  This is
@@ -31,6 +85,10 @@ final class SiteRootDelegationCoordinator: ObservableObject {
     }
 
     @Published private(set) var phase: Phase = .idle
+    /// Non-secret progress for the first-device route. It deliberately keeps
+    /// the initial ceremony visible while App Attest or the fixed broker is
+    /// doing work, including after a terminal failure for diagnosis.
+    @Published private(set) var firstDeviceProgress: SiteRootFirstDeviceProgress?
     /// Held independently of phase so Face ID transitions cannot dismiss the
     /// review before its final success or failure evidence is visible.
     @Published private(set) var presentedReview: SiteRootDelegationReview?
@@ -92,11 +150,11 @@ final class SiteRootDelegationCoordinator: ObservableObject {
             return
         }
         do {
-            let producer = try SecureEnclaveSiteRootProofProducer(
-                authenticationReason: "Sign this exact Monas Site Root delegation"
-            )
             switch pending {
             case let .delegation(qrPresentation):
+                let producer = try SecureEnclaveSiteRootProofProducer(
+                    authenticationReason: "Sign this exact Monas Site Root delegation"
+                )
                 try await completeDelegation(
                     qrPresentation.presentation,
                     producer: producer,
@@ -104,12 +162,18 @@ final class SiteRootDelegationCoordinator: ObservableObject {
                 )
             case let .firstDevice(firstDevice):
                 phase = .registeringFirstDevice
+                setFirstDeviceStage(.creatingSiteRootKey)
+                let producer = try SecureEnclaveSiteRootProofProducer(
+                    authenticationReason: "Sign this exact Monas Site Root delegation"
+                )
                 let siteRootKey = try producer.register()
+                setFirstDeviceStage(.preparingAppAttest)
                 let registration = try await appAttestClient.prepareRegistration(
                     ceremonyID: firstDevice.appAttestCeremonyIDB64URL,
                     siteTrustDomain: firstDevice.siteTrustDomain,
                     clientDataHash: firstDevice.appAttestChallengeDigest
                 )
+                setFirstDeviceStage(.waitingForMonasDelegation)
                 let delegation = try await transport.registerGenesis(
                     SiteRootGenesisRegistrationRequestV1(
                         presentation: firstDevice,
@@ -122,15 +186,21 @@ final class SiteRootDelegationCoordinator: ObservableObject {
         } catch let failure as PlatformFailure {
             recordFailure(failure, review: presentedReview)
             phase = .failed(failure)
+        } catch is CancellationError {
+            let failure = PlatformFailure.operationCancelled
+            recordFailure(failure, review: presentedReview)
+            phase = .failed(failure)
         } catch {
-            recordFailure(.productionEnvelopeUnavailable, review: presentedReview)
-            phase = .failed(.productionEnvelopeUnavailable)
+            let failure = PlatformFailure.productionEnvelopeUnavailable
+            recordFailure(failure, review: presentedReview)
+            phase = .failed(failure)
         }
     }
 
     func reset() {
         pending = nil
         presentedReview = nil
+        firstDeviceProgress = nil
         phase = .idle
     }
 
@@ -272,7 +342,9 @@ final class SiteRootDelegationCoordinator: ObservableObject {
         producer: SecureEnclaveSiteRootProofProducer
     ) async throws {
         phase = .signing
+        setFirstDeviceStage(.signingInitialProof)
         let submission = try producer.prove(delegation)
+        setFirstDeviceStage(.submittingInitialProof)
         try await transport.submitInitialStaticCompletion(
             MonasSiteRootDelegationSubmissionRequestV1(
                 endpoint: delegation.submitURL,
@@ -289,7 +361,18 @@ final class SiteRootDelegationCoordinator: ObservableObject {
             transfer: "Accepted by fixed Monas Site Root authority",
             verification: "Site Trust and custody were created; App Attest session setup remains"
         )
+        firstDeviceProgress = nil
         phase = .submitted(.siteTrustEstablished)
+    }
+
+    private func setFirstDeviceStage(_ stage: SiteRootFirstDeviceStage) {
+        let now = Date()
+        let startedAt = firstDeviceProgress?.startedAt ?? now
+        firstDeviceProgress = SiteRootFirstDeviceProgress(
+            stage: stage,
+            startedAt: startedAt,
+            stageStartedAt: now
+        )
     }
 
     private func recordCompletion(review: SiteRootDelegationReview?) {

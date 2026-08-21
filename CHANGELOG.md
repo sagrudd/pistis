@@ -4,6 +4,11 @@
 
 ### Fixed
 
+- Bound the fresh-device Site Root broker wait to 30 seconds, preserve precise
+  App Attest and broker failure stages, and show staged progress with elapsed
+  time instead of collapsing the operation into a generic proof failure
+  (0.20.8, iOS build 23).
+
 - Make the approved physical iPhone archive deterministic: Release now uses
   the installed Apple Distribution identity and reviewed Ad Hoc profile
   instead of allowing automatic signing to select a development profile

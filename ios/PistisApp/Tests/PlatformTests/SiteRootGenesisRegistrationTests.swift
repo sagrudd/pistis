@@ -197,6 +197,57 @@ final class SiteRootGenesisRegistrationTests: XCTestCase {
         XCTAssertEqual(nestedProof["reference"] as? String, delegation.reference)
     }
 
+    func testBrokerPendingPollHasABoundedWallClockAndPreciseTimeout() async throws {
+        GenesisBrokerURLProtocol.reset()
+        GenesisBrokerURLProtocol.mode = .pending
+        let configuration = URLSessionConfiguration.ephemeral
+        configuration.protocolClasses = [GenesisBrokerURLProtocol.self]
+        let transport = try MonasSiteRootGenesisBrokerTransport(
+            session: URLSession(configuration: configuration),
+            maximumPollAttempts: 2,
+            pollDelayNanoseconds: 0,
+            maximumPollDuration: 1
+        )
+
+        do {
+            _ = try await transport.registerGenesis(try brokerRequest())
+            XCTFail("pending broker unexpectedly returned a delegation")
+        } catch {
+            XCTAssertEqual(error as? PlatformFailure, .siteRootGenesisDelegationTimedOut)
+        }
+    }
+
+    func testBrokerRegistrationRejectionIsNotReportedAsGenericAuthorityOutage() async throws {
+        GenesisBrokerURLProtocol.reset()
+        GenesisBrokerURLProtocol.mode = .registrationRejected
+        let configuration = URLSessionConfiguration.ephemeral
+        configuration.protocolClasses = [GenesisBrokerURLProtocol.self]
+        let transport = try MonasSiteRootGenesisBrokerTransport(
+            session: URLSession(configuration: configuration)
+        )
+
+        do {
+            _ = try await transport.registerGenesis(try brokerRequest())
+            XCTFail("rejected broker registration unexpectedly succeeded")
+        } catch {
+            XCTAssertEqual(error as? PlatformFailure, .siteRootGenesisRegistrationRejected)
+        }
+    }
+
+    func testFirstDeviceProgressReportsWholeCeremonyAndCurrentStageElapsed() {
+        let startedAt = Date(timeIntervalSince1970: 100)
+        let stageStartedAt = Date(timeIntervalSince1970: 112)
+        let progress = SiteRootFirstDeviceProgress(
+            stage: .waitingForMonasDelegation,
+            startedAt: startedAt,
+            stageStartedAt: stageStartedAt
+        )
+
+        XCTAssertEqual(progress.elapsedDescription(at: Date(timeIntervalSince1970: 145)), "45s elapsed")
+        XCTAssertEqual(progress.stageElapsedDescription(at: Date(timeIntervalSince1970: 145)), "33s in this step")
+        XCTAssertTrue(progress.stage.detail.contains("bounded to 30 seconds"))
+    }
+
     private func request() throws -> SiteRootGenesisRegistrationRequestV1 {
         let presentation = try SiteRootGenesisRegistrationPresentationV1(
             qrText: genesisQR(), authorityOrigin: origin, nowUnixMillis: now
@@ -317,12 +368,20 @@ final class SiteRootGenesisRegistrationTests: XCTestCase {
 }
 
 private final class GenesisBrokerURLProtocol: URLProtocol, @unchecked Sendable {
+    enum ResponseMode {
+        case ready
+        case pending
+        case registrationRejected
+    }
+
     private static let lock = NSLock()
     nonisolated(unsafe) private static var capturedRequests: [URLRequest] = []
+    nonisolated(unsafe) static var mode: ResponseMode = .ready
 
     static func reset() {
         lock.lock()
         capturedRequests = []
+        mode = .ready
         lock.unlock()
     }
 
@@ -349,12 +408,21 @@ private final class GenesisBrokerURLProtocol: URLProtocol, @unchecked Sendable {
         let body: Data
         let status: Int
         if url.path == MonasSiteRootGenesisBrokerEndpointV1.registrationPath {
-            body = Data("{\"schema\":\"\(MonasSiteRootGenesisBrokerEndpointV1.responseSchema)\",\"state\":\"accepted\"}".utf8)
-            status = 202
+            if Self.mode == .registrationRejected {
+                body = Data("{\"schema\":\"\(MonasSiteRootGenesisBrokerEndpointV1.responseSchema)\",\"state\":\"rejected\"}".utf8)
+                status = 409
+            } else {
+                body = Data("{\"schema\":\"\(MonasSiteRootGenesisBrokerEndpointV1.responseSchema)\",\"state\":\"accepted\"}".utf8)
+                status = 202
+            }
         } else if url.path == MonasSiteRootGenesisBrokerEndpointV1.delegationPollPath {
-            let canonical = "{\"device_key_id\":\"site-root-1234\",\"proof_profile\":\"pistis-secure-enclave-es256-cose-v1\",\"schema\":\"monas.site-root-delegation.v1\",\"secure_enclave_attestation\":\"not-asserted\",\"site_trust_domain\":\"site-demo-1\"}"
-            let result = "{\"schema\":\"monas.site-root-genesis-registration-result.v1\",\"canonical_delegation_base64url\":\"\(Self.base64URL(Data(canonical.utf8)))\",\"device_key_id\":\"site-root-1234\",\"site_trust_domain\":\"site-demo-1\",\"submit_url\":\"https://customer.example.test/auth/pistis/site-root-delegations/v1/submit\",\"reference\":\"genesis-reference-1\"}"
-            body = Data("{\"schema\":\"\(MonasSiteRootGenesisBrokerEndpointV1.responseSchema)\",\"state\":\"ready\",\"delegation_b64url\":\"\(Self.base64URL(Data(result.utf8)))\"}".utf8)
+            if Self.mode == .pending {
+                body = Data("{\"schema\":\"\(MonasSiteRootGenesisBrokerEndpointV1.responseSchema)\",\"state\":\"pending\"}".utf8)
+            } else {
+                let canonical = "{\"device_key_id\":\"site-root-1234\",\"proof_profile\":\"pistis-secure-enclave-es256-cose-v1\",\"schema\":\"monas.site-root-delegation.v1\",\"secure_enclave_attestation\":\"not-asserted\",\"site_trust_domain\":\"site-demo-1\"}"
+                let result = "{\"schema\":\"monas.site-root-genesis-registration-result.v1\",\"canonical_delegation_base64url\":\"\(Self.base64URL(Data(canonical.utf8)))\",\"device_key_id\":\"site-root-1234\",\"site_trust_domain\":\"site-demo-1\",\"submit_url\":\"https://customer.example.test/auth/pistis/site-root-delegations/v1/submit\",\"reference\":\"genesis-reference-1\"}"
+                body = Data("{\"schema\":\"\(MonasSiteRootGenesisBrokerEndpointV1.responseSchema)\",\"state\":\"ready\",\"delegation_b64url\":\"\(Self.base64URL(Data(result.utf8)))\"}".utf8)
+            }
             status = 200
         } else if url.path == MonasSiteRootGenesisBrokerEndpointV1.proofPath {
             body = Data("{\"schema\":\"\(MonasSiteRootGenesisBrokerEndpointV1.responseSchema)\",\"state\":\"accepted\"}".utf8)

@@ -8,7 +8,11 @@ import Foundation
 struct SiteRootGenesisRegistrationPresentationV1: Sendable {
     static let schema = "monas.site-root-genesis-registration-presentation.v1"
     static let maximumPayloadLength = 8_192
-    static let maximumLifetimeMillis: UInt64 = 300_000
+    /// The broker's post-redemption Site Root, X.509 and provider sequence is
+    /// one 15-minute attended ceremony. This parser must accept the same
+    /// bounded lease as Monas and never reject a valid broker presentation
+    /// merely because it was not scanned in the first five minutes.
+    static let maximumLifetimeMillis: UInt64 = 900_000
 
     let reference: String
     let correlation: Data?
@@ -71,10 +75,15 @@ struct SiteRootGenesisRegistrationPresentationV1: Sendable {
                   required: requireCorrelation
               ),
               case let .number(expiryText)? = values["expires_at_unix_millis"],
-              let expiresAtUnixMillis = UInt64(expiryText),
-              expiresAtUnixMillis > nowUnixMillis,
-              expiresAtUnixMillis - nowUnixMillis <= Self.maximumLifetimeMillis
+              let expiresAtUnixMillis = UInt64(expiryText)
         else { throw PlatformFailure.qrPayloadUnsupported }
+
+        guard expiresAtUnixMillis > nowUnixMillis else {
+            throw PlatformFailure.siteRootGenesisPresentationExpired
+        }
+        guard expiresAtUnixMillis - nowUnixMillis <= Self.maximumLifetimeMillis else {
+            throw PlatformFailure.invalidFirstDevicePresentation
+        }
 
         self.reference = reference
         self.correlation = correlation

@@ -136,25 +136,43 @@ final class SiteRootDelegationCoordinator: ObservableObject {
         eventAttemptStartedNanoseconds = DispatchTime.now().uptimeNanoseconds
         do {
             let nowUnixMillis = try Self.nowUnixMillis()
-            if !transport.genesisAuthorityOrigins.isEmpty,
-               let firstDevice = try? SiteRootGenesisRegistrationPresentationV1(
-                   qrText: qrText,
-                   authorityOrigins: transport.genesisAuthorityOrigins,
-                   nowUnixMillis: nowUnixMillis,
-                   requireCorrelation: transport.requiresGenesisCorrelation
-               )
-            {
-                pending = .firstDevice(firstDevice)
-                eventFlow = .firstDeviceSiteRoot
-                eventAuthority = .fixedInstallBroker
-                eventReferenceDigest = OnboardingEvent.redactedDigestData(
-                    for: firstDevice.reference
-                )
-                let review = SiteRootDelegationReview(firstDevice: firstDevice)
-                presentedReview = review
-                phase = .review(review)
-                recordEvent(kind: .qrValidated, outcome: .accepted)
-                return
+            if !transport.genesisAuthorityOrigins.isEmpty {
+                do {
+                    let firstDevice = try SiteRootGenesisRegistrationPresentationV1(
+                        qrText: qrText,
+                        authorityOrigins: transport.genesisAuthorityOrigins,
+                        nowUnixMillis: nowUnixMillis,
+                        requireCorrelation: transport.requiresGenesisCorrelation
+                    )
+                    pending = .firstDevice(firstDevice)
+                    eventFlow = .firstDeviceSiteRoot
+                    eventAuthority = .fixedInstallBroker
+                    eventReferenceDigest = OnboardingEvent.redactedDigestData(
+                        for: firstDevice.reference
+                    )
+                    let review = SiteRootDelegationReview(firstDevice: firstDevice)
+                    presentedReview = review
+                    phase = .review(review)
+                    recordEvent(kind: .qrValidated, outcome: .accepted)
+                    return
+                } catch let failure as PlatformFailure
+                    where qrText.contains(SiteRootGenesisRegistrationPresentationV1.schema)
+                {
+                    let reported: PlatformFailure = failure == .siteRootGenesisPresentationExpired
+                        ? failure
+                        : .invalidFirstDevicePresentation
+                    eventFlow = .firstDeviceSiteRoot
+                    eventAuthority = .fixedInstallBroker
+                    recordFailure(reported, review: nil)
+                    phase = .failed(reported)
+                    return
+                } catch where qrText.contains(SiteRootGenesisRegistrationPresentationV1.schema) {
+                    eventFlow = .firstDeviceSiteRoot
+                    eventAuthority = .fixedInstallBroker
+                    recordFailure(.invalidFirstDevicePresentation, review: nil)
+                    phase = .failed(.invalidFirstDevicePresentation)
+                    return
+                }
             }
             let scanned = try SiteRootDelegationQRPresentationV1(qrText: qrText)
             pending = .delegation(scanned)

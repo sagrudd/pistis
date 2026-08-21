@@ -37,6 +37,10 @@ enum PlatformFailure: Error, Equatable, Sendable {
     /// A first-device presentation was recognisable as a Pistis invitation but
     /// failed verification. It must never fall through to ordinary login.
     case invalidFirstDevicePresentation
+    /// A structurally valid first-device Site Root QR is outside its bounded
+    /// validity window. It must be reissued rather than reported as an
+    /// unsupported QR carrier.
+    case siteRootGenesisPresentationExpired
     case operationCancelled
     case productionEnvelopeUnavailable
     case siteRootAuthorityUnavailable
@@ -90,6 +94,8 @@ extension PlatformFailure {
             "This is not a supported Pistis QR code."
         case .invalidFirstDevicePresentation:
             "This first-device invitation could not be verified. Request a newly issued QR from Monas."
+        case .siteRootGenesisPresentationExpired:
+            "This first-device QR has expired. Return to the install window and request a newly issued QR. No proof was submitted."
         case .operationCancelled:
             "Scanning stopped before a code was captured."
         case .enrolmentRequired:

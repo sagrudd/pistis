@@ -4,6 +4,11 @@
 
 ### Changed
 
+- Align the Site Root genesis QR parser with Monas's reviewed 15-minute
+  post-redemption ceremony lease. A valid attended QR no longer falls through
+  as unsupported after five minutes; an actually expired QR receives a bounded
+  fresh-ceremony instruction (0.20.12, iOS build 27).
+
 - Distinguish “submitting protected registration” from “registration accepted;
   waiting for Monas delegation” in the first Site Root ceremony. The bounded
   event journal now records the broker's HTTP 202 before it starts the

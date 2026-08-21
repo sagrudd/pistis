@@ -26,8 +26,13 @@ final class SiteRootGenesisRegistrationTests: XCTestCase {
             authorityOrigin: origin,
             nowUnixMillis: now
         ))
+        XCTAssertNoThrow(try SiteRootGenesisRegistrationPresentationV1(
+            qrText: genesisQR(expiry: now + 900_000),
+            authorityOrigin: origin,
+            nowUnixMillis: now
+        ))
         XCTAssertThrowsError(try SiteRootGenesisRegistrationPresentationV1(
-            qrText: genesisQR(expiry: now + 300_001),
+            qrText: genesisQR(expiry: now + 900_001),
             authorityOrigin: origin,
             nowUnixMillis: now
         ))
@@ -36,6 +41,25 @@ final class SiteRootGenesisRegistrationTests: XCTestCase {
             authorityOrigin: origin,
             nowUnixMillis: now
         ))
+    }
+
+    func testExpiredGenesisPresentationHasAReissueFailureInsteadOfUnsupportedQR() throws {
+        XCTAssertThrowsError(try SiteRootGenesisRegistrationPresentationV1(
+            qrText: genesisQR(expiry: now - 1),
+            authorityOrigin: origin,
+            nowUnixMillis: now
+        )) { error in
+            XCTAssertEqual(error as? PlatformFailure, .siteRootGenesisPresentationExpired)
+        }
+    }
+
+    @MainActor
+    func testCoordinatorDoesNotFallThroughFromExpiredBrokerGenesisToLegacyQR() throws {
+        let transport = try MonasSiteRootGenesisBrokerTransport()
+        let coordinator = SiteRootDelegationCoordinator(transport: transport)
+        let current = UInt64(Date().timeIntervalSince1970 * 1_000)
+        coordinator.accept(qrText: brokerQR(expiry: current - 1))
+        XCTAssertEqual(coordinator.phase, .failed(.siteRootGenesisPresentationExpired))
     }
 
     func testGenesisResultMustBindTheReturnedDelegationToTheSubmittedPublicKey() throws {
@@ -404,12 +428,13 @@ final class SiteRootGenesisRegistrationTests: XCTestCase {
     private func brokerQR(
         registrationURL: String = MonasSiteRootGenesisBrokerEndpointV1.origin
             + MonasSiteRootGenesisBrokerEndpointV1.registrationPath,
-        correlation: Data? = Data(repeating: 0x44, count: 32)
+        correlation: Data? = Data(repeating: 0x44, count: 32),
+        expiry: UInt64? = nil
     ) -> String {
         let correlationField = correlation.map {
             ",\"correlation_b64url\":\"\(base64URL($0))\""
         } ?? ""
-        return "{\"schema\":\"monas.site-root-genesis-registration-presentation.v1\",\"reference\":\"genesis-reference-1\",\"site_trust_domain\":\"site-demo-1\",\"registration_url\":\"\(registrationURL)\",\"app_attest_ceremony_id_b64url\":\"\(base64URL(Data(repeating: 0x11, count: 16)))\",\"app_attest_challenge_digest_b64url\":\"\(base64URL(Data(repeating: 0x22, count: 32)))\"\(correlationField),\"expires_at_unix_millis\":\(now + 60_000)}"
+        return "{\"schema\":\"monas.site-root-genesis-registration-presentation.v1\",\"reference\":\"genesis-reference-1\",\"site_trust_domain\":\"site-demo-1\",\"registration_url\":\"\(registrationURL)\",\"app_attest_ceremony_id_b64url\":\"\(base64URL(Data(repeating: 0x11, count: 16)))\",\"app_attest_challenge_digest_b64url\":\"\(base64URL(Data(repeating: 0x22, count: 32)))\"\(correlationField),\"expires_at_unix_millis\":\(expiry ?? now + 60_000)}"
     }
 
     private func base64URL(_ data: Data) -> String {

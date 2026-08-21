@@ -447,6 +447,10 @@ final class PlatformPolicyTests: XCTestCase {
             PlatformFailure.invalidFirstDevicePresentation.safeUserMessage,
             "This first-device invitation could not be verified. Request a newly issued QR from Monas."
         )
+        XCTAssertEqual(
+            PlatformFailure.siteRootGenesisPresentationExpired.safeUserMessage,
+            "This first-device QR has expired. Return to the install window and request a newly issued QR. No proof was submitted."
+        )
         XCTAssertFalse(
             PlatformFailure.signingFailed.safeUserMessage.localizedCaseInsensitiveContains(
                 "key"

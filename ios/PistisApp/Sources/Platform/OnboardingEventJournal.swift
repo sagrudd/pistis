@@ -529,7 +529,7 @@ extension PlatformFailure {
         case .cameraPermissionDenied, .cameraUnavailable:
             .camera
         case .qrPayloadTooLarge, .qrPayloadUnsupported,
-             .invalidFirstDevicePresentation:
+             .invalidFirstDevicePresentation, .siteRootGenesisPresentationExpired:
             .qrValidation
         case .secureHardwareUnavailable, .keyCreationFailed, .keyNotFound,
              .keyInvalidated, .siteRootAuthorityKeyMissing,

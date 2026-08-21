@@ -100,6 +100,14 @@ final class SiteRootGenesisRegistrationTests: XCTestCase {
         let key = try XCTUnwrap(object["site_root_key"] as? [String: Any])
         XCTAssertEqual(key["device_key_id"] as? String, request.siteRootKey.deviceKeyID)
         XCTAssertEqual(key["secure_enclave_attestation"] as? String, "not-asserted")
+        let appAttest = try XCTUnwrap(object["app_attest_registration"] as? [String: Any])
+        XCTAssertEqual(
+            Set(appAttest.keys),
+            [
+                "protocol", "ceremony_id", "site_trust_domain", "app_identifier",
+                "key_id_b64url", "client_data_hash_b64url", "attestation_object_b64url",
+            ]
+        )
     }
 
     func testBrokerGenesisRequiresOpaqueCorrelationAndFixedInstallOrigin() throws {
@@ -202,6 +210,16 @@ final class SiteRootGenesisRegistrationTests: XCTestCase {
         XCTAssertEqual(
             Set(nestedRegistration.keys),
             ["schema", "reference", "site_root_key", "app_attest_registration"]
+        )
+        let nestedAppAttest = try XCTUnwrap(
+            nestedRegistration["app_attest_registration"] as? [String: Any]
+        )
+        XCTAssertEqual(
+            Set(nestedAppAttest.keys),
+            [
+                "protocol", "ceremony_id", "site_trust_domain", "app_identifier",
+                "key_id_b64url", "client_data_hash_b64url", "attestation_object_b64url",
+            ]
         )
         let poll = try XCTUnwrap(jsonObject(requests[1]))
         XCTAssertEqual(Set(poll.keys), ["schema", "purpose", "correlation_b64url"])
@@ -355,7 +373,7 @@ final class SiteRootGenesisRegistrationTests: XCTestCase {
 
         XCTAssertEqual(progress.elapsedDescription(at: Date(timeIntervalSince1970: 145)), "45s elapsed")
         XCTAssertEqual(progress.stageElapsedDescription(at: Date(timeIntervalSince1970: 145)), "33s in this step")
-        XCTAssertTrue(progress.stage.detail.contains("bounded to 30 seconds"))
+        XCTAssertTrue(progress.stage.detail.contains("bounded to 90 seconds"))
     }
 
     private func request() throws -> SiteRootGenesisRegistrationRequestV1 {

@@ -191,8 +191,10 @@ enum MonasSiteRootGenesisBrokerEndpointV1 {
     static let maximumPollAttempts = 300
     /// Poll count is a protocol safety ceiling. The transport also enforces
     /// this wall-clock bound so slow or unreachable requests cannot strand an
-    /// attended ceremony for minutes.
-    static let maximumPollDurationSeconds: TimeInterval = 30
+    /// attended ceremony indefinitely. The host needs time to complete its
+    /// local custody and App Attest verification before it acknowledges the
+    /// iPhone registration with a delegation.
+    static let maximumPollDurationSeconds: TimeInterval = 90
 }
 
 /// Typed, public-only first-device registration. Neither this object nor its

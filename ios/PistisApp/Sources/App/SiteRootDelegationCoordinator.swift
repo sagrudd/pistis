@@ -32,7 +32,7 @@ enum SiteRootFirstDeviceStage: Equatable, Sendable {
         case .submittingMonasRegistration:
             "Pistis is submitting the public registration to the fixed install service. Monas has not accepted it yet."
         case .waitingForMonasDelegation:
-            "The registration was sent to the fixed Monas install service. The protected delegation wait is bounded to 30 seconds."
+            "The registration was accepted by the fixed install service. Monas is verifying it before issuing a delegation; this protected wait is bounded to 90 seconds."
         case .signingInitialProof:
             "Approve the exact delegation with Face ID when prompted."
         case .submittingInitialProof:

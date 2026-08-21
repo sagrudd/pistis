@@ -4,6 +4,12 @@
 
 ### Changed
 
+- Allow a verified host up to 90 seconds to complete the local custody and App
+  Attest check after the broker has accepted a first-device registration. The
+  UI now says that Monas is verifying the accepted registration, and the
+  broker-envelope regression gate checks every App Attest field that Monas
+  consumes (0.20.13, iOS build 28).
+
 - Align the Site Root genesis QR parser with Monas's reviewed 15-minute
   post-redemption ceremony lease. A valid attended QR no longer falls through
   as unsupported after five minutes; an actually expired QR receives a bounded

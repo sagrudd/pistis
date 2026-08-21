@@ -500,11 +500,19 @@ final class AppleAppAttestClient: @unchecked Sendable {
             throw PlatformFailure.appAttestInvalidInput
         }
 
-        let keyID = try await existingOrNewKeyID()
+        // Apple permits attestation only once for each App Attest key. A
+        // previously retained key therefore cannot be reused for a fresh
+        // registration after an interrupted ceremony. Generate a distinct
+        // key for this exact registration and retain its opaque identifier
+        // only after Apple has returned genuine attestation evidence; the
+        // retained identifier is then used exclusively for the following
+        // assertion flow.
+        let keyID = try await newRegistrationKeyID()
         let attestationObject = try await attest(
             keyID: keyID,
             clientDataHash: clientDataHash
         )
+        try keyIDStore.saveKeyID(keyID)
         return try AppleAppAttestRegistrationEnvelope(
             ceremonyID: ceremonyID,
             siteTrustDomain: siteTrustDomain,
@@ -683,10 +691,7 @@ final class AppleAppAttestClient: @unchecked Sendable {
         try replacementStore.discardPending(transactionUUID: transactionUUID)
     }
 
-    private func existingOrNewKeyID() async throws -> String {
-        if let existing = existingKeyID() {
-            return existing
-        }
+    private func newRegistrationKeyID() async throws -> String {
         let keyID = try await service.generateKey()
         guard Data(base64Encoded: keyID) != nil else {
             throw PlatformFailure.appAttestKeyCreationFailed

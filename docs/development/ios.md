@@ -133,12 +133,16 @@ transaction, cross-host substitution, and downgrade all fail closed.
 
 For the first Site Root device, the brokered QR is the only supported route.
 After explicit review, Face ID creates the separate Secure Enclave Site Root
-key and Pistis submits only the typed public registration and genuine App
-Attest registration through the broker. Monas returns the one-time delegation
-bound to that same runtime host profile. The initial proof establishes Site
-Trust and custody; the later signed first-device identity receipt establishes
-the usable Pistis installation. Neither stage is represented as complete until
-its own server-side receipt has been accepted.
+key. Pistis generates a fresh Apple App Attest key for this exact registration
+—Apple keys are attested once only—and retains its opaque identifier only after
+genuine Apple attestation succeeds. Pistis then submits only the typed public
+registration and genuine App Attest registration through the broker. Monas
+returns the one-time delegation bound to that same runtime host profile. The
+initial proof establishes Site Trust and custody; the later signed first-device
+identity receipt establishes the usable Pistis installation. Neither stage is
+represented as complete until its own server-side receipt has been accepted.
+An interrupted attempt cannot leave a key that a later registration
+accidentally re-attests.
 
 That incomplete Installation now has one explicit next action: it switches to
 the existing first-device provider-enrolment scanner. The scanner still

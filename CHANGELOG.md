@@ -2,6 +2,13 @@
 
 ## [Unreleased]
 
+### Fixed
+
+- Generate a fresh Apple App Attest key for every new attended Site Root
+  registration and retain its identifier only after attestation succeeds.
+  Interrupted first-device attempts can no longer reuse a one-use key and
+  stop before sending registration to Monas (0.20.5, iOS build 20).
+
 ### Changed
 
 - Remove unused demonstration identities and fixed installation data from the

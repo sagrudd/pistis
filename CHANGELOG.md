@@ -4,6 +4,11 @@
 
 ### Fixed
 
+- Make the approved physical iPhone archive deterministic: Release now uses
+  the installed Apple Distribution identity and reviewed Ad Hoc profile
+  instead of allowing automatic signing to select a development profile
+  (0.20.7, iOS build 22).
+
 - Add a hard gate for the approved physical iPhone artifact: a build used for
   Monas first-device registration must be Apple Distribution-signed, must have
   production App Attest enabled, and must not carry `get-task-allow`. This

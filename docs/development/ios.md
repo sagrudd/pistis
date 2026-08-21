@@ -69,14 +69,25 @@ TestFlight validation.
 
 ### Approved physical build gate
 
-The `Release` configuration is reserved for the approved physical build. The
-archive helper first requires an installed Apple Distribution certificate,
-then asks Xcode to obtain the authorised provisioning state. Before installing
-a build on the iPhone, run:
+The `Release` configuration is reserved for the approved physical build. It
+uses the installed Apple Distribution identity and the reviewed `pistis` Ad
+Hoc profile. Debug and test configurations remain automatic so simulator
+development does not depend on distribution credentials. The archive helper
+checks both inputs and does not allow Xcode to replace the reviewed profile
+with a development profile. Before installing a build on the iPhone, run:
 
 ```sh
 scripts/build-approved-iphone-archive.sh \
   /path/to/Pistis.xcarchive
+```
+
+Export the verified archive as an Ad Hoc IPA, and repeat the same artifact
+gate against the app extracted from the IPA:
+
+```sh
+scripts/export-approved-iphone-ipa.sh \
+  /path/to/Pistis.xcarchive \
+  /path/to/Pistis-adhoc
 ```
 
 If an archive has already been produced by the reviewed distribution process,

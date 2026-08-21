@@ -4,6 +4,11 @@
 
 ### Changed
 
+- Remove unused demonstration identities and fixed installation data from the
+  production iOS target. Customer identity, host origin, trust material and
+  installation labels are now exclusively runtime attended-install data
+  (0.20.4, iOS build 19).
+
 - Bind later authentication to the exact HTTPS origin and TLS leaf SPKI
   authenticated during first-device enrolment. Current trust records now carry
   those public endpoint facts, pre-binding records fail closed, and changed

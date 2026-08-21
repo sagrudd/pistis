@@ -67,6 +67,31 @@ provider client secret, or provider access token. An authorised owner must use
 that team with a provisioned physical iPhone before device, archive, or
 TestFlight validation.
 
+### Approved physical build gate
+
+The `Release` configuration is reserved for the approved physical build. The
+archive helper first requires an installed Apple Distribution certificate,
+then asks Xcode to obtain the authorised provisioning state. Before installing
+a build on the iPhone, run:
+
+```sh
+scripts/build-approved-iphone-archive.sh \
+  /path/to/Pistis.xcarchive
+```
+
+If an archive has already been produced by the reviewed distribution process,
+run the artifact gate directly:
+
+```sh
+scripts/verify-approved-iphone-build.sh \
+  /path/to/Release-iphoneos/Pistis.app
+```
+
+The gate rejects development-signed artifacts, `get-task-allow`, a non-production
+App Attest entitlement, an unexpected bundle identifier, or an unexpected Apple
+team. A build that fails this check must not be used for a Monas first-device
+QR; Monas deliberately accepts production App Attest evidence only.
+
 ## Apple App Attest registration
 
 The iOS application configures the Apple production App Attest entitlement

@@ -4,6 +4,13 @@
 
 ### Fixed
 
+- Add a hard gate for the approved physical iPhone artifact: a build used for
+  Monas first-device registration must be Apple Distribution-signed, must have
+  production App Attest enabled, and must not carry `get-task-allow`. This
+  prevents a development-signed `Release` build from reaching a production
+  ceremony and being reported as a misleading Site Root authority outage
+  (0.20.6, iOS build 21).
+
 - Generate a fresh Apple App Attest key for every new attended Site Root
   registration and retain its identifier only after attestation succeeds.
   Interrupted first-device attempts can no longer reuse a one-use key and

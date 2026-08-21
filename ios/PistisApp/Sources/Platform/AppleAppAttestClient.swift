@@ -512,6 +512,9 @@ final class AppleAppAttestClient: @unchecked Sendable {
             keyID: keyID,
             clientDataHash: clientDataHash
         )
+        // Do not retain a key that Apple did not successfully attest. This
+        // keeps an interrupted registration retry from treating an unproven
+        // key as the device's registered App Attest identity.
         try keyIDStore.saveKeyID(keyID)
         return try AppleAppAttestRegistrationEnvelope(
             ceremonyID: ceremonyID,
@@ -696,7 +699,6 @@ final class AppleAppAttestClient: @unchecked Sendable {
         guard Data(base64Encoded: keyID) != nil else {
             throw PlatformFailure.appAttestKeyCreationFailed
         }
-        try keyIDStore.saveKeyID(keyID)
         return keyID
     }
 

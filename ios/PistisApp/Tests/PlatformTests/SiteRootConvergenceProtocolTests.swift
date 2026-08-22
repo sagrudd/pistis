@@ -296,6 +296,61 @@ final class SiteRootConvergenceProtocolTests: XCTestCase {
         )
     }
 
+    func testBrokerContinuationRegistersAcknowledgementKeyBeforeLeafApproval() async throws {
+        let events = LockedContinuationEvents()
+        let transport = RecordingContinuationTransport(events: events)
+        let authorizer = RecordingContinuationAuthorizer(events: events)
+        let service = SiteRootConvergenceServiceV2(
+            transport: RecordingBrokerTransport(recorder: BrokerAttemptRecorder())
+        )
+
+        try await service.continueBrokerSiteX509(
+            correlation: Data(repeating: 0x52, count: 32),
+            expectedSiteUUID: "02020202-0202-0202-0202-020202020202",
+            transport: transport,
+            authorizer: authorizer
+        )
+
+        XCTAssertEqual(events.values(), [
+            "await-root-unlock", "authorize-root", "submit-root-unlock",
+            "await-issuer-unlock", "authorize-issuer", "submit-issuer-unlock",
+            "prepare-ack", "await-ack-registration", "authorize-ack",
+            "submit-ack-registration", "await-leaf-approval", "authorize-leaf",
+            "submit-leaf-approval",
+        ])
+    }
+
+    func testBrokerAckRegistrationPresentationIsExactAndAuthorityBound() throws {
+        let target = Data(repeating: 0x63, count: 32)
+        let site = "02020202-0202-0202-0202-020202020202"
+        let body = try JSONSerialization.data(withJSONObject: [
+            "schema": "monas.site-root-convergence-ack-registration-presentation.v2",
+            "site_uuid": site,
+            "target_id_b64url": SiteRootConvergenceEncoding.encode(target),
+            "purpose": SiteRootConvergenceProfileV2.ackPurpose,
+        ], options: [.sortedKeys])
+        let parsed = try SiteRootAckRegistrationBrokerPresentationV2(
+            data: body, expectedSiteUUID: site, expectedTargetID: target
+        )
+        XCTAssertEqual(parsed.siteUUID, site)
+        XCTAssertEqual(parsed.targetID, target)
+
+        var drift = try XCTUnwrap(
+            JSONSerialization.jsonObject(with: body) as? [String: Any]
+        )
+        drift["fallback_origin"] = "https://untrusted.example"
+        XCTAssertThrowsError(try SiteRootAckRegistrationBrokerPresentationV2(
+            data: JSONSerialization.data(withJSONObject: drift),
+            expectedSiteUUID: site,
+            expectedTargetID: target
+        ))
+        XCTAssertThrowsError(try SiteRootAckRegistrationBrokerPresentationV2(
+            data: body,
+            expectedSiteUUID: "03030303-0303-0303-0303-030303030303",
+            expectedTargetID: target
+        ))
+    }
+
     func testAcceptedResultContinuationRecoveryQRIsClosedAndBounded() throws {
         let correlation = Data(repeating: 0x51, count: 32)
         let digest = Data(repeating: 0x61, count: 32)
@@ -497,6 +552,76 @@ private actor BrokerAttemptRecorder {
     }
 
     func events() -> [String] { values }
+}
+
+private final class LockedContinuationEvents: @unchecked Sendable {
+    private let lock = NSLock()
+    private var recorded: [String] = []
+
+    func append(_ value: String) {
+        lock.lock()
+        recorded.append(value)
+        lock.unlock()
+    }
+
+    func values() -> [String] {
+        lock.lock()
+        defer { lock.unlock() }
+        return recorded
+    }
+}
+
+private struct RecordingContinuationTransport: MonasSiteX509BrokerContinuing {
+    let events: LockedContinuationEvents
+
+    func awaitSiteX509Continuation(
+        correlation _: Data, phase: SiteX509BrokerContinuationPhaseV1
+    ) async throws -> SiteX509BrokerContinuationPresentationV1? {
+        events.append("await-\(phase.rawValue)")
+        let payload = Data("presentation-\(phase.rawValue)".utf8)
+        return SiteX509BrokerContinuationPresentationV1(
+            payload: payload, sha256: Data(SHA256.hash(data: payload))
+        )
+    }
+
+    func submitSiteX509Continuation(
+        correlation _: Data, phase: SiteX509BrokerContinuationPhaseV1,
+        presentationSHA256: Data, submission: Data
+    ) async throws {
+        XCTAssertEqual(presentationSHA256.count, 32)
+        XCTAssertFalse(submission.isEmpty)
+        events.append("submit-\(phase.rawValue)")
+    }
+}
+
+private final class RecordingContinuationAuthorizer:
+    SiteX509BrokerContinuationAuthorizingV2, @unchecked Sendable
+{
+    private let events: LockedContinuationEvents
+
+    init(events: LockedContinuationEvents) { self.events = events }
+
+    func attendedUnlock(
+        _: Data, role: SiteX509AttendedUnlockRoleV2
+    ) throws -> Data {
+        events.append("authorize-\(role == .root ? "root" : "issuer")")
+        return Data("unlock-submission".utf8)
+    }
+
+    func prepareAckRegistration(expectedSiteUUID: String) throws {
+        XCTAssertEqual(expectedSiteUUID, "02020202-0202-0202-0202-020202020202")
+        events.append("prepare-ack")
+    }
+
+    func ackRegistration(_: Data) throws -> Data {
+        events.append("authorize-ack")
+        return Data("ack-registration-submission".utf8)
+    }
+
+    func leafApproval(_: Data) throws -> Data {
+        events.append("authorize-leaf")
+        return Data("leaf-submission".utf8)
+    }
 }
 
 private struct RecordingBrokerTransport: MonasSiteRootConvergenceSubmitting {

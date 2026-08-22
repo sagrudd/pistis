@@ -45,6 +45,7 @@ protocol MonasSiteRootConvergenceSubmitting: Sendable {
 enum SiteX509BrokerContinuationPhaseV1: String, Sendable {
     case rootUnlock = "root-unlock"
     case issuerUnlock = "issuer-unlock"
+    case ackRegistration = "ack-registration"
     case leafApproval = "leaf-approval"
 }
 
@@ -226,6 +227,9 @@ struct MonasSiteX509FirstProvisionBrokerTransport: MonasSiteRootConvergenceSubmi
             else { throw PlatformFailure.siteRootAuthorityUnavailable }
             switch state {
             case "pending", "submitted":
+                guard Set(object.keys) == ["schema", "state"] else {
+                    throw PlatformFailure.siteRootAuthorityUnavailable
+                }
                 try await Task.sleep(for: .seconds(2))
             case "accepted":
                 guard Set(object.keys) == ["schema", "state"] else {
@@ -990,7 +994,11 @@ struct SiteRootConvergenceServiceV2: Sendable {
         {
             try await continueBrokerSiteX509(
                 correlation: presentation.correlation,
-                transport: continuation, ceremony: ceremony
+                expectedSiteUUID: presentation.siteUUID,
+                transport: continuation,
+                authorizer: SecureEnclaveSiteX509BrokerContinuationAuthorizerV2(
+                    ceremony: ceremony, store: store
+                )
             )
         }
     }
@@ -1006,7 +1014,11 @@ struct SiteRootConvergenceServiceV2: Sendable {
         )
         try await continueBrokerSiteX509(
             correlation: presentation.correlation,
-            transport: continuation, ceremony: ceremony
+            expectedSiteUUID: presentation.siteUUID,
+            transport: continuation,
+            authorizer: SecureEnclaveSiteX509BrokerContinuationAuthorizerV2(
+                ceremony: ceremony, store: store
+            )
         )
     }
 
@@ -1046,10 +1058,11 @@ struct SiteRootConvergenceServiceV2: Sendable {
         return BrokerSiteX509AuthorizationV1(detachedCOSE: cose, ceremony: ceremony)
     }
 
-    private func continueBrokerSiteX509(
+    func continueBrokerSiteX509(
         correlation: Data,
+        expectedSiteUUID: String,
         transport: any MonasSiteX509BrokerContinuing,
-        ceremony: FaceIDCeremonyContext
+        authorizer: any SiteX509BrokerContinuationAuthorizingV2
     ) async throws {
         for (phase, role) in [
             (SiteX509BrokerContinuationPhaseV1.rootUnlock, SiteX509AttendedUnlockRoleV2.root),
@@ -1058,31 +1071,36 @@ struct SiteRootConvergenceServiceV2: Sendable {
             guard let brokered = try await transport.awaitSiteX509Continuation(
                 correlation: correlation, phase: phase
             ) else { continue }
-            let presentation = try SiteX509AttendedUnlockPresentationV2(
-                data: brokered.payload, expectedRole: role,
-                nowUnixSeconds: Self.nowUnixSeconds()
+            let submission = try authorizer.attendedUnlock(
+                brokered.payload, role: role
             )
-            let submission = try SecureEnclaveSiteX509AttendedUnlockProducerV2(role: role)
-                .produce(presentation, using: ceremony)
             try await transport.submitSiteX509Continuation(
                 correlation: correlation, phase: phase,
                 presentationSHA256: brokered.sha256,
-                submission: try JSONEncoder().encode(submission)
+                submission: submission
+            )
+        }
+
+        try authorizer.prepareAckRegistration(expectedSiteUUID: expectedSiteUUID)
+        if let brokered = try await transport.awaitSiteX509Continuation(
+            correlation: correlation, phase: .ackRegistration
+        ) {
+            let submission = try authorizer.ackRegistration(brokered.payload)
+            try await transport.submitSiteX509Continuation(
+                correlation: correlation, phase: .ackRegistration,
+                presentationSHA256: brokered.sha256,
+                submission: submission
             )
         }
 
         if let brokered = try await transport.awaitSiteX509Continuation(
             correlation: correlation, phase: .leafApproval
         ) {
-            let presentation = try SiteX509LeafApprovalPresentationV1(
-                data: brokered.payload, nowUnixSeconds: Self.nowUnixSeconds()
-            )
-            let submission = try SecureEnclaveSiteX509LeafApprovalProducerV1(store: store)
-                .produce(presentation, using: ceremony)
+            let submission = try authorizer.leafApproval(brokered.payload)
             try await transport.submitSiteX509Continuation(
                 correlation: correlation, phase: .leafApproval,
                 presentationSHA256: brokered.sha256,
-                submission: try JSONEncoder().encode(submission)
+                submission: submission
             )
         }
     }
@@ -1160,7 +1178,7 @@ struct SiteRootConvergenceServiceV2: Sendable {
         }.joined()
     }
 
-    private static func nowUnixSeconds() throws -> UInt64 {
+    static func nowUnixSeconds() throws -> UInt64 {
         let value = Date().timeIntervalSince1970
         guard value >= 0, value <= TimeInterval(UInt64.max) else {
             throw PlatformFailure.invalidConfiguration

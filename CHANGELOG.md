@@ -22,6 +22,13 @@
 
 ### Added
 
+- Insert the missing brokered PXAK acknowledgement-key registration between
+  issuer custody unlock and initial-leaf approval. The NUC verifies the
+  enrolled Site Root proof and registers the key with Proxenos before Pistis
+  retains Proxenos's protected leaf generation and signs that leaf, preserving
+  one QR and one bounded Face ID context. Ordered orchestration, exact parser,
+  digest and forward-wait regressions now fail closed (0.22.0, iOS build 30).
+
 - Continue the accepted pre-native Site X.509 ceremony through the fixed
   broker without another QR. Root custody rewrap, issuer custody rewrap and
   the combined initial-leaf approval retain separate purpose-bound proofs

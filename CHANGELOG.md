@@ -22,6 +22,11 @@
 
 ### Added
 
+- Continue the accepted pre-native Site X.509 ceremony through the fixed
+  broker without another QR. Root custody rewrap, issuer custody rewrap and
+  the combined initial-leaf approval retain separate purpose-bound proofs
+  while reusing the one bounded Face ID context (0.21.0, iOS build 29).
+
 - Add a bounded iOS onboarding event journal and the reviewed fixed-broker
   upload path. During a protected Site Root ceremony Pistis sends only
   redacted, fixed-vocabulary challenge events through the QR's server-issued

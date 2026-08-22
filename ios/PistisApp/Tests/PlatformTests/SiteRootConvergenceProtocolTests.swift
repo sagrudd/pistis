@@ -263,6 +263,39 @@ final class SiteRootConvergenceProtocolTests: XCTestCase {
         )
     }
 
+    func testBrokerContinuationBindsExactPhasePresentationDigestAndSubmission() async throws {
+        BrokerTransportURLProtocol.reset()
+        let payload = Data("exact-root-presentation".utf8)
+        BrokerTransportURLProtocol.setContinuationPresentation(payload)
+        let configuration = URLSessionConfiguration.ephemeral
+        configuration.protocolClasses = [BrokerTransportURLProtocol.self]
+        let transport = try MonasSiteX509FirstProvisionBrokerTransport(
+            session: URLSession(configuration: configuration)
+        )
+        let correlation = Data(repeating: 0x41, count: 32)
+        let polled = try await transport.awaitSiteX509Continuation(
+            correlation: correlation, phase: .rootUnlock
+        )
+        let ready = try XCTUnwrap(polled)
+        XCTAssertEqual(ready.payload, payload)
+        XCTAssertEqual(ready.sha256, Data(SHA256.hash(data: payload)))
+        try await transport.submitSiteX509Continuation(
+            correlation: correlation, phase: .rootUnlock,
+            presentationSHA256: ready.sha256, submission: Data("opaque-response".utf8)
+        )
+        let requests = BrokerTransportURLProtocol.requests()
+        XCTAssertEqual(requests.map { $0.url?.path }, [
+            "/pistis/site-x509-continuation/presentations",
+            "/pistis/site-x509-continuation/submissions",
+        ])
+        let submission = try XCTUnwrap(jsonObject(requests[1]))
+        XCTAssertEqual(submission["phase"] as? String, "root-unlock")
+        XCTAssertEqual(
+            submission["presentation_sha256_b64url"] as? String,
+            SiteRootConvergenceEncoding.encode(ready.sha256)
+        )
+    }
+
     func testBrokerApprovalReservesBeforeProtectedProofAndCannotBeReplayed() async throws {
         let recorder = BrokerAttemptRecorder()
         let transport = RecordingBrokerTransport(recorder: recorder)
@@ -495,10 +528,18 @@ private struct RecordingBrokerTransport: MonasSiteRootConvergenceSubmitting {
 private final class BrokerTransportURLProtocol: URLProtocol, @unchecked Sendable {
     private static let lock = NSLock()
     nonisolated(unsafe) private static var capturedRequests: [URLRequest] = []
+    nonisolated(unsafe) private static var continuationPresentation: Data?
 
     static func reset() {
         lock.lock()
         capturedRequests = []
+        continuationPresentation = nil
+        lock.unlock()
+    }
+
+    static func setContinuationPresentation(_ data: Data) {
+        lock.lock()
+        continuationPresentation = data
         lock.unlock()
     }
 
@@ -525,15 +566,28 @@ private final class BrokerTransportURLProtocol: URLProtocol, @unchecked Sendable
         Self.capturedRequests.append(captured)
         Self.lock.unlock()
 
-        let state = url.path == SiteRootConvergenceProfileV2.x509BrokerAttemptPath
-            ? SiteRootConvergenceProfileV2.x509BrokerAttemptResponseState
-            : "accepted"
-        let body = Data(
-            "{\"schema\":\"\(SiteRootConvergenceProfileV2.x509BrokerResponseSchema)\",\"state\":\"\(state)\"}".utf8
-        )
+        Self.lock.lock()
+        let continuation = Self.continuationPresentation
+        Self.lock.unlock()
+        let status: Int
+        let body: Data
+        if url.path == "/pistis/site-x509-continuation/presentations", let continuation {
+            status = 200
+            body = Data(
+                "{\"presentation_b64url\":\"\(SiteRootConvergenceEncoding.encode(continuation))\",\"presentation_sha256_b64url\":\"\(SiteRootConvergenceEncoding.encode(Data(SHA256.hash(data: continuation))))\",\"schema\":\"\(SiteRootConvergenceProfileV2.x509BrokerResponseSchema)\",\"state\":\"ready\"}".utf8
+            )
+        } else {
+            let state = url.path == SiteRootConvergenceProfileV2.x509BrokerAttemptPath
+                ? SiteRootConvergenceProfileV2.x509BrokerAttemptResponseState
+                : url.path == "/pistis/site-x509-continuation/submissions" ? "submitted" : "accepted"
+            status = 202
+            body = Data(
+                "{\"schema\":\"\(SiteRootConvergenceProfileV2.x509BrokerResponseSchema)\",\"state\":\"\(state)\"}".utf8
+            )
+        }
         let response = HTTPURLResponse(
             url: url,
-            statusCode: 202,
+            statusCode: status,
             httpVersion: nil,
             headerFields: [
                 "Cache-Control": "no-store",

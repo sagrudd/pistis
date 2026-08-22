@@ -283,11 +283,18 @@ final class SecureEnclaveSiteX509LeafApprovalProducerV1: @unchecked Sendable {
     func produce(
         _ presentation: SiteX509LeafApprovalPresentationV1
     ) async throws -> SiteX509LeafApprovalSubmissionV1 {
-        let record = try store.current()
-        try presentation.validateCurrentSigner(record)
         let ceremony = try await FaceIDCeremonyContext.authenticate(
             reason: "Approve the first DASObjectStore and Monas HTTPS certificates"
         )
+        return try produce(presentation, using: ceremony)
+    }
+
+    func produce(
+        _ presentation: SiteX509LeafApprovalPresentationV1,
+        using ceremony: FaceIDCeremonyContext
+    ) throws -> SiteX509LeafApprovalSubmissionV1 {
+        let record = try store.current()
+        try presentation.validateCurrentSigner(record)
         let signer = try SecureEnclaveSigner(
             namespace: "site-root-convergence-ack-v2",
             authenticationReason: "Approve the first DASObjectStore and Monas HTTPS certificates"

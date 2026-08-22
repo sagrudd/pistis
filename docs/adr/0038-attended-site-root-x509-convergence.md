@@ -27,7 +27,13 @@ Pistis implements one ordered, fail-closed sequence:
    challenge with the existing Site Root device key.
 2. One atomic Site X.509 first-provision challenge approves two fresh server-side
    P-256 role keys. The root and issuer have distinct role purposes, records and
-   public bindings. No legacy plaintext key is imported.
+   public bindings. No legacy plaintext key is imported. Before the resulting
+   native leaf exists, the same fixed broker and signed-QR correlation carry
+   three ordered opaque continuations: root rewrap, issuer rewrap and the
+   combined initial-leaf approval. The original Face ID context may be reused
+   only for this bounded sequence; every operation retains its distinct
+   purpose, parser, key namespace and local acceptance boundary. No second QR,
+   proxy, tunnel, temporary certificate or broker signing authority is added.
 3. Pistis creates the distinct Secure Enclave namespace
    `site-root-convergence-ack-v2`. One freshly evaluated `LAContext` is shared
    only across its registration proof, using the existing Site Root key, and

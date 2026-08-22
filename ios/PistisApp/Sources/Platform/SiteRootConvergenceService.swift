@@ -989,9 +989,25 @@ struct SiteRootConvergenceServiceV2: Sendable {
            let ceremony = authorization.ceremony
         {
             try await continueBrokerSiteX509(
-                presentation, transport: continuation, ceremony: ceremony
+                correlation: presentation.correlation,
+                transport: continuation, ceremony: ceremony
             )
         }
+    }
+
+    func continueRecoveredSiteX509(
+        _ presentation: SiteX509ContinuationRecoveryPresentationV1
+    ) async throws {
+        guard let continuation = transport as? any MonasSiteX509BrokerContinuing else {
+            throw PlatformFailure.siteRootAuthorityUnavailable
+        }
+        let ceremony = try await FaceIDCeremonyContext.authenticate(
+            reason: "Resume accepted Site X.509 custody and certificate approval"
+        )
+        try await continueBrokerSiteX509(
+            correlation: presentation.correlation,
+            transport: continuation, ceremony: ceremony
+        )
     }
 
     static func validateBrokerEnrolledSiteRootPublicKeyID(
@@ -1031,7 +1047,7 @@ struct SiteRootConvergenceServiceV2: Sendable {
     }
 
     private func continueBrokerSiteX509(
-        _ firstProvision: SiteX509FirstProvisionBrokerPresentationV1,
+        correlation: Data,
         transport: any MonasSiteX509BrokerContinuing,
         ceremony: FaceIDCeremonyContext
     ) async throws {
@@ -1040,7 +1056,7 @@ struct SiteRootConvergenceServiceV2: Sendable {
             (.issuerUnlock, .issuer),
         ] {
             guard let brokered = try await transport.awaitSiteX509Continuation(
-                correlation: firstProvision.correlation, phase: phase
+                correlation: correlation, phase: phase
             ) else { continue }
             let presentation = try SiteX509AttendedUnlockPresentationV2(
                 data: brokered.payload, expectedRole: role,
@@ -1049,14 +1065,14 @@ struct SiteRootConvergenceServiceV2: Sendable {
             let submission = try SecureEnclaveSiteX509AttendedUnlockProducerV2(role: role)
                 .produce(presentation, using: ceremony)
             try await transport.submitSiteX509Continuation(
-                correlation: firstProvision.correlation, phase: phase,
+                correlation: correlation, phase: phase,
                 presentationSHA256: brokered.sha256,
                 submission: try JSONEncoder().encode(submission)
             )
         }
 
         if let brokered = try await transport.awaitSiteX509Continuation(
-            correlation: firstProvision.correlation, phase: .leafApproval
+            correlation: correlation, phase: .leafApproval
         ) {
             let presentation = try SiteX509LeafApprovalPresentationV1(
                 data: brokered.payload, nowUnixSeconds: Self.nowUnixSeconds()
@@ -1064,7 +1080,7 @@ struct SiteRootConvergenceServiceV2: Sendable {
             let submission = try SecureEnclaveSiteX509LeafApprovalProducerV1(store: store)
                 .produce(presentation, using: ceremony)
             try await transport.submitSiteX509Continuation(
-                correlation: firstProvision.correlation, phase: .leafApproval,
+                correlation: correlation, phase: .leafApproval,
                 presentationSHA256: brokered.sha256,
                 submission: try JSONEncoder().encode(submission)
             )

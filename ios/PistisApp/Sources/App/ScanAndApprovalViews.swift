@@ -334,7 +334,8 @@ struct ScanView: View {
                     }
                     return
                 }
-                if payload.text.contains(SiteRootConvergenceProfileV2.x509BrokerProvisionSchema)
+                if payload.text.contains(SiteRootConvergenceProfileV2.x509ContinuationRecoverySchema)
+                    || payload.text.contains(SiteRootConvergenceProfileV2.x509BrokerProvisionSchema)
                     || payload.text.contains(SiteRootConvergenceProfileV2.x509ProvisionSchema)
                     || payload.text.contains(SiteRootConvergenceProfileV2.provisionSchema)
                     || payload.text.contains(SiteRootConvergenceProfileV2.ackSchema)

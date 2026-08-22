@@ -24,6 +24,9 @@ enum SiteRootConvergenceProfileV2 {
     static let x509BrokerSubmissionSchema =
         "mnemosyne.monas.first-install-broker.pistis-site-x509-first-provision-submission.v1"
     static let x509BrokerPurpose = "site-x509-first-provision"
+    static let x509ContinuationRecoverySchema =
+        "monas.site-x509-continuation-recovery-presentation.v1"
+    static let x509ContinuationRecoveryPurpose = "site-x509-continuation-recovery"
     static let x509BrokerOrigin = "https://install.mnemosyne.co.uk"
     static let x509BrokerAttemptSchema =
         "mnemosyne.monas.first-install-broker.pistis-site-x509-first-provision-attempt.v1"
@@ -158,6 +161,42 @@ struct SiteX509FirstProvisionBrokerPresentationV1: Equatable, Sendable {
         expiresAtUnixSeconds = expiry
         self.generation = generation
         self.submissionURL = submissionURL
+    }
+}
+
+struct SiteX509ContinuationRecoveryPresentationV1: Equatable, Sendable {
+    let siteUUID: String
+    let generation: UInt64
+    let correlation: Data
+    let retainedResultSHA256: Data
+    let expiresAtUnixSeconds: UInt64
+
+    init(qrText: String, nowUnixSeconds: UInt64) throws {
+        let object = try SiteRootConvergenceEncoding.object(qrText, maximumBytes: 2_048)
+        guard Set(object.keys) == [
+            "schema", "purpose", "site_uuid", "generation", "correlation_b64url",
+            "retained_result_sha256_b64url", "expires_at_unix_seconds",
+        ], SiteRootConvergenceEncoding.string(object, "schema")
+            == SiteRootConvergenceProfileV2.x509ContinuationRecoverySchema,
+        SiteRootConvergenceEncoding.string(object, "purpose")
+            == SiteRootConvergenceProfileV2.x509ContinuationRecoveryPurpose,
+        let site = SiteRootConvergenceEncoding.string(object, "site_uuid"),
+        SiteRootConvergenceEncoding.uuidBytes(site) != nil,
+        let generation = SiteRootConvergenceEncoding.positiveUInt64(object, "generation"),
+        let correlation = SiteRootConvergenceEncoding.bytes(
+            object, "correlation_b64url", count: 32, nonzero: true
+        ), let digest = SiteRootConvergenceEncoding.bytes(
+            object, "retained_result_sha256_b64url", count: 32, nonzero: true
+        ), let expiry = SiteRootConvergenceEncoding.positiveUInt64(
+            object, "expires_at_unix_seconds"
+        ), expiry > nowUnixSeconds,
+        expiry - nowUnixSeconds <= SiteRootConvergenceProfileV2.x509MaximumPresentationLifetimeSeconds
+        else { throw PlatformFailure.qrPayloadUnsupported }
+        siteUUID = site
+        self.generation = generation
+        self.correlation = correlation
+        retainedResultSHA256 = digest
+        expiresAtUnixSeconds = expiry
     }
 }
 

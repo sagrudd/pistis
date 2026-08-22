@@ -296,6 +296,34 @@ final class SiteRootConvergenceProtocolTests: XCTestCase {
         )
     }
 
+    func testAcceptedResultContinuationRecoveryQRIsClosedAndBounded() throws {
+        let correlation = Data(repeating: 0x51, count: 32)
+        let digest = Data(repeating: 0x61, count: 32)
+        let object: [String: Any] = [
+            "schema": SiteRootConvergenceProfileV2.x509ContinuationRecoverySchema,
+            "purpose": SiteRootConvergenceProfileV2.x509ContinuationRecoveryPurpose,
+            "site_uuid": "cb5fc980-8a52-427a-83d1-a5e6a54b6642",
+            "generation": 1,
+            "correlation_b64url": SiteRootConvergenceEncoding.encode(correlation),
+            "retained_result_sha256_b64url": SiteRootConvergenceEncoding.encode(digest),
+            "expires_at_unix_seconds": 1_800,
+        ]
+        let data = try JSONSerialization.data(withJSONObject: object, options: [.sortedKeys])
+        let text = try XCTUnwrap(String(data: data, encoding: .utf8))
+        let parsed = try SiteX509ContinuationRecoveryPresentationV1(
+            qrText: text, nowUnixSeconds: 1_000
+        )
+        XCTAssertEqual(parsed.correlation, correlation)
+        XCTAssertEqual(parsed.retainedResultSHA256, digest)
+
+        var changed = object
+        changed["unexpected"] = true
+        let changedData = try JSONSerialization.data(withJSONObject: changed, options: [.sortedKeys])
+        XCTAssertThrowsError(try SiteX509ContinuationRecoveryPresentationV1(
+            qrText: String(decoding: changedData, as: UTF8.self), nowUnixSeconds: 1_000
+        ))
+    }
+
     func testBrokerApprovalReservesBeforeProtectedProofAndCannotBeReplayed() async throws {
         let recorder = BrokerAttemptRecorder()
         let transport = RecordingBrokerTransport(recorder: recorder)

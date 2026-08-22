@@ -34,6 +34,10 @@ Pistis implements one ordered, fail-closed sequence:
    only for this bounded sequence; every operation retains its distinct
    purpose, parser, key namespace and local acceptance boundary. No second QR,
    proxy, tunnel, temporary certificate or broker signing authority is added.
+   A result accepted before a continuation-capable phone build existed may use
+   one purpose-fixed continuation-recovery QR bound to the retained result and
+   broker proof-collection marker. It resumes only these three operations and
+   cannot reissue Site Root or first provision.
 3. Pistis creates the distinct Secure Enclave namespace
    `site-root-convergence-ack-v2`. One freshly evaluated `LAContext` is shared
    only across its registration proof, using the existing Site Root key, and

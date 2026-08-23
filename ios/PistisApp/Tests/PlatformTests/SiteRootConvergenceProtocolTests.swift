@@ -285,8 +285,8 @@ final class SiteRootConvergenceProtocolTests: XCTestCase {
         )
         let requests = BrokerTransportURLProtocol.requests()
         XCTAssertEqual(requests.map { $0.url?.path }, [
-            "/pistis/site-x509-continuation/presentations",
-            "/pistis/site-x509-continuation/submissions",
+            SiteRootConvergenceProfileV2.x509BrokerContinuationPresentationPath,
+            SiteRootConvergenceProfileV2.x509BrokerContinuationSubmissionPath,
         ])
         let submission = try XCTUnwrap(jsonObject(requests[1]))
         XCTAssertEqual(submission["phase"] as? String, "root-unlock")
@@ -724,7 +724,9 @@ private final class BrokerTransportURLProtocol: URLProtocol, @unchecked Sendable
         Self.lock.unlock()
         let status: Int
         let body: Data
-        if url.path == "/pistis/site-x509-continuation/presentations", let continuation {
+        if url.path == SiteRootConvergenceProfileV2.x509BrokerContinuationPresentationPath,
+           let continuation
+        {
             status = 200
             body = Data(
                 "{\"presentation_b64url\":\"\(SiteRootConvergenceEncoding.encode(continuation))\",\"presentation_sha256_b64url\":\"\(SiteRootConvergenceEncoding.encode(Data(SHA256.hash(data: continuation))))\",\"schema\":\"\(SiteRootConvergenceProfileV2.x509BrokerResponseSchema)\",\"state\":\"ready\"}".utf8
@@ -732,7 +734,8 @@ private final class BrokerTransportURLProtocol: URLProtocol, @unchecked Sendable
         } else {
             let state = url.path == SiteRootConvergenceProfileV2.x509BrokerAttemptPath
                 ? SiteRootConvergenceProfileV2.x509BrokerAttemptResponseState
-                : url.path == "/pistis/site-x509-continuation/submissions" ? "submitted" : "accepted"
+                : url.path == SiteRootConvergenceProfileV2.x509BrokerContinuationSubmissionPath
+                    ? "submitted" : "accepted"
             status = 202
             body = Data(
                 "{\"schema\":\"\(SiteRootConvergenceProfileV2.x509BrokerResponseSchema)\",\"state\":\"\(state)\"}".utf8

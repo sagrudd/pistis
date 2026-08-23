@@ -211,7 +211,7 @@ struct MonasSiteX509FirstProvisionBrokerTransport: MonasSiteRootConvergenceSubmi
     ) async throws -> SiteX509BrokerContinuationPresentationV1? {
         guard correlation.count == 32 else { throw PlatformFailure.invalidConfiguration }
         let endpoint = try fixedEndpoint(
-            "/pistis/site-x509-continuation/presentations"
+            SiteRootConvergenceProfileV2.x509BrokerContinuationPresentationPath
         )
         let deadline = Date().addingTimeInterval(300)
         while Date() < deadline {
@@ -269,7 +269,7 @@ struct MonasSiteX509FirstProvisionBrokerTransport: MonasSiteRootConvergenceSubmi
             "presentation_sha256_b64url": SiteRootConvergenceEncoding.encode(presentationSHA256),
             "submission_b64url": SiteRootConvergenceEncoding.encode(submission),
         ], endpoint: try fixedEndpoint(
-            "/pistis/site-x509-continuation/submissions"
+            SiteRootConvergenceProfileV2.x509BrokerContinuationSubmissionPath
         ), maximum: 24_000)
         let object = try StrictJSONObject(data: data, maximumBytes: 1_024).values
         guard Set(object.keys) == ["schema", "state"],

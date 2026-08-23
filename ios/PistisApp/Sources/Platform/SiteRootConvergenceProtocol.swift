@@ -36,6 +36,10 @@ enum SiteRootConvergenceProfileV2 {
     static let x509BrokerResponseSchema = "mnemosyne.monas.first-install-broker.response.v1"
     static let x509BrokerSubmitPath =
         "/api/first-install/v1/pistis/site-x509-first-provision/submit"
+    static let x509BrokerContinuationPresentationPath =
+        "/api/first-install/v1/pistis/site-x509-continuation/presentations"
+    static let x509BrokerContinuationSubmissionPath =
+        "/api/first-install/v1/pistis/site-x509-continuation/submissions"
     /// The broker code expires after five minutes, but the protected
     /// pre-native Site X.509 transaction is issued by Thesaurophylax after
     /// redemption and has its own reviewed fifteen-minute lifetime.

@@ -1,5 +1,11 @@
 # Changelog
 
+- Route every brokered Site X.509 continuation poll and submission through the
+  deployed `/api/first-install/v1` broker prefix. The production-path
+  regression gate now rejects the root-relative endpoints that returned an
+  Apache 404 and were surfaced as a false Site Root authority outage (0.22.2,
+  iOS build 32).
+
 - Route a retained broker-backed Site Root installation to the protected Site
   X.509 scanner instead of an unavailable native authority operation, and
   advance its non-authorising local setup projection only after the brokered

@@ -53,8 +53,12 @@ final class SiteX509LeafApprovalV1Tests: XCTestCase {
             object["schema"] as? String,
             "monas.site-x509-leaf-approval-submission.v1"
         )
+        XCTAssertEqual(
+            object["purpose"] as? String,
+            "proxenos.site-x509-initial-leaf-issuance.v1"
+        )
         XCTAssertEqual(Set(object.keys), [
-            "schema", "correlation_id_b64", "canonical_payload_b64",
+            "schema", "purpose", "correlation_id_b64", "canonical_payload_b64",
             "transaction_id_b64", "device_key_generation", "delegation_serial",
             "delegation_expires_at", "detached_cose_sign1_b64",
         ])

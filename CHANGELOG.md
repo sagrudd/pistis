@@ -1,5 +1,11 @@
 # Changelog
 
+- Include the fixed
+  `proxenos.site-x509-initial-leaf-issuance.v1` purpose in the protected leaf
+  submission envelope required by Monas. The encoded-envelope regression now
+  asserts the complete nine-field Monas decoder contract, including both
+  schema and purpose (0.22.7, iOS build 37).
+
 - Emit the documented Monas
   `monas.site-x509-leaf-approval-submission.v1` schema for the protected leaf
   proof. The exact encoded submission envelope is regression tested so a

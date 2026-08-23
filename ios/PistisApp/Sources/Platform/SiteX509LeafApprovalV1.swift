@@ -212,6 +212,7 @@ struct SiteX509LeafApprovalPresentationV1: Sendable {
 
 struct SiteX509LeafApprovalSubmissionV1: Encodable, Sendable {
     let schema = SiteX509LeafApprovalProfileV1.submitSchema
+    let purpose = SiteX509LeafApprovalProfileV1.purpose
     let correlationIDB64: String
     let canonicalPayloadB64: String
     let transactionIDB64: String
@@ -221,7 +222,7 @@ struct SiteX509LeafApprovalSubmissionV1: Encodable, Sendable {
     let detachedCOSESign1B64: String
 
     enum CodingKeys: String, CodingKey {
-        case schema
+        case schema, purpose
         case correlationIDB64 = "correlation_id_b64"
         case canonicalPayloadB64 = "canonical_payload_b64"
         case transactionIDB64 = "transaction_id_b64"

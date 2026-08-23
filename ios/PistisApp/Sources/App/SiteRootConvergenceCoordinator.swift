@@ -16,6 +16,11 @@ struct SiteRootConvergenceReview: Equatable, Identifiable {
 
 @MainActor
 final class SiteRootConvergenceCoordinator: ObservableObject {
+    enum TransportRoute: Equatable {
+        case direct
+        case broker
+    }
+
     enum Phase: Equatable {
         case idle
         case review(SiteRootConvergenceReview)
@@ -29,6 +34,7 @@ final class SiteRootConvergenceCoordinator: ObservableObject {
     @Published private(set) var phase: Phase = .idle
     @Published private(set) var presentedReview: SiteRootConvergenceReview?
     private let service: SiteRootConvergenceServiceV2?
+    private let brokerService: SiteRootConvergenceServiceV2?
     private let authorityOrigin: URL?
     private var pending: Pending?
 
@@ -38,18 +44,37 @@ final class SiteRootConvergenceCoordinator: ObservableObject {
         case siteX509Broker(SiteX509FirstProvisionBrokerPresentationV1)
         case siteX509ContinuationRecovery(SiteX509ContinuationRecoveryPresentationV1)
         case acknowledgement(SiteRootConvergenceAckPresentationV2)
+
+        var requiresBroker: Bool {
+            switch self {
+            case .siteX509Broker, .siteX509ContinuationRecovery: true
+            default: false
+            }
+        }
+
+        var transportRoute: TransportRoute {
+            requiresBroker ? .broker : .direct
+        }
     }
 
     init(
         transport: (any MonasSiteRootConvergenceSubmitting)?,
+        brokerTransport: (any MonasSiteRootConvergenceSubmitting)? = nil,
         authorityOrigin: URL? = nil
     ) {
         self.authorityOrigin = authorityOrigin ?? transport?.authorityOrigin
         service = transport.map { SiteRootConvergenceServiceV2(transport: $0) }
+        if let brokerTransport {
+            brokerService = SiteRootConvergenceServiceV2(transport: brokerTransport)
+        } else if let transport, transport is any MonasSiteX509BrokerContinuing {
+            brokerService = SiteRootConvergenceServiceV2(transport: transport)
+        } else {
+            brokerService = nil
+        }
     }
 
     func accept(qrText: String) {
-        guard phase == .idle, service != nil else {
+        guard phase == .idle else {
             phase = .failed(.siteRootAuthorityUnavailable)
             return
         }
@@ -128,6 +153,9 @@ final class SiteRootConvergenceCoordinator: ObservableObject {
                     )
                 )
             }
+            guard selectedService(for: pending) != nil else {
+                throw PlatformFailure.siteRootAuthorityUnavailable
+            }
             presentedReview = review
             phase = .review(review)
         } catch let failure as PlatformFailure {
@@ -138,7 +166,9 @@ final class SiteRootConvergenceCoordinator: ObservableObject {
     }
 
     func approve() async {
-        guard case .review = phase, let pending, let service else { return }
+        guard case .review = phase, let pending,
+              let service = selectedService(for: pending)
+        else { return }
         phase = .authenticating
         do {
             let completedBrokeredSiteX509: Bool
@@ -185,11 +215,23 @@ final class SiteRootConvergenceCoordinator: ObservableObject {
         phase = .idle
     }
 
+    var selectedTransportRoute: TransportRoute? {
+        pending?.transportRoute
+    }
+
     private static func nowSeconds() throws -> UInt64 {
         let value = Date().timeIntervalSince1970
         guard value >= 0, value <= TimeInterval(UInt64.max) else {
             throw PlatformFailure.invalidConfiguration
         }
         return UInt64(value)
+    }
+
+    private func selectedService(for pending: Pending?) -> SiteRootConvergenceServiceV2? {
+        guard let pending else { return nil }
+        switch pending.transportRoute {
+        case .direct: return service
+        case .broker: return brokerService
+        }
     }
 }

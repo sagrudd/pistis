@@ -125,6 +125,7 @@ struct ScanView: View {
             service: recoveryService
         ))
         let convergenceTransport: (any MonasSiteRootConvergenceSubmitting)?
+        let brokerConvergenceTransport = try? MonasSiteX509FirstProvisionBrokerTransport()
         let convergenceAuthorityOrigin: URL?
         if let pinned = siteRootTransport as? MonasSiteRootDelegationTransport {
             convergenceTransport = try? pinned.siteRootConvergenceTransport()
@@ -133,11 +134,12 @@ struct ScanView: View {
             // The fixed install broker is the only allowed first-phase
             // transport before the customer appliance has a Site Root
             // authority profile. Direct authority phases remain unavailable.
-            convergenceTransport = try? MonasSiteX509FirstProvisionBrokerTransport()
+            convergenceTransport = brokerConvergenceTransport
             convergenceAuthorityOrigin = nil
         }
         _siteRootConvergence = StateObject(wrappedValue: SiteRootConvergenceCoordinator(
             transport: convergenceTransport,
+            brokerTransport: brokerConvergenceTransport,
             authorityOrigin: convergenceAuthorityOrigin
         ))
         _siteOriginRelocation = StateObject(wrappedValue: SiteOriginRelocationCoordinator(

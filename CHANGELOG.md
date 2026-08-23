@@ -1,5 +1,11 @@
 # Changelog
 
+- Keep the fixed install broker available alongside a retained direct Monas
+  authority and route continuation-recovery presentations to it explicitly.
+  A retained installation can now resume protected Site X.509 approval instead
+  of failing before Face ID with a false Site Root authority outage; the exact
+  retained-direct-plus-broker route is regression tested (0.22.3, iOS build 33).
+
 - Route every brokered Site X.509 continuation poll and submission through the
   deployed `/api/first-install/v1` broker prefix. The production-path
   regression gate now rejects the root-relative endpoints that returned an

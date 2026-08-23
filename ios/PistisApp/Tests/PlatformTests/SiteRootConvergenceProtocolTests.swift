@@ -379,6 +379,36 @@ final class SiteRootConvergenceProtocolTests: XCTestCase {
         ))
     }
 
+    @MainActor
+    func testContinuationRecoveryUsesBrokerWhenRetainedDirectAuthorityExists() throws {
+        let direct = RecordingBrokerTransport(recorder: BrokerAttemptRecorder())
+        let broker = try MonasSiteX509FirstProvisionBrokerTransport(
+            session: URLSession(configuration: .ephemeral)
+        )
+        let coordinator = SiteRootConvergenceCoordinator(
+            transport: direct,
+            brokerTransport: broker,
+            authorityOrigin: URL(string: "https://192.168.0.193:8443")!
+        )
+        let now = UInt64(Date().timeIntervalSince1970)
+        let qr = json([
+            "schema": SiteRootConvergenceProfileV2.x509ContinuationRecoverySchema,
+            "purpose": SiteRootConvergenceProfileV2.x509ContinuationRecoveryPurpose,
+            "site_uuid": "cb5fc980-8a52-427a-83d1-a5e6a54b6642",
+            "generation": 1,
+            "correlation_b64url": b64(Data(repeating: 0x51, count: 32)),
+            "retained_result_sha256_b64url": b64(Data(repeating: 0x61, count: 32)),
+            "expires_at_unix_seconds": now + 120,
+        ])
+
+        coordinator.accept(qrText: qr)
+
+        XCTAssertEqual(coordinator.selectedTransportRoute, .broker)
+        guard case .review = coordinator.phase else {
+            return XCTFail("broker recovery must reach protected review")
+        }
+    }
+
     func testBrokerApprovalReservesBeforeProtectedProofAndCannotBeReplayed() async throws {
         let recorder = BrokerAttemptRecorder()
         let transport = RecordingBrokerTransport(recorder: recorder)

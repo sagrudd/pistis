@@ -77,8 +77,9 @@ struct RootTabView: View {
                     forgetExpired: forgetExpired,
                     recoverSiteRootInstallation: recoverSiteRootInstallation,
                     reconciliationMessage: reconciliationMessage,
-          authorityCustodyBusy: authorityCustodyAttempt != nil,
+                    authorityCustodyBusy: authorityCustodyAttempt != nil,
                     startProviderEnrolment: startProviderEnrolment,
+                    continueBrokeredSiteX509: continueBrokeredSiteX509,
                     continueAuthorityCustody: continueAuthorityCustody,
                     selectInstallation: selectInstallation
                 )
@@ -228,6 +229,12 @@ struct RootTabView: View {
             await Task.yield()
             providerEnrolmentRequested = true
         }
+    }
+
+    private func continueBrokeredSiteX509() {
+        reconciliationMessage =
+          "Site Root is retained. Scan the single protected Site X.509 continuation shown by the attached monas-first-install terminal; it cannot reissue Site Root."
+        selectedTab = .scan
     }
 
     private func continueAuthorityCustody(_ installation: InstallationSummary) {

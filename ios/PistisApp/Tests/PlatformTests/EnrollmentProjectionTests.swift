@@ -318,6 +318,22 @@ final class EnrollmentProjectionTests: XCTestCase {
         )
     }
 
+    func testBrokeredSetupRoutesToProtectedScannerInsteadOfNativeAuthority() throws {
+        let installation = try IncompleteSiteRootInstallation(
+            authorityHost: "install.mnemosyne.co.uk",
+            redactedReference: "abc123…def4",
+            recordedAt: Date(timeIntervalSince1970: 1_000)
+        )
+        let projection = EnrollmentProjection(
+            retainedHistory: [], incompleteSiteRootInstallations: [installation]
+        )
+
+        XCTAssertEqual(
+            InstallationDetailAction(installation: try XCTUnwrap(projection.installations.first)),
+            .continueBrokeredSiteX509
+        )
+    }
+
     func testCompletedAuthorityCustodyOffersIdentityContinuation() throws {
         let installation = try IncompleteSiteRootInstallation(
             authorityHost: "monas.example.test", redactedReference: "abc123…def4",

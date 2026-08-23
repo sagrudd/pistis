@@ -181,6 +181,32 @@ final class SiteRootInstallationRepository {
         try persist(retained)
     }
 
+    /// Advances only the non-authorising setup projection created by the
+    /// fixed first-install broker. The protected broker continuation and
+    /// Thesaurophylax remain authoritative for Site X.509 custody; this local
+    /// transition merely prevents a successfully brokered installation from
+    /// being routed into a native authority operation that cannot exist until
+    /// first-device identity enrolment installs the signed host profile.
+    func recordBrokeredSiteX509Completed() throws {
+        guard let brokerHost = URL(
+            string: SiteRootConvergenceProfileV2.x509BrokerOrigin
+        )?.host else { throw PlatformFailure.invalidConfiguration }
+        let canonicalHost = try IncompleteSiteRootInstallation.canonicalHost(brokerHost)
+        var retained = try records()
+        guard let index = retained.firstIndex(where: {
+            $0.authorityHost == canonicalHost
+        }) else { throw PlatformFailure.invalidConfiguration }
+        let current = retained[index]
+        guard current.setupPhase == .authorityCustodyRequired else { return }
+        retained[index] = try IncompleteSiteRootInstallation(
+            id: current.id, authorityHost: current.authorityHost,
+            redactedReference: current.redactedReference, recordedAt: current.recordedAt,
+            setupPhase: .identityEnrolmentRequired,
+            evidence: current.evidence
+        )
+        try persist(retained)
+    }
+
     private func record(_ record: IncompleteSiteRootInstallation) throws {
         var retained = try records()
         retained.append(record)

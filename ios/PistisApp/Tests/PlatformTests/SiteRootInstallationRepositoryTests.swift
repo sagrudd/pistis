@@ -136,6 +136,25 @@ final class SiteRootInstallationRepositoryTests: XCTestCase {
         ))
     }
 
+    func testBrokeredSiteX509CompletionAdvancesSetupWithoutSelectingNativeAuthority() throws {
+        let suite = "pistis-site-root-brokered-x509-tests-\(UUID().uuidString)"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
+        defer { defaults.removePersistentDomain(forName: suite) }
+        let repository = SiteRootInstallationRepository(defaults: defaults)
+        try repository.recordRecoveredFirstCeremony(
+            authorityHost: "install.mnemosyne.co.uk",
+            redactedReference: "abc123…def4",
+            registeredAt: Date(timeIntervalSince1970: 1_000)
+        )
+
+        try repository.recordBrokeredSiteX509Completed()
+        try repository.recordBrokeredSiteX509Completed()
+
+        let record = try XCTUnwrap(repository.records().first)
+        XCTAssertEqual(record.authorityHost, "install.mnemosyne.co.uk")
+        XCTAssertEqual(record.setupPhase, .identityEnrolmentRequired)
+    }
+
     func testReconciliationResponseAcceptsOnlyProofConsumedOrCompleted() throws {
         let accepted = """
         {"schema":"monas.site-root-genesis-installation-status.v1","state":"proof-consumed","redacted_reference":"abc123…def4","registered_at_unix_millis":1000}

@@ -2,6 +2,7 @@ import SwiftUI
 
 enum InstallationDetailAction: Equatable {
     case continueAuthorityCustody
+    case continueBrokeredSiteX509
     case reconcileAuthorityCustody
     case continueIdentitySetup
     case none
@@ -15,9 +16,15 @@ enum InstallationDetailAction: Equatable {
             self = .none
             return
         }
-    self =
-      installation.setupPhase == .identityEnrolmentRequired
-            ? .continueIdentitySetup : .continueAuthorityCustody
+        if installation.setupPhase == .identityEnrolmentRequired {
+            self = .continueIdentitySetup
+        } else if installation.localAlias == URL(
+            string: SiteRootConvergenceProfileV2.x509BrokerOrigin
+        )?.host {
+            self = .continueBrokeredSiteX509
+        } else {
+            self = .continueAuthorityCustody
+        }
     }
 }
 
@@ -29,6 +36,7 @@ struct InstallationsView: View {
     let reconciliationMessage: String?
     let authorityCustodyBusy: Bool
     let startProviderEnrolment: () -> Void
+    let continueBrokeredSiteX509: () -> Void
     let continueAuthorityCustody: (InstallationSummary) -> Void
     let selectInstallation: (UUID) async throws -> Void
 
@@ -41,6 +49,7 @@ struct InstallationsView: View {
           authorityCustodyBusy: authorityCustodyBusy,
                     forgetExpired: forgetExpired,
                     startProviderEnrolment: startProviderEnrolment,
+                    continueBrokeredSiteX509: continueBrokeredSiteX509,
                     continueAuthorityCustody: continueAuthorityCustody,
                     selectInstallation: selectInstallation
                 )
@@ -107,6 +116,7 @@ private struct InstallationDetailView: View {
   let authorityCustodyBusy: Bool
     let forgetExpired: (UUID) async throws -> Void
     let startProviderEnrolment: () -> Void
+    let continueBrokeredSiteX509: () -> Void
     let continueAuthorityCustody: (InstallationSummary) -> Void
     let selectInstallation: (UUID) async throws -> Void
 
@@ -146,6 +156,8 @@ private struct InstallationDetailView: View {
                             MnStatusLabel(
                                 text: action == .continueIdentitySetup
                                     ? "Next: enrol your identity"
+                                    : action == .continueBrokeredSiteX509
+                                        ? "Next: scan protected Site X.509 approval"
                                     : action == .continueAuthorityCustody
                                         ? "Next: recover authority custody"
                                         : "Verify live authority custody",
@@ -154,6 +166,8 @@ private struct InstallationDetailView: View {
               Text(
                 action == .continueIdentitySetup
                   ? "Authority custody is ready, but this installation cannot authenticate or approve work yet. Continue only with a new authority-signed provider presentation."
+                  : action == .continueBrokeredSiteX509
+                    ? "Site Root is retained and will not be reissued. Keep the monas-first-install terminal open and scan its single protected Site X.509 continuation QR."
                   : action == .continueAuthorityCustody
                     ? "The Site Root proof is recorded, but v2 authority custody must complete before identity enrolment. Continue with fresh App Attest evidence."
                     : "Local trust is retained. Check Monas's live custody state and perform attended recovery only if its protected authority requires it."
@@ -161,19 +175,29 @@ private struct InstallationDetailView: View {
                             MnPrimaryButton(
                                 action == .continueIdentitySetup
                                     ? "Continue identity setup"
+                                    : action == .continueBrokeredSiteX509
+                                        ? "Open protected scanner"
                                     : action == .continueAuthorityCustody
                                         ? "Continue authority recovery"
                                         : "Check authority custody",
                                 systemImage: action == .continueIdentitySetup
-                                    ? "person.badge.key" : "key.viewfinder"
+                                    ? "person.badge.key"
+                                    : action == .continueBrokeredSiteX509
+                                        ? "qrcode.viewfinder" : "key.viewfinder"
                             ) {
                                 if action == .continueIdentitySetup {
                                     startProviderEnrolment()
+                                } else if action == .continueBrokeredSiteX509 {
+                                    continueBrokeredSiteX509()
                                 } else {
                                     continueAuthorityCustody(installation)
                                 }
                             }
-              .disabled(action != .continueIdentitySetup && authorityCustodyBusy)
+              .disabled(
+                action != .continueIdentitySetup
+                  && action != .continueBrokeredSiteX509
+                  && authorityCustodyBusy
+              )
                             .accessibilityHint(
                                 action == .continueIdentitySetup
                                     ? "Opens the signed identity-enrolment scanner"

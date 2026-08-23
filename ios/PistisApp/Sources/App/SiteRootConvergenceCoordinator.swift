@@ -141,16 +141,32 @@ final class SiteRootConvergenceCoordinator: ObservableObject {
         guard case .review = phase, let pending, let service else { return }
         phase = .authenticating
         do {
+            let completedBrokeredSiteX509: Bool
             switch pending {
             case let .provision(value):
                 try await service.provisionBundleReceipt(value) {
                     self.phase = .unlockingBundleReceipt
                 }
-            case let .siteX509(value): try await service.provisionSiteX509(value)
-            case let .siteX509Broker(value): try await service.provisionSiteX509Broker(value)
+                completedBrokeredSiteX509 = false
+            case let .siteX509(value):
+                try await service.provisionSiteX509(value)
+                completedBrokeredSiteX509 = false
+            case let .siteX509Broker(value):
+                try await service.provisionSiteX509Broker(value)
+                completedBrokeredSiteX509 = true
             case let .siteX509ContinuationRecovery(value):
                 try await service.continueRecoveredSiteX509(value)
-            case let .acknowledgement(value): try await service.acknowledge(value)
+                completedBrokeredSiteX509 = true
+            case let .acknowledgement(value):
+                try await service.acknowledge(value)
+                completedBrokeredSiteX509 = false
+            }
+            if completedBrokeredSiteX509 {
+                // Remote acceptance is already authoritative at this point.
+                // Local progress is deliberately best-effort and can never
+                // turn an accepted protected transaction into a false failure.
+                try? SiteRootInstallationRepository.shared
+                    .recordBrokeredSiteX509Completed()
             }
             self.pending = nil
             phase = .completed

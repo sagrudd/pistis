@@ -1,5 +1,13 @@
 # Changelog
 
+- Route a retained broker-backed Site Root installation to the protected Site
+  X.509 scanner instead of an unavailable native authority operation, and
+  advance its non-authorising local setup projection only after the brokered
+  continuation succeeds. This preserves the retained Site Root, removes the
+  deterministic post-proof “authority unavailable” regression, and makes the
+  checked GitHub identity presentation the next setup step (0.22.1, iOS build
+  31).
+
 ## [Unreleased]
 
 ### Changed

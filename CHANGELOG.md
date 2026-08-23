@@ -1,5 +1,11 @@
 # Changelog
 
+- Accept Proxenos's canonical retained Site Root authority generation in the
+  combined initial-leaf PXLA payload. Pistis now applies the protocol's strict
+  identifier grammar without inventing `x509-root-*` or `x509-issuing-*`
+  prefixes, and a retained-authority regression fixture covers the production
+  failure before Face ID (0.22.5, iOS build 35).
+
 - Inject the broker continuation capability explicitly into protected recovery
   instead of rediscovering it through a runtime protocol cast immediately
   before Face ID. The recovery route now has a compile-time continuation

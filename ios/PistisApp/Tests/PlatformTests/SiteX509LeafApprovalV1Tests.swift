@@ -21,6 +21,20 @@ final class SiteX509LeafApprovalV1Tests: XCTestCase {
         )))
     }
 
+    func testRetainedSiteRootAuthorityIdentifierIsAccepted() throws {
+        let fixture = LeafFixture()
+        XCTAssertEqual(
+            String(data: fixture.payloadFields[1], encoding: .utf8),
+            "pistis-first-device-authority-0123456789abcdef"
+        )
+        XCTAssertNoThrow(try fixture.decode())
+
+        var malformed = fixture
+        malformed.payloadFields[1] = Data("pistis-first-device-authority/invalid".utf8)
+        malformed.refreshPayload()
+        XCTAssertThrowsError(try malformed.decode())
+    }
+
     func testURLSafeUnpaddedAndUnknownJSONAreDenied() throws {
         var fixture = LeafFixture()
         fixture.object["correlation_id_b64"] = "_____________________w"
@@ -76,7 +90,7 @@ private struct LeafFixture {
         let digest = Data(repeating: 3, count: 32)
         payloadFields = [
             Data(hex: "00112233445566778899aabbccddeeff"),
-            Data("x509-root-generation-1".utf8),
+            Data("pistis-first-device-authority-0123456789abcdef".utf8),
             Data("x509-issuing-generation-1".utf8),
             transaction,
             u64(900), u64(1_100), Data(repeating: 4, count: 32), u64(2),

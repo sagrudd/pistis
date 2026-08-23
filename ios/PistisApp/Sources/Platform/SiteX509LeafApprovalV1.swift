@@ -144,8 +144,6 @@ struct SiteX509LeafApprovalPresentationV1: Sendable {
                   cursor == data.count,
                   fields[0].count == 16, !fields[0].allSatisfy({ $0 == 0 }),
                   Self.identifier(fields[1]), Self.identifier(fields[2]),
-                  String(data: fields[1], encoding: .utf8)?.hasPrefix("x509-root-") == true,
-                  String(data: fields[2], encoding: .utf8)?.hasPrefix("x509-issuing-") == true,
                   fields[3].count == 16, !fields[3].allSatisfy({ $0 == 0 }),
                   let issued = Self.u64(fields[4]), let expires = Self.u64(fields[5]),
                   expires > issued, expires - issued <= 300,

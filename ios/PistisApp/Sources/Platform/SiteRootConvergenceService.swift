@@ -893,6 +893,7 @@ private struct BrokerSiteX509AuthorizationV1: @unchecked Sendable {
 
 struct SiteRootConvergenceServiceV2: Sendable {
     private let transport: any MonasSiteRootConvergenceSubmitting
+    private let continuationTransport: (any MonasSiteX509BrokerContinuing)?
     private let store: SiteRootConvergenceAckStoreV2
     private let brokerAuthorizationFactory: @Sendable (
         SiteX509FirstProvisionBrokerPresentationV1
@@ -900,21 +901,27 @@ struct SiteRootConvergenceServiceV2: Sendable {
 
     init(
         transport: any MonasSiteRootConvergenceSubmitting,
+        continuationTransport: (any MonasSiteX509BrokerContinuing)? = nil,
         store: SiteRootConvergenceAckStoreV2 = SiteRootConvergenceAckStoreV2()
     ) {
         self.transport = transport
+        self.continuationTransport = continuationTransport
+            ?? (transport as? any MonasSiteX509BrokerContinuing)
         self.store = store
         brokerAuthorizationFactory = SiteRootConvergenceServiceV2.makeBrokerAuthorization
     }
 
     init(
         transport: any MonasSiteRootConvergenceSubmitting,
+        continuationTransport: (any MonasSiteX509BrokerContinuing)? = nil,
         store: SiteRootConvergenceAckStoreV2 = SiteRootConvergenceAckStoreV2(),
         brokerProofFactory: @escaping @Sendable (
             SiteX509FirstProvisionBrokerPresentationV1
         ) async throws -> Data
     ) {
         self.transport = transport
+        self.continuationTransport = continuationTransport
+            ?? (transport as? any MonasSiteX509BrokerContinuing)
         self.store = store
         brokerAuthorizationFactory = { presentation in
             BrokerSiteX509AuthorizationV1(
@@ -989,7 +996,7 @@ struct SiteRootConvergenceServiceV2: Sendable {
         try await transport.submitSiteX509FirstProvisionBroker(
             presentation, detachedCOSE: authorization.detachedCOSE
         )
-        if let continuation = transport as? any MonasSiteX509BrokerContinuing,
+        if let continuation = continuationTransport,
            let ceremony = authorization.ceremony
         {
             try await continueBrokerSiteX509(
@@ -1006,7 +1013,7 @@ struct SiteRootConvergenceServiceV2: Sendable {
     func continueRecoveredSiteX509(
         _ presentation: SiteX509ContinuationRecoveryPresentationV1
     ) async throws {
-        guard let continuation = transport as? any MonasSiteX509BrokerContinuing else {
+        guard let continuation = continuationTransport else {
             throw PlatformFailure.siteRootAuthorityUnavailable
         }
         let ceremony = try await FaceIDCeremonyContext.authenticate(

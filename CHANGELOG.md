@@ -1,5 +1,11 @@
 # Changelog
 
+- Inject the broker continuation capability explicitly into protected recovery
+  instead of rediscovering it through a runtime protocol cast immediately
+  before Face ID. The recovery route now has a compile-time continuation
+  contract and cannot misreport that cast boundary as a Site Root outage
+  (0.22.4, iOS build 34).
+
 - Keep the fixed install broker available alongside a retained direct Monas
   authority and route continuation-recovery presentations to it explicitly.
   A retained installation can now resume protected Site X.509 approval instead

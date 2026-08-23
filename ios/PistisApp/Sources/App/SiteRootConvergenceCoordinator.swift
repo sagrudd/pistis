@@ -59,15 +59,24 @@ final class SiteRootConvergenceCoordinator: ObservableObject {
 
     init(
         transport: (any MonasSiteRootConvergenceSubmitting)?,
-        brokerTransport: (any MonasSiteRootConvergenceSubmitting)? = nil,
+        brokerTransport: (
+            any MonasSiteRootConvergenceSubmitting & MonasSiteX509BrokerContinuing
+        )? = nil,
         authorityOrigin: URL? = nil
     ) {
         self.authorityOrigin = authorityOrigin ?? transport?.authorityOrigin
         service = transport.map { SiteRootConvergenceServiceV2(transport: $0) }
         if let brokerTransport {
-            brokerService = SiteRootConvergenceServiceV2(transport: brokerTransport)
-        } else if let transport, transport is any MonasSiteX509BrokerContinuing {
-            brokerService = SiteRootConvergenceServiceV2(transport: transport)
+            brokerService = SiteRootConvergenceServiceV2(
+                transport: brokerTransport,
+                continuationTransport: brokerTransport
+            )
+        } else if let transport,
+                  let continuation = transport as? any MonasSiteX509BrokerContinuing {
+            brokerService = SiteRootConvergenceServiceV2(
+                transport: transport,
+                continuationTransport: continuation
+            )
         } else {
             brokerService = nil
         }

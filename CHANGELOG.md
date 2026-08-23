@@ -1,5 +1,11 @@
 # Changelog
 
+- Emit the documented Monas
+  `monas.site-x509-leaf-approval-submission.v1` schema for the protected leaf
+  proof. The exact encoded submission envelope is regression tested so a
+  Face ID-approved proof cannot again be rejected at the broker-to-Monas JSON
+  boundary (0.22.6, iOS build 36).
+
 - Accept Proxenos's canonical retained Site Root authority generation in the
   combined initial-leaf PXLA payload. Pistis now applies the protocol's strict
   identifier grammar without inventing `x509-root-*` or `x509-issuing-*`

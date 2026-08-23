@@ -35,6 +35,31 @@ final class SiteX509LeafApprovalV1Tests: XCTestCase {
         XCTAssertThrowsError(try malformed.decode())
     }
 
+    func testSubmissionUsesTheCanonicalMonasSchema() throws {
+        let submission = SiteX509LeafApprovalSubmissionV1(
+            correlationIDB64: Data(repeating: 1, count: 16).base64EncodedString(),
+            canonicalPayloadB64: Data("PXLA/v1".utf8).base64EncodedString(),
+            transactionIDB64: Data(repeating: 2, count: 16).base64EncodedString(),
+            deviceKeyGeneration: 1,
+            delegationSerial: "pistis-first-device-authority-0123456789abcdef",
+            delegationExpiresAt: 1_200,
+            detachedCOSESign1B64: Data(repeating: 3, count: 64).base64EncodedString()
+        )
+        let object = try XCTUnwrap(
+            JSONSerialization.jsonObject(with: JSONEncoder().encode(submission))
+                as? [String: Any]
+        )
+        XCTAssertEqual(
+            object["schema"] as? String,
+            "monas.site-x509-leaf-approval-submission.v1"
+        )
+        XCTAssertEqual(Set(object.keys), [
+            "schema", "correlation_id_b64", "canonical_payload_b64",
+            "transaction_id_b64", "device_key_generation", "delegation_serial",
+            "delegation_expires_at", "detached_cose_sign1_b64",
+        ])
+    }
+
     func testURLSafeUnpaddedAndUnknownJSONAreDenied() throws {
         var fixture = LeafFixture()
         fixture.object["correlation_id_b64"] = "_____________________w"

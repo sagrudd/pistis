@@ -5,7 +5,7 @@ enum SiteX509LeafApprovalProfileV1 {
     static let contentType = "application/vnd.mnemosyne.pxla.v1"
     static let beginSchema = "monas.site-x509-leaf-approval-begin.v1"
     static let presentationSchema = "monas.site-x509-leaf-approval-presentation.v1"
-    static let submitSchema = "monas.site-x509-leaf-approval-submit.v1"
+    static let submitSchema = "monas.site-x509-leaf-approval-submission.v1"
     static let acceptedSchema = "monas.site-x509-leaf-approval-accepted.v1"
     static let presentationPath = "/v1/pistis/site-x509-leaf-approval/presentation"
     static let submitPath = "/v1/pistis/site-x509-leaf-approval/submit"

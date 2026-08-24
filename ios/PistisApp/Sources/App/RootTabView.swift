@@ -27,14 +27,26 @@ enum DasAuthorityRetirementContinuationStage: String, CaseIterable {
     }
 }
 
-enum AuthorityCustodyEntryRoute: Equatable {
-    case trustedDasAuthorityRetirement
-    case custodyStatus
+enum AuthorityCustodyContinuationDecision: Equatable {
+    case checkCustodyStatus
+    case completeDasAuthorityRetirement
+    case finishTrustedRecovery
+    case continueIdentitySetup
 
-    init(installation: InstallationSummary) {
-        self = installation.status == "Trusted"
-            ? .trustedDasAuthorityRetirement
-            : .custodyStatus
+    static func entry(installation _: InstallationSummary) -> Self {
+        .checkCustodyStatus
+    }
+
+    static func afterCustodyReady(
+        installation: InstallationSummary,
+        recoveredThisAttempt: Bool
+    ) -> Self {
+        guard installation.status == "Trusted" else {
+            return .continueIdentitySetup
+        }
+        return recoveredThisAttempt
+            ? .finishTrustedRecovery
+            : .completeDasAuthorityRetirement
     }
 }
 
@@ -281,12 +293,9 @@ struct RootTabView: View {
                     "The retained Site Root authority is not one of this build's pinned origins."
                 return
             }
-            if AuthorityCustodyEntryRoute(installation: installation)
-                == .trustedDasAuthorityRetirement
-            {
-                await completeDasAuthorityRetirement(installation, transport: transport)
-                return
-            }
+            guard AuthorityCustodyContinuationDecision.entry(installation: installation)
+                == .checkCustodyStatus
+            else { return }
             var failureStage = AuthorityCustodyContinuationStage.initialStatus
             do {
         var status = try await transport.authorityCustodyStatusV2(
@@ -294,7 +303,10 @@ struct RootTabView: View {
         )
         switch status {
                 case .ready:
-                    if installation.status == "Trusted" {
+                    if AuthorityCustodyContinuationDecision.afterCustodyReady(
+                        installation: installation,
+                        recoveredThisAttempt: false
+                    ) == .completeDasAuthorityRetirement {
                         await completeDasAuthorityRetirement(
                             installation, transport: transport
                         )
@@ -397,10 +409,13 @@ struct RootTabView: View {
           ? "Authority custody recovered and ready. No re-enrolment is required."
           : "Authority custody completed. Continue identity setup for this installation."
         await enrollment.refresh()
-        if installation.status == "Trusted" {
-          await completeDasAuthorityRetirement(installation, transport: transport)
-        } else {
+        if AuthorityCustodyContinuationDecision.afterCustodyReady(
+          installation: installation,
+          recoveredThisAttempt: true
+        ) == .continueIdentitySetup {
           routeToProviderEnrolment()
+        } else {
+          selectedTab = .installations
         }
             } catch {
         let message = failureStage.failureMessage

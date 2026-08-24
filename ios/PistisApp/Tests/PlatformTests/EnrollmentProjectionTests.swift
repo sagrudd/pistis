@@ -348,7 +348,7 @@ final class EnrollmentProjectionTests: XCTestCase {
         )
     }
 
-    func testTrustedInstallationOffersDasAuthorityRetirementContinuation() throws {
+    func testTrustedInstallationChecksCustodyBeforeDasAuthorityRetirement() throws {
         let projection = EnrollmentProjection(enrollment: try fixtureEnrollment())
         let installation = try XCTUnwrap(projection.installations.first)
 
@@ -357,8 +357,28 @@ final class EnrollmentProjectionTests: XCTestCase {
             .completeDasAuthorityRetirement
         )
         XCTAssertEqual(
-            AuthorityCustodyEntryRoute(installation: installation),
-            .trustedDasAuthorityRetirement
+            AuthorityCustodyContinuationDecision.entry(installation: installation),
+            .checkCustodyStatus
+        )
+        XCTAssertEqual(
+            AuthorityCustodyContinuationDecision.afterCustodyReady(
+                installation: installation,
+                recoveredThisAttempt: false
+            ),
+            .completeDasAuthorityRetirement
+        )
+    }
+
+    func testTrustedCustodyRecoveryDoesNotChainIntoDasAuthorityRetirement() throws {
+        let projection = EnrollmentProjection(enrollment: try fixtureEnrollment())
+        let installation = try XCTUnwrap(projection.installations.first)
+
+        XCTAssertEqual(
+            AuthorityCustodyContinuationDecision.afterCustodyReady(
+                installation: installation,
+                recoveredThisAttempt: true
+            ),
+            .finishTrustedRecovery
         )
     }
 

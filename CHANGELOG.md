@@ -1,5 +1,11 @@
 # Changelog
 
+- Verify live Site authority custody before an already trusted installation
+  enters DAS local-authority retirement. A recovery-required host now completes
+  retained Site Root custody without incorrectly chaining into DAS on the
+  recovery-only listener. Regression tests cover both the preflight and the
+  post-recovery boundary (0.22.12, iOS build 42).
+
 - Accept the exact retained first-device custody generation in the ADR-0039
   DAS replacement-receipt presentation. Pistis still validates the closed
   identifier and reconstructs the complete canonical challenge, but no longer

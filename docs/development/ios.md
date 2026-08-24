@@ -374,6 +374,15 @@ The same bounded policy applies to readiness, custody/status reads, and the
 subsequent App Attest session. A reachable HTTP denial, malformed response, or
 TLS/trust failure is terminal and is never replayed at the other address.
 
+`Trusted` describes the retained Pistis identity; it does not prove that the
+current Monas process still holds Site authority custody. Continuing from a
+trusted installation therefore checks the live custody status before entering
+the separate DAS replacement-receipt route. If the host requires retained
+Site Root recovery, Pistis completes that recovery and returns to the
+installation screen. It must not immediately send a DAS request to the
+recovery-only listener. When custody was already ready, the existing protected
+DAS continuation remains available.
+
 The Identities screen exposes only the accepted server-driven first-device
 surface. It scans and verifies the ADR 0029 version-4 presentation before
 network use. The app displays the verified installation and enables **Begin

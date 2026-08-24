@@ -160,7 +160,7 @@ private struct InstallationDetailView: View {
                                         ? "Next: scan protected Site X.509 approval"
                                     : action == .continueAuthorityCustody
                                         ? "Next: recover authority custody"
-                                        : "Complete DAS authority transition",
+                                    : "Verify authority readiness",
                                 kind: .warning
                             )
               Text(
@@ -170,7 +170,7 @@ private struct InstallationDetailView: View {
                     ? "Site Root is retained and will not be reissued. Keep the monas-first-install terminal open and scan its single protected Site X.509 continuation QR."
                   : action == .continueAuthorityCustody
                     ? "The Site Root proof is recorded, but v2 authority custody must complete before identity enrolment. Continue with fresh App Attest evidence."
-                    : "This installation identity is trusted. Complete the separate protected DAS local-authority retirement with fresh Face ID; no QR or re-enrolment is required."
+                    : "This installation identity is trusted. Pistis will first verify live Site authority custody, recover it with fresh Face ID if required, and only continue a pending DAS transition when custody is already ready."
               )
                             MnPrimaryButton(
                                 action == .continueIdentitySetup
@@ -179,7 +179,7 @@ private struct InstallationDetailView: View {
                                         ? "Open protected scanner"
                                     : action == .continueAuthorityCustody
                                         ? "Continue authority recovery"
-                                        : "Complete DAS authority transition",
+                                        : "Verify authority readiness",
                                 systemImage: action == .continueIdentitySetup
                                     ? "person.badge.key"
                                     : action == .continueBrokeredSiteX509

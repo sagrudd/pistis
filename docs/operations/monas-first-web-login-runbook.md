@@ -39,7 +39,7 @@ Create one run record before starting:
 | Pistis version, build and source revision | `0.23.0` (`47`); `3c7d9b5a5c77445fd3aa54cf249b65dd7c61790c`; signed IPA SHA-256 `84d3246dbf4bae0b482ba8d1699b322727741368bc536b4b3e84098dc2a1dc79` |
 | iPhone model and iOS version | iPhone 14 Pro Max (`iPhone15,3`); iOS `26.6.1` (`23G83`) |
 | Native Monas HTTPS origin | Not issued. The prior `https://192.168.0.193:8443` generation is ineligible after Gate 0; a new origin is recorded only when the new installation issues it. |
-| Outcome of each gate | **Gate 0: PASS** (attended reset, qualified r142 deployment and idempotent live acceptance all passed). Gate 1: pass. Gate 2: pass (operator reports local Pistis reset complete). Gates 3–10: not started. |
+| Outcome of each gate | **Gate 0: PASS** (attended reset, qualified r142 deployment and idempotent live acceptance all passed). **Gate 1: PASS** (operator observed Pistis `0.23.0 (47)` in About). Gate 2: pass (operator reports local Pistis reset complete). Gates 3–10: not started. |
 
 Do not record QR payloads, bootstrap codes, browser capabilities, cookies,
 provider tokens, private keys or complete signed proofs.
@@ -185,6 +185,20 @@ were tested.
 Install the reviewed, distribution-signed Pistis build. In **Settings → About
 Pistis**, record the application version and build. Match its source revision
 and archive digest to the run record.
+
+### Gate 1 evidence for this run
+
+The operator observed **Pistis `0.23.0 (47)`** in **Settings → About Pistis**.
+This exactly matches the qualified build record above and source revision
+`3c7d9b5a5c77445fd3aa54cf249b65dd7c61790c`. At that revision, both release
+build configurations declare marketing version `0.23.0`, build `47` and bundle
+identifier `org.mnemosynebiosciences.pistis`; the application entitlement sets
+App Attest to `production`. The signed IPA digest remains the SHA-256 recorded
+in the run record. The operator's already-completed Gate 2 reset also confirms
+that this installed build presents **Settings → Reset this iPhone → Reset
+Pistis on this iPhone**.
+
+**Gate 1 outcome: PASS.**
 
 ### Pass condition
 

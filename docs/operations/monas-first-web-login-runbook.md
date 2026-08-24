@@ -21,56 +21,81 @@ Create one run record before starting:
 
 | Field | Recorded value |
 |---|---|
-| Date and operator | |
-| NUC hostname and address | |
-| Monas package version and source revision | |
-| Kanon lockset ID and digest | |
-| Terraform source revision | |
-| Pistis version, build and source revision | |
-| iPhone model and iOS version | |
-| Native Monas HTTPS origin | |
-| Outcome of each gate | |
+| Date and operator | 25 August 2026; `sagrudd` |
+| NUC hostname and address | No network hostname assigned; `192.168.0.193`. The observed OS-local label `stephen-NUC12DCMi9` is not a Site Trust identity. |
+| Monas package version and source revision | Installed baseline `0.115.23`; lockset source revision `681dfd1075cc964c95c365c3b8055c14bb961972`. The `--destroy-all` candidate must supersede this baseline before Gate 0 can pass. |
+| Kanon lockset ID and digest | `monas-terraform-products-closure-20260824-r137`; `sha256:45a75c7711ca73975b0a5ace7b0afd907a59b2f6d3f30e0b47072e5dc6a0b92c` |
+| Terraform source revision | `590d48c789d576eb3eeac00ae696c557f7618b5d` (r137 projection) |
+| Pistis version, build and source revision | `0.23.0` (`47`); `3c7d9b5a5c77445fd3aa54cf249b65dd7c61790c`; signed IPA SHA-256 `84d3246dbf4bae0b482ba8d1699b322727741368bc536b4b3e84098dc2a1dc79` |
+| iPhone model and iOS version | iPhone 14 Pro Max (`iPhone15,3`); iOS `26.6.1` (`23G83`) |
+| Native Monas HTTPS origin | `https://192.168.0.193:8443` (the prior retained generation; Gate 0 must make it ineligible before a new generation is issued) |
+| Outcome of each gate | Gate 0: **STOP — reset command not yet qualified on the NUC**. Gate 1: pass. Gate 2: pass (operator reports local Pistis reset complete). Gates 3–10: not started. |
 
 Do not record QR payloads, bootstrap codes, browser capabilities, cookies,
 provider tokens, private keys or complete signed proofs.
 
 ## Gate 0 — Choose retained recovery or genuine fresh development state
 
-**Purpose:** prevent a local phone reset from destroying the only key capable
-of recovering a retained Site Root.
+**Purpose:** prove that the development NUC is at an authoritative bare-earth
+Monas identity state before a new phone or installation generation is issued.
 
-On the NUC, run only the read-only checks:
+For this run the phone reset has already completed. Do not start a ceremony,
+issue a bootstrap code or display a QR until the NUC reset and every Gate 0
+postcondition below have passed.
+
+First inspect the retained state and preview the complete reset. Both commands
+must be non-mutating:
 
 ```bash
 sudo monas-first-install --status
-sudo monas-first-install teardown
+sudo monas-first-install --destroy-all
 ```
 
-The second command prints the bounded teardown plan and makes no change because
-`--confirm` is absent.
+The preview must name every installation/identity authority boundary that will
+be reset, every service that will be stopped, and every class of data that will
+be preserved. It must make no change and must print the exact confirmation
+command. Review the plan, then run exactly:
 
-Choose exactly one route:
+```bash
+sudo monas-first-install --destroy-all --confirm
+```
 
-- **Retained authority recovery:** do not press the Pistis reset button. Follow
-  the separately accepted recovery or Site Root replacement procedure.
-- **Genuine fresh development install:** while the old phone keys still exist,
-  complete the reviewed authority/custody teardown and verify that no retained
-  Site Root, App Attest registration, provider binding or installation owner
-  remains eligible.
+`--destroy-all` is an exceptional development reset. It must use the reviewed
+package-owned reset interfaces for Monas, Thesaurophylax and Proxenos; a missing
+dependency, unsafe path, active protected operation or failed postcondition is
+a hard failure. It must expire any active broker lease and render prior Site
+Root, Site X.509, App Attest, installation, first-device, GitHub-provider and
+sealed-profile generations ineligible. It must preserve installed packages,
+source/build artefacts, DASObjectStore object data and unrelated host data.
+
+After the confirmed command returns success, run:
+
+```bash
+sudo monas-first-install --status
+sudo dpkg --audit
+```
+
+The release is not qualified for this run unless its acceptance suite invokes
+both `monas-first-install --destroy-all` and
+`monas-first-install --destroy-all --confirm`, proves that preview is
+non-mutating, proves the exact dependency ordering and postconditions, and
+proves idempotence on an already-reset fixture.
 
 ### Pass condition
 
-For a genuine fresh run, the NUC has authoritative evidence that every prior
-development installation/device generation is retired and that a new Site Root
-may be issued. Proxenos and Thesaurophylax agree with that state.
+The command completed successfully and the status/postcondition evidence says
+that every prior development installation/device generation is retired or
+destroyed, no broker lease remains, and a new Site Root may be issued. Monas,
+Proxenos and Thesaurophylax agree with that state. `dpkg --audit` prints
+nothing; DASObjectStore object data is still present and was not rewritten.
 
 ### Stop conditions
 
-Stop if status says that the Site Root is retained, the signed first-device
-identity receipt is retained, or the installation is committed. The current
-`monas-first-install teardown --confirm` deliberately preserves Proxenos and
-Thesaurophylax and refuses protected retained custody; do not bypass that
-refusal manually.
+Stop if `--destroy-all` is unknown, if its preview mutates state, if status says
+that a Site Root or signed first-device receipt is retained, if the installation
+is committed, or if any package-owned reset/postcondition is unavailable. The
+older `monas-first-install teardown --confirm` deliberately preserves Proxenos
+and Thesaurophylax and is not a substitute. Do not bypass a refusal manually.
 
 ## Gate 1 — Install and identify the qualified Pistis build
 

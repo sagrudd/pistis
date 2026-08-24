@@ -43,6 +43,10 @@ lowercase hexadecimal byte strings. The presentation carries distinct
 former to open the retained record and the latter to seal the rewrapped record;
 the points must be valid and different. The canonical challenge is reconstructed
 from the exact purpose-four TLV profile before any proof or rewrap is produced.
+The `custodyGeneration` is the exact retained first-device custody generation
+bound into the accepted Site Root record. Consumers validate its closed
+identifier grammar and full challenge binding; they do not synthesize or
+require a purpose-local namespace prefix.
 
 The submission POST remains open while Monas retains the single UDS stream
 through `TDRA01`, `TDRQ01`, `TDRR01`, and receipt delivery to waiting DAS.

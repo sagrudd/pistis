@@ -57,7 +57,6 @@ struct DasReplacementReceiptPresentationV1: Sendable {
       wire.submissionPath == DasReplacementReceiptAttendedProfileV1.submissionPath,
       Self.identifier(wire.siteTrustDomainID),
       Self.identifier(wire.custodyGeneration),
-      wire.custodyGeneration.hasPrefix("das-replacement-"),
       Self.identifier(wire.deviceKeyID), Self.identifier(wire.delegationSerial),
       wire.revocationGeneration > 0,
       wire.expiresAtUnixSeconds > nowUnixSeconds,

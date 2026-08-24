@@ -22,6 +22,10 @@ final class DasReplacementReceiptAttendedCeremonyV1Tests: XCTestCase {
     let fixture = try Fixture()
     let presentation = try fixture.decode()
     XCTAssertEqual(presentation.correlation, Data(repeating: 1, count: 32))
+    XCTAssertEqual(
+      presentation.custodyGeneration,
+      "pistis-first-device-authority-cd624cfa14a30f79373b20e2b1a1db83"
+    )
     XCTAssertEqual(presentation.hostPublicSEC1, fixture.freshPublic)
     XCTAssertEqual(presentation.existingHostPublicSEC1, fixture.existingPublic)
     XCTAssertEqual(
@@ -44,7 +48,7 @@ final class DasReplacementReceiptAttendedCeremonyV1Tests: XCTestCase {
     for (key, value) in [
       ("purpose", "das-replacement"),
       ("submissionPath", "/v1/pistis/das-replacement-receipt/submission"),
-      ("custodyGeneration", "site-x509-root-1"),
+      ("custodyGeneration", "site root 1"),
     ] {
       var changed = fixture.object
       changed[key] = value
@@ -200,10 +204,12 @@ private struct Fixture {
     let encryptedRecord = Data(repeating: 0xAB, count: 60)
     let digest = Data(SHA256.hash(data: encryptedRecord))
     let expiresAt = UInt64(200)
+    let custodyGeneration =
+      "pistis-first-device-authority-cd624cfa14a30f79373b20e2b1a1db83"
     var challenge = DasReplacementReceiptAttendedProfileV1.challengeSchema
     for (tag, field) in [
       (UInt8(1), Data([4])), (2, Data("site-1".utf8)),
-      (3, Data("das-replacement-1".utf8)),
+      (3, Data(custodyGeneration.utf8)),
       (4, Data("site-root-device-1".utf8)), (5, generationPublic),
       (6, digest), (7, Data(UInt64(1).bytes)),
       (8, Data("delegation-1".utf8)), (9, Data(expiresAt.bytes)),
@@ -221,7 +227,7 @@ private struct Fixture {
       "hostPublicSec1": freshPublic.hex,
       "existingHostPublicSec1": existingPublic.hex,
       "siteTrustDomainId": "site-1",
-      "custodyGeneration": "das-replacement-1",
+      "custodyGeneration": custodyGeneration,
       "deviceKeyId": "site-root-device-1",
       "generationPublicSec1": generationPublic.hex,
       "encryptedRecordSha256": digest.hex,

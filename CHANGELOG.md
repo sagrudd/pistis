@@ -1,5 +1,12 @@
 # Changelog
 
+- Accept the exact retained first-device custody generation in the ADR-0039
+  DAS replacement-receipt presentation. Pistis still validates the closed
+  identifier and reconstructs the complete canonical challenge, but no longer
+  invents a `das-replacement-*` namespace that the accepted contract does not
+  define. A production-shaped regression fixture covers the pre-Face ID
+  failure (0.22.11, iOS build 41).
+
 - Bypass the legacy authority-custody status preflight when an already trusted
   installation starts ADR-0039 purpose-four DAS authority retirement. The
   trusted action now enters the pinned receipt route directly and a regression

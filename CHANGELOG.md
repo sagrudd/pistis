@@ -1,5 +1,11 @@
 # Changelog
 
+- Bound the one-use Site Root bundle-receipt provision to its steady custody
+  continuation by retrying only the short, explicit authority-unavailable
+  window while the NUC finalizes and exposes the attended unlock socket. The
+  retry is bounded, preserves the same Face ID ceremony, and fails closed for
+  permanent failures (0.22.16, iOS build 46).
+
 - Decode the exact Monas bundle-receipt acceptance field,
   `receipt_key_generation`, after protected proof submission. A closed response
   regression rejects the previously invented `generation` field so the iPhone

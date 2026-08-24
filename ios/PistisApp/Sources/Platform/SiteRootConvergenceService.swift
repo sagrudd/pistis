@@ -841,6 +841,37 @@ struct MonasSiteRootConvergenceTransport: MonasSiteRootConvergenceSubmitting, Se
     }
 }
 
+/// Bounded readiness hand-off between one-use receipt provision and the
+/// steady attended-unlock runtime. Provision success is durable before the
+/// host finalizer can expose its new Unix socket, so only that coarse,
+/// transient authority-unavailable result is eligible for a short retry.
+enum SiteRootBundleReceiptUnlockReadiness {
+    static let maximumAttempts = 41
+
+    static func awaitValue<Value: Sendable>(
+        maximumAttempts: Int = 41,
+        fetch: @Sendable () async throws -> Value,
+        pause: @Sendable () async throws -> Void = {
+            try await Task.sleep(for: .milliseconds(250))
+        }
+    ) async throws -> Value {
+        guard maximumAttempts > 0 else {
+            throw PlatformFailure.siteRootAuthorityUnavailable
+        }
+        for attempt in 1 ... maximumAttempts {
+            do {
+                return try await fetch()
+            } catch let failure as PlatformFailure
+                where failure == .siteRootAuthorityUnavailable
+            {
+                guard attempt < maximumAttempts else { throw failure }
+                try await pause()
+            }
+        }
+        throw PlatformFailure.siteRootAuthorityUnavailable
+    }
+}
+
 struct SiteRootConvergenceAckRecordV2: Codable, Equatable, Sendable {
     let siteUUID: String
     let targetIDB64URL: String
@@ -969,8 +1000,14 @@ struct SiteRootConvergenceServiceV2: Sendable {
         let cose = try DetachedES256Cose.envelope(protected: protected, signature: signature)
         _ = try await transport.submitBundleReceiptProvision(presentation, detachedCOSE: cose)
         didProvision()
-        let unlock = try await transport.fetchBundleReceiptUnlock(
-            nowUnixSeconds: Self.nowUnixSeconds()
+        let convergenceTransport = transport
+        let unlock = try await SiteRootBundleReceiptUnlockReadiness.awaitValue(
+            maximumAttempts: SiteRootBundleReceiptUnlockReadiness.maximumAttempts,
+            fetch: {
+                try await convergenceTransport.fetchBundleReceiptUnlock(
+                    nowUnixSeconds: Self.nowUnixSeconds()
+                )
+            }
         )
         let rewrap = try SecureEnclaveSiteRootBundleReceiptRewrapProducerV1()
             .produce(unlock, using: ceremony)

@@ -95,6 +95,55 @@ final class SiteRootConvergenceProtocolTests: XCTestCase {
         )
     }
 
+    func testBundleReceiptUnlockWaitsForBoundedHostFinalization() async throws {
+        let script = BundleReceiptUnlockReadinessScript(failuresBeforeReady: 2)
+        let value = try await SiteRootBundleReceiptUnlockReadiness.awaitValue(
+            maximumAttempts: 4,
+            fetch: { try await script.fetch() },
+            pause: { await script.pause() }
+        )
+        XCTAssertEqual(value, 7)
+        let counts = await script.counts()
+        XCTAssertEqual(counts.fetches, 3)
+        XCTAssertEqual(counts.pauses, 2)
+    }
+
+    func testBundleReceiptUnlockReadinessExhaustionFailsClosed() async throws {
+        let script = BundleReceiptUnlockReadinessScript(failuresBeforeReady: 4)
+        do {
+            _ = try await SiteRootBundleReceiptUnlockReadiness.awaitValue(
+                maximumAttempts: 3,
+                fetch: { try await script.fetch() },
+                pause: { await script.pause() }
+            )
+            XCTFail("an unavailable steady custody runtime must not be accepted")
+        } catch let failure as PlatformFailure {
+            XCTAssertEqual(failure, .siteRootAuthorityUnavailable)
+        }
+        let counts = await script.counts()
+        XCTAssertEqual(counts.fetches, 3)
+        XCTAssertEqual(counts.pauses, 2)
+    }
+
+    func testBundleReceiptUnlockDoesNotRetryPermanentFailure() async throws {
+        let script = BundleReceiptUnlockReadinessScript(
+            failuresBeforeReady: 1, failure: .invalidConfiguration
+        )
+        do {
+            _ = try await SiteRootBundleReceiptUnlockReadiness.awaitValue(
+                maximumAttempts: 3,
+                fetch: { try await script.fetch() },
+                pause: { await script.pause() }
+            )
+            XCTFail("a permanent failure must not be retried")
+        } catch let failure as PlatformFailure {
+            XCTAssertEqual(failure, .invalidConfiguration)
+        }
+        let counts = await script.counts()
+        XCTAssertEqual(counts.fetches, 1)
+        XCTAssertEqual(counts.pauses, 0)
+    }
+
     func testBundleReceiptRejectsExpiryAndUnknownMember() throws {
         var object: [String: Any] = [
             "schema": SiteRootConvergenceProfileV2.provisionSchema,
@@ -932,5 +981,35 @@ private final class BrokerTransportURLProtocol: URLProtocol, @unchecked Sendable
             data.append(buffer, count: count)
         }
         return data
+    }
+}
+
+private actor BundleReceiptUnlockReadinessScript {
+    private var remainingFailures: Int
+    private let failure: PlatformFailure
+    private var fetchCount = 0
+    private var pauseCount = 0
+
+    init(
+        failuresBeforeReady: Int,
+        failure: PlatformFailure = .siteRootAuthorityUnavailable
+    ) {
+        remainingFailures = failuresBeforeReady
+        self.failure = failure
+    }
+
+    func fetch() throws -> Int {
+        fetchCount += 1
+        if remainingFailures > 0 {
+            remainingFailures -= 1
+            throw failure
+        }
+        return 7
+    }
+
+    func pause() { pauseCount += 1 }
+
+    func counts() -> (fetches: Int, pauses: Int) {
+        (fetchCount, pauseCount)
     }
 }

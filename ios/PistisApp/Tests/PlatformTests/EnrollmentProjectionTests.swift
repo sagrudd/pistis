@@ -297,7 +297,7 @@ final class EnrollmentProjectionTests: XCTestCase {
     XCTAssertEqual(projection.installations[0].status, "Trusted")
     XCTAssertEqual(
       InstallationDetailAction(installation: projection.installations[0]),
-      .reconcileAuthorityCustody
+      .completeDasAuthorityRetirement
     )
   }
 
@@ -348,12 +348,12 @@ final class EnrollmentProjectionTests: XCTestCase {
         )
     }
 
-    func testTrustedInstallationOffersLiveAuthorityCustodyReconciliation() throws {
+    func testTrustedInstallationOffersDasAuthorityRetirementContinuation() throws {
         let projection = EnrollmentProjection(enrollment: try fixtureEnrollment())
 
         XCTAssertEqual(
             InstallationDetailAction(installation: try XCTUnwrap(projection.installations.first)),
-            .reconcileAuthorityCustody
+            .completeDasAuthorityRetirement
         )
     }
 

@@ -3,13 +3,13 @@ import SwiftUI
 enum InstallationDetailAction: Equatable {
     case continueAuthorityCustody
     case continueBrokeredSiteX509
-    case reconcileAuthorityCustody
+    case completeDasAuthorityRetirement
     case continueIdentitySetup
     case none
 
     init(installation: InstallationSummary) {
         if installation.status == "Trusted" {
-            self = .reconcileAuthorityCustody
+            self = .completeDasAuthorityRetirement
             return
         }
         guard installation.status == "Setup in progress" else {
@@ -160,7 +160,7 @@ private struct InstallationDetailView: View {
                                         ? "Next: scan protected Site X.509 approval"
                                     : action == .continueAuthorityCustody
                                         ? "Next: recover authority custody"
-                                        : "Verify live authority custody",
+                                        : "Complete DAS authority transition",
                                 kind: .warning
                             )
               Text(
@@ -170,7 +170,7 @@ private struct InstallationDetailView: View {
                     ? "Site Root is retained and will not be reissued. Keep the monas-first-install terminal open and scan its single protected Site X.509 continuation QR."
                   : action == .continueAuthorityCustody
                     ? "The Site Root proof is recorded, but v2 authority custody must complete before identity enrolment. Continue with fresh App Attest evidence."
-                    : "Local trust is retained. Check Monas's live custody state and perform attended recovery only if its protected authority requires it."
+                    : "This installation identity is trusted. Complete the separate protected DAS local-authority retirement with fresh Face ID; no QR or re-enrolment is required."
               )
                             MnPrimaryButton(
                                 action == .continueIdentitySetup
@@ -179,7 +179,7 @@ private struct InstallationDetailView: View {
                                         ? "Open protected scanner"
                                     : action == .continueAuthorityCustody
                                         ? "Continue authority recovery"
-                                        : "Check authority custody",
+                                        : "Complete DAS authority transition",
                                 systemImage: action == .continueIdentitySetup
                                     ? "person.badge.key"
                                     : action == .continueBrokeredSiteX509

@@ -16,6 +16,17 @@ enum AuthorityCustodyContinuationStage: String, CaseIterable {
     }
 }
 
+enum DasAuthorityRetirementContinuationStage: String, CaseIterable {
+    case createTransport = "create-transport"
+    case beginReceipt = "begin-receipt"
+    case authenticate = "authenticate"
+    case submitReceipt = "submit-receipt"
+
+    var failureMessage: String {
+        "DAS authority transition stopped safely at \(rawValue). The trusted Pistis identity and DAS legacy authority were retained."
+    }
+}
+
 enum AuthorityCustodyAcceptedAssertionTransitionV2 {
     /// An empty 202 consumes the challenge, but only the subsequent exact
     /// server-owned lifecycle decides whether Pistis may rotate or recover.
@@ -266,6 +277,12 @@ struct RootTabView: View {
         )
         switch status {
                 case .ready:
+                    if installation.status == "Trusted" {
+                        await completeDasAuthorityRetirement(
+                            installation, transport: transport
+                        )
+                        return
+                    }
                     if installation.status != "Trusted" {
                         try SiteRootInstallationRepository.shared
                             .recordAuthorityCustodyCompleted(authorityHost: installation.localAlias)
@@ -364,7 +381,7 @@ struct RootTabView: View {
           : "Authority custody completed. Continue identity setup for this installation."
         await enrollment.refresh()
         if installation.status == "Trusted" {
-          selectedTab = .installations
+          await completeDasAuthorityRetirement(installation, transport: transport)
         } else {
           routeToProviderEnrolment()
         }
@@ -381,6 +398,63 @@ struct RootTabView: View {
             verification: message
           ))
             }
+        }
+    }
+
+    /// Continues the accepted ADR-0039 purpose-four ceremony from an already
+    /// trusted installation. The server supplies every receipt and custody
+    /// binding over the pinned native origin; the phone supplies only its
+    /// retained Site Root proof and one fresh Face ID evaluation. This path
+    /// cannot create, replace, import or discard a Pistis identity.
+    private func completeDasAuthorityRetirement(
+        _ installation: InstallationSummary,
+        transport: MonasSiteRootDelegationTransport
+    ) async {
+        var stage = DasAuthorityRetirementContinuationStage.createTransport
+        do {
+            let appAttestTransport = try transport.appAttestTransport(
+                authorityHost: installation.localAlias
+            )
+            stage = .beginReceipt
+            let presentation = try await appAttestTransport.beginDasReplacementReceiptV1(
+                nowUnixSeconds: UInt64(Date().timeIntervalSince1970)
+            )
+            stage = .authenticate
+            let ceremony = try await FaceIDCeremonyContext.authenticate(
+                reason: "Authorize the DAS local-authority replacement receipt"
+            )
+            let submission = try SecureEnclaveDasReplacementReceiptProducerV1()
+                .produce(presentation, using: ceremony)
+            stage = .submitReceipt
+            _ = try await appAttestTransport.submitDasReplacementReceiptV1(
+                submission, expectedCorrelation: presentation.correlation
+            )
+            try? LocalHistoryRepository.shared.record(
+                HistoryEvent(
+                    id: UUID(), action: "DAS authority transition authorised",
+                    installation: installation.localAlias,
+                    occurredAt: Date().formatted(date: .abbreviated, time: .standard),
+                    decision: "Approved", signature: "Fresh Face ID proof accepted",
+                    transfer: "Pinned Monas purpose-four receipt delivered",
+                    verification: "DAS host retirement is completing"
+                )
+            )
+            reconciliationMessage =
+                "DAS authority transition approved. Monas is completing the retained host transaction."
+            selectedTab = .installations
+        } catch {
+            let message = stage.failureMessage
+            reconciliationMessage = message
+            try? LocalHistoryRepository.shared.record(
+                HistoryEvent(
+                    id: UUID(), action: "DAS authority transition",
+                    installation: installation.localAlias,
+                    occurredAt: Date().formatted(date: .abbreviated, time: .standard),
+                    decision: "Not completed", signature: "No receipt accepted",
+                    transfer: "Pinned Monas purpose-four receipt",
+                    verification: message
+                )
+            )
         }
     }
 

@@ -1,5 +1,11 @@
 # Changelog
 
+- Continue ADR-0039 purpose-four DAS authority retirement directly from an
+  already trusted installation using its pinned native Monas origin and one
+  fresh Face ID evaluation. The action cannot enrol, replace or discard a
+  Pistis identity, and a regression prevents trusted installations from being
+  routed back into provider enrolment (0.22.9, iOS build 39).
+
 - Restore the accepted post-PXFP NUC replacement-build path without adding
   deployment data to the generic Pistis release. A code-signed exact Site Root
   profile now restores the native Monas transport at launch, rebinds the

@@ -31,15 +31,15 @@ Create one run record before starting:
 |---|---|
 | Date and operator | 25 August 2026; `sagrudd` |
 | NUC hostname and address | No network hostname assigned; `192.168.0.193`. The observed OS-local label `stephen-NUC12DCMi9` is not a Site Trust identity. |
-| Monas package version and source revision | `0.116.1`; `064c802010401af579ce1bf5f64516b1d4de79a1` |
-| Recovery dependency versions and source revisions | Proxenos `0.53.0` at `a452a0161aea642246a86bbb80eb5c1e4bc5d54e`; Thesaurophylax `0.70.0` at `fa61a3af3eacf1730f7978326fb5eacd24ccdc69` |
-| Dependent package rebuilt for the closure | Expedition Base Camp/Jenkins `0.85.18` at `2cdb5de806585cd8db3f7d381332fd844d564a76` |
-| Kanon lockset ID and digest | `monas-terraform-products-closure-20260824-r140`; `sha256:869a4af428dc5d12e5368e7e7498a31ac0f8e8a78c090041e7f19bd6ee85c90d`; registry revision `9e774c06ccd34871b8487e667fb7e0b7950c8e26` |
-| Terraform version and source revision | `0.4.46`; `82d3efa356f7d4e4a390f230af3eb80c7768d4e1` (r140 projection) |
+| Monas package version and source revision | `0.116.2`; `4de58dd536e99ff601334efa76da68cc085d833c` |
+| Recovery dependency versions and source revisions | Proxenos `0.53.1` at `cab0ae0a2832690c346b93184c839f56368f6657`; Thesaurophylax `0.70.0` at `fa61a3af3eacf1730f7978326fb5eacd24ccdc69` |
+| Dependent package rebuilt for the closure | Expedition Base Camp/Jenkins `0.85.19` at `18436c635d50197ff2676f107e60e076138bf2c2` |
+| Kanon lockset ID and digest | `monas-terraform-products-closure-20260824-r142`; `sha256:1fd72a96180a843eda54554364b63bd66f07fd5e77a7d72852e50e264761016e`; registry revision `b30178d62bc3898307beadd49cf7874d0da831a2` (canonical merge `d7911eb921c3031195bf59ed737c9977318d8365`) |
+| Terraform version and source revision | `0.4.48`; `7886293d47e453ff595bebefc4353f7da5a9af31` (r142 projection) |
 | Pistis version, build and source revision | `0.23.0` (`47`); `3c7d9b5a5c77445fd3aa54cf249b65dd7c61790c`; signed IPA SHA-256 `84d3246dbf4bae0b482ba8d1699b322727741368bc536b4b3e84098dc2a1dc79` |
 | iPhone model and iOS version | iPhone 14 Pro Max (`iPhone15,3`); iOS `26.6.1` (`23G83`) |
-| Native Monas HTTPS origin | `https://192.168.0.193:8443` (the prior retained generation; Gate 0 must make it ineligible before a new generation is issued) |
-| Outcome of each gate | Gate 0: qualified r140 packages installed and non-mutating `--destroy-all` preview passed; **operator confirmation and postcondition evidence pending**. Gate 1: pass. Gate 2: pass (operator reports local Pistis reset complete). Gates 3–10: not started. |
+| Native Monas HTTPS origin | Not issued. The prior `https://192.168.0.193:8443` generation is ineligible after Gate 0; a new origin is recorded only when the new installation issues it. |
+| Outcome of each gate | **Gate 0: PASS** (attended reset, qualified r142 deployment and idempotent live acceptance all passed). Gate 1: pass. Gate 2: pass (operator reports local Pistis reset complete). Gates 3–10: not started. |
 
 Do not record QR payloads, bootstrap codes, browser capabilities, cookies,
 provider tokens, private keys or complete signed proofs.
@@ -70,36 +70,72 @@ command. Review the plan, then run exactly:
 sudo monas-first-install --destroy-all --confirm
 ```
 
-### Pre-confirmation evidence for this run
+### Gate 0 evidence for this run
 
-The qualified r140 package closure was installed on `192.168.0.193` on 24
-August 2026 in preparation for the attended run dated above. Before
-installation, the obsolete root override that selected
-`/usr/local/libexec/monas-server-0.115.24-test` was moved to the root-only
-recovery archive
-`/var/backups/mnemosyne/20260824-r140/monas-pistis-runtime-binary.conf`.
-Systemd now resolves `monas-pistis.service` to the package-owned
-`/usr/libexec/mnemosyne-monas/monas-server` and the unit is inactive, not
-failed.
+The operator ran the attended destructive command on `192.168.0.193`. The
+first execution retired the live installation and recorded this output:
 
-The following deployment and preview evidence passed:
+```text
+Proxenos destroy-all preflight: ready.
+Thesaurophylax destroy-all preflight: ready.
+The failed, unconsumed first-install broker lease was cancelled.
+Proxenos active Site Trust generation destroyed.
+Thesaurophylax first-install authority generation destroyed.
+Monas teardown complete.
+Monas configuration and active onboarding/runtime state are absent.
+Installed packages and dependency-owned trust/custody/data were preserved.
+Next route: sudo monas-first-install
+Proxenos destroy-all postcondition: pass.
+Thesaurophylax destroy-all postcondition: pass.
+Monas destroy-all complete.
+Prior installation, identity, trust and custody generations are ineligible.
+DASObjectStore object data, installed packages and unrelated host data were preserved.
+No ceremony was started. Record status evidence before running sudo monas-first-install.
+```
 
-- all 20 built DEBs carry the r140 lockset and content digest recorded above;
+The required already-reset execution then exposed two independent regression
+defects instead of being waived: Monas `0.116.1` tried to contact an
+unavailable broker after every local postcondition had passed, and Proxenos
+`0.53.0` treated its package-created empty leaf-claims directory as active
+authority state. They were corrected in Monas `0.116.2` and Proxenos `0.53.1`,
+with fixture, execution, package-boundary and negative fail-closed tests. The
+exact dependency closure was rebuilt through Kanon r142 and Terraform 0.4.48.
+
+Qualification on the NUC passed all of the following before the retry:
+
+- all 39 Terraform contract tests, exact Kanon lock export, lock validator and
+  catalogue validator;
+- Proxenos reset contract, execution and Debian-package tests on Linux;
+- source-provenance fetch for every manifest and Cargo pin;
+- all 20 DEBs carry the r142 lockset and content digest recorded above;
+- installed Monas, Proxenos, Thesaurophylax and Base Camp packages carry the
+  exact versions and source revisions in this run record;
 - `dpkg --audit` prints nothing;
-- the Monas, Proxenos and Thesaurophylax reset commands are executable and
-  owned by their installed packages;
-- the first-install broker lease and destroy-all intent/tombstone are absent;
-- `monas-pistis.service` and `monas-pistis-authority.service` are inactive;
+- the broker lease and root-console reset intent are absent;
+- the package-owned Proxenos leaf-claims boundary exists as
+  `mnemosyne-proxenos:mnemosyne-proxenos`, mode `0700`, and is empty;
+- Monas broker/provider and Proxenos authority units are inactive;
 - `dasobjectstored.service` and `dasobjectstore-server.service` remain active;
-- the four DASObjectStore configuration digests and all eight mounted data
-  filesystem UUID/top-level-entry invariants match their pre-install values;
-- `sudo monas-first-install --destroy-all` returned success, named all three
-  package-owned reset boundaries and ended with `No changes made` plus the
-  exact confirmation command above.
+- the four DASObjectStore configuration digests, all eight mounted filesystem
+  UUIDs and their top-level entry counts match their pre-reset values.
 
-The preview also correctly reports the retained first-device receipt and
-committed installation. Those are the state Gate 0 is about to destroy; they
-are not acceptable after the confirmed command completes.
+The acceptance-required second confirmed invocation passed live:
+
+```text
+Proxenos destroy-all preflight: ready.
+Thesaurophylax destroy-all preflight: ready.
+Monas destroy-all already complete.
+Prior installation, identity, trust and custody generations remain ineligible.
+DASObjectStore object data, installed packages and unrelated host data remain preserved.
+No broker operation or ceremony was started. Next route: sudo monas-first-install
+```
+
+The Monas and Proxenos root-owned mode-`0600` reset evidence retained identical
+hashes and modification times across this second execution. The broker lease
+and reset intent remained absent. A final `--status` showed no issued bootstrap
+presentation, no retained installation or identity, inactive custody and
+authority, and every later route guarded or waiting. The final `dpkg --audit`
+again printed nothing. No code, QR, broker operation or ceremony was started.
 
 `--destroy-all` is the supported last-resort administrative rebuild without
 continuity. It must use the reviewed package-owned reset interfaces for Monas,

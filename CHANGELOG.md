@@ -1,5 +1,12 @@
 # Changelog
 
+- Restore the accepted post-PXFP NUC replacement-build path without adding
+  deployment data to the generic Pistis release. A code-signed exact Site Root
+  profile now restores the native Monas transport at launch, rebinds the
+  broker-created setup projection to that authority, and requires v2 authority
+  custody before GitHub identity enrolment. Regressions cover the skipped
+  custody phase and relaunch rebind (0.22.8, iOS build 38).
+
 - Include the fixed
   `proxenos.site-x509-initial-leaf-issuance.v1` purpose in the protected leaf
   submission envelope required by Monas. The encoded-envelope regression now

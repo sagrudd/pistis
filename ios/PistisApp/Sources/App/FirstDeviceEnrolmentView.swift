@@ -8,6 +8,7 @@ import PistisCore
 struct FirstDeviceEnrolmentView: View {
     @StateObject private var flow = FirstDeviceEnrolmentFlow()
     @Environment(\.openURL) private var openURL
+    @Environment(\.dismiss) private var dismiss
     private let initialQRText: String?
 
     init(initialQRText: String? = nil) {
@@ -109,10 +110,16 @@ struct FirstDeviceEnrolmentView: View {
                             }
                         }
                     }
-                    Button("Cancel and discard") {
-                        Task { await flow.cancel() }
+                    if flow.enrolmentComplete {
+                        Button("Done") { dismiss() }
+                            .buttonStyle(.borderedProminent)
+                            .tint(MnColor.action)
+                    } else {
+                        Button("Cancel and discard") {
+                            Task { await flow.cancel() }
+                        }
+                        .buttonStyle(.bordered)
                     }
-                    .buttonStyle(.bordered)
                 }
             }
             .padding(MnMetrics.screenGutter)
@@ -354,6 +361,10 @@ final class FirstDeviceEnrolmentFlow: ObservableObject {
             approvalGate.markInstalled()
             enrolmentComplete = true
             status = "Device enrolled and authority receipt verified"
+            if let authorityHost = presentation?.httpsOrigin.host {
+                try? SiteRootInstallationRepository.shared
+                    .recordIdentityEnrolmentCompleted(authorityHost: authorityHost)
+            }
             recordEvent(kind: .completed, outcome: .succeeded)
         } catch {
             if mayRetry {

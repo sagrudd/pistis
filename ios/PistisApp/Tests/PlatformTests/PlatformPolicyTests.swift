@@ -343,9 +343,8 @@ final class PlatformPolicyTests: XCTestCase {
         )
     }
 
-    func testRuntimeProfileFactoryDoesNotMakeBundleConfigurationAuthoritative() throws {
-        let transport = ProductionMonasSiteRootTransportFactory.make(
-            verifiedRuntimeProfile: [
+    func testSignedDeploymentProfileRestoresOnlyItsExactNativeAuthority() throws {
+        let profile: [String: Any] = [
                 MonasSiteRootAuthorityConfiguration.infoDictionaryKey:
                     "https://host-a.example.test",
                 MonasSiteRootAuthorityConfiguration.trustModeInfoDictionaryKey:
@@ -353,8 +352,16 @@ final class PlatformPolicyTests: XCTestCase {
                 MonasSiteRootAuthorityConfiguration.spkiInfoDictionaryKey:
                     "ERERERERERERERERERERERERERERERERERERERERERE",
             ]
+        let transport = ProductionMonasSiteRootTransportFactory.make(
+            signedDeploymentProfile: profile
         )
         XCTAssertTrue(transport is MonasSiteRootDelegationTransport)
+        XCTAssertEqual(transport.genesisAuthorityOrigin?.host, "host-a.example.test")
+        XCTAssertTrue(
+            ProductionMonasSiteRootTransportFactory.make(
+                verifiedRuntimeProfile: profile
+            ) is MonasSiteRootDelegationTransport
+        )
         XCTAssertTrue(
             ProductionMonasSiteRootTransportFactory.make()
                 is MonasSiteRootGenesisBrokerTransport

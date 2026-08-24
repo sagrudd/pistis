@@ -316,7 +316,10 @@ private struct SiteRootProvisionChallengeV1 {
     let deviceKeyID: String
 
     init(_ data: Data) throws {
-        var reader = SiteRootTLVReader(data)
+        // Thesaurophylax's canonical portable-custody payload uses a one-byte
+        // tag followed by an unsigned 32-bit big-endian length. It is not the
+        // 16-bit TLV used by the separate Proxenos convergence frames below.
+        var reader = SiteRootProvisionTLVReader(data)
         let schema = try reader.field(tag: 0x01, count: nil)
         let purpose = try reader.field(tag: 0x02, count: nil)
         let site = try reader.field(tag: 0x03, count: nil)
@@ -336,6 +339,37 @@ private struct SiteRootProvisionChallengeV1 {
         siteTrustDomain = siteText
         generationName = generationText
         deviceKeyID = deviceText
+    }
+}
+
+/// Exact decoder for the Thesaurophylax portable-custody field framing.
+/// Keeping it separate prevents the PXRA/PXFP 16-bit protocol from silently
+/// changing when the receipt-provision contract is updated.
+private struct SiteRootProvisionTLVReader {
+    private let data: Data
+    private var offset = 0
+
+    init(_ data: Data) { self.data = data }
+
+    mutating func field(tag: UInt8, count: Int?) throws -> Data {
+        guard offset + 5 <= data.count, data[offset] == tag else {
+            throw PlatformFailure.qrPayloadUnsupported
+        }
+        let length = data[(offset + 1) ... (offset + 4)].reduce(UInt32(0)) {
+            ($0 << 8) | UInt32($1)
+        }
+        offset += 5
+        guard let fieldLength = Int(exactly: length),
+              offset <= data.count,
+              fieldLength <= data.count - offset,
+              count.map({ fieldLength == $0 }) ?? true
+        else { throw PlatformFailure.qrPayloadUnsupported }
+        defer { offset += fieldLength }
+        return data.subdata(in: offset ..< offset + fieldLength)
+    }
+
+    mutating func requireEnd() throws {
+        guard offset == data.count else { throw PlatformFailure.qrPayloadUnsupported }
     }
 }
 

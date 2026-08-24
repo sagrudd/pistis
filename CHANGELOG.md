@@ -1,5 +1,11 @@
 # Changelog
 
+- Decode the Site Root bundle-receipt provision challenge using the exact
+  Thesaurophylax 32-bit field lengths. The cross-language regression fixture
+  now matches the 337-byte production wire payload, validates the embedded
+  challenge beyond QR routing, and rejects the former 16-bit test-only form
+  (0.22.14, iOS build 44).
+
 - Route a production-shaped Site Root bundle-receipt QR through acquisition,
   JSON dispatch, and the direct protected-review coordinator in one regression
   test. Structurally valid expired receipt presentations now receive a precise

@@ -7,7 +7,10 @@ final class SiteRootConvergenceProtocolTests: XCTestCase {
     private let nowSeconds: UInt64 = 1_900_000_000
 
     func testBundleReceiptPresentationBindsExactPurposeSiteGenerationAndDevice() throws {
-        let challenge = provisionChallenge(site: "site-demo", generation: 7)
+        let deviceKeyID = "site-root-" + String(repeating: "a9", count: 32)
+        let challenge = provisionChallenge(
+            site: "site-demo", generation: 7, deviceKeyID: deviceKeyID
+        )
         let qr = json([
             "schema": SiteRootConvergenceProfileV2.provisionSchema,
             "purpose": SiteRootConvergenceProfileV2.provisionPurpose,
@@ -21,8 +24,50 @@ final class SiteRootConvergenceProtocolTests: XCTestCase {
         let value = try SiteRootBundleReceiptProvisionPresentationV1(
             qrText: qr, nowUnixSeconds: nowSeconds
         )
-        XCTAssertNoThrow(try value.validateChallenge(deviceKeyID: "site-root-device"))
+        XCTAssertNoThrow(try value.validateChallenge(deviceKeyID: deviceKeyID))
         XCTAssertThrowsError(try value.validateChallenge(deviceKeyID: "site-root-other"))
+    }
+
+    func testBundleReceiptUsesProductionU32FieldLengthsAndRejectsU16Fixture() throws {
+        let site = "site-cb5fc980-8a52-427a-83d1-a5e6a54b6642"
+        let deviceKeyID = "site-root-" + String(repeating: "a9", count: 32)
+        let challenge = provisionChallenge(
+            site: site, generation: 1, deviceKeyID: deviceKeyID
+        )
+        XCTAssertEqual(challenge.count, 337)
+        XCTAssertEqual(Array(challenge.prefix(5)), [1, 0, 0, 0, 62])
+        let qr = json([
+            "schema": SiteRootConvergenceProfileV2.provisionSchema,
+            "purpose": SiteRootConvergenceProfileV2.provisionPurpose,
+            "correlation_b64url": b64(Data(repeating: 0x51, count: 16)),
+            "canonical_challenge_b64url": b64(challenge),
+            "site_trust_domain": site,
+            "receipt_key_generation": 1,
+            "expires_at_unix_seconds": nowSeconds + 300,
+            "submission_path": SiteRootConvergenceProfileV2.provisionPath,
+        ])
+        let parsed = try SiteRootBundleReceiptProvisionPresentationV1(
+            qrText: qr, nowUnixSeconds: nowSeconds
+        )
+        XCTAssertNoThrow(try parsed.validateChallenge(deviceKeyID: deviceKeyID))
+
+        let legacyChallenge = legacyU16ProvisionChallenge(
+            site: site, generation: 1, deviceKeyID: deviceKeyID
+        )
+        let legacyQR = json([
+            "schema": SiteRootConvergenceProfileV2.provisionSchema,
+            "purpose": SiteRootConvergenceProfileV2.provisionPurpose,
+            "correlation_b64url": b64(Data(repeating: 0x51, count: 16)),
+            "canonical_challenge_b64url": b64(legacyChallenge),
+            "site_trust_domain": site,
+            "receipt_key_generation": 1,
+            "expires_at_unix_seconds": nowSeconds + 300,
+            "submission_path": SiteRootConvergenceProfileV2.provisionPath,
+        ])
+        let legacy = try SiteRootBundleReceiptProvisionPresentationV1(
+            qrText: legacyQR, nowUnixSeconds: nowSeconds
+        )
+        XCTAssertThrowsError(try legacy.validateChallenge(deviceKeyID: deviceKeyID))
     }
 
     func testBundleReceiptRejectsExpiryAndUnknownMember() throws {
@@ -489,13 +534,29 @@ final class SiteRootConvergenceProtocolTests: XCTestCase {
         XCTAssertEqual(value, expected)
     }
 
-    private func provisionChallenge(site: String, generation: UInt64) -> Data {
+    private func provisionChallenge(
+        site: String, generation: UInt64, deviceKeyID: String = "site-root-device"
+    ) -> Data {
+        var result = Data()
+        result += provisionField(1, Data("mnemosyne.thesaurophylax.site-root-bundle-receipt-provision.v1".utf8))
+        result += provisionField(2, Data(SiteRootConvergenceProfileV2.provisionPurpose.utf8))
+        result += provisionField(3, Data(site.utf8))
+        result += provisionField(4, Data("site-root-bundle-receipt-\(generation)".utf8))
+        result += provisionField(5, Data(deviceKeyID.utf8))
+        result += provisionField(6, Data([2]) + Data(repeating: 4, count: 32))
+        result += provisionField(7, Data(repeating: 5, count: 32))
+        return result
+    }
+
+    private func legacyU16ProvisionChallenge(
+        site: String, generation: UInt64, deviceKeyID: String
+    ) -> Data {
         var result = Data()
         result += field(1, Data("mnemosyne.thesaurophylax.site-root-bundle-receipt-provision.v1".utf8))
         result += field(2, Data(SiteRootConvergenceProfileV2.provisionPurpose.utf8))
         result += field(3, Data(site.utf8))
         result += field(4, Data("site-root-bundle-receipt-\(generation)".utf8))
-        result += field(5, Data("site-root-device".utf8))
+        result += field(5, Data(deviceKeyID.utf8))
         result += field(6, Data([2]) + Data(repeating: 4, count: 32))
         result += field(7, Data(repeating: 5, count: 32))
         return result
@@ -588,6 +649,10 @@ final class SiteRootConvergenceProtocolTests: XCTestCase {
 
     private func field(_ tag: UInt8, _ value: Data) -> Data {
         Data([tag, UInt8(value.count >> 8), UInt8(truncatingIfNeeded: value.count)]) + value
+    }
+
+    private func provisionField(_ tag: UInt8, _ value: Data) -> Data {
+        Data([tag]) + withUnsafeBytes(of: UInt32(value.count).bigEndian) { Data($0) } + value
     }
 
     private func u64(_ value: UInt64) -> Data {

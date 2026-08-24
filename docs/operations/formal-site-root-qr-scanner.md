@@ -101,7 +101,9 @@ host-driven order, including:
 * the direct
   ``monas.site-root-bundle-receipt-provision-presentation.v1`` JSON
   presentation, which provisions the generation-bound Site Root receipt key
-  through the pinned native authority; and
+  through the pinned native authority. Its embedded Thesaurophylax canonical
+  challenge uses one-byte tags and unsigned 32-bit big-endian field lengths;
+  a route-only or 16-bit synthetic fixture is not a production-wire test; and
 * the final signed ``PISTIS1`` v4/kind-3 first-device presentation, which is
   verified by ``FirstDevicePresentationV4`` before provider enrolment. When
   this presentation is captured by the generic Scan surface, Pistis opens the
@@ -119,7 +121,8 @@ Run ``scripts/verify-first-device-qr-contract.sh`` and
 ``scripts/verify-host-agnostic-app-contract.sh`` in every release build.
 The iOS platform tests must also pass, including the regression test proving
 that the attended scanner accepts every listed family, routes a
-production-shaped bundle-receipt presentation to protected review, reports a
+production-shaped bundle-receipt presentation to protected review, validates
+its exact 337-byte 32-bit-length canonical challenge, reports a
 scanner-context mismatch precisely, and rejects a plain URL.
 A build that only accepts ``PISTIS1`` is incomplete: it cannot perform the
 initial Site Root ceremony on a new iPhone. A fresh-device build may perform

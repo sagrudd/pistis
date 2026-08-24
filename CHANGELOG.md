@@ -1,5 +1,10 @@
 # Changelog
 
+- Bypass the legacy authority-custody status preflight when an already trusted
+  installation starts ADR-0039 purpose-four DAS authority retirement. The
+  trusted action now enters the pinned receipt route directly and a regression
+  asserts that routing decision (0.22.10, iOS build 40).
+
 - Continue ADR-0039 purpose-four DAS authority retirement directly from an
   already trusted installation using its pinned native Monas origin and one
   fresh Face ID evaluation. The action cannot enrol, replace or discard a

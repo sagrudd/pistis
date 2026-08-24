@@ -350,10 +350,15 @@ final class EnrollmentProjectionTests: XCTestCase {
 
     func testTrustedInstallationOffersDasAuthorityRetirementContinuation() throws {
         let projection = EnrollmentProjection(enrollment: try fixtureEnrollment())
+        let installation = try XCTUnwrap(projection.installations.first)
 
         XCTAssertEqual(
-            InstallationDetailAction(installation: try XCTUnwrap(projection.installations.first)),
+            InstallationDetailAction(installation: installation),
             .completeDasAuthorityRetirement
+        )
+        XCTAssertEqual(
+            AuthorityCustodyEntryRoute(installation: installation),
+            .trustedDasAuthorityRetirement
         )
     }
 

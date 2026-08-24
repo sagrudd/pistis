@@ -27,6 +27,17 @@ enum DasAuthorityRetirementContinuationStage: String, CaseIterable {
     }
 }
 
+enum AuthorityCustodyEntryRoute: Equatable {
+    case trustedDasAuthorityRetirement
+    case custodyStatus
+
+    init(installation: InstallationSummary) {
+        self = installation.status == "Trusted"
+            ? .trustedDasAuthorityRetirement
+            : .custodyStatus
+    }
+}
+
 enum AuthorityCustodyAcceptedAssertionTransitionV2 {
     /// An empty 202 consumes the challenge, but only the subsequent exact
     /// server-owned lifecycle decides whether Pistis may rotate or recover.
@@ -268,6 +279,12 @@ struct RootTabView: View {
             else {
                 reconciliationMessage =
                     "The retained Site Root authority is not one of this build's pinned origins."
+                return
+            }
+            if AuthorityCustodyEntryRoute(installation: installation)
+                == .trustedDasAuthorityRetirement
+            {
+                await completeDasAuthorityRetirement(installation, transport: transport)
                 return
             }
             var failureStage = AuthorityCustodyContinuationStage.initialStatus

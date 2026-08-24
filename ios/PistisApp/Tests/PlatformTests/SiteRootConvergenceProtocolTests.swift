@@ -70,6 +70,31 @@ final class SiteRootConvergenceProtocolTests: XCTestCase {
         XCTAssertThrowsError(try legacy.validateChallenge(deviceKeyID: deviceKeyID))
     }
 
+    func testBundleReceiptAcceptsExactMonasRelayResponseAndRejectsInventedField() throws {
+        let production = try JSONSerialization.data(withJSONObject: [
+            "schema": "monas.site-root-bundle-receipt-provision-accepted.v1",
+            "purpose": SiteRootConvergenceProfileV2.provisionPurpose,
+            "receipt_key_generation": 1,
+        ], options: [.sortedKeys])
+        XCTAssertEqual(
+            try MonasSiteRootConvergenceTransport.parseBundleReceiptProvisionAccepted(
+                production, expectedGeneration: 1
+            ),
+            1
+        )
+
+        let formerTestOnlyShape = try JSONSerialization.data(withJSONObject: [
+            "schema": "monas.site-root-bundle-receipt-provision-accepted.v1",
+            "purpose": SiteRootConvergenceProfileV2.provisionPurpose,
+            "generation": 1,
+        ], options: [.sortedKeys])
+        XCTAssertThrowsError(
+            try MonasSiteRootConvergenceTransport.parseBundleReceiptProvisionAccepted(
+                formerTestOnlyShape, expectedGeneration: 1
+            )
+        )
+    }
+
     func testBundleReceiptRejectsExpiryAndUnknownMember() throws {
         var object: [String: Any] = [
             "schema": SiteRootConvergenceProfileV2.provisionSchema,

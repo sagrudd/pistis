@@ -472,14 +472,29 @@ struct MonasSiteRootConvergenceTransport: MonasSiteRootConvergenceSubmitting, Se
             "detached_cose_sign1_b64url": SiteRootConvergenceEncoding.encode(detachedCOSE),
         ]
         let data = try await postJSON(body, endpoint: endpoint, maximum: 8_192)
-        let object = try strictObject(data)
-        guard Set(object.keys) == ["schema", "purpose", "generation"],
+        return try Self.parseBundleReceiptProvisionAccepted(
+            data, expectedGeneration: presentation.receiptKeyGeneration
+        )
+    }
+
+    /// Decode the exact Monas relay response. Keeping this boundary independently
+    /// testable prevents a locally invented response field from surviving while
+    /// the production Rust relay emits a different closed JSON contract.
+    static func parseBundleReceiptProvisionAccepted(
+        _ data: Data, expectedGeneration: UInt64
+    ) throws -> UInt64 {
+        let object: [String: StrictJSONObject.Value]
+        do { object = try StrictJSONObject(data: data, maximumBytes: 1_024).values }
+        catch { throw PlatformFailure.siteRootAuthorityUnavailable }
+        guard Set(object.keys) == ["schema", "purpose", "receipt_key_generation"],
               SiteRootConvergenceEncoding.string(object, "schema")
                 == "monas.site-root-bundle-receipt-provision-accepted.v1",
               SiteRootConvergenceEncoding.string(object, "purpose")
                 == SiteRootConvergenceProfileV2.provisionPurpose,
-              let generation = SiteRootConvergenceEncoding.positiveUInt64(object, "generation"),
-              generation == presentation.receiptKeyGeneration
+              let generation = SiteRootConvergenceEncoding.positiveUInt64(
+                  object, "receipt_key_generation"
+              ),
+              generation == expectedGeneration
         else { throw PlatformFailure.siteRootAuthorityUnavailable }
         return generation
     }

@@ -1,5 +1,11 @@
 # Changelog
 
+- Decode the exact Monas bundle-receipt acceptance field,
+  `receipt_key_generation`, after protected proof submission. A closed response
+  regression rejects the previously invented `generation` field so the iPhone
+  cannot falsely report failure after the NUC has committed the receipt key
+  (0.22.15, iOS build 45).
+
 - Decode the Site Root bundle-receipt provision challenge using the exact
   Thesaurophylax 32-bit field lengths. The cross-language regression fixture
   now matches the 337-byte production wire payload, validates the embedded

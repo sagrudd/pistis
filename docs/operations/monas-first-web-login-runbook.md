@@ -23,13 +23,13 @@ Create one run record before starting:
 |---|---|
 | Date and operator | 25 August 2026; `sagrudd` |
 | NUC hostname and address | No network hostname assigned; `192.168.0.193`. The observed OS-local label `stephen-NUC12DCMi9` is not a Site Trust identity. |
-| Monas package version and source revision | Installed baseline `0.115.23`; lockset source revision `681dfd1075cc964c95c365c3b8055c14bb961972`. The `--destroy-all` candidate must supersede this baseline before Gate 0 can pass. |
+| Monas package version and source revision | Installed baseline `0.115.23`; lockset source revision `681dfd1075cc964c95c365c3b8055c14bb961972`. Candidate `0.116.0` at `ad13fa7c64e2a78033c79eee03d623c30dfd24a4` adds `--destroy-all`, but is not yet in a qualified Kanon/Terraform package closure. |
 | Kanon lockset ID and digest | `monas-terraform-products-closure-20260824-r137`; `sha256:45a75c7711ca73975b0a5ace7b0afd907a59b2f6d3f30e0b47072e5dc6a0b92c` |
 | Terraform source revision | `590d48c789d576eb3eeac00ae696c557f7618b5d` (r137 projection) |
 | Pistis version, build and source revision | `0.23.0` (`47`); `3c7d9b5a5c77445fd3aa54cf249b65dd7c61790c`; signed IPA SHA-256 `84d3246dbf4bae0b482ba8d1699b322727741368bc536b4b3e84098dc2a1dc79` |
 | iPhone model and iOS version | iPhone 14 Pro Max (`iPhone15,3`); iOS `26.6.1` (`23G83`) |
 | Native Monas HTTPS origin | `https://192.168.0.193:8443` (the prior retained generation; Gate 0 must make it ineligible before a new generation is issued) |
-| Outcome of each gate | Gate 0: **STOP — reset command not yet qualified on the NUC**. Gate 1: pass. Gate 2: pass (operator reports local Pistis reset complete). Gates 3–10: not started. |
+| Outcome of each gate | Gate 0: **STOP — source acceptance passes, but the reset command and dependency helpers are not yet qualified/installed on the NUC**. Gate 1: pass. Gate 2: pass (operator reports local Pistis reset complete). Gates 3–10: not started. |
 
 Do not record QR payloads, bootstrap codes, browser capabilities, cookies,
 provider tokens, private keys or complete signed proofs.

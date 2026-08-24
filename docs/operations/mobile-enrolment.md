@@ -100,6 +100,16 @@ state, or deletes authority audit evidence. Current active trust never offers
 either local-only action; leaving an active installation or removing an active
 provider account requires the authority-backed ADR 0030 transaction.
 
+For controlled device retirement or a genuine development restart, Pistis also
+offers **Settings → Reset Pistis on this iPhone**. This Face-ID-gated operation
+erases every Pistis identity, installation, local recovery record and
+Pistis-owned Secure Enclave key on the phone. It does not revoke server
+sessions, authority records or audit evidence and must not be used as ordinary
+account removal. Complete authority recovery or the reviewed full development
+teardown before resetting the only Site Root phone. Follow the
+[first-device onboarding and first Monas web-login runbook](monas-first-web-login-runbook.md)
+one gate at a time.
+
 The expired Keychain authorisation record is removed before Secure Enclave key
 cleanup. An invalidated key must not trap expired identity data on the phone.
 If exact key deletion then fails, the absent trust record still prevents

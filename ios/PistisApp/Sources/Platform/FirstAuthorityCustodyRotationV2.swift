@@ -203,6 +203,15 @@ final class KeychainFirstAuthorityRecoveryEnvelopeStore:
         }
     }
 
+    /// Delete only this phone's retained recovery envelope. The authority's
+    /// custody and audit records are not contacted or modified.
+    func resetLocalEnvelope() throws {
+        let status = SecItemDelete(baseQuery() as CFDictionary)
+        guard status == errSecSuccess || status == errSecItemNotFound else {
+            throw PlatformFailure.custodyRewrapUnavailable
+        }
+    }
+
     private func baseQuery() -> [String: Any] {
         [kSecClass as String: kSecClassGenericPassword,
          kSecAttrService as String: service,

@@ -305,6 +305,16 @@ final class KeychainAppleAppAttestKeyIDStore: AppleAppAttestKeyIDStoring, @unche
         else { throw PlatformFailure.appAttestKeyCreationFailed }
     }
 
+    /// Forget Pistis's reference to Apple's opaque App Attest credential.
+    /// Apple owns the non-exportable private key lifecycle; authority-side
+    /// revocation remains a separate operation.
+    func resetLocalReference() throws {
+        let status = SecItemDelete(baseQuery() as CFDictionary)
+        guard status == errSecSuccess || status == errSecItemNotFound else {
+            throw PlatformFailure.appAttestKeyCreationFailed
+        }
+    }
+
     private func baseQuery() -> [String: Any] {
         [
             kSecClass as String: kSecClassGenericPassword,
@@ -384,6 +394,15 @@ final class KeychainAppleAppAttestReplacementKeyStore:
         else {
             throw PlatformFailure.appAttestInvalidInput
         }
+        let status = SecItemDelete(baseQuery() as CFDictionary)
+        guard status == errSecSuccess || status == errSecItemNotFound else {
+            throw PlatformFailure.appAttestKeyCreationFailed
+        }
+    }
+
+    /// Remove any uncommitted local replacement reference during an explicit
+    /// whole-device reset. This never promotes or revokes an Apple credential.
+    func resetPendingReference() throws {
         let status = SecItemDelete(baseQuery() as CFDictionary)
         guard status == errSecSuccess || status == errSecItemNotFound else {
             throw PlatformFailure.appAttestKeyCreationFailed

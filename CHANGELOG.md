@@ -1,5 +1,13 @@
 # Changelog
 
+- Route a production-shaped Site Root bundle-receipt QR through acquisition,
+  JSON dispatch, and the direct protected-review coordinator in one regression
+  test. Structurally valid expired receipt presentations now receive a precise
+  reissue instruction instead of the generic unsupported-carrier message
+  and the identity-only camera now identifies a valid Monas authority QR as a
+  Scan-tab context mismatch rather than claiming it is unsupported (0.22.13,
+  iOS build 43).
+
 - Verify live Site authority custody before an already trusted installation
   enters DAS local-authority retirement. A recovery-required host now completes
   retained Site Root custody without incorrectly chaining into DAS on the

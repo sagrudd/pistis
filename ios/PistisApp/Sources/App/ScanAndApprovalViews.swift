@@ -69,6 +69,35 @@ enum GenericScanRoute: Equatable {
     }
 }
 
+/// Pure routing for the JSON families admitted by the generic scanner.
+/// Every selected coordinator still performs its own strict protocol parse.
+enum MonasJSONScanRoute: Equatable {
+    case siteOriginRelocation
+    case siteRootConvergence
+    case mtgsRecovery
+    case siteRootDelegation
+
+    static func classify(_ text: String) -> Self {
+        if text.contains(SiteOriginRelocationProfileV1.presentationSchema) {
+            return .siteOriginRelocation
+        }
+        if text.contains(SiteRootConvergenceProfileV2.x509ContinuationRecoverySchema)
+            || text.contains(SiteRootConvergenceProfileV2.x509BrokerProvisionSchema)
+            || text.contains(SiteRootConvergenceProfileV2.x509ProvisionSchema)
+            || text.contains(SiteRootConvergenceProfileV2.provisionSchema)
+            || text.contains(SiteRootConvergenceProfileV2.ackSchema)
+        {
+            return .siteRootConvergence
+        }
+        if text.contains("\"schema\":\"")
+            && text.contains(MTGSRecoveryPresentationV1.schema)
+        {
+            return .mtgsRecovery
+        }
+        return .siteRootDelegation
+    }
+}
+
 private struct FirstDeviceScanRequest: Identifiable {
     let id = UUID()
     let qrText: String
@@ -329,47 +358,40 @@ struct ScanView: View {
                 return
             }
             if payload.text.hasPrefix("{") {
-                if payload.text.contains(SiteOriginRelocationProfileV1.presentationSchema) {
+                switch MonasJSONScanRoute.classify(payload.text) {
+                case .siteOriginRelocation:
                     siteOriginRelocation.accept(qrText: payload.text)
                     if case .failed = siteOriginRelocation.phase {
                         scanFailure = .siteRootAuthorityUnavailable
                     }
                     return
-                }
-                if payload.text.contains(SiteRootConvergenceProfileV2.x509ContinuationRecoverySchema)
-                    || payload.text.contains(SiteRootConvergenceProfileV2.x509BrokerProvisionSchema)
-                    || payload.text.contains(SiteRootConvergenceProfileV2.x509ProvisionSchema)
-                    || payload.text.contains(SiteRootConvergenceProfileV2.provisionSchema)
-                    || payload.text.contains(SiteRootConvergenceProfileV2.ackSchema)
-                {
+                case .siteRootConvergence:
                     siteRootConvergence.accept(qrText: payload.text)
                     if case let .failed(failure) = siteRootConvergence.phase {
                         scanFailure = failure
                     }
                     return
-                }
-                if payload.text.contains("\"schema\":\"")
-                    && payload.text.contains(MTGSRecoveryPresentationV1.schema)
-                {
+                case .mtgsRecovery:
                     mtgsRecovery.accept(qrText: payload.text)
                     if case let .failed(failure) = mtgsRecovery.phase {
                         scanFailure = failure
                     }
                     return
-                }
-                siteRootCeremony.accept(qrText: payload.text)
-                if let review = siteRootCeremony.presentedReview,
-                   let pinned = siteRootTransport as? MonasSiteRootDelegationTransport,
-                   !pinned.isConfiguredAuthorityHost(review.destination)
-                {
-                    siteRootCeremony.reject(.siteRootAuthorityUnavailable)
-                    scanFailure = .siteRootAuthorityUnavailable
+                case .siteRootDelegation:
+                    siteRootCeremony.accept(qrText: payload.text)
+                    if let review = siteRootCeremony.presentedReview,
+                       let pinned = siteRootTransport as? MonasSiteRootDelegationTransport,
+                       !pinned.isConfiguredAuthorityHost(review.destination)
+                    {
+                        siteRootCeremony.reject(.siteRootAuthorityUnavailable)
+                        scanFailure = .siteRootAuthorityUnavailable
+                        return
+                    }
+                    if case let .failed(failure) = siteRootCeremony.phase {
+                        scanFailure = failure
+                    }
                     return
                 }
-                if case let .failed(failure) = siteRootCeremony.phase {
-                    scanFailure = failure
-                }
-                return
             }
             switch GenericScanRoute.classify(payload.text) {
             case .firstDeviceEnrolment:

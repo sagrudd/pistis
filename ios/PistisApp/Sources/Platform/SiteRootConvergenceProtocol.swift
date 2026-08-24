@@ -285,10 +285,15 @@ struct SiteRootBundleReceiptProvisionPresentationV1: Equatable, Sendable {
               let expiry = SiteRootConvergenceEncoding.positiveUInt64(
                   object, "expires_at_unix_seconds"
               ),
-              nowUnixSeconds < expiry, expiry - nowUnixSeconds <= 300,
               SiteRootConvergenceEncoding.string(object, "submission_path")
                 == SiteRootConvergenceProfileV2.provisionPath
         else { throw PlatformFailure.qrPayloadUnsupported }
+        guard nowUnixSeconds < expiry else {
+            throw PlatformFailure.siteRootBundleReceiptPresentationExpired
+        }
+        guard expiry - nowUnixSeconds <= 300 else {
+            throw PlatformFailure.qrPayloadUnsupported
+        }
         self.correlation = correlation
         canonicalChallenge = challenge
         siteTrustDomain = site

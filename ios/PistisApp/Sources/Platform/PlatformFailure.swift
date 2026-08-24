@@ -34,6 +34,9 @@ enum PlatformFailure: Error, Equatable, Sendable {
     case cameraUnavailable
     case qrPayloadTooLarge
     case qrPayloadUnsupported
+    /// A Monas authority presentation was acquired on the deliberately narrow
+    /// first-device identity scanner instead of the multi-family Scan tab.
+    case monasRequestRequiresScanTab
     /// A first-device presentation was recognisable as a Pistis invitation but
     /// failed verification. It must never fall through to ordinary login.
     case invalidFirstDevicePresentation
@@ -41,6 +44,9 @@ enum PlatformFailure: Error, Equatable, Sendable {
     /// validity window. It must be reissued rather than reported as an
     /// unsupported QR carrier.
     case siteRootGenesisPresentationExpired
+    /// A structurally valid Site Root bundle-receipt presentation reached its
+    /// server-issued expiry before review. No proof was produced.
+    case siteRootBundleReceiptPresentationExpired
     case operationCancelled
     case productionEnvelopeUnavailable
     case siteRootAuthorityUnavailable
@@ -92,10 +98,14 @@ extension PlatformFailure {
             "This QR code is larger than the Pistis safety limit."
         case .qrPayloadUnsupported:
             "This is not a supported Pistis QR code."
+        case .monasRequestRequiresScanTab:
+            "This is a Monas authority QR. Open the Scan tab and scan it there. No proof was submitted."
         case .invalidFirstDevicePresentation:
             "This first-device invitation could not be verified. Request a newly issued QR from Monas."
         case .siteRootGenesisPresentationExpired:
             "This first-device QR has expired. Return to the install window and request a newly issued QR. No proof was submitted."
+        case .siteRootBundleReceiptPresentationExpired:
+            "This Site Root receipt QR has expired. Return to Monas and request a newly issued QR. No proof was submitted."
         case .operationCancelled:
             "Scanning stopped before a code was captured."
         case .enrolmentRequired:

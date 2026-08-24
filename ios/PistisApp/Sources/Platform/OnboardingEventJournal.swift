@@ -529,7 +529,9 @@ extension PlatformFailure {
         case .cameraPermissionDenied, .cameraUnavailable:
             .camera
         case .qrPayloadTooLarge, .qrPayloadUnsupported,
-             .invalidFirstDevicePresentation, .siteRootGenesisPresentationExpired:
+             .monasRequestRequiresScanTab,
+             .invalidFirstDevicePresentation, .siteRootGenesisPresentationExpired,
+             .siteRootBundleReceiptPresentationExpired:
             .qrValidation
         case .secureHardwareUnavailable, .keyCreationFailed, .keyNotFound,
              .keyInvalidated, .siteRootAuthorityKeyMissing,

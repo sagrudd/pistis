@@ -37,12 +37,55 @@ final class SiteRootConvergenceProtocolTests: XCTestCase {
         ]
         XCTAssertThrowsError(try SiteRootBundleReceiptProvisionPresentationV1(
             qrText: json(object), nowUnixSeconds: nowSeconds
-        ))
+        )) { error in
+            XCTAssertEqual(
+                error as? PlatformFailure,
+                .siteRootBundleReceiptPresentationExpired
+            )
+        }
         object["expires_at_unix_seconds"] = nowSeconds + 60
         object["fallback"] = true
         XCTAssertThrowsError(try SiteRootBundleReceiptProvisionPresentationV1(
             qrText: json(object), nowUnixSeconds: nowSeconds
         ))
+    }
+
+    @MainActor
+    func testProductionShapedBundleReceiptReachesDirectProtectedReview() throws {
+        let recorder = BrokerAttemptRecorder()
+        let transport = RecordingBrokerTransport(recorder: recorder)
+        let coordinator = SiteRootConvergenceCoordinator(transport: transport)
+        let now = UInt64(Date().timeIntervalSince1970)
+        let qr = json([
+            "schema": SiteRootConvergenceProfileV2.provisionSchema,
+            "purpose": SiteRootConvergenceProfileV2.provisionPurpose,
+            "correlation_b64url": b64(Data(repeating: 0x51, count: 16)),
+            "canonical_challenge_b64url": b64(
+                provisionChallenge(
+                    site: "site-cb5fc980-8a52-427a-83d1-a5e6a54b6642",
+                    generation: 1
+                )
+            ),
+            "site_trust_domain": "site-cb5fc980-8a52-427a-83d1-a5e6a54b6642",
+            "receipt_key_generation": 1,
+            "expires_at_unix_seconds": now + 300,
+            "submission_path": SiteRootConvergenceProfileV2.provisionPath,
+        ])
+
+        XCTAssertTrue(
+            QRPayloadProfile.pistisAuthenticationOrMonasSiteRoot.accepts(qr)
+        )
+        XCTAssertEqual(MonasJSONScanRoute.classify(qr), .siteRootConvergence)
+        coordinator.accept(qrText: qr)
+
+        XCTAssertEqual(coordinator.selectedTransportRoute, .direct)
+        guard case let .review(review) = coordinator.phase else {
+            return XCTFail("production-shaped bundle receipt must reach protected review")
+        }
+        XCTAssertEqual(
+            review.kind,
+            .bundleReceiptProvision(generation: 1)
+        )
     }
 
     func testPXRAExactFrameParsesAndDriftFailsClosed() throws {

@@ -15,6 +15,14 @@ The procedure distinguishes three different events:
 
 None is evidence that another one completed.
 
+Administrator departure, a lost/destroyed/stolen phone and accidental deletion
+of the only phone-bound credentials are supported recovery triggers. A
+phone-local reset must not be treated as authority to destroy the organisation's
+server-side installation. Recovery with continuity requires an independent
+organisational recovery authority established outside that phone; when none
+exists, the run must explicitly choose destructive rebuild and record that the
+new installation has no continuity with the old one.
+
 ## Run record
 
 Create one run record before starting:
@@ -23,13 +31,15 @@ Create one run record before starting:
 |---|---|
 | Date and operator | 25 August 2026; `sagrudd` |
 | NUC hostname and address | No network hostname assigned; `192.168.0.193`. The observed OS-local label `stephen-NUC12DCMi9` is not a Site Trust identity. |
-| Monas package version and source revision | Installed baseline `0.115.23`; lockset source revision `681dfd1075cc964c95c365c3b8055c14bb961972`. Monas `0.116.0` source `ad13fa7c64e2a78033c79eee03d623c30dfd24a4` was merged to `main` as `cd15a9e436ddb0156d9eb89c1854b9da051342ea`; it is not yet in a qualified Kanon/Terraform package closure. |
-| Kanon lockset ID and digest | `monas-terraform-products-closure-20260824-r137`; `sha256:45a75c7711ca73975b0a5ace7b0afd907a59b2f6d3f30e0b47072e5dc6a0b92c` |
-| Terraform source revision | `590d48c789d576eb3eeac00ae696c557f7618b5d` (r137 projection) |
+| Monas package version and source revision | `0.116.1`; `064c802010401af579ce1bf5f64516b1d4de79a1` |
+| Recovery dependency versions and source revisions | Proxenos `0.53.0` at `a452a0161aea642246a86bbb80eb5c1e4bc5d54e`; Thesaurophylax `0.70.0` at `fa61a3af3eacf1730f7978326fb5eacd24ccdc69` |
+| Dependent package rebuilt for the closure | Expedition Base Camp/Jenkins `0.85.18` at `2cdb5de806585cd8db3f7d381332fd844d564a76` |
+| Kanon lockset ID and digest | `monas-terraform-products-closure-20260824-r140`; `sha256:869a4af428dc5d12e5368e7e7498a31ac0f8e8a78c090041e7f19bd6ee85c90d`; registry revision `9e774c06ccd34871b8487e667fb7e0b7950c8e26` |
+| Terraform version and source revision | `0.4.46`; `82d3efa356f7d4e4a390f230af3eb80c7768d4e1` (r140 projection) |
 | Pistis version, build and source revision | `0.23.0` (`47`); `3c7d9b5a5c77445fd3aa54cf249b65dd7c61790c`; signed IPA SHA-256 `84d3246dbf4bae0b482ba8d1699b322727741368bc536b4b3e84098dc2a1dc79` |
 | iPhone model and iOS version | iPhone 14 Pro Max (`iPhone15,3`); iOS `26.6.1` (`23G83`) |
 | Native Monas HTTPS origin | `https://192.168.0.193:8443` (the prior retained generation; Gate 0 must make it ineligible before a new generation is issued) |
-| Outcome of each gate | Gate 0: **STOP — merged Monas source acceptance passes, but the reset command and dependency helpers are not yet qualified/installed on the NUC**. Gate 1: pass. Gate 2: pass (operator reports local Pistis reset complete). Gates 3–10: not started. |
+| Outcome of each gate | Gate 0: qualified r140 packages installed and non-mutating `--destroy-all` preview passed; **operator confirmation and postcondition evidence pending**. Gate 1: pass. Gate 2: pass (operator reports local Pistis reset complete). Gates 3–10: not started. |
 
 Do not record QR payloads, bootstrap codes, browser capabilities, cookies,
 provider tokens, private keys or complete signed proofs.
@@ -60,13 +70,45 @@ command. Review the plan, then run exactly:
 sudo monas-first-install --destroy-all --confirm
 ```
 
-`--destroy-all` is an exceptional development reset. It must use the reviewed
-package-owned reset interfaces for Monas, Thesaurophylax and Proxenos; a missing
-dependency, unsafe path, active protected operation or failed postcondition is
-a hard failure. It must expire any active broker lease and render prior Site
-Root, Site X.509, App Attest, installation, first-device, GitHub-provider and
-sealed-profile generations ineligible. It must preserve installed packages,
-source/build artefacts, DASObjectStore object data and unrelated host data.
+### Pre-confirmation evidence for this run
+
+The qualified r140 package closure was installed on `192.168.0.193` on 24
+August 2026 in preparation for the attended run dated above. Before
+installation, the obsolete root override that selected
+`/usr/local/libexec/monas-server-0.115.24-test` was moved to the root-only
+recovery archive
+`/var/backups/mnemosyne/20260824-r140/monas-pistis-runtime-binary.conf`.
+Systemd now resolves `monas-pistis.service` to the package-owned
+`/usr/libexec/mnemosyne-monas/monas-server` and the unit is inactive, not
+failed.
+
+The following deployment and preview evidence passed:
+
+- all 20 built DEBs carry the r140 lockset and content digest recorded above;
+- `dpkg --audit` prints nothing;
+- the Monas, Proxenos and Thesaurophylax reset commands are executable and
+  owned by their installed packages;
+- the first-install broker lease and destroy-all intent/tombstone are absent;
+- `monas-pistis.service` and `monas-pistis-authority.service` are inactive;
+- `dasobjectstored.service` and `dasobjectstore-server.service` remain active;
+- the four DASObjectStore configuration digests and all eight mounted data
+  filesystem UUID/top-level-entry invariants match their pre-install values;
+- `sudo monas-first-install --destroy-all` returned success, named all three
+  package-owned reset boundaries and ended with `No changes made` plus the
+  exact confirmation command above.
+
+The preview also correctly reports the retained first-device receipt and
+committed installation. Those are the state Gate 0 is about to destroy; they
+are not acceptable after the confirmed command completes.
+
+`--destroy-all` is the supported last-resort administrative rebuild without
+continuity. It must use the reviewed package-owned reset interfaces for Monas,
+Thesaurophylax and Proxenos; a missing dependency, unsafe path, active protected
+operation or failed postcondition is a hard failure. It must expire any active
+broker lease and render prior Site Root, Site X.509, App Attest, installation,
+first-device, GitHub-provider and sealed-profile generations ineligible. It
+must preserve installed packages, source/build artefacts, DASObjectStore object
+data and unrelated host data.
 
 After the confirmed command returns success, run:
 
@@ -79,7 +121,9 @@ The release is not qualified for this run unless its acceptance suite invokes
 both `monas-first-install --destroy-all` and
 `monas-first-install --destroy-all --confirm`, proves that preview is
 non-mutating, proves the exact dependency ordering and postconditions, and
-proves idempotence on an already-reset fixture.
+proves idempotence on an already-reset fixture. That second execution is the
+required regression for a phone whose only bound credentials were accidentally
+deleted before server recovery began.
 
 ### Pass condition
 

@@ -88,6 +88,15 @@ struct RootTabView: View {
     @State private var authorityCustodyMode: FirstAuthorityCustodyModeV2 = .rotation
   @State private var authorityCustodyAttempt: UUID?
     let siteRootTransport: any MonasSiteRootCeremonyTransport
+    let localResetCompleted: () -> Void
+
+    init(
+        siteRootTransport: any MonasSiteRootCeremonyTransport,
+        localResetCompleted: @escaping () -> Void = {}
+    ) {
+        self.siteRootTransport = siteRootTransport
+        self.localResetCompleted = localResetCompleted
+    }
 
     var body: some View {
         TabView(selection: $selectedTab) {
@@ -152,7 +161,7 @@ struct RootTabView: View {
             .tag(Tab.history)
 
             NavigationStack {
-                SettingsView()
+                SettingsView(localResetCompleted: localResetCompleted)
             }
             .tabItem {
                 Label("Settings", systemImage: "gearshape")

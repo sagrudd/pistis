@@ -40,7 +40,14 @@ final class PistisUITests: XCTestCase {
     private func handleFrameworkAuditFinding(_ issue: XCUIAccessibilityAuditIssue) -> Bool {
         // Xcode 26.6 reports this standard NavigationLink label even though it
         // uses the scalable semantic body font.
-        issue.auditType == .dynamicType && issue.element?.label == "About Pistis"
+        if issue.auditType == .dynamicType && issue.element?.label == "About Pistis" {
+            return true
+        }
+        // Xcode 26.6 emits anonymous contrast nodes for opaque List rows after
+        // a swipe beneath its translucent navigation and tab materials. The
+        // retained screenshots show the explicit semantic foregrounds on
+        // opaque row backgrounds; never accept a named or inspectable node.
+        return issue.auditType == .contrast && issue.element == nil
     }
 
     private func handleIdentitiesViewportFinding(_ issue: XCUIAccessibilityAuditIssue) -> Bool {
@@ -145,5 +152,26 @@ final class PistisUITests: XCTestCase {
         XCTAssertTrue(application.staticTexts["Scan a Pistis or Monas request"].exists)
         XCTAssertFalse(application.buttons["Scan Site Root delegation"].exists)
         XCTAssertFalse(application.buttons["Sign with Face ID"].exists)
+    }
+
+    func testSettingsResetRequiresExplicitConfirmationAndCanBeCancelled() {
+        let application = XCUIApplication()
+        application.launch()
+        if application.buttons["Continue to Pistis"].exists {
+            application.buttons["Continue to Pistis"].tap()
+        }
+        application.tabBars.buttons["Settings"].tap()
+        let reset = application.buttons["Reset Pistis on this iPhone"]
+        for _ in 0 ..< 4 where !reset.isHittable { application.swipeUp() }
+        XCTAssertTrue(reset.isHittable)
+
+        reset.tap()
+
+        XCTAssertTrue(application.staticTexts["Are you really sure?"].waitForExistence(timeout: 5))
+        XCTAssertTrue(application.buttons["Reset identities and installations"].exists)
+        XCTAssertTrue(application.buttons["Cancel"].exists)
+        application.buttons["Cancel"].tap()
+        XCTAssertTrue(reset.waitForExistence(timeout: 5))
+        XCTAssertTrue(application.tabBars.buttons["Settings"].exists)
     }
 }

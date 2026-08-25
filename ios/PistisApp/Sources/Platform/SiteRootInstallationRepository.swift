@@ -241,6 +241,16 @@ final class SiteRootInstallationRepository {
         try persist(Array(try reconcile(retained).suffix(maximumRecords)))
     }
 
+    /// Erase every non-authorising Site Root setup projection on this phone.
+    /// Server-side Site Root, custody and transaction records are unchanged.
+    func resetAllLocalInstallations() {
+        defaults.removeObject(forKey: key)
+        NotificationCenter.default.post(
+            name: Self.installationsDidChangeNotification,
+            object: nil
+        )
+    }
+
     private func record(_ record: IncompleteSiteRootInstallation) throws {
         var retained = try records()
         retained.append(record)

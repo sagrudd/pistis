@@ -910,6 +910,21 @@ final class SiteRootConvergenceAckStoreV2: @unchecked Sendable {
         return record
     }
 
+    /// Delete this phone's acknowledgement-key registration projection.
+    /// Deleting the associated Secure Enclave key is a separate reset step so
+    /// either failure can be reported without hiding partial completion.
+    func resetLocalRecord() throws {
+        let query: [CFString: Any] = [
+            kSecClass: kSecClassGenericPassword,
+            kSecAttrService: service,
+            kSecAttrAccount: account,
+        ]
+        let status = SecItemDelete(query as CFDictionary)
+        guard status == errSecSuccess || status == errSecItemNotFound else {
+            throw PlatformFailure.enrolmentStorageFailed
+        }
+    }
+
     private func load() throws -> SiteRootConvergenceAckRecordV2? {
         let query: [CFString: Any] = [
             kSecClass: kSecClassGenericPassword,

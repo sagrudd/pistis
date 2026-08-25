@@ -111,3 +111,9 @@ record before `Activated`; Pistis promotes only after that global state. It
 remains blocked on naming and accepting the typed custody/operator authorization
 artifact and must not be implemented as a boolean, QR fallback or App Attest-
 only recovery.
+
+[ADR 0041](0041-explicit-local-device-reset.md) accepts an explicit,
+Face-ID-gated erasure of every Pistis identity, installation and app-owned key
+on one iPhone. It never claims authority revocation and requires authority
+recovery or complete development teardown before a reset phone can be treated
+as a fresh first installation.

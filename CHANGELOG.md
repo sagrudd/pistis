@@ -1,5 +1,13 @@
 # Changelog
 
+- Add an explicit Face-ID-gated **Reset Pistis on this iPhone** operation that
+  erases the closed set of device-local identities, installation trust,
+  Pistis-owned Secure Enclave keys, App Attest references, custody/setup
+  projections and diagnostic stores. Cancellation is non-mutating, partial
+  erasure is reported truthfully, authority state is never described as
+  deleted, and a gate-by-gate first-device/first-Monas-login runbook defines
+  the required host reconciliation boundary (0.23.0, iOS build 47).
+
 - Bound the one-use Site Root bundle-receipt provision to its steady custody
   continuation by retrying only the short, explicit authority-unavailable
   window while the NUC finalizes and exposes the attended unlock socket. The

@@ -314,6 +314,28 @@ rejected. The focused Monas package tests, Kanon r143 canonical closure test
 and all 39 Terraform projection/catalogue tests pass. Live NUC evidence and
 the operator's independent revalidation are recorded before this gate closes.
 
+The r143 package set was then built on the x86_64 NUC from Terraform
+`371dbde324d093aa14c375db909fb3c24338801b`. All 20 generated and installed
+DEBs carry the r143 lockset ID, content digest and their exact component source
+revision. Linux compiled the Monas and DASObjectStore paths successfully,
+including the DAS GUI API path that is not portable to macOS. After install:
+
+- `dpkg --audit` printed nothing;
+- two consecutive `sudo monas-first-install --status` reads reported
+  `Gate 3 baseline: bare-earth-ready` with DAS active, Proxenos not activated,
+  custody not issued and the Site X.509 descriptor correctly not issued;
+- the three reset-record SHA-256 digests, owner/mode and mtimes were identical
+  before and after both status reads;
+- Proxenos lifecycle, the Monas broker and Thesaurophylax custody remained
+  inactive, while both DAS services remained active;
+- broker lease, genesis configuration, Site X.509 descriptor and formal
+  installation marker remained absent; and
+- the four DAS configuration hashes, eight mount UUIDs and all eight
+  top-level entry counts exactly matched the pre-deployment baseline.
+
+No code, QR, broker rendezvous or ceremony was issued. **Gate 3 remains open
+only for the operator's independent revalidation. Do not start Gate 4 yet.**
+
 ## Gate 4 — Start the single supported first-install command
 
 **Purpose:** create one attached host rendezvous.

@@ -256,6 +256,54 @@ final class SecureEnclaveSigner: @unchecked Sendable {
         }
     }
 
+    /// Delete every Secure Enclave key in Pistis's closed application-tag
+    /// namespace.
+    ///
+    /// This operation is reserved for the explicit whole-device reset. It
+    /// enumerates attributes only, selects the exact Pistis prefix in memory,
+    /// and deletes each exact tag. Keys owned by another application or by a
+    /// future, unreviewed namespace are never selected.
+    static func resetAllApplicationKeys() throws {
+        guard secureEnclaveIsAvailable else {
+            throw PlatformFailure.secureHardwareUnavailable
+        }
+        let query: [String: Any] = [
+            kSecClass as String: kSecClassKey,
+            kSecAttrKeyType as String: kSecAttrKeyTypeECSECPrimeRandom,
+            kSecAttrTokenID as String: kSecAttrTokenIDSecureEnclave,
+            kSecReturnAttributes as String: true,
+            kSecMatchLimit as String: kSecMatchLimitAll,
+        ]
+        var result: CFTypeRef?
+        let status = SecItemCopyMatching(query as CFDictionary, &result)
+        if status == errSecItemNotFound { return }
+        guard status == errSecSuccess,
+              let attributes = result as? [[String: Any]]
+        else { throw PlatformFailure.signingFailed }
+
+        let tags = ownedApplicationTags(
+            attributes.compactMap { $0[kSecAttrApplicationTag as String] as? Data }
+        )
+        for tag in tags {
+            let deletion: [String: Any] = [
+                kSecClass as String: kSecClassKey,
+                kSecAttrKeyType as String: kSecAttrKeyTypeECSECPrimeRandom,
+                kSecAttrTokenID as String: kSecAttrTokenIDSecureEnclave,
+                kSecAttrApplicationTag as String: tag,
+            ]
+            let deletionStatus = SecItemDelete(deletion as CFDictionary)
+            guard deletionStatus == errSecSuccess || deletionStatus == errSecItemNotFound else {
+                throw PlatformFailure.signingFailed
+            }
+        }
+    }
+
+    static func ownedApplicationTags(_ tags: [Data]) -> [Data] {
+        let prefix = Data("org.mnemosyne.pistis.device-key.".utf8)
+        return Array(Set(tags.filter { $0.starts(with: prefix) }))
+            .sorted { $0.lexicographicallyPrecedes($1) }
+    }
+
     private func devicePublicKey(from privateKey: SecKey) throws -> DevicePublicKey {
         guard let publicKey = SecKeyCopyPublicKey(privateKey) else {
             throw PlatformFailure.publicKeyExtractionFailed

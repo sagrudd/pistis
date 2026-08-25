@@ -37,4 +37,11 @@ final class LocalHistoryRepository {
         defaults.set(encoded, forKey: key)
         NotificationCenter.default.post(name: Self.historyDidChangeNotification, object: nil)
     }
+
+    /// Erase the non-authoritative history projection from this phone.
+    /// Authority audit evidence is intentionally outside this store.
+    func resetAllLocalHistory() {
+        defaults.removeObject(forKey: key)
+        NotificationCenter.default.post(name: Self.historyDidChangeNotification, object: nil)
+    }
 }

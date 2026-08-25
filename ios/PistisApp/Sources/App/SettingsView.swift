@@ -1,6 +1,19 @@
 import SwiftUI
 
 struct SettingsView: View {
+    let resetLocalDevice: () async throws -> Void
+    let localResetCompleted: () -> Void
+
+    init(
+        resetLocalDevice: @escaping () async throws -> Void = {
+            try await LocalDeviceResetService.shared.reset()
+        },
+        localResetCompleted: @escaping () -> Void = {}
+    ) {
+        self.resetLocalDevice = resetLocalDevice
+        self.localResetCompleted = localResetCompleted
+    }
+
     var body: some View {
         List {
             Section("Device security") {
@@ -41,6 +54,33 @@ struct SettingsView: View {
                         .fixedSize(horizontal: false, vertical: true)
                 }
                 .frame(minHeight: MnMetrics.minimumTarget)
+            }
+
+            Section {
+                VStack(alignment: .leading, spacing: MnSpacing.x3) {
+                    Text("Reset this iPhone")
+                        .font(.headline)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .accessibilityAddTraits(.isHeader)
+                    Text(
+                        "Destructive local operation. It does not revoke server sessions or delete authority and audit records."
+                    )
+                    .font(.footnote)
+                    .fixedSize(horizontal: false, vertical: true)
+                    DestructiveConfirmationButton(
+                        label: "Reset Pistis on this iPhone",
+                        confirmationTitle: "Are you really sure?",
+                        confirmationMessage:
+                            "This permanently erases all Pistis identities and installations stored on this iPhone. Server sessions, authority records and audit evidence remain. Face ID is required, and the operation cannot be undone.",
+                        confirmationLabel: "Reset identities and installations",
+                        failureTitle: "Pistis reset is incomplete",
+                        failureMessage:
+                            "One or more local stores could not be erased. Pistis has not presented this iPhone as fresh. Keep the device unlocked and try again."
+                    ) {
+                        try await resetLocalDevice()
+                        localResetCompleted()
+                    }
+                }
             }
         }
         .scrollContentBackground(.hidden)
@@ -128,7 +168,12 @@ private struct AboutView: View {
                     VStack(alignment: .leading, spacing: MnSpacing.x3) {
                         MnEvidenceRow(label: "Application", value: "Pistis")
                         Divider()
-                        MnEvidenceRow(label: "Version", value: "Development build")
+                        MnEvidenceRow(
+                            label: "Version",
+                            value: PistisBuildIdentity.display(
+                                infoDictionary: Bundle.main.infoDictionary ?? [:]
+                            )
+                        )
                         Divider()
                         Text("Local-first cryptographic identity, authentication, approval, and evidence for scientific computing.")
                             .font(.body)
@@ -139,5 +184,16 @@ private struct AboutView: View {
         }
         .navigationTitle("About")
         .mnScreenBackground()
+    }
+}
+
+enum PistisBuildIdentity {
+    static func display(infoDictionary: [String: Any]) -> String {
+        guard let version = infoDictionary["CFBundleShortVersionString"] as? String,
+              !version.isEmpty,
+              let build = infoDictionary["CFBundleVersion"] as? String,
+              !build.isEmpty
+        else { return "Unknown build" }
+        return "\(version) (\(build))"
     }
 }

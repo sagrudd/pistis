@@ -4,42 +4,64 @@ struct DestructiveConfirmationButton: View {
     let label: String
     let confirmationTitle: String
     let confirmationMessage: String
+    let confirmationLabel: String
+    let failureTitle: String
+    let failureMessage: String
     let action: () async throws -> Void
 
     @State private var isConfirming = false
     @State private var busy = false
     @State private var showsFailure = false
 
+    init(
+        label: String,
+        confirmationTitle: String,
+        confirmationMessage: String,
+        confirmationLabel: String? = nil,
+        failureTitle: String = "Local record was not removed",
+        failureMessage: String = "Nothing was deleted. Unlock this device and try again.",
+        action: @escaping () async throws -> Void
+    ) {
+        self.label = label
+        self.confirmationTitle = confirmationTitle
+        self.confirmationMessage = confirmationMessage
+        self.confirmationLabel = confirmationLabel ?? label
+        self.failureTitle = failureTitle
+        self.failureMessage = failureMessage
+        self.action = action
+    }
+
     var body: some View {
         Button(role: .destructive) {
             isConfirming = true
         } label: {
-            if busy {
-                ProgressView()
-                    .frame(maxWidth: .infinity)
-            } else {
-                Text(label)
-                    .frame(maxWidth: .infinity)
+            Group {
+                if busy {
+                    ProgressView()
+                } else {
+                    Text(label)
+                        .multilineTextAlignment(.center)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
             }
+            .font(.headline)
+            .frame(maxWidth: .infinity, minHeight: MnMetrics.minimumTarget)
         }
-        .buttonStyle(.bordered)
+        .buttonStyle(.borderedProminent)
+        .tint(MnColor.danger)
         .disabled(busy)
-        .confirmationDialog(
-            confirmationTitle,
-            isPresented: $isConfirming,
-            titleVisibility: .visible
-        ) {
-            Button(label, role: .destructive) {
+        .alert(confirmationTitle, isPresented: $isConfirming) {
+            Button(confirmationLabel, role: .destructive) {
                 confirm()
             }
             Button("Cancel", role: .cancel) {}
         } message: {
             Text(confirmationMessage)
         }
-        .alert("Local record was not removed", isPresented: $showsFailure) {
+        .alert(failureTitle, isPresented: $showsFailure) {
             Button("OK", role: .cancel) {}
         } message: {
-            Text("Nothing was deleted. Unlock this device and try again.")
+            Text(failureMessage)
         }
     }
 

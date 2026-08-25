@@ -504,6 +504,30 @@ actor InstallationTrustKeychain: InstallationTrustStoring {
         }, selectedInstallationID: records.first?.installationID)
     }
 
+    /// Erase every device-local installation and identity authorisation record.
+    ///
+    /// This is the credential-removal boundary used only by the explicit
+    /// whole-device reset. It does not contact an authority, revoke a server
+    /// session, delete audit evidence, or claim that the installation no
+    /// longer recognises this device.
+    func resetAllLocalEnrollments() throws {
+        #if canImport(Security)
+        let statuses = [
+            SecItemDelete(inventoryQuery() as CFDictionary),
+            SecItemDelete(baseQuery() as CFDictionary),
+        ]
+        guard statuses.allSatisfy({ $0 == errSecSuccess || $0 == errSecItemNotFound }) else {
+            throw PlatformFailure.invalidConfiguration
+        }
+        NotificationCenter.default.post(
+            name: Self.enrollmentDidChangeNotification,
+            object: nil
+        )
+        #else
+        throw PlatformFailure.secureHardwareUnavailable
+        #endif
+    }
+
     /// Forget local material only when it cannot authorize. This does not
     /// represent or perform authority-side revocation.
     func forgetExpired(installationID: Data, now: Date = Date()) throws {

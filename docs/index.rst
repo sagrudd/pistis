@@ -87,6 +87,7 @@ Architecture and operations
    adr/0033-iphone-site-root-delegation
    adr/0034-iphone-attested-site-trust-fact
    adr/0035-retained-iphone-custody-presentation-relay
+   adr/0041-explicit-local-device-reset
    protocol/README
    protocol/domain-model
    protocol/action-approval
@@ -101,6 +102,7 @@ Architecture and operations
    operations/github-enrolment
    operations/google-enrolment
    operations/mobile-enrolment
+   operations/monas-first-web-login-runbook
    operations/qr-authentication
    operations/formal-site-root-qr-scanner
    operations/ios

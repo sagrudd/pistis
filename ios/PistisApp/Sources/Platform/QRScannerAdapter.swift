@@ -31,6 +31,19 @@ enum QRPayloadProfile: Sendable {
             text.hasPrefix("PISTIS1:") || text.hasPrefix("{") || text.hasPrefix("PXFP2:P:")
         }
     }
+
+    /// Return a bounded acquisition failure with enough context to recover
+    /// from selecting the identity-only scanner for a Monas authority frame.
+    func rejection(for text: String) -> PlatformFailure? {
+        guard !accepts(text) else { return nil }
+        switch self {
+        case .pistisAuthenticationV2
+            where text.hasPrefix("{") || text.hasPrefix("PXFP2:P:"):
+            return .monasRequestRequiresScanTab
+        default:
+            return .qrPayloadUnsupported
+        }
+    }
 }
 
 #if canImport(AVFoundation) && canImport(UIKit)
@@ -136,8 +149,8 @@ final class QRScannerAdapter: NSObject, AVCaptureMetadataOutputObjectsDelegate,
             finish(.failure(.qrPayloadTooLarge))
             return
         }
-        guard profile.accepts(value) else {
-            finish(.failure(.qrPayloadUnsupported))
+        if let failure = profile.rejection(for: value) {
+            finish(.failure(failure))
             return
         }
         finish(.success(ScannedQRPayload(text: value)))

@@ -1,5 +1,39 @@
 # Changelog
 
+- Add an explicit Face-ID-gated **Reset Pistis on this iPhone** operation that
+  erases the closed set of device-local identities, installation trust,
+  Pistis-owned Secure Enclave keys, App Attest references, custody/setup
+  projections and diagnostic stores. Cancellation is non-mutating, partial
+  erasure is reported truthfully, authority state is never described as
+  deleted, and a gate-by-gate first-device/first-Monas-login runbook defines
+  the required host reconciliation boundary (0.23.0, iOS build 47).
+
+- Bound the one-use Site Root bundle-receipt provision to its steady custody
+  continuation by retrying only the short, explicit authority-unavailable
+  window while the NUC finalizes and exposes the attended unlock socket. The
+  retry is bounded, preserves the same Face ID ceremony, and fails closed for
+  permanent failures (0.22.16, iOS build 46).
+
+- Decode the exact Monas bundle-receipt acceptance field,
+  `receipt_key_generation`, after protected proof submission. A closed response
+  regression rejects the previously invented `generation` field so the iPhone
+  cannot falsely report failure after the NUC has committed the receipt key
+  (0.22.15, iOS build 45).
+
+- Decode the Site Root bundle-receipt provision challenge using the exact
+  Thesaurophylax 32-bit field lengths. The cross-language regression fixture
+  now matches the 337-byte production wire payload, validates the embedded
+  challenge beyond QR routing, and rejects the former 16-bit test-only form
+  (0.22.14, iOS build 44).
+
+- Route a production-shaped Site Root bundle-receipt QR through acquisition,
+  JSON dispatch, and the direct protected-review coordinator in one regression
+  test. Structurally valid expired receipt presentations now receive a precise
+  reissue instruction instead of the generic unsupported-carrier message
+  and the identity-only camera now identifies a valid Monas authority QR as a
+  Scan-tab context mismatch rather than claiming it is unsupported (0.22.13,
+  iOS build 43).
+
 - Verify live Site authority custody before an already trusted installation
   enters DAS local-authority retirement. A recovery-required host now completes
   retained Site Root custody without incorrectly chaining into DAS on the

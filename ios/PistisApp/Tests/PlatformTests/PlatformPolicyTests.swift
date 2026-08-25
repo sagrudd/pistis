@@ -18,6 +18,13 @@ final class PlatformPolicyTests: XCTestCase {
                 "{\"schema\":\"monas.site-root-genesis-registration-presentation.v1\"}"
             )
         )
+        let bundleReceipt =
+            "{\"schema\":\"monas.site-root-bundle-receipt-provision-presentation.v1\"}"
+        XCTAssertTrue(compatibility.accepts(bundleReceipt))
+        XCTAssertEqual(
+            MonasJSONScanRoute.classify(bundleReceipt),
+            .siteRootConvergence
+        )
         XCTAssertTrue(compatibility.accepts("PXFP2:P:bounded-presentation"))
         XCTAssertTrue(compatibility.accepts("PISTIS1:bounded-frame.0123456789abcdef"))
         XCTAssertFalse(compatibility.accepts("https://install.mnemosyne.co.uk"))
@@ -26,6 +33,11 @@ final class PlatformPolicyTests: XCTestCase {
                 "{\"schema\":\"monas.site-x509-first-provision-broker-presentation.v1\"}"
             )
         )
+        XCTAssertEqual(
+            QRPayloadProfile.pistisAuthenticationV2.rejection(for: bundleReceipt),
+            .monasRequestRequiresScanTab
+        )
+        XCTAssertNil(compatibility.rejection(for: bundleReceipt))
     }
 
     func testGenericScannerRoutesVerifiedFirstDevicePresentationToEnrolment() throws {
@@ -451,12 +463,20 @@ final class PlatformPolicyTests: XCTestCase {
             "This is not a supported Pistis QR code."
         )
         XCTAssertEqual(
+            PlatformFailure.monasRequestRequiresScanTab.safeUserMessage,
+            "This is a Monas authority QR. Open the Scan tab and scan it there. No proof was submitted."
+        )
+        XCTAssertEqual(
             PlatformFailure.invalidFirstDevicePresentation.safeUserMessage,
             "This first-device invitation could not be verified. Request a newly issued QR from Monas."
         )
         XCTAssertEqual(
             PlatformFailure.siteRootGenesisPresentationExpired.safeUserMessage,
             "This first-device QR has expired. Return to the install window and request a newly issued QR. No proof was submitted."
+        )
+        XCTAssertEqual(
+            PlatformFailure.siteRootBundleReceiptPresentationExpired.safeUserMessage,
+            "This Site Root receipt QR has expired. Return to Monas and request a newly issued QR. No proof was submitted."
         )
         XCTAssertFalse(
             PlatformFailure.signingFailed.safeUserMessage.localizedCaseInsensitiveContains(

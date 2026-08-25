@@ -14,12 +14,15 @@ struct PistisApp: App {
 }
 
 private struct AppContainerView: View {
-    @AppStorage("hasCompletedOnboarding") private var hasCompletedOnboarding = false
+    @AppStorage(PistisOnboardingState.completedKey)
+    private var hasCompletedOnboarding = false
     let siteRootTransport: any MonasSiteRootCeremonyTransport
 
     var body: some View {
         if hasCompletedOnboarding {
-            RootTabView(siteRootTransport: siteRootTransport)
+            RootTabView(siteRootTransport: siteRootTransport) {
+                hasCompletedOnboarding = false
+            }
         } else {
             OnboardingView {
                 hasCompletedOnboarding = true

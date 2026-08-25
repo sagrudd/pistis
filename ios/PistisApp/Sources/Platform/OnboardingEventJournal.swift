@@ -481,6 +481,15 @@ final class OnboardingEventJournal: OnboardingEventRecording {
         try persist(try events().filter { !acknowledged.contains($0.id) })
     }
 
+    /// Erase the bounded, non-authoritative onboarding diagnostic outbox.
+    func resetAllLocalEvents() {
+        defaults.removeObject(forKey: key)
+        NotificationCenter.default.post(
+            name: Self.journalDidChangeNotification,
+            object: nil
+        )
+    }
+
     private func persist(_ events: [OnboardingEvent]) throws {
         let encoder = JSONEncoder()
         encoder.outputFormatting = [.sortedKeys]
@@ -529,7 +538,9 @@ extension PlatformFailure {
         case .cameraPermissionDenied, .cameraUnavailable:
             .camera
         case .qrPayloadTooLarge, .qrPayloadUnsupported,
-             .invalidFirstDevicePresentation, .siteRootGenesisPresentationExpired:
+             .monasRequestRequiresScanTab,
+             .invalidFirstDevicePresentation, .siteRootGenesisPresentationExpired,
+             .siteRootBundleReceiptPresentationExpired:
             .qrValidation
         case .secureHardwareUnavailable, .keyCreationFailed, .keyNotFound,
              .keyInvalidated, .siteRootAuthorityKeyMissing,

@@ -472,14 +472,29 @@ struct MonasSiteRootConvergenceTransport: MonasSiteRootConvergenceSubmitting, Se
             "detached_cose_sign1_b64url": SiteRootConvergenceEncoding.encode(detachedCOSE),
         ]
         let data = try await postJSON(body, endpoint: endpoint, maximum: 8_192)
-        let object = try strictObject(data)
-        guard Set(object.keys) == ["schema", "purpose", "generation"],
+        return try Self.parseBundleReceiptProvisionAccepted(
+            data, expectedGeneration: presentation.receiptKeyGeneration
+        )
+    }
+
+    /// Decode the exact Monas relay response. Keeping this boundary independently
+    /// testable prevents a locally invented response field from surviving while
+    /// the production Rust relay emits a different closed JSON contract.
+    static func parseBundleReceiptProvisionAccepted(
+        _ data: Data, expectedGeneration: UInt64
+    ) throws -> UInt64 {
+        let object: [String: StrictJSONObject.Value]
+        do { object = try StrictJSONObject(data: data, maximumBytes: 1_024).values }
+        catch { throw PlatformFailure.siteRootAuthorityUnavailable }
+        guard Set(object.keys) == ["schema", "purpose", "receipt_key_generation"],
               SiteRootConvergenceEncoding.string(object, "schema")
                 == "monas.site-root-bundle-receipt-provision-accepted.v1",
               SiteRootConvergenceEncoding.string(object, "purpose")
                 == SiteRootConvergenceProfileV2.provisionPurpose,
-              let generation = SiteRootConvergenceEncoding.positiveUInt64(object, "generation"),
-              generation == presentation.receiptKeyGeneration
+              let generation = SiteRootConvergenceEncoding.positiveUInt64(
+                  object, "receipt_key_generation"
+              ),
+              generation == expectedGeneration
         else { throw PlatformFailure.siteRootAuthorityUnavailable }
         return generation
     }
@@ -826,6 +841,37 @@ struct MonasSiteRootConvergenceTransport: MonasSiteRootConvergenceSubmitting, Se
     }
 }
 
+/// Bounded readiness hand-off between one-use receipt provision and the
+/// steady attended-unlock runtime. Provision success is durable before the
+/// host finalizer can expose its new Unix socket, so only that coarse,
+/// transient authority-unavailable result is eligible for a short retry.
+enum SiteRootBundleReceiptUnlockReadiness {
+    static let maximumAttempts = 41
+
+    static func awaitValue<Value: Sendable>(
+        maximumAttempts: Int = 41,
+        fetch: @Sendable () async throws -> Value,
+        pause: @Sendable () async throws -> Void = {
+            try await Task.sleep(for: .milliseconds(250))
+        }
+    ) async throws -> Value {
+        guard maximumAttempts > 0 else {
+            throw PlatformFailure.siteRootAuthorityUnavailable
+        }
+        for attempt in 1 ... maximumAttempts {
+            do {
+                return try await fetch()
+            } catch let failure as PlatformFailure
+                where failure == .siteRootAuthorityUnavailable
+            {
+                guard attempt < maximumAttempts else { throw failure }
+                try await pause()
+            }
+        }
+        throw PlatformFailure.siteRootAuthorityUnavailable
+    }
+}
+
 struct SiteRootConvergenceAckRecordV2: Codable, Equatable, Sendable {
     let siteUUID: String
     let targetIDB64URL: String
@@ -862,6 +908,21 @@ final class SiteRootConvergenceAckStoreV2: @unchecked Sendable {
             throw PlatformFailure.siteRootAuthorityUnavailable
         }
         return record
+    }
+
+    /// Delete this phone's acknowledgement-key registration projection.
+    /// Deleting the associated Secure Enclave key is a separate reset step so
+    /// either failure can be reported without hiding partial completion.
+    func resetLocalRecord() throws {
+        let query: [CFString: Any] = [
+            kSecClass: kSecClassGenericPassword,
+            kSecAttrService: service,
+            kSecAttrAccount: account,
+        ]
+        let status = SecItemDelete(query as CFDictionary)
+        guard status == errSecSuccess || status == errSecItemNotFound else {
+            throw PlatformFailure.enrolmentStorageFailed
+        }
     }
 
     private func load() throws -> SiteRootConvergenceAckRecordV2? {
@@ -954,8 +1015,14 @@ struct SiteRootConvergenceServiceV2: Sendable {
         let cose = try DetachedES256Cose.envelope(protected: protected, signature: signature)
         _ = try await transport.submitBundleReceiptProvision(presentation, detachedCOSE: cose)
         didProvision()
-        let unlock = try await transport.fetchBundleReceiptUnlock(
-            nowUnixSeconds: Self.nowUnixSeconds()
+        let convergenceTransport = transport
+        let unlock = try await SiteRootBundleReceiptUnlockReadiness.awaitValue(
+            maximumAttempts: SiteRootBundleReceiptUnlockReadiness.maximumAttempts,
+            fetch: {
+                try await convergenceTransport.fetchBundleReceiptUnlock(
+                    nowUnixSeconds: Self.nowUnixSeconds()
+                )
+            }
         )
         let rewrap = try SecureEnclaveSiteRootBundleReceiptRewrapProducerV1()
             .produce(unlock, using: ceremony)

@@ -87,8 +87,8 @@ local queue or offline authorisation is permitted.
 
 ## First-install QR regression gate
 
-The first-install route carries three deliberately different QR families in
-this fixed order:
+The first-install route carries deliberately different QR families in a fixed
+host-driven order, including:
 
 * the initial ``monas.site-root-genesis-registration-presentation.v1`` JSON
   presentation, which is routed to the Site Root/App Attest coordinator
@@ -98,16 +98,32 @@ this fixed order:
 * the subsequent ``monas.site-x509-first-provision-broker-presentation.v1``
   JSON presentation, which is submitted only to the fixed install broker and
   creates the reviewed native TLS profile; and
+* the direct
+  ``monas.site-root-bundle-receipt-provision-presentation.v1`` JSON
+  presentation, which provisions the generation-bound Site Root receipt key
+  through the pinned native authority. Its embedded Thesaurophylax canonical
+  challenge uses one-byte tags and unsigned 32-bit big-endian field lengths;
+  a route-only or 16-bit synthetic fixture is not a production-wire test; and
 * the final signed ``PISTIS1`` v4/kind-3 first-device presentation, which is
   verified by ``FirstDevicePresentationV4`` before provider enrolment. When
   this presentation is captured by the generic Scan surface, Pistis opens the
   existing first-device flow and begins the bounded GitHub device exchange;
   ordinary authentication ``PISTIS1`` frames remain on the login route.
 
+Every Monas JSON presentation must be scanned from Pistis's multi-family
+``Scan`` tab. The deliberately narrow ``Enrol first device`` camera accepts
+only a signed ``PISTIS1`` identity presentation. If a Monas authority frame is
+shown to that camera, Pistis must identify the scanner-context mismatch and
+direct the operator to the ``Scan`` tab; it must not call the structurally
+valid authority presentation unsupported.
+
 Run ``scripts/verify-first-device-qr-contract.sh`` and
 ``scripts/verify-host-agnostic-app-contract.sh`` in every release build.
 The iOS platform tests must also pass, including the regression test proving
-that the attended scanner accepts all three families and rejects a plain URL.
+that the attended scanner accepts every listed family, routes a
+production-shaped bundle-receipt presentation to protected review, validates
+its exact 337-byte 32-bit-length canonical challenge, reports a
+scanner-context mismatch precisely, and rejects a plain URL.
 A build that only accepts ``PISTIS1`` is incomplete: it cannot perform the
 initial Site Root ceremony on a new iPhone. A fresh-device build may perform
 genesis only through the fixed broker; direct Site Root submissions remain

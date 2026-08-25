@@ -24,6 +24,12 @@ require_text ios/PistisApp/Sources/App/SiteRootConvergenceCoordinator.swift 'cas
 require_text ios/PistisApp/Sources/App/ScanAndApprovalViews.swift 'MonasSiteX509FirstProvisionBrokerTransport'
 require_text ios/PistisApp/Sources/Platform/SiteRootConvergenceService.swift 'MonasSiteX509FirstProvisionBrokerTransport'
 require_text ios/PistisApp/Sources/Platform/SiteRootConvergenceProtocol.swift 'x509BrokerProvisionSchema ='
+require_text ios/PistisApp/Sources/Platform/SiteRootConvergenceProtocol.swift 'site-root-bundle-receipt-provision-presentation.v1'
+require_text ios/PistisApp/Sources/Platform/SiteRootConvergenceProtocol.swift 'private struct SiteRootProvisionTLVReader'
+require_text ios/PistisApp/Tests/PlatformTests/SiteRootConvergenceProtocolTests.swift 'XCTAssertEqual(Array(challenge.prefix(5)), [1, 0, 0, 0, 62])'
+require_text ios/PistisApp/Tests/PlatformTests/SiteRootConvergenceProtocolTests.swift 'XCTAssertThrowsError(try legacy.validateChallenge(deviceKeyID: deviceKeyID))'
+require_text ios/PistisApp/Sources/App/ScanAndApprovalViews.swift 'case .siteRootConvergence:'
+require_text ios/PistisApp/Sources/Platform/QRScannerAdapter.swift 'return .monasRequestRequiresScanTab'
 require_text ios/PistisApp/Sources/App/SiteX509FirstProvisionOfflineCoordinator.swift 'SiteX509FirstProvisionOfflinePresentationV2'
 require_text ios/PistisApp/Sources/Platform/SiteRootGenesisRegistration.swift 'monas.site-root-genesis-registration-presentation.v1'
 

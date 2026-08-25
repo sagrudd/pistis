@@ -343,9 +343,8 @@ final class PlatformPolicyTests: XCTestCase {
         )
     }
 
-    func testRuntimeProfileFactoryDoesNotMakeBundleConfigurationAuthoritative() throws {
-        let transport = ProductionMonasSiteRootTransportFactory.make(
-            verifiedRuntimeProfile: [
+    func testSignedDeploymentProfileRestoresOnlyItsExactNativeAuthority() throws {
+        let profile: [String: Any] = [
                 MonasSiteRootAuthorityConfiguration.infoDictionaryKey:
                     "https://host-a.example.test",
                 MonasSiteRootAuthorityConfiguration.trustModeInfoDictionaryKey:
@@ -353,8 +352,16 @@ final class PlatformPolicyTests: XCTestCase {
                 MonasSiteRootAuthorityConfiguration.spkiInfoDictionaryKey:
                     "ERERERERERERERERERERERERERERERERERERERERERE",
             ]
+        let transport = ProductionMonasSiteRootTransportFactory.make(
+            signedDeploymentProfile: profile
         )
         XCTAssertTrue(transport is MonasSiteRootDelegationTransport)
+        XCTAssertEqual(transport.genesisAuthorityOrigin?.host, "host-a.example.test")
+        XCTAssertTrue(
+            ProductionMonasSiteRootTransportFactory.make(
+                verifiedRuntimeProfile: profile
+            ) is MonasSiteRootDelegationTransport
+        )
         XCTAssertTrue(
             ProductionMonasSiteRootTransportFactory.make()
                 is MonasSiteRootGenesisBrokerTransport
@@ -446,6 +453,10 @@ final class PlatformPolicyTests: XCTestCase {
         XCTAssertEqual(
             PlatformFailure.invalidFirstDevicePresentation.safeUserMessage,
             "This first-device invitation could not be verified. Request a newly issued QR from Monas."
+        )
+        XCTAssertEqual(
+            PlatformFailure.siteRootGenesisPresentationExpired.safeUserMessage,
+            "This first-device QR has expired. Return to the install window and request a newly issued QR. No proof was submitted."
         )
         XCTAssertFalse(
             PlatformFailure.signingFailed.safeUserMessage.localizedCaseInsensitiveContains(

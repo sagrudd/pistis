@@ -215,7 +215,10 @@ final class DeviceCheckAppAttestService: AppleAppAttestServicing, @unchecked Sen
                     continuation.resume(returning: keyID)
                 } else {
                     continuation.resume(
-                        throwing: error ?? PlatformFailure.appAttestKeyCreationFailed
+                        throwing: Self.platformFailure(
+                            error,
+                            fallback: .appAttestKeyCreationFailed
+                        )
                     )
                 }
             }
@@ -229,7 +232,10 @@ final class DeviceCheckAppAttestService: AppleAppAttestServicing, @unchecked Sen
                     continuation.resume(returning: object)
                 } else {
                     continuation.resume(
-                        throwing: error ?? PlatformFailure.appAttestAttestationFailed
+                        throwing: Self.platformFailure(
+                            error,
+                            fallback: .appAttestAttestationFailed
+                        )
                     )
                 }
             }
@@ -243,11 +249,22 @@ final class DeviceCheckAppAttestService: AppleAppAttestServicing, @unchecked Sen
                     continuation.resume(returning: assertion)
                 } else {
                     continuation.resume(
-                        throwing: error ?? PlatformFailure.appAttestAssertionFailed
+                        throwing: Self.platformFailure(
+                            error,
+                            fallback: .appAttestAssertionFailed
+                        )
                     )
                 }
             }
         }
+    }
+
+    private static func platformFailure(
+        _ error: Error?,
+        fallback: PlatformFailure
+    ) -> PlatformFailure {
+        guard let error else { return fallback }
+        return (error as? PlatformFailure) ?? fallback
     }
 }
 
@@ -500,11 +517,28 @@ final class AppleAppAttestClient: @unchecked Sendable {
             throw PlatformFailure.appAttestInvalidInput
         }
 
-        let keyID = try await existingOrNewKeyID()
+        // Apple permits attestation only once for each App Attest key. A
+        // previously retained key therefore cannot be reused for a fresh
+        // registration after an interrupted ceremony. Generate a distinct
+        // key for this exact registration and retain its opaque identifier
+        // only after Apple has returned genuine attestation evidence; the
+        // retained identifier is then used exclusively for the following
+        // assertion flow.
+        let keyID = try await newRegistrationKeyID()
         let attestationObject = try await attest(
             keyID: keyID,
             clientDataHash: clientDataHash
         )
+        // Do not retain a key that Apple did not successfully attest. This
+        // keeps an interrupted registration retry from treating an unproven
+        // key as the device's registered App Attest identity.
+        do {
+            try keyIDStore.saveKeyID(keyID)
+        } catch let failure as PlatformFailure {
+            throw failure
+        } catch {
+            throw PlatformFailure.appAttestKeyCreationFailed
+        }
         return try AppleAppAttestRegistrationEnvelope(
             ceremonyID: ceremonyID,
             siteTrustDomain: siteTrustDomain,
@@ -526,8 +560,8 @@ final class AppleAppAttestClient: @unchecked Sendable {
 
         let clientData = Self.assertionClientDataPrefix + bootstrap.challengeDigest
         let clientDataHash = Data(SHA256.hash(data: clientData))
-        let assertion = try await service.generateAssertion(
-            keyID,
+        let assertion = try await generateAssertion(
+            keyID: keyID,
             clientDataHash: clientDataHash
         )
         return try AppleAppAttestAssertionEnvelope(
@@ -546,8 +580,9 @@ final class AppleAppAttestClient: @unchecked Sendable {
             let decodedKeyID = Data(base64Encoded: keyID),
             decodedKeyID == challenge.keyID
         else { throw PlatformFailure.appAttestUnavailable }
-        let assertion = try await service.generateAssertion(
-            keyID, clientDataHash: challenge.clientDataHash
+        let assertion = try await generateAssertion(
+            keyID: keyID,
+            clientDataHash: challenge.clientDataHash
         )
         return try AppleAppAttestAssertionEnvelope(
             ceremonyID: challenge.ceremonyID, assertion: assertion
@@ -565,8 +600,9 @@ final class AppleAppAttestClient: @unchecked Sendable {
         else { throw PlatformFailure.appAttestUnavailable }
         let clientData = Self.assertionClientDataPrefix + presentation.challengeDigest
         let assertionClientDataHash = Data(SHA256.hash(data: clientData))
-        let assertion = try await service.generateAssertion(
-            keyID, clientDataHash: assertionClientDataHash
+        let assertion = try await generateAssertion(
+            keyID: keyID,
+            clientDataHash: assertionClientDataHash
         )
         return try AppleAppAttestAssertionEnvelope(
             ceremonyID: presentation.ceremonyID, assertion: assertion
@@ -587,7 +623,10 @@ final class AppleAppAttestClient: @unchecked Sendable {
             let keyID = existingKeyID(), let decodedKeyID = Data(base64Encoded: keyID),
             decodedKeyID == expectedKeyID
         else { throw PlatformFailure.appAttestUnavailable }
-        let assertion = try await service.generateAssertion(keyID, clientDataHash: clientDataHash)
+        let assertion = try await generateAssertion(
+            keyID: keyID,
+            clientDataHash: clientDataHash
+        )
         return try AppleAppAttestAssertionEnvelope(ceremonyID: ceremonyID, assertion: assertion)
     }
 
@@ -602,7 +641,7 @@ final class AppleAppAttestClient: @unchecked Sendable {
             expectedKeyID.utf8.count <= 128, clientDataHash.count == 32,
             let keyID = existingKeyID(), keyID == expectedKeyID
         else { throw PlatformFailure.appAttestUnavailable }
-        return try await service.generateAssertion(keyID, clientDataHash: clientDataHash)
+        return try await generateAssertion(keyID: keyID, clientDataHash: clientDataHash)
     }
 
     /// Generates and attests a distinct candidate key without changing the
@@ -625,7 +664,7 @@ final class AppleAppAttestClient: @unchecked Sendable {
             else { throw PlatformFailure.appAttestInvalidInput }
             pending = retained
         } else {
-            let replacement = try await service.generateKey()
+            let replacement = try await newRegistrationKeyID()
             pending = try PendingAppAttestReplacementKeyV1(
                 transactionUUID: transactionUUID,
                 expectedCurrentKeyID: expectedCurrentKeyID,
@@ -643,7 +682,7 @@ final class AppleAppAttestClient: @unchecked Sendable {
         }
         return (
             pending,
-            try await service.attestKey(pending.replacementKeyID, clientDataHash: hash)
+            try await attest(keyID: pending.replacementKeyID, clientDataHash: hash)
         )
     }
 
@@ -683,20 +722,39 @@ final class AppleAppAttestClient: @unchecked Sendable {
         try replacementStore.discardPending(transactionUUID: transactionUUID)
     }
 
-    private func existingOrNewKeyID() async throws -> String {
-        if let existing = existingKeyID() {
-            return existing
+    private func newRegistrationKeyID() async throws -> String {
+        let keyID: String
+        do {
+            keyID = try await service.generateKey()
+        } catch let failure as PlatformFailure {
+            throw failure
+        } catch {
+            throw PlatformFailure.appAttestKeyCreationFailed
         }
-        let keyID = try await service.generateKey()
         guard Data(base64Encoded: keyID) != nil else {
             throw PlatformFailure.appAttestKeyCreationFailed
         }
-        try keyIDStore.saveKeyID(keyID)
         return keyID
     }
 
     private func attest(keyID: String, clientDataHash: Data) async throws -> Data {
-        try await service.attestKey(keyID, clientDataHash: clientDataHash)
+        do {
+            return try await service.attestKey(keyID, clientDataHash: clientDataHash)
+        } catch let failure as PlatformFailure {
+            throw failure
+        } catch {
+            throw PlatformFailure.appAttestAttestationFailed
+        }
+    }
+
+    private func generateAssertion(keyID: String, clientDataHash: Data) async throws -> Data {
+        do {
+            return try await service.generateAssertion(keyID, clientDataHash: clientDataHash)
+        } catch let failure as PlatformFailure {
+            throw failure
+        } catch {
+            throw PlatformFailure.appAttestAssertionFailed
+        }
     }
 
     private func existingKeyID() -> String? {

@@ -125,6 +125,7 @@ struct ScanView: View {
             service: recoveryService
         ))
         let convergenceTransport: (any MonasSiteRootConvergenceSubmitting)?
+        let brokerConvergenceTransport = try? MonasSiteX509FirstProvisionBrokerTransport()
         let convergenceAuthorityOrigin: URL?
         if let pinned = siteRootTransport as? MonasSiteRootDelegationTransport {
             convergenceTransport = try? pinned.siteRootConvergenceTransport()
@@ -133,11 +134,12 @@ struct ScanView: View {
             // The fixed install broker is the only allowed first-phase
             // transport before the customer appliance has a Site Root
             // authority profile. Direct authority phases remain unavailable.
-            convergenceTransport = try? MonasSiteX509FirstProvisionBrokerTransport()
+            convergenceTransport = brokerConvergenceTransport
             convergenceAuthorityOrigin = nil
         }
         _siteRootConvergence = StateObject(wrappedValue: SiteRootConvergenceCoordinator(
             transport: convergenceTransport,
+            brokerTransport: brokerConvergenceTransport,
             authorityOrigin: convergenceAuthorityOrigin
         ))
         _siteOriginRelocation = StateObject(wrappedValue: SiteOriginRelocationCoordinator(
@@ -334,7 +336,8 @@ struct ScanView: View {
                     }
                     return
                 }
-                if payload.text.contains(SiteRootConvergenceProfileV2.x509BrokerProvisionSchema)
+                if payload.text.contains(SiteRootConvergenceProfileV2.x509ContinuationRecoverySchema)
+                    || payload.text.contains(SiteRootConvergenceProfileV2.x509BrokerProvisionSchema)
                     || payload.text.contains(SiteRootConvergenceProfileV2.x509ProvisionSchema)
                     || payload.text.contains(SiteRootConvergenceProfileV2.provisionSchema)
                     || payload.text.contains(SiteRootConvergenceProfileV2.ackSchema)
@@ -359,7 +362,7 @@ struct ScanView: View {
                    let pinned = siteRootTransport as? MonasSiteRootDelegationTransport,
                    !pinned.isConfiguredAuthorityHost(review.destination)
                 {
-                    siteRootCeremony.reset()
+                    siteRootCeremony.reject(.siteRootAuthorityUnavailable)
                     scanFailure = .siteRootAuthorityUnavailable
                     return
                 }
@@ -930,14 +933,18 @@ private struct SiteRootDelegationReviewView: View {
                             Task { await coordinator.approve() }
                         }
                         Button("Deny") {
-                            coordinator.reset()
+                            coordinator.cancel()
                             dismiss()
                         }
                         .font(.headline)
                         .foregroundStyle(MnColor.danger)
                         .frame(maxWidth: .infinity, minHeight: MnMetrics.minimumTarget)
                     case .registeringFirstDevice:
-                        MnStatusLabel(text: "Registering protected first device", kind: .warning)
+                        if let progress = coordinator.firstDeviceProgress {
+                            SiteRootFirstDeviceProgressView(progress: progress)
+                        } else {
+                            MnStatusLabel(text: "Registering protected first device", kind: .warning)
+                        }
                     case .signing:
                         MnStatusLabel(text: "Waiting for Face ID", kind: .warning)
                     case .attesting:
@@ -978,7 +985,10 @@ private struct SiteRootDelegationReviewView: View {
                             showInstallations()
                         }
                     case let .failed(failure):
-                        MnStatusLabel(text: "Proof was not submitted", kind: .danger)
+                        MnStatusLabel(text: "Site Root ceremony stopped safely", kind: .danger)
+                        if let progress = coordinator.firstDeviceProgress {
+                            SiteRootFirstDeviceProgressView(progress: progress, terminal: true)
+                        }
                         Text(failure.safeUserMessage)
                         MnPrimaryButton("Done") {
                             coordinator.reset()
@@ -996,7 +1006,7 @@ private struct SiteRootDelegationReviewView: View {
                 ToolbarItem(placement: .cancellationAction) {
                     if !coordinator.phase.isSubmitted {
                         Button("Cancel") {
-                            coordinator.reset()
+                            coordinator.cancel()
                             dismiss()
                         }
                         .frame(minHeight: MnMetrics.minimumTarget)
@@ -1004,6 +1014,44 @@ private struct SiteRootDelegationReviewView: View {
                 }
             }
             .mnScreenBackground()
+        }
+    }
+}
+
+private struct SiteRootFirstDeviceProgressView: View {
+    let progress: SiteRootFirstDeviceProgress
+    var terminal = false
+
+    var body: some View {
+        TimelineView(.periodic(from: Date(), by: 1)) { context in
+            MnPanel {
+                VStack(alignment: .leading, spacing: MnSpacing.x2) {
+                    HStack(alignment: .firstTextBaseline, spacing: MnSpacing.x2) {
+                        MnStatusLabel(
+                            text: terminal
+                                ? "Stopped at \(progress.stage.title)"
+                                : progress.stage.title,
+                            kind: terminal ? .danger : .warning
+                        )
+                        Spacer(minLength: 0)
+                        if !terminal {
+                            ProgressView()
+                                .controlSize(.small)
+                                .accessibilityLabel("Operation in progress")
+                        }
+                    }
+                    Text(progress.stage.detail)
+                        .font(.footnote)
+                        .fixedSize(horizontal: false, vertical: true)
+                    Text(
+                        "\(progress.elapsedDescription(at: context.date)) · "
+                            + progress.stageElapsedDescription(at: context.date)
+                    )
+                        .font(.caption)
+                        .foregroundStyle(MnColor.textPrimary)
+                        .monospacedDigit()
+                }
+            }
         }
     }
 }

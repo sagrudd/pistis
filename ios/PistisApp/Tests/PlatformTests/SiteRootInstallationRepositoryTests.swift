@@ -136,6 +136,76 @@ final class SiteRootInstallationRepositoryTests: XCTestCase {
         ))
     }
 
+    func testBrokeredSiteX509CompletionCannotSkipAuthorityCustody() throws {
+        let suite = "pistis-site-root-brokered-x509-tests-\(UUID().uuidString)"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
+        defer { defaults.removePersistentDomain(forName: suite) }
+        let repository = SiteRootInstallationRepository(defaults: defaults)
+        try repository.recordRecoveredFirstCeremony(
+            authorityHost: "install.mnemosyne.co.uk",
+            redactedReference: "abc123…def4",
+            registeredAt: Date(timeIntervalSince1970: 1_000)
+        )
+
+        try repository.recordBrokeredSiteX509Completed()
+        try repository.recordBrokeredSiteX509Completed()
+
+        let record = try XCTUnwrap(repository.records().first)
+        XCTAssertEqual(record.authorityHost, "install.mnemosyne.co.uk")
+        XCTAssertEqual(record.setupPhase, .authorityCustodyRequired)
+    }
+
+    func testVerifiedIdentityEnrolmentRetiresOnlyItsIncompleteProjection() throws {
+        let suite = "pistis-site-root-identity-complete-tests-\(UUID().uuidString)"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
+        defer { defaults.removePersistentDomain(forName: suite) }
+        let repository = SiteRootInstallationRepository(defaults: defaults)
+        try repository.recordRecoveredFirstCeremony(
+            authorityHost: "192.168.0.193", redactedReference: "nuc123…0001",
+            registeredAt: Date(timeIntervalSince1970: 1_000)
+        )
+        try repository.recordRecoveredFirstCeremony(
+            authorityHost: "other.example.test", redactedReference: "other…0002",
+            registeredAt: Date(timeIntervalSince1970: 2_000)
+        )
+        try repository.recordAuthorityCustodyCompleted(authorityHost: "192.168.0.193")
+
+        try repository.recordIdentityEnrolmentCompleted(authorityHost: "192.168.0.193")
+        try repository.recordIdentityEnrolmentCompleted(authorityHost: "192.168.0.193")
+
+        let records = try repository.records()
+        XCTAssertEqual(records.map(\.authorityHost), ["other.example.test"])
+        XCTAssertEqual(records[0].setupPhase, .authorityCustodyRequired)
+    }
+
+    func testSignedNativeProfileRebindsBrokerSetupAndRestoresCustodyPhase() throws {
+        let suite = "pistis-site-root-native-rebind-tests-\(UUID().uuidString)"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
+        defer { defaults.removePersistentDomain(forName: suite) }
+        let repository = SiteRootInstallationRepository(defaults: defaults)
+        try repository.recordRecoveredFirstCeremony(
+            authorityHost: "install.mnemosyne.co.uk",
+            redactedReference: "abc123…def4",
+            registeredAt: Date(timeIntervalSince1970: 1_000)
+        )
+        try repository.recordBrokeredSiteX509Completed()
+        // 0.22.1--0.22.7 incorrectly projected brokered X.509 completion as
+        // identity-ready. A signed native profile must not trust that local
+        // projection as proof that host authority custody completed.
+        try repository.recordAuthorityCustodyCompleted(
+            authorityHost: "install.mnemosyne.co.uk"
+        )
+
+        try repository.bindBrokeredSetup(toNativeAuthorityHost: "192.168.0.193")
+        try repository.bindBrokeredSetup(toNativeAuthorityHost: "192.168.0.193")
+
+        let records = try repository.records()
+        let record = try XCTUnwrap(records.first)
+        XCTAssertEqual(records.count, 1)
+        XCTAssertEqual(record.authorityHost, "192.168.0.193")
+        XCTAssertEqual(record.setupPhase, .authorityCustodyRequired)
+    }
+
     func testReconciliationResponseAcceptsOnlyProofConsumedOrCompleted() throws {
         let accepted = """
         {"schema":"monas.site-root-genesis-installation-status.v1","state":"proof-consumed","redacted_reference":"abc123…def4","registered_at_unix_millis":1000}

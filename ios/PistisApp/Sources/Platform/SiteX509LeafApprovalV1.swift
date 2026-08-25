@@ -5,7 +5,7 @@ enum SiteX509LeafApprovalProfileV1 {
     static let contentType = "application/vnd.mnemosyne.pxla.v1"
     static let beginSchema = "monas.site-x509-leaf-approval-begin.v1"
     static let presentationSchema = "monas.site-x509-leaf-approval-presentation.v1"
-    static let submitSchema = "monas.site-x509-leaf-approval-submit.v1"
+    static let submitSchema = "monas.site-x509-leaf-approval-submission.v1"
     static let acceptedSchema = "monas.site-x509-leaf-approval-accepted.v1"
     static let presentationPath = "/v1/pistis/site-x509-leaf-approval/presentation"
     static let submitPath = "/v1/pistis/site-x509-leaf-approval/submit"
@@ -144,8 +144,6 @@ struct SiteX509LeafApprovalPresentationV1: Sendable {
                   cursor == data.count,
                   fields[0].count == 16, !fields[0].allSatisfy({ $0 == 0 }),
                   Self.identifier(fields[1]), Self.identifier(fields[2]),
-                  String(data: fields[1], encoding: .utf8)?.hasPrefix("x509-root-") == true,
-                  String(data: fields[2], encoding: .utf8)?.hasPrefix("x509-issuing-") == true,
                   fields[3].count == 16, !fields[3].allSatisfy({ $0 == 0 }),
                   let issued = Self.u64(fields[4]), let expires = Self.u64(fields[5]),
                   expires > issued, expires - issued <= 300,
@@ -214,6 +212,7 @@ struct SiteX509LeafApprovalPresentationV1: Sendable {
 
 struct SiteX509LeafApprovalSubmissionV1: Encodable, Sendable {
     let schema = SiteX509LeafApprovalProfileV1.submitSchema
+    let purpose = SiteX509LeafApprovalProfileV1.purpose
     let correlationIDB64: String
     let canonicalPayloadB64: String
     let transactionIDB64: String
@@ -223,7 +222,7 @@ struct SiteX509LeafApprovalSubmissionV1: Encodable, Sendable {
     let detachedCOSESign1B64: String
 
     enum CodingKeys: String, CodingKey {
-        case schema
+        case schema, purpose
         case correlationIDB64 = "correlation_id_b64"
         case canonicalPayloadB64 = "canonical_payload_b64"
         case transactionIDB64 = "transaction_id_b64"
@@ -283,11 +282,18 @@ final class SecureEnclaveSiteX509LeafApprovalProducerV1: @unchecked Sendable {
     func produce(
         _ presentation: SiteX509LeafApprovalPresentationV1
     ) async throws -> SiteX509LeafApprovalSubmissionV1 {
-        let record = try store.current()
-        try presentation.validateCurrentSigner(record)
         let ceremony = try await FaceIDCeremonyContext.authenticate(
             reason: "Approve the first DASObjectStore and Monas HTTPS certificates"
         )
+        return try produce(presentation, using: ceremony)
+    }
+
+    func produce(
+        _ presentation: SiteX509LeafApprovalPresentationV1,
+        using ceremony: FaceIDCeremonyContext
+    ) throws -> SiteX509LeafApprovalSubmissionV1 {
+        let record = try store.current()
+        try presentation.validateCurrentSigner(record)
         let signer = try SecureEnclaveSigner(
             namespace: "site-root-convergence-ack-v2",
             authenticationReason: "Approve the first DASObjectStore and Monas HTTPS certificates"

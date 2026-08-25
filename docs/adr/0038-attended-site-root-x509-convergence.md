@@ -2,6 +2,8 @@
 
 - Status: Accepted for the owner-operated internal deployment
 - Date: 2026-08-11
+- Amended: 2026-08-22 to make the already-decided PXAK registration ordering
+  explicit in the pre-native continuation
 - Decision owners: Pistis, Monas, Proxenos and Thesaurophylax
 - Issue: `PIS-X509-F1` (#448)
 - Upstream authority decision: accepted Proxenos ADR 0012
@@ -27,11 +29,29 @@ Pistis implements one ordered, fail-closed sequence:
    challenge with the existing Site Root device key.
 2. One atomic Site X.509 first-provision challenge approves two fresh server-side
    P-256 role keys. The root and issuer have distinct role purposes, records and
-   public bindings. No legacy plaintext key is imported.
-3. Pistis creates the distinct Secure Enclave namespace
-   `site-root-convergence-ack-v2`. One freshly evaluated `LAContext` is shared
-   only across its registration proof, using the existing Site Root key, and
-   the exact PXRA/v2 acknowledgement signature. Proxenos allocates the positive
+   public bindings. No legacy plaintext key is imported. Before the resulting
+   native leaf exists, the same fixed broker and signed-QR correlation carry
+   four ordered opaque continuations: root rewrap, issuer rewrap, PXAK
+   acknowledgement-key registration and the combined initial-leaf approval.
+   The registration phase is accepted by the fixed local Monas verifier and
+   Proxenos port before Proxenos can present a leaf challenge that names the
+   allocated acknowledgement-key generation. Pistis retains that exact
+   generation from the protected leaf presentation before signing it. The
+   original Face ID context may be reused
+   only for this bounded sequence; every operation retains its distinct
+   purpose, parser, key namespace and local acceptance boundary. No second QR,
+   proxy, tunnel, temporary certificate or broker signing authority is added.
+   A result accepted before a continuation-capable phone build existed may use
+   one purpose-fixed continuation-recovery QR bound to the retained result and
+   broker proof-collection marker. It resumes only these four operations and
+   cannot reissue Site Root or first provision.
+3. Pistis creates or opens the distinct Secure Enclave namespace
+   `site-root-convergence-ack-v2`. Within the pre-native continuation, one
+   freshly evaluated `LAContext` is shared only across its registration proof,
+   using the existing Site Root key, and the immediately following
+   initial-leaf approval. A later direct convergence ceremony may instead
+   share its fresh context across an idempotent registration proof and the
+   exact PXRA/v2 acknowledgement signature. Proxenos allocates the positive
    acknowledgement generation; Pistis retains but never invents or resets it.
 
 All COSE proofs are untagged detached ES256 Sign1 values with canonical

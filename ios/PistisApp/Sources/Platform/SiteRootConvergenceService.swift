@@ -42,12 +42,34 @@ protocol MonasSiteRootConvergenceSubmitting: Sendable {
     ) async throws
 }
 
+enum SiteX509BrokerContinuationPhaseV1: String, Sendable {
+    case rootUnlock = "root-unlock"
+    case issuerUnlock = "issuer-unlock"
+    case ackRegistration = "ack-registration"
+    case leafApproval = "leaf-approval"
+}
+
+struct SiteX509BrokerContinuationPresentationV1: Sendable {
+    let payload: Data
+    let sha256: Data
+}
+
+protocol MonasSiteX509BrokerContinuing: Sendable {
+    func awaitSiteX509Continuation(
+        correlation: Data, phase: SiteX509BrokerContinuationPhaseV1
+    ) async throws -> SiteX509BrokerContinuationPresentationV1?
+    func submitSiteX509Continuation(
+        correlation: Data, phase: SiteX509BrokerContinuationPhaseV1,
+        presentationSHA256: Data, submission: Data
+    ) async throws
+}
+
 /// The first Site X.509 approval is deliberately brokered by the fixed
 /// install service. It must remain available before a customer appliance has
 /// a native Site Root authority profile, while every later direct authority
 /// operation remains unavailable until the signed build configuration exists.
 struct MonasSiteX509FirstProvisionBrokerTransport: MonasSiteRootConvergenceSubmitting,
-    Sendable
+    MonasSiteX509BrokerContinuing, Sendable
 {
     let authorityOrigin: URL
     private let session: URLSession
@@ -184,6 +206,79 @@ struct MonasSiteX509FirstProvisionBrokerTransport: MonasSiteRootConvergenceSubmi
         }
     }
 
+    func awaitSiteX509Continuation(
+        correlation: Data, phase: SiteX509BrokerContinuationPhaseV1
+    ) async throws -> SiteX509BrokerContinuationPresentationV1? {
+        guard correlation.count == 32 else { throw PlatformFailure.invalidConfiguration }
+        let endpoint = try fixedEndpoint(
+            SiteRootConvergenceProfileV2.x509BrokerContinuationPresentationPath
+        )
+        let deadline = Date().addingTimeInterval(300)
+        while Date() < deadline {
+            let data = try await postContinuationJSON([
+                "schema": "mnemosyne.monas.first-install-broker.site-x509-continuation-presentation-poll.v1",
+                "correlation_b64url": SiteRootConvergenceEncoding.encode(correlation),
+                "phase": phase.rawValue,
+            ], endpoint: endpoint, maximum: 2_048)
+            let object = try StrictJSONObject(data: data, maximumBytes: 18_000).values
+            guard SiteRootConvergenceEncoding.string(object, "schema")
+                    == SiteRootConvergenceProfileV2.x509BrokerResponseSchema,
+                  let state = SiteRootConvergenceEncoding.string(object, "state")
+            else { throw PlatformFailure.siteRootAuthorityUnavailable }
+            switch state {
+            case "pending", "submitted":
+                guard Set(object.keys) == ["schema", "state"] else {
+                    throw PlatformFailure.siteRootAuthorityUnavailable
+                }
+                try await Task.sleep(for: .seconds(2))
+            case "accepted":
+                guard Set(object.keys) == ["schema", "state"] else {
+                    throw PlatformFailure.siteRootAuthorityUnavailable
+                }
+                return nil
+            case "ready":
+                guard Set(object.keys) == [
+                    "schema", "state", "presentation_b64url",
+                    "presentation_sha256_b64url",
+                ], let payload = SiteRootConvergenceEncoding.bytes(
+                    object, "presentation_b64url", maximum: 16_384, nonzero: true
+                ), let digest = SiteRootConvergenceEncoding.bytes(
+                    object, "presentation_sha256_b64url", count: 32, nonzero: true
+                ), Data(SHA256.hash(data: payload)) == digest
+                else { throw PlatformFailure.siteRootAuthorityUnavailable }
+                return SiteX509BrokerContinuationPresentationV1(
+                    payload: payload, sha256: digest
+                )
+            default: throw PlatformFailure.siteRootAuthorityUnavailable
+            }
+        }
+        throw PlatformFailure.siteRootAuthorityUnavailable
+    }
+
+    func submitSiteX509Continuation(
+        correlation: Data, phase: SiteX509BrokerContinuationPhaseV1,
+        presentationSHA256: Data, submission: Data
+    ) async throws {
+        guard correlation.count == 32, presentationSHA256.count == 32,
+              !submission.isEmpty, submission.count <= 16_384
+        else { throw PlatformFailure.invalidConfiguration }
+        let data = try await postContinuationJSON([
+            "schema": "mnemosyne.monas.first-install-broker.site-x509-continuation-submission.v1",
+            "correlation_b64url": SiteRootConvergenceEncoding.encode(correlation),
+            "phase": phase.rawValue,
+            "presentation_sha256_b64url": SiteRootConvergenceEncoding.encode(presentationSHA256),
+            "submission_b64url": SiteRootConvergenceEncoding.encode(submission),
+        ], endpoint: try fixedEndpoint(
+            SiteRootConvergenceProfileV2.x509BrokerContinuationSubmissionPath
+        ), maximum: 24_000)
+        let object = try StrictJSONObject(data: data, maximumBytes: 1_024).values
+        guard Set(object.keys) == ["schema", "state"],
+              SiteRootConvergenceEncoding.string(object, "schema")
+                == SiteRootConvergenceProfileV2.x509BrokerResponseSchema,
+              SiteRootConvergenceEncoding.string(object, "state") == "submitted"
+        else { throw PlatformFailure.siteRootAuthorityUnavailable }
+    }
+
     func registerAckKey(
         _: SiteRootConvergenceAckRegistrationV2
     ) async throws -> SiteRootConvergenceAckRegistrationResultV2 {
@@ -291,6 +386,34 @@ struct MonasSiteX509FirstProvisionBrokerTransport: MonasSiteRootConvergenceSubmi
         } catch {
             throw PlatformFailure.siteRootAuthorityUnavailable
         }
+    }
+
+    private func postContinuationJSON(
+        _ object: [String: Any], endpoint: URL, maximum: Int
+    ) async throws -> Data {
+        guard JSONSerialization.isValidJSONObject(object) else {
+            throw PlatformFailure.invalidConfiguration
+        }
+        let body = try JSONSerialization.data(withJSONObject: object, options: [.sortedKeys])
+        guard body.count <= maximum else { throw PlatformFailure.invalidConfiguration }
+        var request = URLRequest(url: endpoint)
+        request.httpMethod = "POST"
+        request.timeoutInterval = 15
+        request.httpBody = body
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.setValue("application/json", forHTTPHeaderField: "Accept")
+        request.setValue("no-store", forHTTPHeaderField: "Cache-Control")
+        do {
+            let (data, rawResponse) = try await session.data(for: request)
+            guard let response = rawResponse as? HTTPURLResponse,
+                  response.url == endpoint, [200, 202].contains(response.statusCode),
+                  data.count <= 18_000,
+                  response.value(forHTTPHeaderField: "Cache-Control")?
+                    .lowercased().contains("no-store") == true
+            else { throw PlatformFailure.siteRootAuthorityUnavailable }
+            return data
+        } catch let failure as PlatformFailure { throw failure }
+        catch { throw PlatformFailure.siteRootAuthorityUnavailable }
     }
 }
 
@@ -763,23 +886,48 @@ final class SiteRootConvergenceAckStoreV2: @unchecked Sendable {
     }
 }
 
+private struct BrokerSiteX509AuthorizationV1: @unchecked Sendable {
+    let detachedCOSE: Data
+    let ceremony: FaceIDCeremonyContext?
+}
+
 struct SiteRootConvergenceServiceV2: Sendable {
     private let transport: any MonasSiteRootConvergenceSubmitting
+    private let continuationTransport: (any MonasSiteX509BrokerContinuing)?
     private let store: SiteRootConvergenceAckStoreV2
-    private let brokerProofFactory: @Sendable (
+    private let brokerAuthorizationFactory: @Sendable (
         SiteX509FirstProvisionBrokerPresentationV1
-    ) async throws -> Data
+    ) async throws -> BrokerSiteX509AuthorizationV1
 
     init(
         transport: any MonasSiteRootConvergenceSubmitting,
+        continuationTransport: (any MonasSiteX509BrokerContinuing)? = nil,
+        store: SiteRootConvergenceAckStoreV2 = SiteRootConvergenceAckStoreV2()
+    ) {
+        self.transport = transport
+        self.continuationTransport = continuationTransport
+            ?? (transport as? any MonasSiteX509BrokerContinuing)
+        self.store = store
+        brokerAuthorizationFactory = SiteRootConvergenceServiceV2.makeBrokerAuthorization
+    }
+
+    init(
+        transport: any MonasSiteRootConvergenceSubmitting,
+        continuationTransport: (any MonasSiteX509BrokerContinuing)? = nil,
         store: SiteRootConvergenceAckStoreV2 = SiteRootConvergenceAckStoreV2(),
         brokerProofFactory: @escaping @Sendable (
             SiteX509FirstProvisionBrokerPresentationV1
-        ) async throws -> Data = SiteRootConvergenceServiceV2.makeBrokerProof
+        ) async throws -> Data
     ) {
         self.transport = transport
+        self.continuationTransport = continuationTransport
+            ?? (transport as? any MonasSiteX509BrokerContinuing)
         self.store = store
-        self.brokerProofFactory = brokerProofFactory
+        brokerAuthorizationFactory = { presentation in
+            BrokerSiteX509AuthorizationV1(
+                detachedCOSE: try await brokerProofFactory(presentation), ceremony: nil
+            )
+        }
     }
 
     @MainActor
@@ -844,8 +992,41 @@ struct SiteRootConvergenceServiceV2: Sendable {
         // later proof submission fails; a failed authorization must not make
         // the same protected presentation reusable.
         try await transport.reserveSiteX509FirstProvisionBroker(presentation)
-        let cose = try await brokerProofFactory(presentation)
-        try await transport.submitSiteX509FirstProvisionBroker(presentation, detachedCOSE: cose)
+        let authorization = try await brokerAuthorizationFactory(presentation)
+        try await transport.submitSiteX509FirstProvisionBroker(
+            presentation, detachedCOSE: authorization.detachedCOSE
+        )
+        if let continuation = continuationTransport,
+           let ceremony = authorization.ceremony
+        {
+            try await continueBrokerSiteX509(
+                correlation: presentation.correlation,
+                expectedSiteUUID: presentation.siteUUID,
+                transport: continuation,
+                authorizer: SecureEnclaveSiteX509BrokerContinuationAuthorizerV2(
+                    ceremony: ceremony, store: store
+                )
+            )
+        }
+    }
+
+    func continueRecoveredSiteX509(
+        _ presentation: SiteX509ContinuationRecoveryPresentationV1
+    ) async throws {
+        guard let continuation = continuationTransport else {
+            throw PlatformFailure.siteRootAuthorityUnavailable
+        }
+        let ceremony = try await FaceIDCeremonyContext.authenticate(
+            reason: "Resume accepted Site X.509 custody and certificate approval"
+        )
+        try await continueBrokerSiteX509(
+            correlation: presentation.correlation,
+            expectedSiteUUID: presentation.siteUUID,
+            transport: continuation,
+            authorizer: SecureEnclaveSiteX509BrokerContinuationAuthorizerV2(
+                ceremony: ceremony, store: store
+            )
+        )
     }
 
     static func validateBrokerEnrolledSiteRootPublicKeyID(
@@ -856,9 +1037,9 @@ struct SiteRootConvergenceServiceV2: Sendable {
         }
     }
 
-    private static func makeBrokerProof(
+    private static func makeBrokerAuthorization(
         _ presentation: SiteX509FirstProvisionBrokerPresentationV1
-    ) async throws -> Data {
+    ) async throws -> BrokerSiteX509AuthorizationV1 {
         let ceremony = try await FaceIDCeremonyContext.authenticate(
             reason: "Approve fresh Site X.509 root and issuer custody"
         )
@@ -881,7 +1062,54 @@ struct SiteRootConvergenceServiceV2: Sendable {
         )
         let signature = try siteRoot.sign(message: structure, using: ceremony)
         let cose = try DetachedES256Cose.envelope(protected: protected, signature: signature)
-        return cose
+        return BrokerSiteX509AuthorizationV1(detachedCOSE: cose, ceremony: ceremony)
+    }
+
+    func continueBrokerSiteX509(
+        correlation: Data,
+        expectedSiteUUID: String,
+        transport: any MonasSiteX509BrokerContinuing,
+        authorizer: any SiteX509BrokerContinuationAuthorizingV2
+    ) async throws {
+        for (phase, role) in [
+            (SiteX509BrokerContinuationPhaseV1.rootUnlock, SiteX509AttendedUnlockRoleV2.root),
+            (.issuerUnlock, .issuer),
+        ] {
+            guard let brokered = try await transport.awaitSiteX509Continuation(
+                correlation: correlation, phase: phase
+            ) else { continue }
+            let submission = try authorizer.attendedUnlock(
+                brokered.payload, role: role
+            )
+            try await transport.submitSiteX509Continuation(
+                correlation: correlation, phase: phase,
+                presentationSHA256: brokered.sha256,
+                submission: submission
+            )
+        }
+
+        try authorizer.prepareAckRegistration(expectedSiteUUID: expectedSiteUUID)
+        if let brokered = try await transport.awaitSiteX509Continuation(
+            correlation: correlation, phase: .ackRegistration
+        ) {
+            let submission = try authorizer.ackRegistration(brokered.payload)
+            try await transport.submitSiteX509Continuation(
+                correlation: correlation, phase: .ackRegistration,
+                presentationSHA256: brokered.sha256,
+                submission: submission
+            )
+        }
+
+        if let brokered = try await transport.awaitSiteX509Continuation(
+            correlation: correlation, phase: .leafApproval
+        ) {
+            let submission = try authorizer.leafApproval(brokered.payload)
+            try await transport.submitSiteX509Continuation(
+                correlation: correlation, phase: .leafApproval,
+                presentationSHA256: brokered.sha256,
+                submission: submission
+            )
+        }
     }
 
     func acknowledge(_ presentation: SiteRootConvergenceAckPresentationV2) async throws {
@@ -957,7 +1185,7 @@ struct SiteRootConvergenceServiceV2: Sendable {
         }.joined()
     }
 
-    private static func nowUnixSeconds() throws -> UInt64 {
+    static func nowUnixSeconds() throws -> UInt64 {
         let value = Date().timeIntervalSince1970
         guard value >= 0, value <= TimeInterval(UInt64.max) else {
             throw PlatformFailure.invalidConfiguration

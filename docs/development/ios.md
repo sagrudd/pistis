@@ -67,6 +67,42 @@ provider client secret, or provider access token. An authorised owner must use
 that team with a provisioned physical iPhone before device, archive, or
 TestFlight validation.
 
+### Approved physical build gate
+
+The `Release` configuration is reserved for the approved physical build. It
+uses the installed Apple Distribution identity and the reviewed `pistis` Ad
+Hoc profile. Debug and test configurations remain automatic so simulator
+development does not depend on distribution credentials. The archive helper
+checks both inputs and does not allow Xcode to replace the reviewed profile
+with a development profile. Before installing a build on the iPhone, run:
+
+```sh
+scripts/build-approved-iphone-archive.sh \
+  /path/to/Pistis.xcarchive
+```
+
+Export the verified archive as an Ad Hoc IPA, and repeat the same artifact
+gate against the app extracted from the IPA:
+
+```sh
+scripts/export-approved-iphone-ipa.sh \
+  /path/to/Pistis.xcarchive \
+  /path/to/Pistis-adhoc
+```
+
+If an archive has already been produced by the reviewed distribution process,
+run the artifact gate directly:
+
+```sh
+scripts/verify-approved-iphone-build.sh \
+  /path/to/Release-iphoneos/Pistis.app
+```
+
+The gate rejects development-signed artifacts, `get-task-allow`, a non-production
+App Attest entitlement, an unexpected bundle identifier, or an unexpected Apple
+team. A build that fails this check must not be used for a Monas first-device
+QR; Monas deliberately accepts production App Attest evidence only.
+
 ## Apple App Attest registration
 
 The iOS application configures the Apple production App Attest entitlement
@@ -133,12 +169,16 @@ transaction, cross-host substitution, and downgrade all fail closed.
 
 For the first Site Root device, the brokered QR is the only supported route.
 After explicit review, Face ID creates the separate Secure Enclave Site Root
-key and Pistis submits only the typed public registration and genuine App
-Attest registration through the broker. Monas returns the one-time delegation
-bound to that same runtime host profile. The initial proof establishes Site
-Trust and custody; the later signed first-device identity receipt establishes
-the usable Pistis installation. Neither stage is represented as complete until
-its own server-side receipt has been accepted.
+key. Pistis generates a fresh Apple App Attest key for this exact registration
+—Apple keys are attested once only—and retains its opaque identifier only after
+genuine Apple attestation succeeds. Pistis then submits only the typed public
+registration and genuine App Attest registration through the broker. Monas
+returns the one-time delegation bound to that same runtime host profile. The
+initial proof establishes Site Trust and custody; the later signed first-device
+identity receipt establishes the usable Pistis installation. Neither stage is
+represented as complete until its own server-side receipt has been accepted.
+An interrupted attempt cannot leave a key that a later registration
+accidentally re-attests.
 
 That incomplete Installation now has one explicit next action: it switches to
 the existing first-device provider-enrolment scanner. The scanner still
@@ -334,6 +374,15 @@ The same bounded policy applies to readiness, custody/status reads, and the
 subsequent App Attest session. A reachable HTTP denial, malformed response, or
 TLS/trust failure is terminal and is never replayed at the other address.
 
+`Trusted` describes the retained Pistis identity; it does not prove that the
+current Monas process still holds Site authority custody. Continuing from a
+trusted installation therefore checks the live custody status before entering
+the separate DAS replacement-receipt route. If the host requires retained
+Site Root recovery, Pistis completes that recovery and returns to the
+installation screen. It must not immediately send a DAS request to the
+recovery-only listener. When custody was already ready, the existing protected
+DAS continuation remains available.
+
 The Identities screen exposes only the accepted server-driven first-device
 surface. It scans and verifies the ADR 0029 version-4 presentation before
 network use. The app displays the verified installation and enables **Begin
@@ -378,6 +427,71 @@ receipt only with the latter, re-verifies the exact ADR 0025 device
 registration, and then creates the Keychain record once. Exact replay is
 idempotent; no code path replaces a different record. Verified GitHub facts
 are rendered before a separate explicit Face ID confirmation action.
+
+## Bounded iOS onboarding diagnostics
+
+The iOS target has a client-side diagnostic outbox contract in
+`OnboardingEventJournal.swift`. It is deliberately not an analytics SDK or a
+Monas authority record. In the protected fresh-device route, the QR supplies
+the server-issued 32-byte correlation capability and
+`MonasSiteRootGenesisBrokerTransport` sends each event to the fixed
+`install.mnemosyne.co.uk` diagnostics path over the existing ephemeral,
+no-cookie, no-cache HTTPS session. Upload is best effort and never gates key
+creation, Face ID, App Attest, proof submission or installation. The outbox
+retains at most 64 closed, redacted events and 32 KiB of JSON, and purges
+entries after 48 hours. A duplicate event ID is idempotent only when the
+complete event is identical; an attempt to replace an event is rejected.
+
+The active install window displays the broker's redacted projection on every
+handoff poll. It is the immediate operator surface: each line identifies the
+closed challenge stage, start/response outcome, elapsed time, HTTP status when
+known, and a reviewed error code. It never displays QR contents, proof bytes,
+email addresses, URLs, App Attest evidence, device keys, cookies or tokens.
+
+Emit events at these exact boundaries:
+
+1. `SiteRootDelegationCoordinator.accept`: after the strict Site Root or
+   broker presentation parser accepts the QR, emit `qr_validated`. A parser
+   failure emits only a coarse failed event. `QRScannerAdapter` and
+   `ScanView.handleScan` must not retain or journal camera frames, QR text, or
+   routing substrings.
+2. `SiteRootDelegationCoordinator.approve` and its typed completion helpers:
+   emit one `stage_entered` event when the Secure Enclave key, App Attest,
+   bounded Monas delegation wait, Site Root proof, or later App Attest stage
+   begins. Emit a separate response event for each completed transport
+   boundary; the fixed broker records its known `202` registration/proof and
+   `200` delegation responses. Emit one terminal event beside the existing
+   local-history write in `recordCompletion` or `recordFailure`; use a coarse
+   failure code, never the `safeUserMessage` text.
+3. `FirstDeviceEnrolmentFlow.handleScan`: emit `qr_validated` only after
+   `FirstDevicePresentationV4.verify` succeeds. Provider verification and
+   device-registration transitions use the same closed stage values, with one
+   terminal event after the signed receipt is stored or the operation fails.
+4. `LocalHistoryRepository.record` remains a UI projection and is not an upload
+   source. Its existing redacted `HistoryEvent` values must not be expanded with
+   raw QR, invitation, provider, signature, App Attest, cookie, or token data.
+5. `MonasSiteRootDelegationTransport` remains a typed protocol transport. It
+   must not receive the journal, log request/response bodies, or emit events
+   from polling attempts. The coordinator records only the bounded stage
+   surrounding a transport call; the broker transport uploads the resulting
+   redacted event after it has been appended locally.
+
+`OnboardingEventUploadClient` remains available for future batch retry and
+tests, but the protected Site Root coordinator uses the per-event broker
+transport so that the active install window receives progress immediately.
+The server-issued correlation is transient request state only: it is not
+written to the journal, local history, QR presentation, URL query, crash
+metadata or logs. The broker transport uses the already reviewed fixed origin,
+ephemeral no-cookie/no-cache `URLSession`, redirect rejection, bounded
+request/response sizes and an exact fixed path. A successful response can
+acknowledge only the submitted sequence; failed delivery leaves the local
+redacted event available until the 48-hour purge boundary.
+
+The event body itself contains only closed enums, a local timestamp, monotonic
+elapsed duration, a random event/attempt identifier, an optional HTTP status,
+and a SHA-256 digest of an opaque reference. It contains no endpoint, host, QR,
+canonical payload, signature, private key, biometric, provider code/token,
+cookie or session capability.
 
 ## Design maintenance
 

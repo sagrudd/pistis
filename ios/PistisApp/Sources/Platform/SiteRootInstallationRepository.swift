@@ -181,6 +181,66 @@ final class SiteRootInstallationRepository {
         try persist(retained)
     }
 
+    /// Retires only the matching non-authorising setup projection after the
+    /// authority receipt has been verified and authenticated installation
+    /// trust has already been committed to Keychain.
+    func recordIdentityEnrolmentCompleted(authorityHost: String) throws {
+        var retained = try records()
+        let canonicalHost = try IncompleteSiteRootInstallation.canonicalHost(authorityHost)
+        guard let index = retained.firstIndex(where: {
+            $0.authorityHost == canonicalHost
+                && $0.setupPhase == .identityEnrolmentRequired
+        }) else { return }
+        retained.remove(at: index)
+        try persist(retained)
+    }
+
+    /// Records no authority progress merely because the brokered Site X.509
+    /// transaction completed. The signed replacement profile must first bind
+    /// this broker record to the native authority; v2 authority custody is the
+    /// next protected phase and identity enrolment remains unavailable.
+    func recordBrokeredSiteX509Completed() throws {
+        guard let brokerHost = URL(
+            string: SiteRootConvergenceProfileV2.x509BrokerOrigin
+        )?.host else { throw PlatformFailure.invalidConfiguration }
+        let canonicalHost = try IncompleteSiteRootInstallation.canonicalHost(brokerHost)
+        let retained = try records()
+        guard let index = retained.firstIndex(where: {
+            $0.authorityHost == canonicalHost
+        }) else { throw PlatformFailure.invalidConfiguration }
+        guard retained[index].setupPhase == .authorityCustodyRequired else { return }
+    }
+
+    /// Rebinds only a broker-created, non-authorising setup projection to the
+    /// exact native authority in a verified or code-signed deployment profile.
+    /// The migration deliberately returns to the custody-required phase: an
+    /// earlier UI projection may have skipped custody, but local state is not
+    /// proof that the protected host signer is ready.
+    func bindBrokeredSetup(toNativeAuthorityHost authorityHost: String) throws {
+        guard let brokerHost = URL(
+            string: SiteRootConvergenceProfileV2.x509BrokerOrigin
+        )?.host else { throw PlatformFailure.invalidConfiguration }
+        let canonicalBroker = try IncompleteSiteRootInstallation.canonicalHost(brokerHost)
+        let canonicalAuthority = try IncompleteSiteRootInstallation.canonicalHost(authorityHost)
+        guard canonicalAuthority != canonicalBroker else {
+            throw PlatformFailure.invalidConfiguration
+        }
+        var retained = try records()
+        let brokerRecords = retained.filter { $0.authorityHost == canonicalBroker }
+        guard !brokerRecords.isEmpty else { return }
+        retained.removeAll { $0.authorityHost == canonicalBroker }
+        retained.append(contentsOf: try brokerRecords.map { current in
+            try IncompleteSiteRootInstallation(
+                id: current.id, authorityHost: canonicalAuthority,
+                redactedReference: current.redactedReference,
+                recordedAt: current.recordedAt,
+                setupPhase: .authorityCustodyRequired,
+                evidence: current.evidence
+            )
+        })
+        try persist(Array(try reconcile(retained).suffix(maximumRecords)))
+    }
+
     private func record(_ record: IncompleteSiteRootInstallation) throws {
         var retained = try records()
         retained.append(record)

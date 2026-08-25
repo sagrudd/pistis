@@ -297,7 +297,7 @@ final class EnrollmentProjectionTests: XCTestCase {
     XCTAssertEqual(projection.installations[0].status, "Trusted")
     XCTAssertEqual(
       InstallationDetailAction(installation: projection.installations[0]),
-      .reconcileAuthorityCustody
+      .completeDasAuthorityRetirement
     )
   }
 
@@ -318,6 +318,22 @@ final class EnrollmentProjectionTests: XCTestCase {
         )
     }
 
+    func testBrokeredSetupRoutesToProtectedScannerInsteadOfNativeAuthority() throws {
+        let installation = try IncompleteSiteRootInstallation(
+            authorityHost: "install.mnemosyne.co.uk",
+            redactedReference: "abc123…def4",
+            recordedAt: Date(timeIntervalSince1970: 1_000)
+        )
+        let projection = EnrollmentProjection(
+            retainedHistory: [], incompleteSiteRootInstallations: [installation]
+        )
+
+        XCTAssertEqual(
+            InstallationDetailAction(installation: try XCTUnwrap(projection.installations.first)),
+            .continueBrokeredSiteX509
+        )
+    }
+
     func testCompletedAuthorityCustodyOffersIdentityContinuation() throws {
         let installation = try IncompleteSiteRootInstallation(
             authorityHost: "monas.example.test", redactedReference: "abc123…def4",
@@ -332,12 +348,37 @@ final class EnrollmentProjectionTests: XCTestCase {
         )
     }
 
-    func testTrustedInstallationOffersLiveAuthorityCustodyReconciliation() throws {
+    func testTrustedInstallationChecksCustodyBeforeDasAuthorityRetirement() throws {
         let projection = EnrollmentProjection(enrollment: try fixtureEnrollment())
+        let installation = try XCTUnwrap(projection.installations.first)
 
         XCTAssertEqual(
-            InstallationDetailAction(installation: try XCTUnwrap(projection.installations.first)),
-            .reconcileAuthorityCustody
+            InstallationDetailAction(installation: installation),
+            .completeDasAuthorityRetirement
+        )
+        XCTAssertEqual(
+            AuthorityCustodyContinuationDecision.entry(installation: installation),
+            .checkCustodyStatus
+        )
+        XCTAssertEqual(
+            AuthorityCustodyContinuationDecision.afterCustodyReady(
+                installation: installation,
+                recoveredThisAttempt: false
+            ),
+            .completeDasAuthorityRetirement
+        )
+    }
+
+    func testTrustedCustodyRecoveryDoesNotChainIntoDasAuthorityRetirement() throws {
+        let projection = EnrollmentProjection(enrollment: try fixtureEnrollment())
+        let installation = try XCTUnwrap(projection.installations.first)
+
+        XCTAssertEqual(
+            AuthorityCustodyContinuationDecision.afterCustodyReady(
+                installation: installation,
+                recoveredThisAttempt: true
+            ),
+            .finishTrustedRecovery
         )
     }
 

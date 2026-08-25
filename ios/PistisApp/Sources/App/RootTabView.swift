@@ -16,6 +16,40 @@ enum AuthorityCustodyContinuationStage: String, CaseIterable {
     }
 }
 
+enum DasAuthorityRetirementContinuationStage: String, CaseIterable {
+    case createTransport = "create-transport"
+    case beginReceipt = "begin-receipt"
+    case authenticate = "authenticate"
+    case submitReceipt = "submit-receipt"
+
+    var failureMessage: String {
+        "DAS authority transition stopped safely at \(rawValue). The trusted Pistis identity and DAS legacy authority were retained."
+    }
+}
+
+enum AuthorityCustodyContinuationDecision: Equatable {
+    case checkCustodyStatus
+    case completeDasAuthorityRetirement
+    case finishTrustedRecovery
+    case continueIdentitySetup
+
+    static func entry(installation _: InstallationSummary) -> Self {
+        .checkCustodyStatus
+    }
+
+    static func afterCustodyReady(
+        installation: InstallationSummary,
+        recoveredThisAttempt: Bool
+    ) -> Self {
+        guard installation.status == "Trusted" else {
+            return .continueIdentitySetup
+        }
+        return recoveredThisAttempt
+            ? .finishTrustedRecovery
+            : .completeDasAuthorityRetirement
+    }
+}
+
 enum AuthorityCustodyAcceptedAssertionTransitionV2 {
     /// An empty 202 consumes the challenge, but only the subsequent exact
     /// server-owned lifecycle decides whether Pistis may rotate or recover.
@@ -77,8 +111,9 @@ struct RootTabView: View {
                     forgetExpired: forgetExpired,
                     recoverSiteRootInstallation: recoverSiteRootInstallation,
                     reconciliationMessage: reconciliationMessage,
-          authorityCustodyBusy: authorityCustodyAttempt != nil,
+                    authorityCustodyBusy: authorityCustodyAttempt != nil,
                     startProviderEnrolment: startProviderEnrolment,
+                    continueBrokeredSiteX509: continueBrokeredSiteX509,
                     continueAuthorityCustody: continueAuthorityCustody,
                     selectInstallation: selectInstallation
                 )
@@ -126,6 +161,12 @@ struct RootTabView: View {
         }
         .tint(MnColor.action)
         .task {
+            if let transport = siteRootTransport as? MonasSiteRootDelegationTransport,
+               let authorityHost = transport.authorityHost {
+                try? SiteRootInstallationRepository.shared.bindBrokeredSetup(
+                    toNativeAuthorityHost: authorityHost
+                )
+            }
             await enrollment.refresh()
         }
         .onChange(of: scenePhase) { _, phase in
@@ -230,6 +271,12 @@ struct RootTabView: View {
         }
     }
 
+    private func continueBrokeredSiteX509() {
+        reconciliationMessage =
+          "Site Root is retained. Scan the single protected Site X.509 continuation shown by the attached monas-first-install terminal; it cannot reissue Site Root."
+        selectedTab = .scan
+    }
+
     private func continueAuthorityCustody(_ installation: InstallationSummary) {
     guard authorityCustodyAttempt == nil else { return }
     let attempt = UUID()
@@ -246,6 +293,9 @@ struct RootTabView: View {
                     "The retained Site Root authority is not one of this build's pinned origins."
                 return
             }
+            guard AuthorityCustodyContinuationDecision.entry(installation: installation)
+                == .checkCustodyStatus
+            else { return }
             var failureStage = AuthorityCustodyContinuationStage.initialStatus
             do {
         var status = try await transport.authorityCustodyStatusV2(
@@ -253,6 +303,15 @@ struct RootTabView: View {
         )
         switch status {
                 case .ready:
+                    if AuthorityCustodyContinuationDecision.afterCustodyReady(
+                        installation: installation,
+                        recoveredThisAttempt: false
+                    ) == .completeDasAuthorityRetirement {
+                        await completeDasAuthorityRetirement(
+                            installation, transport: transport
+                        )
+                        return
+                    }
                     if installation.status != "Trusted" {
                         try SiteRootInstallationRepository.shared
                             .recordAuthorityCustodyCompleted(authorityHost: installation.localAlias)
@@ -350,10 +409,13 @@ struct RootTabView: View {
           ? "Authority custody recovered and ready. No re-enrolment is required."
           : "Authority custody completed. Continue identity setup for this installation."
         await enrollment.refresh()
-        if installation.status == "Trusted" {
-          selectedTab = .installations
-        } else {
+        if AuthorityCustodyContinuationDecision.afterCustodyReady(
+          installation: installation,
+          recoveredThisAttempt: true
+        ) == .continueIdentitySetup {
           routeToProviderEnrolment()
+        } else {
+          selectedTab = .installations
         }
             } catch {
         let message = failureStage.failureMessage
@@ -368,6 +430,63 @@ struct RootTabView: View {
             verification: message
           ))
             }
+        }
+    }
+
+    /// Continues the accepted ADR-0039 purpose-four ceremony from an already
+    /// trusted installation. The server supplies every receipt and custody
+    /// binding over the pinned native origin; the phone supplies only its
+    /// retained Site Root proof and one fresh Face ID evaluation. This path
+    /// cannot create, replace, import or discard a Pistis identity.
+    private func completeDasAuthorityRetirement(
+        _ installation: InstallationSummary,
+        transport: MonasSiteRootDelegationTransport
+    ) async {
+        var stage = DasAuthorityRetirementContinuationStage.createTransport
+        do {
+            let appAttestTransport = try transport.appAttestTransport(
+                authorityHost: installation.localAlias
+            )
+            stage = .beginReceipt
+            let presentation = try await appAttestTransport.beginDasReplacementReceiptV1(
+                nowUnixSeconds: UInt64(Date().timeIntervalSince1970)
+            )
+            stage = .authenticate
+            let ceremony = try await FaceIDCeremonyContext.authenticate(
+                reason: "Authorize the DAS local-authority replacement receipt"
+            )
+            let submission = try SecureEnclaveDasReplacementReceiptProducerV1()
+                .produce(presentation, using: ceremony)
+            stage = .submitReceipt
+            _ = try await appAttestTransport.submitDasReplacementReceiptV1(
+                submission, expectedCorrelation: presentation.correlation
+            )
+            try? LocalHistoryRepository.shared.record(
+                HistoryEvent(
+                    id: UUID(), action: "DAS authority transition authorised",
+                    installation: installation.localAlias,
+                    occurredAt: Date().formatted(date: .abbreviated, time: .standard),
+                    decision: "Approved", signature: "Fresh Face ID proof accepted",
+                    transfer: "Pinned Monas purpose-four receipt delivered",
+                    verification: "DAS host retirement is completing"
+                )
+            )
+            reconciliationMessage =
+                "DAS authority transition approved. Monas is completing the retained host transaction."
+            selectedTab = .installations
+        } catch {
+            let message = stage.failureMessage
+            reconciliationMessage = message
+            try? LocalHistoryRepository.shared.record(
+                HistoryEvent(
+                    id: UUID(), action: "DAS authority transition",
+                    installation: installation.localAlias,
+                    occurredAt: Date().formatted(date: .abbreviated, time: .standard),
+                    decision: "Not completed", signature: "No receipt accepted",
+                    transfer: "Pinned Monas purpose-four receipt",
+                    verification: message
+                )
+            )
         }
     }
 

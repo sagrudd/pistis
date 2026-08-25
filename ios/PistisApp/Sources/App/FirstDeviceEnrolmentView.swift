@@ -8,6 +8,7 @@ import PistisCore
 struct FirstDeviceEnrolmentView: View {
     @StateObject private var flow = FirstDeviceEnrolmentFlow()
     @Environment(\.openURL) private var openURL
+    @Environment(\.dismiss) private var dismiss
     private let initialQRText: String?
 
     init(initialQRText: String? = nil) {
@@ -109,10 +110,16 @@ struct FirstDeviceEnrolmentView: View {
                             }
                         }
                     }
-                    Button("Cancel and discard") {
-                        Task { await flow.cancel() }
+                    if flow.enrolmentComplete {
+                        Button("Done") { dismiss() }
+                            .buttonStyle(.borderedProminent)
+                            .tint(MnColor.action)
+                    } else {
+                        Button("Cancel and discard") {
+                            Task { await flow.cancel() }
+                        }
+                        .buttonStyle(.bordered)
                     }
-                    .buttonStyle(.bordered)
                 }
             }
             .padding(MnMetrics.screenGutter)
@@ -138,6 +145,7 @@ final class FirstDeviceEnrolmentFlow: ObservableObject {
     @Published private(set) var failure: PlatformFailure?
     @Published private(set) var busy = false
 
+    private let eventRecorder: any OnboardingEventRecording
     private var transport: ServerDrivenEnrolmentTransport?
     private var handle: ProviderVerificationHandle?
     private var devicePublicKey: Data?
@@ -145,9 +153,25 @@ final class FirstDeviceEnrolmentFlow: ObservableObject {
     private var pendingRegistration: Data?
     private var beginRetry = EnrolmentBeginRetryState()
     private var approvalGate = AttendedEnrolmentGate()
+    private var eventAttemptID = UUID()
+    private var eventReferenceDigest: Data?
+    private var eventStage: OnboardingEventStage = .qrValidation
+    private var eventSequence: UInt32 = 0
+    private var eventAttemptStartedNanoseconds = DispatchTime.now().uptimeNanoseconds
+
+    init(
+        eventRecorder: any OnboardingEventRecording = OnboardingEventJournal.shared
+    ) {
+        self.eventRecorder = eventRecorder
+    }
 
     func handleScan(_ result: Result<ScannedQRPayload, PlatformFailure>) {
         guard presentation == nil else { return }
+        eventAttemptID = UUID()
+        eventReferenceDigest = nil
+        eventStage = .qrValidation
+        eventSequence = 0
+        eventAttemptStartedNanoseconds = DispatchTime.now().uptimeNanoseconds
         do {
             let payload = try result.get()
             let verified = try FirstDevicePresentationV4.verify(
@@ -156,6 +180,8 @@ final class FirstDeviceEnrolmentFlow: ObservableObject {
                     GitHubEnrolmentConfiguration.reviewedAppConfigurationDigest,
                 now: Date()
             )
+            eventReferenceDigest = verified.presentationDigest
+            recordEvent(kind: .qrValidated, outcome: .accepted)
             presentation = verified
             transport = try ServerDrivenEnrolmentTransport(
                 presentation: verified
@@ -182,6 +208,7 @@ final class FirstDeviceEnrolmentFlow: ObservableObject {
         defer { busy = false }
         var retainExactAttempt = false
         do {
+            enterStage(.deviceRegistration)
             guard try await !InstallationTrustKeychain.shared
                 .hasStoredEnrollment()
             else { throw PlatformFailure.existingEnrolmentMustBeRemoved }
@@ -211,6 +238,7 @@ final class FirstDeviceEnrolmentFlow: ObservableObject {
             )
             self.handle = handle
             beginRetry.markAccepted()
+            enterStage(.providerVerification)
             let initialStatus = try await transport.status(handle)
             await applyProviderStatus(
                 initialStatus,
@@ -278,17 +306,34 @@ final class FirstDeviceEnrolmentFlow: ObservableObject {
             displayLogin = login
             prompt = nil
             status = "Review the verified GitHub account before enrolling"
+            enterStage(.providerVerification, outcome: .accepted)
         case .denied:
             status = "GitHub denied this request"
+            recordEvent(
+                kind: .failed,
+                outcome: .failed,
+                failure: .oauthDenied
+            )
             await discardUnenrolledKey(after: .denied)
         case .cancelled:
             status = "Enrolment was cancelled"
+            recordEvent(kind: .cancelled, outcome: .cancelled)
             await discardUnenrolledKey(after: .cancelled)
         case .expired:
             status = "The enrolment request expired"
+            recordEvent(
+                kind: .failed,
+                outcome: .failed,
+                failure: .invalidConfiguration
+            )
             await discardUnenrolledKey(after: .expired)
         case .consumed:
             status = "Enrolment was consumed; retain this key and recover the receipt"
+            recordEvent(
+                kind: .failed,
+                outcome: .failed,
+                failure: .enrolmentReceiptInvalid
+            )
         }
     }
 
@@ -316,6 +361,11 @@ final class FirstDeviceEnrolmentFlow: ObservableObject {
             approvalGate.markInstalled()
             enrolmentComplete = true
             status = "Device enrolled and authority receipt verified"
+            if let authorityHost = presentation?.httpsOrigin.host {
+                try? SiteRootInstallationRepository.shared
+                    .recordIdentityEnrolmentCompleted(authorityHost: authorityHost)
+            }
+            recordEvent(kind: .completed, outcome: .succeeded)
         } catch {
             if mayRetry {
                 approvalGate.restoreAfterFailedConfirmation()
@@ -328,6 +378,9 @@ final class FirstDeviceEnrolmentFlow: ObservableObject {
     }
 
     func cancel() async {
+        if presentation != nil, !enrolmentComplete {
+            recordEvent(kind: .cancelled, outcome: .cancelled)
+        }
         if let transport, let handle {
             try? await transport.cancel(handle)
         }
@@ -462,6 +515,51 @@ final class FirstDeviceEnrolmentFlow: ObservableObject {
         let safe = (error as? PlatformFailure) ?? .productionEnvelopeUnavailable
         failure = safe
         status = safe.safeUserMessage
+        recordEvent(kind: .failed, outcome: .failed, failure: safe)
+    }
+
+    private func enterStage(
+        _ stage: OnboardingEventStage,
+        outcome: OnboardingEventOutcome = .started
+    ) {
+        eventStage = stage
+        recordEvent(kind: .stageEntered, outcome: outcome)
+    }
+
+    private func recordEvent(
+        kind: OnboardingEventKind,
+        outcome: OnboardingEventOutcome,
+        failure: PlatformFailure? = nil
+    ) {
+        guard let event = try? OnboardingEvent(
+            id: UUID(),
+            attemptID: eventAttemptID,
+            flow: .providerEnrolment,
+            kind: kind,
+            stage: eventStage,
+            outcome: outcome,
+            sequence: eventSequence + 1,
+            elapsedMs: Self.elapsedMilliseconds(since: eventAttemptStartedNanoseconds),
+            referenceDigest: eventReferenceDigest,
+            authority: .configuredSiteRoot,
+            failure: failure?.onboardingEventFailureCode,
+            occurredAtUnixMillis: Self.nowUnixMillisForEvent()
+        ) else { return }
+        eventSequence += 1
+        try? eventRecorder.append(event)
+    }
+
+    private static func nowUnixMillisForEvent() -> UInt64 {
+        let value = Date().timeIntervalSince1970 * 1_000
+        guard value.isFinite, value > 0, value <= Double(UInt64.max) else {
+            return 1
+        }
+        return UInt64(value)
+    }
+
+    private static func elapsedMilliseconds(since start: UInt64) -> UInt32 {
+        let elapsed = DispatchTime.now().uptimeNanoseconds &- start
+        return UInt32(min(elapsed / 1_000_000, 600_000))
     }
 }
 

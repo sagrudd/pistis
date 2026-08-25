@@ -8,7 +8,11 @@ import Foundation
 struct SiteRootGenesisRegistrationPresentationV1: Sendable {
     static let schema = "monas.site-root-genesis-registration-presentation.v1"
     static let maximumPayloadLength = 8_192
-    static let maximumLifetimeMillis: UInt64 = 300_000
+    /// The broker's post-redemption Site Root, X.509 and provider sequence is
+    /// one 15-minute attended ceremony. This parser must accept the same
+    /// bounded lease as Monas and never reject a valid broker presentation
+    /// merely because it was not scanned in the first five minutes.
+    static let maximumLifetimeMillis: UInt64 = 900_000
 
     let reference: String
     let correlation: Data?
@@ -71,10 +75,15 @@ struct SiteRootGenesisRegistrationPresentationV1: Sendable {
                   required: requireCorrelation
               ),
               case let .number(expiryText)? = values["expires_at_unix_millis"],
-              let expiresAtUnixMillis = UInt64(expiryText),
-              expiresAtUnixMillis > nowUnixMillis,
-              expiresAtUnixMillis - nowUnixMillis <= Self.maximumLifetimeMillis
+              let expiresAtUnixMillis = UInt64(expiryText)
         else { throw PlatformFailure.qrPayloadUnsupported }
+
+        guard expiresAtUnixMillis > nowUnixMillis else {
+            throw PlatformFailure.siteRootGenesisPresentationExpired
+        }
+        guard expiresAtUnixMillis - nowUnixMillis <= Self.maximumLifetimeMillis else {
+            throw PlatformFailure.invalidFirstDevicePresentation
+        }
 
         self.reference = reference
         self.correlation = correlation
@@ -171,11 +180,21 @@ enum MonasSiteRootGenesisBrokerEndpointV1 {
         "/api/first-install/v1/pistis/site-root-genesis/completions"
     static let completionPollSchema =
         "mnemosyne.monas.first-install-broker.site-root-genesis-completion-poll.v1"
+    static let diagnosticsSchema =
+        "mnemosyne.monas.first-install-broker.site-root-genesis-diagnostics.v1"
+    static let diagnosticsPath =
+        "/api/first-install/v1/pistis/site-root-genesis/diagnostics"
     static let responseSchema = "mnemosyne.monas.first-install-broker.response.v1"
     static let maximumRegistrationBytes = 12 * 1024
     static let maximumDelegationBytes = 12 * 1024
     static let maximumProofBytes = 4 * 1024
     static let maximumPollAttempts = 300
+    /// Poll count is a protocol safety ceiling. The transport also enforces
+    /// this wall-clock bound so slow or unreachable requests cannot strand an
+    /// attended ceremony indefinitely. The host needs time to complete its
+    /// local custody and App Attest verification before it acknowledges the
+    /// iPhone registration with a delegation.
+    static let maximumPollDurationSeconds: TimeInterval = 90
 }
 
 /// Typed, public-only first-device registration. Neither this object nor its
@@ -186,10 +205,24 @@ struct SiteRootGenesisRegistrationRequestV1: Sendable {
     let appAttestRegistration: AppleAppAttestRegistrationEnvelope
 }
 
+/// Fixed milestones reported by a Site Root registration transport.
+///
+/// These values carry no QR, host, key, proof, correlation, or App Attest
+/// material. They prevent the iPhone UI from claiming that Monas is already
+/// considering a registration before the fixed broker has accepted it.
+enum SiteRootGenesisRegistrationProgressV1: Equatable, Sendable {
+    case registrationAccepted
+    case delegationPollStarted
+    case delegationReady
+}
+
 /// Monas returns a delegation only after atomically consuming the nonce-bound
 /// registration. The caller must then use the existing detached proof flow.
 protocol MonasSiteRootGenesisRegistering: Sendable {
-    func registerGenesis(_ request: SiteRootGenesisRegistrationRequestV1) async throws
+    func registerGenesis(
+        _ request: SiteRootGenesisRegistrationRequestV1,
+        progress: @escaping @Sendable (SiteRootGenesisRegistrationProgressV1) -> Void
+    ) async throws
         -> SiteRootDelegationPresentationV1
 }
 
@@ -201,6 +234,11 @@ protocol MonasSiteRootCeremonyTransport: MonasSiteRootDelegationSubmitting,
     var genesisAuthorityOrigin: URL? { get }
     var genesisAuthorityOrigins: [URL] { get }
     var requiresGenesisCorrelation: Bool { get }
+
+    /// Best-effort redacted diagnostics for the attended first-device route.
+    /// Implementations must never make event delivery a prerequisite for the
+    /// protected ceremony.
+    func uploadOnboardingEvent(_ event: OnboardingEvent, correlation: Data) async throws
 }
 
 extension MonasSiteRootCeremonyTransport {
@@ -209,6 +247,16 @@ extension MonasSiteRootCeremonyTransport {
     }
 
     var requiresGenesisCorrelation: Bool { false }
+
+    func registerGenesis(_ request: SiteRootGenesisRegistrationRequestV1) async throws
+        -> SiteRootDelegationPresentationV1
+    {
+        try await registerGenesis(request, progress: { _ in })
+    }
+
+    func uploadOnboardingEvent(_: OnboardingEvent, correlation _: Data) async throws {
+        throw PlatformFailure.onboardingEventUploadUnavailable
+    }
 }
 
 struct MonasSiteRootGenesisRegistrationRequest: Encodable {

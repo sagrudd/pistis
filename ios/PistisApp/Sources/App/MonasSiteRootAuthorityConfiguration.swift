@@ -1,12 +1,11 @@
 import Foundation
 
-/// A verified runtime profile for one Monas Site Root authority.
+/// A verified or signed-deployment profile for one Monas Site Root authority.
 ///
-/// This type deliberately has no production path from `Info.plist`. Customer
-/// host identity is established by the signed attended-install presentation
-/// and is supplied to this parser only after that presentation has been
-/// verified. A generic Pistis binary therefore remains usable with many
-/// installations and hosts.
+/// A generic Pistis bundle contains none of these fields. An owner-operated
+/// replacement build may carry the exact post-PXFP public profile in its
+/// code-signed `Info.plist`; a future retained runtime profile uses the same
+/// strict parser. QR, browser and local-network input never reach this type.
 struct MonasSiteRootAuthorityConfiguration: Sendable {
     static let infoDictionaryKey = "PistisMonasSiteRootAuthorityOrigin"
     static let alternateInfoDictionaryKey = "PistisMonasSiteRootAuthorityAlternateOrigin"
@@ -151,8 +150,15 @@ struct MonasSiteRootAuthorityConfiguration: Sendable {
 /// first-install path supplies the host profile at runtime; until that profile
 /// is verified, direct Site Root transport is intentionally unavailable.
 enum ProductionMonasSiteRootTransportFactory {
-    static func make() -> any MonasSiteRootCeremonyTransport {
-        (try? MonasSiteRootGenesisBrokerTransport())
+    static func make(
+        signedDeploymentProfile: [String: Any] = Bundle.main.infoDictionary ?? [:]
+    ) -> any MonasSiteRootCeremonyTransport {
+        if let configuration = try? MonasSiteRootAuthorityConfiguration(
+            infoDictionary: signedDeploymentProfile
+        ), let transport = try? configuration.makeTransport() {
+            return transport
+        }
+        return (try? MonasSiteRootGenesisBrokerTransport())
             ?? UnavailableMonasSiteRootDelegationTransport()
     }
 

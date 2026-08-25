@@ -64,6 +64,61 @@ final class AppAttestAssertionTransportTests: XCTestCase {
         }
     }
 
+    func testRegistrationNeverReattestsAStoredKey() async throws {
+        let staleKeyID = Data(repeating: 0x11, count: 32).base64EncodedString()
+        let freshKeyID = Data(repeating: 0x22, count: 32).base64EncodedString()
+        let service = RecordingAppAttestService(keyID: freshKeyID)
+        let store = MutableKeyIDStore(keyID: staleKeyID)
+        let client = AppleAppAttestClient(service: service, keyIDStore: store)
+
+        _ = try await client.prepareRegistration(
+            ceremonyID: "server-owned-registration-ceremony",
+            siteTrustDomain: "site-demo-1",
+            clientDataHash: Data(repeating: 0x5a, count: 32)
+        )
+
+        XCTAssertEqual(service.generatedKeyCount, 1)
+        XCTAssertEqual(service.attestedKeyID, freshKeyID)
+        XCTAssertEqual(store.keyID, freshKeyID)
+    }
+
+    func testFailedRegistrationDoesNotReplaceTheRetainedKey() async throws {
+        let staleKeyID = Data(repeating: 0x11, count: 32).base64EncodedString()
+        let replacementKeyID = Data(repeating: 0x22, count: 32).base64EncodedString()
+        let service = FailingAttestationService(keyID: replacementKeyID)
+        let store = MutableKeyIDStore(keyID: staleKeyID)
+        let client = AppleAppAttestClient(service: service, keyIDStore: store)
+
+        do {
+            _ = try await client.prepareRegistration(
+                ceremonyID: "server-owned-registration-ceremony",
+                siteTrustDomain: "site-demo-1",
+                clientDataHash: Data(repeating: 0x5a, count: 32)
+            )
+            XCTFail("failed Apple attestation unexpectedly produced a registration")
+        } catch {
+            XCTAssertEqual(error as? PlatformFailure, .appAttestAttestationFailed)
+        }
+
+        XCTAssertEqual(service.generatedKeyCount, 1)
+        XCTAssertEqual(store.keyID, staleKeyID)
+    }
+
+    func testRawAppAttestAssertionErrorMapsToTheAssertionStage() async throws {
+        let keyID = Data(repeating: 0x11, count: 32).base64EncodedString()
+        let client = AppleAppAttestClient(
+            service: FailingAttestationService(keyID: keyID),
+            keyIDStore: FixedKeyIDStore(keyID: keyID)
+        )
+
+        do {
+            _ = try await client.prepareAssertion(bootstrap: try bootstrap())
+            XCTFail("raw App Attest assertion error unexpectedly succeeded")
+        } catch {
+            XCTAssertEqual(error as? PlatformFailure, .appAttestAssertionFailed)
+        }
+    }
+
     func testRelocationAssertionUsesExactRegisteredKeyAndServerCompatibleHash() async throws {
         let key = Data(repeating: 0x11, count: 32)
         let keyID = key.base64EncodedString()
@@ -296,20 +351,56 @@ private final class FixedKeyIDStore: AppleAppAttestKeyIDStoring, @unchecked Send
     func saveKeyID(_: String) throws {}
 }
 
+private final class MutableKeyIDStore: AppleAppAttestKeyIDStoring, @unchecked Sendable {
+    var keyID: String?
+
+    init(keyID: String?) { self.keyID = keyID }
+
+    func loadKeyID() -> String? { keyID }
+    func saveKeyID(_ keyID: String) throws { self.keyID = keyID }
+}
+
 private final class RecordingAppAttestService: AppleAppAttestServicing, @unchecked Sendable {
     let keyID: String
+    private(set) var generatedKeyCount = 0
+    private(set) var attestedKeyID: String?
     private(set) var attestationHash: Data?
     private(set) var assertionHash: Data?
     init(keyID: String) { self.keyID = keyID }
     var isSupported: Bool { true }
-    func generateKey() async throws -> String { keyID }
-    func attestKey(_: String, clientDataHash: Data) async throws -> Data {
+    func generateKey() async throws -> String {
+        generatedKeyCount += 1
+        return keyID
+    }
+    func attestKey(_ keyID: String, clientDataHash: Data) async throws -> Data {
+        attestedKeyID = keyID
         attestationHash = clientDataHash
         return Data([1])
     }
     func generateAssertion(_: String, clientDataHash: Data) async throws -> Data {
         assertionHash = clientDataHash
         return Data(repeating: 0x44, count: 64)
+    }
+}
+
+private final class FailingAttestationService: AppleAppAttestServicing, @unchecked Sendable {
+    let keyID: String
+    private(set) var generatedKeyCount = 0
+
+    init(keyID: String) { self.keyID = keyID }
+    var isSupported: Bool { true }
+
+    func generateKey() async throws -> String {
+        generatedKeyCount += 1
+        return keyID
+    }
+
+    func attestKey(_: String, clientDataHash _: Data) async throws -> Data {
+        throw NSError(domain: "DCError", code: 2)
+    }
+
+    func generateAssertion(_: String, clientDataHash _: Data) async throws -> Data {
+        throw NSError(domain: "DCError", code: 3)
     }
 }
 

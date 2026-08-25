@@ -1,6 +1,145 @@
 # Changelog
 
+- Verify live Site authority custody before an already trusted installation
+  enters DAS local-authority retirement. A recovery-required host now completes
+  retained Site Root custody without incorrectly chaining into DAS on the
+  recovery-only listener. Regression tests cover both the preflight and the
+  post-recovery boundary (0.22.12, iOS build 42).
+
+- Accept the exact retained first-device custody generation in the ADR-0039
+  DAS replacement-receipt presentation. Pistis still validates the closed
+  identifier and reconstructs the complete canonical challenge, but no longer
+  invents a `das-replacement-*` namespace that the accepted contract does not
+  define. A production-shaped regression fixture covers the pre-Face ID
+  failure (0.22.11, iOS build 41).
+
+- Bypass the legacy authority-custody status preflight when an already trusted
+  installation starts ADR-0039 purpose-four DAS authority retirement. The
+  trusted action now enters the pinned receipt route directly and a regression
+  asserts that routing decision (0.22.10, iOS build 40).
+
+- Continue ADR-0039 purpose-four DAS authority retirement directly from an
+  already trusted installation using its pinned native Monas origin and one
+  fresh Face ID evaluation. The action cannot enrol, replace or discard a
+  Pistis identity, and a regression prevents trusted installations from being
+  routed back into provider enrolment (0.22.9, iOS build 39).
+
+- Restore the accepted post-PXFP NUC replacement-build path without adding
+  deployment data to the generic Pistis release. A code-signed exact Site Root
+  profile now restores the native Monas transport at launch, rebinds the
+  broker-created setup projection to that authority, and requires v2 authority
+  custody before GitHub identity enrolment. Regressions cover the skipped
+  custody phase and relaunch rebind (0.22.8, iOS build 38).
+
+- Include the fixed
+  `proxenos.site-x509-initial-leaf-issuance.v1` purpose in the protected leaf
+  submission envelope required by Monas. The encoded-envelope regression now
+  asserts the complete nine-field Monas decoder contract, including both
+  schema and purpose (0.22.7, iOS build 37).
+
+- Emit the documented Monas
+  `monas.site-x509-leaf-approval-submission.v1` schema for the protected leaf
+  proof. The exact encoded submission envelope is regression tested so a
+  Face ID-approved proof cannot again be rejected at the broker-to-Monas JSON
+  boundary (0.22.6, iOS build 36).
+
+- Accept Proxenos's canonical retained Site Root authority generation in the
+  combined initial-leaf PXLA payload. Pistis now applies the protocol's strict
+  identifier grammar without inventing `x509-root-*` or `x509-issuing-*`
+  prefixes, and a retained-authority regression fixture covers the production
+  failure before Face ID (0.22.5, iOS build 35).
+
+- Inject the broker continuation capability explicitly into protected recovery
+  instead of rediscovering it through a runtime protocol cast immediately
+  before Face ID. The recovery route now has a compile-time continuation
+  contract and cannot misreport that cast boundary as a Site Root outage
+  (0.22.4, iOS build 34).
+
+- Keep the fixed install broker available alongside a retained direct Monas
+  authority and route continuation-recovery presentations to it explicitly.
+  A retained installation can now resume protected Site X.509 approval instead
+  of failing before Face ID with a false Site Root authority outage; the exact
+  retained-direct-plus-broker route is regression tested (0.22.3, iOS build 33).
+
+- Route every brokered Site X.509 continuation poll and submission through the
+  deployed `/api/first-install/v1` broker prefix. The production-path
+  regression gate now rejects the root-relative endpoints that returned an
+  Apache 404 and were surfaced as a false Site Root authority outage (0.22.2,
+  iOS build 32).
+
+- Route a retained broker-backed Site Root installation to the protected Site
+  X.509 scanner instead of an unavailable native authority operation, and
+  advance its non-authorising local setup projection only after the brokered
+  continuation succeeds. This preserves the retained Site Root, removes the
+  deterministic post-proof “authority unavailable” regression, and makes the
+  checked GitHub identity presentation the next setup step (0.22.1, iOS build
+  31).
+
 ## [Unreleased]
+
+### Changed
+
+- Allow a verified host up to 90 seconds to complete the local custody and App
+  Attest check after the broker has accepted a first-device registration. The
+  UI now says that Monas is verifying the accepted registration, and the
+  broker-envelope regression gate checks every App Attest field that Monas
+  consumes (0.20.13, iOS build 28).
+
+- Align the Site Root genesis QR parser with Monas's reviewed 15-minute
+  post-redemption ceremony lease. A valid attended QR no longer falls through
+  as unsupported after five minutes; an actually expired QR receives a bounded
+  fresh-ceremony instruction (0.20.12, iOS build 27).
+
+- Distinguish “submitting protected registration” from “registration accepted;
+  waiting for Monas delegation” in the first Site Root ceremony. The bounded
+  event journal now records the broker's HTTP 202 before it starts the
+  delegation poll (0.20.11, iOS build 26).
+
+### Added
+
+- Insert the missing brokered PXAK acknowledgement-key registration between
+  issuer custody unlock and initial-leaf approval. The NUC verifies the
+  enrolled Site Root proof and registers the key with Proxenos before Pistis
+  retains Proxenos's protected leaf generation and signs that leaf, preserving
+  one QR and one bounded Face ID context. Ordered orchestration, exact parser,
+  digest and forward-wait regressions now fail closed (0.22.0, iOS build 30).
+
+- Continue the accepted pre-native Site X.509 ceremony through the fixed
+  broker without another QR. Root custody rewrap, issuer custody rewrap and
+  the combined initial-leaf approval retain separate purpose-bound proofs
+  while reusing the one bounded Face ID context. Add the purpose-fixed
+  accepted-result recovery QR needed only for a proof completed before this
+  continuation-capable build existed (0.21.0, iOS build 29).
+
+- Add a bounded iOS onboarding event journal and the reviewed fixed-broker
+  upload path. During a protected Site Root ceremony Pistis sends only
+  redacted, fixed-vocabulary challenge events through the QR's server-issued
+  correlation; the install window projects them live, and unacknowledged local
+  rows expire after 48 hours (0.20.10, iOS build 25).
+
+### Fixed
+
+- Bound the fresh-device Site Root broker wait to 30 seconds, preserve precise
+  App Attest and broker failure stages, and show staged progress with elapsed
+  time instead of collapsing the operation into a generic proof failure
+  (0.20.8, iOS build 23).
+
+- Make the approved physical iPhone archive deterministic: Release now uses
+  the installed Apple Distribution identity and reviewed Ad Hoc profile
+  instead of allowing automatic signing to select a development profile
+  (0.20.7, iOS build 22).
+
+- Add a hard gate for the approved physical iPhone artifact: a build used for
+  Monas first-device registration must be Apple Distribution-signed, must have
+  production App Attest enabled, and must not carry `get-task-allow`. This
+  prevents a development-signed `Release` build from reaching a production
+  ceremony and being reported as a misleading Site Root authority outage
+  (0.20.6, iOS build 21).
+
+- Generate a fresh Apple App Attest key for every new attended Site Root
+  registration and retain its identifier only after attestation succeeds.
+  Interrupted first-device attempts can no longer reuse a one-use key and
+  stop before sending registration to Monas (0.20.5, iOS build 20).
 
 ### Changed
 

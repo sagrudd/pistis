@@ -21,6 +21,49 @@ final class SiteX509LeafApprovalV1Tests: XCTestCase {
         )))
     }
 
+    func testRetainedSiteRootAuthorityIdentifierIsAccepted() throws {
+        let fixture = LeafFixture()
+        XCTAssertEqual(
+            String(data: fixture.payloadFields[1], encoding: .utf8),
+            "pistis-first-device-authority-0123456789abcdef"
+        )
+        XCTAssertNoThrow(try fixture.decode())
+
+        var malformed = fixture
+        malformed.payloadFields[1] = Data("pistis-first-device-authority/invalid".utf8)
+        malformed.refreshPayload()
+        XCTAssertThrowsError(try malformed.decode())
+    }
+
+    func testSubmissionUsesTheCanonicalMonasSchema() throws {
+        let submission = SiteX509LeafApprovalSubmissionV1(
+            correlationIDB64: Data(repeating: 1, count: 16).base64EncodedString(),
+            canonicalPayloadB64: Data("PXLA/v1".utf8).base64EncodedString(),
+            transactionIDB64: Data(repeating: 2, count: 16).base64EncodedString(),
+            deviceKeyGeneration: 1,
+            delegationSerial: "pistis-first-device-authority-0123456789abcdef",
+            delegationExpiresAt: 1_200,
+            detachedCOSESign1B64: Data(repeating: 3, count: 64).base64EncodedString()
+        )
+        let object = try XCTUnwrap(
+            JSONSerialization.jsonObject(with: JSONEncoder().encode(submission))
+                as? [String: Any]
+        )
+        XCTAssertEqual(
+            object["schema"] as? String,
+            "monas.site-x509-leaf-approval-submission.v1"
+        )
+        XCTAssertEqual(
+            object["purpose"] as? String,
+            "proxenos.site-x509-initial-leaf-issuance.v1"
+        )
+        XCTAssertEqual(Set(object.keys), [
+            "schema", "purpose", "correlation_id_b64", "canonical_payload_b64",
+            "transaction_id_b64", "device_key_generation", "delegation_serial",
+            "delegation_expires_at", "detached_cose_sign1_b64",
+        ])
+    }
+
     func testURLSafeUnpaddedAndUnknownJSONAreDenied() throws {
         var fixture = LeafFixture()
         fixture.object["correlation_id_b64"] = "_____________________w"
@@ -76,7 +119,7 @@ private struct LeafFixture {
         let digest = Data(repeating: 3, count: 32)
         payloadFields = [
             Data(hex: "00112233445566778899aabbccddeeff"),
-            Data("x509-root-generation-1".utf8),
+            Data("pistis-first-device-authority-0123456789abcdef".utf8),
             Data("x509-issuing-generation-1".utf8),
             transaction,
             u64(900), u64(1_100), Data(repeating: 4, count: 32), u64(2),

@@ -31,15 +31,15 @@ Create one run record before starting:
 |---|---|
 | Date and operator | 25 August 2026; `sagrudd` |
 | NUC hostname and address | No network hostname assigned; `192.168.0.193`. The observed OS-local label `stephen-NUC12DCMi9` is not a Site Trust identity. |
-| Monas package version and source revision | `0.116.2`; `4de58dd536e99ff601334efa76da68cc085d833c` |
+| Monas package version and source revision | `0.116.3`; `d22199afc0a9b2c3b1650961291fcbffe5732a6a` |
 | Recovery dependency versions and source revisions | Proxenos `0.53.1` at `cab0ae0a2832690c346b93184c839f56368f6657`; Thesaurophylax `0.70.0` at `fa61a3af3eacf1730f7978326fb5eacd24ccdc69` |
-| Dependent package rebuilt for the closure | Expedition Base Camp/Jenkins `0.85.19` at `18436c635d50197ff2676f107e60e076138bf2c2` |
-| Kanon lockset ID and digest | `monas-terraform-products-closure-20260824-r142`; `sha256:1fd72a96180a843eda54554364b63bd66f07fd5e77a7d72852e50e264761016e`; registry revision `b30178d62bc3898307beadd49cf7874d0da831a2` (canonical merge `d7911eb921c3031195bf59ed737c9977318d8365`) |
-| Terraform version and source revision | `0.4.48`; `7886293d47e453ff595bebefc4353f7da5a9af31` (r142 projection) |
+| Dependent package rebuilt for the closure | Expedition Base Camp/Jenkins `0.85.20` at `c08e45ea04fdcf43ca831a1093b167cf55fd8fb1` |
+| Kanon lockset ID and digest | `monas-terraform-products-closure-20260825-r143`; `sha256:e0bb0917045484cd7d07fdb4f7af80573bc2b6b15d7c93735f1edd359c95f403`; registry revision `1b4836e7464785f0e691eeb2e23aa701fddd1c69` (canonical merge `2b7a61644da32cb056628255d0958194505d5aab`) |
+| Terraform version and source revision | `0.4.49`; `371dbde324d093aa14c375db909fb3c24338801b` (r143 projection) |
 | Pistis version, build and source revision | `0.23.0` (`47`); `3c7d9b5a5c77445fd3aa54cf249b65dd7c61790c`; signed IPA SHA-256 `84d3246dbf4bae0b482ba8d1699b322727741368bc536b4b3e84098dc2a1dc79` |
 | iPhone model and iOS version | iPhone 14 Pro Max (`iPhone15,3`); iOS `26.6.1` (`23G83`) |
 | Native Monas HTTPS origin | Not issued. The prior `https://192.168.0.193:8443` generation is ineligible after Gate 0; a new origin is recorded only when the new installation issues it. |
-| Outcome of each gate | **Gate 0: PASS** (attended reset, qualified r142 deployment and idempotent live acceptance all passed). **Gate 1: PASS** (operator observed Pistis `0.23.0 (47)` in About). Gate 2: pass (operator reports local Pistis reset complete). Gates 3–10: not started. |
+| Outcome of each gate | **Gate 0: PASS** (attended reset and idempotent live acceptance passed). **Gate 1: PASS** (operator observed Pistis `0.23.0 (47)` in About). **Gate 2: PASS** (operator reports local Pistis reset complete). Gate 3: implementation qualified; awaiting operator revalidation after r143 deployment. Gates 4–10: not started. |
 
 Do not record QR payloads, bootstrap codes, browser capabilities, cookies,
 provider tokens, private keys or complete signed proofs.
@@ -264,17 +264,55 @@ this run.
 ### Pass condition
 
 - `dpkg --audit` prints nothing.
-- DAS and Proxenos prerequisites are active.
-- Thesaurophylax reports the accepted pre-enrolment custody profile.
-- Site X.509 first-provision configuration is present.
-- No retained installation or identity causes reconciliation mode.
-- No first-install, protected-custody or broker lease is already active.
+- Status prints `Gate 3 baseline: bare-earth-ready`.
+- DAS is active. Proxenos authority is inactive and explicitly reported as
+  `not activated`.
+- Thesaurophylax custody is `not-issued` and reports the pre-enrolment
+  bare-earth state as expected.
+- Site X.509 first provision is `not-issued`; its descriptor is absent because
+  the new iPhone has not yet established its Site Root key.
+- The root-owned Monas, Proxenos and Thesaurophylax reset records are safe,
+  machine-bound, complete and agree that the former generations were
+  destroyed.
+- Prior installation, identity, authority, custody, Site X.509 result and
+  broker-lease state are absent. Merely reading status starts no service,
+  lease, code, QR or ceremony.
+
+Inactive Proxenos authority, unissued custody and an absent Site X.509
+descriptor are required at this gate. Requiring them to be active or present
+would be circular: the new Site Root and its attended approvals are created
+only by Gates 6 and 7. Gate 3 proves the reset baseline; it does not prepare or
+simulate later ceremony outputs.
 
 ### Stop conditions
 
-Stop on `identity-receipt-retained`, `committed`,
-`reconciliation-required`, a retained Site Root, a stale active lease, a
-source/lockset mismatch or an unexpected failed package.
+Stop if `bare-earth-ready` is absent; if any reset record is missing, unsafe,
+for a different machine or has substituted content; if DAS is inactive; or if
+Proxenos authority, enrolled custody, a Site X.509 descriptor/result, retained
+identity/installation, formal commit or broker lease is present. Also stop on
+`identity-receipt-retained`, `committed`, `reconciliation-required`, a retained
+Site Root, a source/lockset mismatch or an unexpected failed package.
+
+### Gate 3 defect qualification for this run
+
+The original Gate 3 checklist incorrectly required active Proxenos authority,
+accepted enrolled custody and an existing Site X.509 descriptor immediately
+after Gate 0 had deliberately destroyed those generations. The descriptor
+contains the enrolled Site Root public key, so it cannot exist before the new
+iPhone creates that key. This was a circular acceptance contract, not evidence
+that the bare-earth reset had failed.
+
+Monas `0.116.3` fixes the status projection narrowly. It labels a host
+`bare-earth-ready` only when all three root-owned reset records have exact
+schema, ownership, mode, machine binding and destroyed result; DAS is active;
+Proxenos authority is inactive; and every resumable installation, identity,
+custody, descriptor/result and broker-lease path is absent. Its executable
+reset acceptance now proceeds directly from confirmed `--destroy-all` through
+the real read-only `--status`, proves that no service, lease, code, QR or
+ceremony was started, and proves that substituted reset-record content is
+rejected. The focused Monas package tests, Kanon r143 canonical closure test
+and all 39 Terraform projection/catalogue tests pass. Live NUC evidence and
+the operator's independent revalidation are recorded before this gate closes.
 
 ## Gate 4 — Start the single supported first-install command
 

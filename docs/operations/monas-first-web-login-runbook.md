@@ -31,15 +31,15 @@ Create one run record before starting:
 |---|---|
 | Date and operator | 25 August 2026; `sagrudd` |
 | NUC hostname and address | No network hostname assigned; `192.168.0.193`. The observed OS-local label `stephen-NUC12DCMi9` is not a Site Trust identity. |
-| Monas package version and source revision | `0.116.3`; `d22199afc0a9b2c3b1650961291fcbffe5732a6a` |
-| Recovery dependency versions and source revisions | Proxenos `0.53.1` at `cab0ae0a2832690c346b93184c839f56368f6657`; Thesaurophylax `0.70.0` at `fa61a3af3eacf1730f7978326fb5eacd24ccdc69` |
-| Dependent package rebuilt for the closure | Expedition Base Camp/Jenkins `0.85.20` at `c08e45ea04fdcf43ca831a1093b167cf55fd8fb1` |
-| Kanon lockset ID and digest | `monas-terraform-products-closure-20260825-r143`; `sha256:e0bb0917045484cd7d07fdb4f7af80573bc2b6b15d7c93735f1edd359c95f403`; registry revision `1b4836e7464785f0e691eeb2e23aa701fddd1c69` (canonical merge `2b7a61644da32cb056628255d0958194505d5aab`) |
-| Terraform version and source revision | `0.4.49`; `371dbde324d093aa14c375db909fb3c24338801b` (r143 projection) |
+| Monas package version and source revision | `0.117.0`; `99363a4dd7302085ebbe23c77df16e371d1696cd` |
+| Recovery dependency versions and source revisions | Proxenos `0.53.1` at `cab0ae0a2832690c346b93184c839f56368f6657`; Thesaurophylax `0.70.1` at `5b04bf4f3bd5800f44db8abe463be595595df29e` |
+| Dependent package rebuilt for the closure | Expedition Base Camp/Jenkins `0.85.21` at `1f042217ef47949f7c805096766a01f821a24479` |
+| Kanon lockset ID and digest | `monas-terraform-products-closure-20260825-r144`; `sha256:91e2022fc86a2d9c66b331dca2575b955b7bd24264ee721d2392cf4162e48eeb`; registry revision `c515833e5fa16a52c9af6c71d721b0f114de304b` (canonical merge `ca9586ac9ec7e0fb78dfb86b2217dc6fd3549bbb`) |
+| Terraform version and source revision | `0.4.50`; `f091e63994364349719c038d484e30dc06101edf` (r144 projection) |
 | Pistis version, build and source revision | `0.23.0` (`47`); `3c7d9b5a5c77445fd3aa54cf249b65dd7c61790c`; signed IPA SHA-256 `84d3246dbf4bae0b482ba8d1699b322727741368bc536b4b3e84098dc2a1dc79` |
 | iPhone model and iOS version | iPhone 14 Pro Max (`iPhone15,3`); iOS `26.6.1` (`23G83`) |
 | Native Monas HTTPS origin | Not issued. The prior `https://192.168.0.193:8443` generation is ineligible after Gate 0; a new origin is recorded only when the new installation issues it. |
-| Outcome of each gate | **Gate 0: PASS** (attended reset and idempotent live acceptance passed). **Gate 1: PASS** (operator observed Pistis `0.23.0 (47)` in About). **Gate 2: PASS** (operator reports local Pistis reset complete). **Gate 3: PASS** (operator independently observed the r143 `bare-earth-ready` baseline and a clean package audit). Gates 4–10: not started. |
+| Outcome of each gate | **Gate 0: PASS** (attended reset and idempotent live acceptance passed). **Gate 1: PASS** (operator observed Pistis `0.23.0 (47)` in About). **Gate 2: PASS** (operator reports local Pistis reset complete). **Gate 3: PASS** (operator independently observed the `bare-earth-ready` baseline and a clean package audit; r144 was subsequently deployed and revalidated without starting a ceremony). **Gate 4: READY, not started** (the non-authorising host target is configured; no identity, lease, code or QR exists). Gates 5–11: not started. |
 
 Do not record QR payloads, bootstrap codes, browser capabilities, cookies,
 provider tokens, private keys or complete signed proofs.
@@ -107,7 +107,8 @@ Qualification on the NUC passed all of the following before the retry:
   catalogue validator;
 - Proxenos reset contract, execution and Debian-package tests on Linux;
 - source-provenance fetch for every manifest and Cargo pin;
-- all 20 DEBs carry the r142 lockset and content digest recorded above;
+- all 20 DEBs carried the then-qualified r142 lockset and content digest
+  (subsequently superseded in this run by r144);
 - installed Monas, Proxenos, Thesaurophylax and Base Camp packages carry the
   exact versions and source revisions in this run record;
 - `dpkg --audit` prints nothing;
@@ -302,7 +303,7 @@ contains the enrolled Site Root public key, so it cannot exist before the new
 iPhone creates that key. This was a circular acceptance contract, not evidence
 that the bare-earth reset had failed.
 
-Monas `0.116.3` fixes the status projection narrowly. It labels a host
+Monas `0.116.3` fixed the status projection narrowly. It labels a host
 `bare-earth-ready` only when all three root-owned reset records have exact
 schema, ownership, mode, machine binding and destroyed result; DAS is active;
 Proxenos authority is inactive; and every resumable installation, identity,
@@ -340,9 +341,75 @@ Proxenos not activated, custody and Site X.509 not issued, all former state
 absent and no ceremony started. **Gate 3 outcome: PASS. Gate 4 remains not
 started.**
 
+The first attached Gate 4 attempt then exposed a second, distinct circular
+dependency. The launcher waited for
+`/etc/mnemosyne-monas/site-trust-genesis.env`; automatic preparation waited for
+active Proxenos state to derive the Thesaurophylax custody profile; and the
+valid bare-earth Gate 3 contract correctly required Proxenos to remain inactive
+until the attended ceremony. The old tests proved each isolated state but did
+not execute `--destroy-all` through Gate 3 and into the real attached Gate 4
+route in sequence. A code was therefore unreachable even though status was
+correct.
+
+Monas `0.117.0` and Thesaurophylax `0.70.1` remove that cycle without creating
+authority locally. A one-time, non-authorising RFC1918 host target lets the
+fresh route compose its initial origin. A new identity may be created only
+when all three exact, root-owned, machine-bound reset records agree and every
+former identity/authority/lease path is absent. Thesaurophylax may derive the
+same non-secret initial custody profile only inside that exact bare-earth
+state. The phone ceremony remains the sole source of Site Root authority and
+the later Site X.509 descriptor.
+
+The executable regression now runs the actual destructive-reset → Gate 3 →
+attached Gate 4 sequence and proves identity → preparation/custody → issuer
+ordering, code reachability and absence of the former indefinite wait. Negative
+tests reject an unassigned/public/malformed target, changed retained target,
+unsafe ownership/mode, partial reset evidence, substituted machine binding and
+unexpected Proxenos state.
+
+The resulting r144 closure was built on the x86_64 NUC from Terraform
+`f091e63994364349719c038d484e30dc06101edf`. The first build attempt exhausted
+the NUC's `/tmp` tmpfs while rebuilding DASObjectStore; the governed build was
+relocated to persistent storage and completed without changing sources or
+release coordinates. All 20 packages were then installed through Terraform's
+verified local APT route. Live post-install evidence recorded:
+
+- Monas `0.117.0`, Thesaurophylax `0.70.1` and Base Camp `0.85.21`, with the
+  exact r144 source revisions and content digest in this run record;
+- `dpkg --audit` produced no output;
+- `192.168.0.193` was currently assigned and the retained host-target record
+  was `root:mnemosyne-monas`, mode `0640`, exactly 67 bytes with a final
+  newline;
+- `monas-first-install --status` still reported `bare-earth-ready`, DAS active,
+  Proxenos not activated, and custody/Site X.509 not issued; and
+- genesis identity/configuration, custody configuration, Site X.509 descriptor
+  and broker lease all remained absent.
+
+No ceremony, code or QR was started during deployment or this revalidation.
+Gate 3 remains passed and Gate 4 is now ready for the operator's attached
+terminal.
+
 ## Gate 4 — Start the single supported first-install command
 
 **Purpose:** create one attached host rendezvous.
+
+For a bare-earth installation, first configure the reviewed private address
+once. This writes a protected, non-authorising machine target; it does not
+create an identity, contact the broker, issue a code/QR or start a ceremony:
+
+```bash
+sudo monas-first-install --configure-host-address 192.168.0.193 --confirm
+```
+
+For this run the command has already completed and reported:
+
+```text
+Monas first-install host address configured: 192.168.0.193
+This non-authorising machine target survives installation/identity rebuilds.
+```
+
+Do not repeat it with a different address. A changed retained target is a hard
+failure and requires a separately reviewed administrative rebuild decision.
 
 In one SSH terminal on the NUC run:
 

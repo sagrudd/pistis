@@ -49,6 +49,19 @@ enum SiteX509BrokerContinuationPhaseV1: String, Sendable {
     case leafApproval = "leaf-approval"
 }
 
+/// Non-secret, user-presentable progress for the attended Site X.509 route.
+///
+/// This deliberately exposes only the fixed protocol phase. It never carries
+/// QR bytes, correlation values, proof material, device identifiers or keys.
+enum SiteX509BrokerApprovalStageV1: Equatable, Sendable {
+    case reservingApproval
+    case awaitingFaceID
+    case submittingInitialProof
+    case awaitingContinuation(SiteX509BrokerContinuationPhaseV1)
+    case authorizingContinuation(SiteX509BrokerContinuationPhaseV1)
+    case submittingContinuation(SiteX509BrokerContinuationPhaseV1)
+}
+
 struct SiteX509BrokerContinuationPresentationV1: Sendable {
     let payload: Data
     let sha256: Data
@@ -1051,15 +1064,20 @@ struct SiteRootConvergenceServiceV2: Sendable {
         try await transport.submitSiteX509FirstProvision(presentation, detachedCOSE: cose)
     }
 
+    @MainActor
     func provisionSiteX509Broker(
-        _ presentation: SiteX509FirstProvisionBrokerPresentationV1
+        _ presentation: SiteX509FirstProvisionBrokerPresentationV1,
+        progress: (SiteX509BrokerApprovalStageV1) -> Void = { _ in }
     ) async throws {
         // The fixed broker reservation is deliberately the first side effect.
         // It consumes the QR even when Face ID, App Attest, signing, or the
         // later proof submission fails; a failed authorization must not make
         // the same protected presentation reusable.
+        progress(.reservingApproval)
         try await transport.reserveSiteX509FirstProvisionBroker(presentation)
+        progress(.awaitingFaceID)
         let authorization = try await brokerAuthorizationFactory(presentation)
+        progress(.submittingInitialProof)
         try await transport.submitSiteX509FirstProvisionBroker(
             presentation, detachedCOSE: authorization.detachedCOSE
         )
@@ -1072,17 +1090,21 @@ struct SiteRootConvergenceServiceV2: Sendable {
                 transport: continuation,
                 authorizer: SecureEnclaveSiteX509BrokerContinuationAuthorizerV2(
                     ceremony: ceremony, store: store
-                )
+                ),
+                progress: progress
             )
         }
     }
 
+    @MainActor
     func continueRecoveredSiteX509(
-        _ presentation: SiteX509ContinuationRecoveryPresentationV1
+        _ presentation: SiteX509ContinuationRecoveryPresentationV1,
+        progress: (SiteX509BrokerApprovalStageV1) -> Void = { _ in }
     ) async throws {
         guard let continuation = continuationTransport else {
             throw PlatformFailure.siteRootAuthorityUnavailable
         }
+        progress(.awaitingFaceID)
         let ceremony = try await FaceIDCeremonyContext.authenticate(
             reason: "Resume accepted Site X.509 custody and certificate approval"
         )
@@ -1092,7 +1114,8 @@ struct SiteRootConvergenceServiceV2: Sendable {
             transport: continuation,
             authorizer: SecureEnclaveSiteX509BrokerContinuationAuthorizerV2(
                 ceremony: ceremony, store: store
-            )
+            ),
+            progress: progress
         )
     }
 
@@ -1132,22 +1155,27 @@ struct SiteRootConvergenceServiceV2: Sendable {
         return BrokerSiteX509AuthorizationV1(detachedCOSE: cose, ceremony: ceremony)
     }
 
+    @MainActor
     func continueBrokerSiteX509(
         correlation: Data,
         expectedSiteUUID: String,
         transport: any MonasSiteX509BrokerContinuing,
-        authorizer: any SiteX509BrokerContinuationAuthorizingV2
+        authorizer: any SiteX509BrokerContinuationAuthorizingV2,
+        progress: (SiteX509BrokerApprovalStageV1) -> Void = { _ in }
     ) async throws {
         for (phase, role) in [
             (SiteX509BrokerContinuationPhaseV1.rootUnlock, SiteX509AttendedUnlockRoleV2.root),
             (.issuerUnlock, .issuer),
         ] {
+            progress(.awaitingContinuation(phase))
             guard let brokered = try await transport.awaitSiteX509Continuation(
                 correlation: correlation, phase: phase
             ) else { continue }
+            progress(.authorizingContinuation(phase))
             let submission = try authorizer.attendedUnlock(
                 brokered.payload, role: role
             )
+            progress(.submittingContinuation(phase))
             try await transport.submitSiteX509Continuation(
                 correlation: correlation, phase: phase,
                 presentationSHA256: brokered.sha256,
@@ -1156,10 +1184,13 @@ struct SiteRootConvergenceServiceV2: Sendable {
         }
 
         try authorizer.prepareAckRegistration(expectedSiteUUID: expectedSiteUUID)
+        progress(.awaitingContinuation(.ackRegistration))
         if let brokered = try await transport.awaitSiteX509Continuation(
             correlation: correlation, phase: .ackRegistration
         ) {
+            progress(.authorizingContinuation(.ackRegistration))
             let submission = try authorizer.ackRegistration(brokered.payload)
+            progress(.submittingContinuation(.ackRegistration))
             try await transport.submitSiteX509Continuation(
                 correlation: correlation, phase: .ackRegistration,
                 presentationSHA256: brokered.sha256,
@@ -1167,10 +1198,13 @@ struct SiteRootConvergenceServiceV2: Sendable {
             )
         }
 
+        progress(.awaitingContinuation(.leafApproval))
         if let brokered = try await transport.awaitSiteX509Continuation(
             correlation: correlation, phase: .leafApproval
         ) {
+            progress(.authorizingContinuation(.leafApproval))
             let submission = try authorizer.leafApproval(brokered.payload)
+            progress(.submittingContinuation(.leafApproval))
             try await transport.submitSiteX509Continuation(
                 correlation: correlation, phase: .leafApproval,
                 presentationSHA256: brokered.sha256,

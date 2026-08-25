@@ -458,8 +458,10 @@ final class SiteRootConvergenceProtocolTests: XCTestCase {
         )
     }
 
+    @MainActor
     func testBrokerContinuationRegistersAcknowledgementKeyBeforeLeafApproval() async throws {
         let events = LockedContinuationEvents()
+        var progress: [SiteX509BrokerApprovalStageV1] = []
         let transport = RecordingContinuationTransport(events: events)
         let authorizer = RecordingContinuationAuthorizer(events: events)
         let service = SiteRootConvergenceServiceV2(
@@ -470,7 +472,8 @@ final class SiteRootConvergenceProtocolTests: XCTestCase {
             correlation: Data(repeating: 0x52, count: 32),
             expectedSiteUUID: "02020202-0202-0202-0202-020202020202",
             transport: transport,
-            authorizer: authorizer
+            authorizer: authorizer,
+            progress: { progress.append($0) }
         )
 
         XCTAssertEqual(events.values(), [
@@ -479,6 +482,20 @@ final class SiteRootConvergenceProtocolTests: XCTestCase {
             "prepare-ack", "await-ack-registration", "authorize-ack",
             "submit-ack-registration", "await-leaf-approval", "authorize-leaf",
             "submit-leaf-approval",
+        ])
+        XCTAssertEqual(progress, [
+            .awaitingContinuation(.rootUnlock),
+            .authorizingContinuation(.rootUnlock),
+            .submittingContinuation(.rootUnlock),
+            .awaitingContinuation(.issuerUnlock),
+            .authorizingContinuation(.issuerUnlock),
+            .submittingContinuation(.issuerUnlock),
+            .awaitingContinuation(.ackRegistration),
+            .authorizingContinuation(.ackRegistration),
+            .submittingContinuation(.ackRegistration),
+            .awaitingContinuation(.leafApproval),
+            .authorizingContinuation(.leafApproval),
+            .submittingContinuation(.leafApproval),
         ])
     }
 
@@ -571,8 +588,10 @@ final class SiteRootConvergenceProtocolTests: XCTestCase {
         }
     }
 
+    @MainActor
     func testBrokerApprovalReservesBeforeProtectedProofAndCannotBeReplayed() async throws {
         let recorder = BrokerAttemptRecorder()
+        var progress: [SiteX509BrokerApprovalStageV1] = []
         let transport = RecordingBrokerTransport(recorder: recorder)
         let service = SiteRootConvergenceServiceV2(
             transport: transport,
@@ -583,18 +602,26 @@ final class SiteRootConvergenceProtocolTests: XCTestCase {
         )
         let presentation = try brokerPresentation()
 
-        try await service.provisionSiteX509Broker(presentation)
+        try await service.provisionSiteX509Broker(
+            presentation, progress: { progress.append($0) }
+        )
         let firstEvents = await recorder.events()
         XCTAssertEqual(firstEvents, ["reserve", "proof", "submit"])
+        XCTAssertEqual(progress, [
+            .reservingApproval, .awaitingFaceID, .submittingInitialProof,
+        ])
 
         do {
-            try await service.provisionSiteX509Broker(presentation)
+            try await service.provisionSiteX509Broker(
+                presentation, progress: { progress.append($0) }
+            )
             XCTFail("a reserved broker presentation must not be reusable")
         } catch let failure as PlatformFailure {
             XCTAssertEqual(failure, .siteRootAuthorityUnavailable)
         }
         let replayEvents = await recorder.events()
         XCTAssertEqual(replayEvents, ["reserve", "proof", "submit", "reserve"])
+        XCTAssertEqual(progress.last, .reservingApproval)
     }
 
     func testPurposeSpecificProtectedHeadersAreCanonical() throws {

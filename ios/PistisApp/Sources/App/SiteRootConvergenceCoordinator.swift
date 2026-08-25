@@ -25,6 +25,7 @@ final class SiteRootConvergenceCoordinator: ObservableObject {
         case idle
         case review(SiteRootConvergenceReview)
         case authenticating
+        case siteX509Progress(SiteX509BrokerApprovalStageV1)
         case unlockingBundleReceipt
         case submitting
         case completed
@@ -191,10 +192,14 @@ final class SiteRootConvergenceCoordinator: ObservableObject {
                 try await service.provisionSiteX509(value)
                 completedBrokeredSiteX509 = false
             case let .siteX509Broker(value):
-                try await service.provisionSiteX509Broker(value)
+                try await service.provisionSiteX509Broker(value) {
+                    self.phase = .siteX509Progress($0)
+                }
                 completedBrokeredSiteX509 = true
             case let .siteX509ContinuationRecovery(value):
-                try await service.continueRecoveredSiteX509(value)
+                try await service.continueRecoveredSiteX509(value) {
+                    self.phase = .siteX509Progress($0)
+                }
                 completedBrokeredSiteX509 = true
             case let .acknowledgement(value):
                 try await service.acknowledge(value)

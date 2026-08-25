@@ -39,7 +39,7 @@ Create one run record before starting:
 | Pistis version, build and source revision | `0.23.0` (`47`); `3c7d9b5a5c77445fd3aa54cf249b65dd7c61790c`; signed IPA SHA-256 `84d3246dbf4bae0b482ba8d1699b322727741368bc536b4b3e84098dc2a1dc79` |
 | iPhone model and iOS version | iPhone 14 Pro Max (`iPhone15,3`); iOS `26.6.1` (`23G83`) |
 | Native Monas HTTPS origin | Not issued. The prior `https://192.168.0.193:8443` generation is ineligible after Gate 0; a new origin is recorded only when the new installation issues it. |
-| Outcome of each gate | **Gate 0: PASS** (attended reset and idempotent live acceptance passed). **Gate 1: PASS** (operator observed Pistis `0.23.0 (47)` in About). **Gate 2: PASS** (operator reports local Pistis reset complete). Gate 3: implementation qualified; awaiting operator revalidation after r143 deployment. Gates 4–10: not started. |
+| Outcome of each gate | **Gate 0: PASS** (attended reset and idempotent live acceptance passed). **Gate 1: PASS** (operator observed Pistis `0.23.0 (47)` in About). **Gate 2: PASS** (operator reports local Pistis reset complete). **Gate 3: PASS** (operator independently observed the r143 `bare-earth-ready` baseline and a clean package audit). Gates 4–10: not started. |
 
 Do not record QR payloads, bootstrap codes, browser capabilities, cookies,
 provider tokens, private keys or complete signed proofs.
@@ -333,8 +333,12 @@ including the DAS GUI API path that is not portable to macOS. After install:
 - the four DAS configuration hashes, eight mount UUIDs and all eight
   top-level entry counts exactly matched the pre-deployment baseline.
 
-No code, QR, broker rendezvous or ceremony was issued. **Gate 3 remains open
-only for the operator's independent revalidation. Do not start Gate 4 yet.**
+No code, QR, broker rendezvous or ceremony was issued. The operator then ran
+the two documented commands independently: `dpkg --audit` printed nothing and
+`monas-first-install --status` reported `bare-earth-ready`, DAS active,
+Proxenos not activated, custody and Site X.509 not issued, all former state
+absent and no ceremony started. **Gate 3 outcome: PASS. Gate 4 remains not
+started.**
 
 ## Gate 4 — Start the single supported first-install command
 

@@ -1,5 +1,11 @@
 # Changelog
 
+- Report every brokered Site X.509 approval stage after Face ID, including the
+  retained root and issuer unlocks, acknowledgement setup and initial leaf
+  approval. A host-side continuation wait can no longer remain labelled as a
+  biometric prompt, and regression tests pin the complete ordered progress
+  projection without exposing ceremony material (0.23.1, iOS build 48).
+
 - Add an explicit Face-ID-gated **Reset Pistis on this iPhone** operation that
   erases the closed set of device-local identities, installation trust,
   Pistis-owned Secure Enclave keys, App Attest references, custody/setup

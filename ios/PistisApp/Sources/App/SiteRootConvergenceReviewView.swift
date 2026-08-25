@@ -56,7 +56,7 @@ struct SiteRootConvergenceReviewView: View {
             MnPrimaryButton(buttonTitle, systemImage: "faceid") {
                 Task { await coordinator.approve() }
             }
-        case .authenticating, .submitting, .unlockingBundleReceipt:
+        case .authenticating, .siteX509Progress, .submitting, .unlockingBundleReceipt:
             HStack(spacing: MnSpacing.x3) {
                 ProgressView()
                 Text(phaseLabel)
@@ -110,13 +110,48 @@ struct SiteRootConvergenceReviewView: View {
     private var isBusy: Bool {
         coordinator.phase == .authenticating || coordinator.phase == .submitting
             || coordinator.phase == .unlockingBundleReceipt
+            || {
+                if case .siteX509Progress = coordinator.phase { return true }
+                return false
+            }()
     }
 
     private var phaseLabel: String {
         switch coordinator.phase {
         case .authenticating: "Waiting for Face ID"
+        case let .siteX509Progress(stage): stage.label
         case .unlockingBundleReceipt: "Unlocking the Site Root receipt authority"
         default: "Submitting exact proof"
+        }
+    }
+}
+
+private extension SiteX509BrokerApprovalStageV1 {
+    var label: String {
+        switch self {
+        case .reservingApproval:
+            "Reserving this one-use Site X.509 approval"
+        case .awaitingFaceID:
+            "Waiting for Face ID"
+        case .submittingInitialProof:
+            "Face ID accepted · submitting the Site X.509 approval"
+        case let .awaitingContinuation(phase):
+            "Face ID accepted · waiting for \(phase.userLabel)"
+        case let .authorizingContinuation(phase):
+            "Authorising \(phase.userLabel)"
+        case let .submittingContinuation(phase):
+            "Submitting \(phase.userLabel)"
+        }
+    }
+}
+
+private extension SiteX509BrokerContinuationPhaseV1 {
+    var userLabel: String {
+        switch self {
+        case .rootUnlock: "Site Root custody unlock"
+        case .issuerUnlock: "Site issuer custody unlock"
+        case .ackRegistration: "host acknowledgement setup"
+        case .leafApproval: "initial certificate approval"
         }
     }
 }

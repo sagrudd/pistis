@@ -131,6 +131,13 @@ available only after the signed host profile is present. The native Site X.509
 phase must complete before the final identity QR can be composed because that
 QR is bound to the reviewed native TLS leaf.
 
+During brokered Site X.509 approval, the review screen must distinguish the
+fresh Face ID operation from subsequent waits for root unlock, issuer unlock,
+acknowledgement setup and initial leaf approval. These labels are a non-secret
+projection of the fixed phase enum only. A completed biometric operation must
+never remain labelled ``Waiting for Face ID`` while the broker is waiting for
+the attended host.
+
 For the brokered genesis phase, the fixed origin is
 https://install.mnemosyne.co.uk and the active PHP/Rust route contract is
 the plural /api/first-install/v1/site-root-genesis/ family:

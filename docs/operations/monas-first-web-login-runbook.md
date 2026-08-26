@@ -574,6 +574,8 @@ normal authentication ceremony.
    phone…**.
 4. In Pistis, open **Scan** and scan that browser QR.
 5. Verify the Monas installation, GitHub identity, exact audience and expiry.
+   The normal home ceremony's exact audience is `propylaion`; a display label
+   such as “Monas” is not the signed audience.
 6. Approve once with Face ID.
 7. Leave the browser open while it polls and finalises the ceremony.
 

@@ -30,24 +30,28 @@ final class PistisUITests: XCTestCase {
                 )
             } else if tab == "Settings" {
                 application.swipeUp()
-                try application.performAccessibilityAudit(for: .all, handleFrameworkAuditFinding)
+                try application.performAccessibilityAudit(for: .all) {
+                    self.handleSettingsViewportFinding($0, in: application)
+                }
             } else {
                 try application.performAccessibilityAudit()
             }
         }
     }
 
-    private func handleFrameworkAuditFinding(_ issue: XCUIAccessibilityAuditIssue) -> Bool {
+    private func handleSettingsViewportFinding(
+        _ issue: XCUIAccessibilityAuditIssue,
+        in application: XCUIApplication
+    ) -> Bool {
         // Xcode 26.6 reports this standard NavigationLink label even though it
         // uses the scalable semantic body font.
         if issue.auditType == .dynamicType && issue.element?.label == "About Pistis" {
             return true
         }
-        // Xcode 26.6 emits anonymous contrast nodes for opaque List rows after
-        // a swipe beneath its translucent navigation and tab materials. The
-        // retained screenshots show the explicit semantic foregrounds on
-        // opaque row backgrounds; never accept a named or inspectable node.
-        return issue.auditType == .contrast && issue.element == nil
+        // After the swipe, Xcode 26.5/26.6 samples the rows passing under the
+        // translucent navigation and tab materials. Use the same exact frame
+        // exclusion as the scanner; central, named rows remain fail-closed.
+        return handleClippedContrastFinding(issue, in: application)
     }
 
     private func handleIdentitiesViewportFinding(_ issue: XCUIAccessibilityAuditIssue) -> Bool {

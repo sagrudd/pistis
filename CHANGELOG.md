@@ -1,5 +1,13 @@
 # Changelog
 
+- Add a test-target-only iPhone Simulator for the complete formal Monas first
+  install, Propylaion home login and exact-audience DASObjectStore login. The
+  candidate gate drives production QR parsers and signed challenge
+  verification, rejects replay, expiry, substitution, stage skipping,
+  biometric/App Attest denial, identity mismatch and audience confusion, and
+  explicitly leaves Secure Enclave, Face ID and App Attest as a physical-device
+  gate (0.23.2, iOS build 49).
+
 - Report every brokered Site X.509 approval stage after Face ID, including the
   retained root and issuer unlocks, acknowledgement setup and initial leaf
   approval. A host-side continuation wait can no longer remain labelled as a

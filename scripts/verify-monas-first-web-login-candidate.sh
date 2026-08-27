@@ -12,9 +12,13 @@ evidence_dir=${2:-}
 root=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
 runbook=$root/docs/operations/monas-first-web-login-runbook.md
 project=$root/ios/PistisApp/Pistis.xcodeproj
+simulator_test=$root/ios/PistisApp/Tests/PlatformTests/MonasFirstWebLoginIPhoneSimulatorTests.swift
+custody_fixture=$root/ios/PistisApp/Tests/PlatformTests/MonasFirstWebLoginCustodySimulatorFixture.swift
 
 [ -f "$runbook" ] || { printf '%s\n' "candidate gate: runbook missing" >&2; exit 1; }
 [ -d "$project" ] || { printf '%s\n' "candidate gate: Xcode project missing" >&2; exit 1; }
+[ -f "$simulator_test" ] || { printf '%s\n' "candidate gate: simulator test missing" >&2; exit 1; }
+[ -f "$custody_fixture" ] || { printf '%s\n' "candidate gate: custody fixture missing" >&2; exit 1; }
 
 branch=$(git -C "$root" symbolic-ref --quiet --short HEAD || true)
 [ "$branch" = main ] || {
@@ -33,6 +37,33 @@ for gate in 0 1 2 3 4 5 6 7 8 9 10 11; do
         exit 1
     }
 done
+
+for contract in \
+    'testFirstDeviceIsBlockedUntilAuthorityCustodyIsDurable' \
+    'testRetainedAuthorityCustodyRecoveryUsesRecoveryWireBeforeIdentity' \
+    'simulated-authority-custody-app-attest-assertion-accepted' \
+    'durable-thesaurophylax-authority-signer-ready'; do
+    grep -F "$contract" "$simulator_test" >/dev/null || {
+        printf '%s\n' "candidate gate: simulator omits custody contract: $contract" >&2
+        exit 1
+    }
+done
+grep -F 'FirstAuthorityCustodyRotationV2Wire.presentation' "$custody_fixture" >/dev/null || {
+    printf '%s\n' "candidate gate: simulator omits production rotation wire" >&2
+    exit 1
+}
+grep -F 'FirstAuthorityCustodyRotationV2Wire.recoveryPresentation' "$custody_fixture" >/dev/null || {
+    printf '%s\n' "candidate gate: simulator omits production recovery wire" >&2
+    exit 1
+}
+grep -F '**Continue authority recovery**' "$runbook" >/dev/null || {
+    printf '%s\n' "candidate gate: runbook omits attended custody action" >&2
+    exit 1
+}
+grep -F 'This step has no QR.' "$runbook" >/dev/null || {
+    printf '%s\n' "candidate gate: runbook does not distinguish the no-QR custody gate" >&2
+    exit 1
+}
 
 device_state=$(xcrun simctl list devices available | grep -F "$simulator_id" || true)
 [ -n "$device_state" ] || {

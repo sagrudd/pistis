@@ -420,11 +420,29 @@ sudo monas-first-install
 Keep that terminal open. Do not run another copy of the command and do not
 start individual Monas or Thesaurophylax units manually.
 
+If the status at command entry is `activated-current-pair`, the retained Site
+Root and Site X.509 are already complete. Before a new browser code is safe,
+the terminal deliberately pauses at the distinct authority-custody gate. In
+Pistis open **Installations**, select this setup installation and tap
+**Continue authority recovery**. Approve the fresh App Attest assertion and
+Face ID request. This step has no QR. Keep the command attached until it prints
+both:
+
+```text
+Monas first-install checkpoint: attended authority custody complete.
+Monas first-install checkpoint: protected first-device enrolment edge ready.
+```
+
+Only then is the short-lived browser code issued. This is a valid sequential
+resume, not reconciliation or a request to restart the command.
+
 ### Pass condition
 
 The terminal prints:
 
 - the ordered route state;
+- for an activated retained pair, the explicit no-QR authority-custody
+  instruction and durable-signer/provider-edge checkpoints;
 - `https://install.mnemosyne.co.uk`;
 - one short-lived code and its expiry; and
 - an instruction to keep the terminal attached.
@@ -432,9 +450,12 @@ The terminal prints:
 ### Stop conditions
 
 Stop if the command selects reconciliation without a new code, reports an
-inactive or incompatible protected route, or cannot start its broker
-rendezvous. If the code expires unused, let the command settle and then start
-one new run; never reuse or transcribe an expired code.
+inactive or incompatible protected route, reports an unmanaged protected-unit
+override, or cannot start authority custody, the provider edge or its broker
+rendezvous. `Waiting for Face ID` is not a host checkpoint: after Face ID has
+completed, require either the durable signer checkpoint or a named diagnostic.
+If the code expires unused, let the command settle and then start one new run;
+never reuse or transcribe an expired code.
 
 ## Gate 5 — Redeem the code and verify GitHub
 
@@ -499,6 +520,15 @@ provision** QR.
 3. Approve once with Face ID.
 4. Keep the browser and terminal attached while custody continuation,
    acknowledgement registration and paired-leaf activation complete.
+5. When the terminal says **Authority custody continuation is ready**, open
+   **Pistis → Installations**, select this setup installation and tap
+   **Continue authority recovery**.
+6. Approve the fresh App Attest assertion and the separate Face ID request.
+   There is no QR for this transition; do not scan the previous Site X.509 QR
+   again.
+7. Keep the terminal attached until it independently reports the durable
+   Thesaurophylax authority signer and protected first-device enrolment edge
+   ready. The same install browser then advances to first-device identity.
 
 ### Pass condition
 
@@ -507,21 +537,34 @@ provision** QR.
 - Root custody, issuer custody, acknowledgement registration and initial leaf
   approval complete in their documented order.
 - The NUC accepts the native TLS manifest for the Monas and DAS pair.
+- Pistis accepts the production v2 authority-custody rotation or recovery
+  presentation only after the server-owned lifecycle status and fresh App
+  Attest boundary.
+- The terminal reports attended authority custody complete only after the
+  durable Thesaurophylax signer socket exists.
+- Bootstrap, custody rotation and provider enrolment own the exact reviewed
+  private Site `:8443` edge sequentially, never concurrently and never through
+  an unmanaged loopback proxy.
 
 ### Stop conditions
 
 Stop for an unprotected/root QR, **custody ceremony unavailable**, **waiting
 for Face ID** after Face ID already completed, an unsupported QR, an authority
 generation mismatch or a host-side partial transaction. Do not start custody
-units manually.
+units manually. Stop if first-device identity appears before authority custody
+is durably complete, if an old QR is replayed, or if a retained diagnostic
+drop-in owns either protected native-edge unit.
 
 ## Gate 8 — Commit the GitHub identity and initial administrator
 
 **Purpose:** turn verified provider identity and signed iPhone registration
 into the formal installation evidence.
 
-Follow the browser and Pistis instructions for the provider-enrolment review.
-Approve only the GitHub numeric subject and installation shown for this run.
+The install browser now displays the protected first-device identity
+presentation. Scan it in Pistis only after Gate 7's durable authority-custody
+checkpoint. Follow the browser and Pistis instructions for the
+provider-enrolment review. Approve only the GitHub numeric subject and
+installation shown for this run.
 
 ### Pass condition
 

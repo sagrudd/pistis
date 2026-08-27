@@ -45,13 +45,14 @@ final class AppAttestAssertionTransportTests: XCTestCase {
         )
         let hash = Data(repeating: 0x5a, count: 32)
 
-        _ = try await client.prepareRegistration(
+        let prepared = try await client.prepareRegistration(
             ceremonyID: "server-owned-registration-ceremony",
             siteTrustDomain: "site-demo-1",
             clientDataHash: hash
         )
 
         XCTAssertEqual(service.attestationHash, hash)
+        XCTAssertEqual(prepared.envelope.clientDataHashB64URL, Self.base64URL(hash))
         do {
             _ = try await client.prepareRegistration(
                 ceremonyID: "server-owned-registration-ceremony",
@@ -64,14 +65,14 @@ final class AppAttestAssertionTransportTests: XCTestCase {
         }
     }
 
-    func testRegistrationNeverReattestsAStoredKey() async throws {
+    func testPreparedRegistrationCannotReplaceTheAcceptedKeyBeforeAuthorityCommit() async throws {
         let staleKeyID = Data(repeating: 0x11, count: 32).base64EncodedString()
         let freshKeyID = Data(repeating: 0x22, count: 32).base64EncodedString()
         let service = RecordingAppAttestService(keyID: freshKeyID)
         let store = MutableKeyIDStore(keyID: staleKeyID)
         let client = AppleAppAttestClient(service: service, keyIDStore: store)
 
-        _ = try await client.prepareRegistration(
+        let prepared = try await client.prepareRegistration(
             ceremonyID: "server-owned-registration-ceremony",
             siteTrustDomain: "site-demo-1",
             clientDataHash: Data(repeating: 0x5a, count: 32)
@@ -79,6 +80,8 @@ final class AppAttestAssertionTransportTests: XCTestCase {
 
         XCTAssertEqual(service.generatedKeyCount, 1)
         XCTAssertEqual(service.attestedKeyID, freshKeyID)
+        XCTAssertEqual(store.keyID, staleKeyID)
+        try client.commitAcceptedRegistration(prepared)
         XCTAssertEqual(store.keyID, freshKeyID)
     }
 
@@ -205,14 +208,55 @@ final class AppAttestAssertionTransportTests: XCTestCase {
         let client = AppleAppAttestClient(
             service: service, keyIDStore: FixedKeyIDStore(keyID: keyID)
         )
-        let envelope = try await client.prepareCustodyRotationAssertion(challenge: challenge)
+        let prepared = try await client.prepareCustodyRotationAssertion(challenge: challenge)
         XCTAssertEqual(service.assertionHash, Data(repeating: 0x33, count: 32))
-        try await transport.submitAssertion(envelope)
+        XCTAssertFalse(prepared.restoredRegisteredKeyReference)
+        try await transport.submitAssertion(prepared.envelope)
         let post = try XCTUnwrap(AssertionURLProtocol.lastRequest())
         XCTAssertEqual(post.httpMethod, "POST")
         XCTAssertEqual(post.url?.path, "/v1/pistis/site-trust/app-attest/assertion")
         XCTAssertNil(post.value(forHTTPHeaderField: "Cookie"))
         XCTAssertNil(post.value(forHTTPHeaderField: "Authorization"))
+    }
+
+    func testCustodyAssertionRestoresOnlyTheAppleProvenServerKeyReference() async throws {
+        AssertionURLProtocol.reset()
+        let serverKeyID = Data(repeating: 0x11, count: 32).base64EncodedString()
+        let unacceptedRetryKeyID = Data(repeating: 0x22, count: 32).base64EncodedString()
+        let store = MutableKeyIDStore(keyID: unacceptedRetryKeyID)
+        let service = RecordingAppAttestService(keyID: serverKeyID)
+        let client = AppleAppAttestClient(service: service, keyIDStore: store)
+        let challenge = try CustodyRotationAppAttestChallengeV2(
+            data: AssertionURLProtocol.challengeData(expires: 200),
+            nowUnixSeconds: 150
+        )
+
+        let prepared = try await client.prepareCustodyRotationAssertion(challenge: challenge)
+
+        XCTAssertEqual(service.assertedKeyID, serverKeyID)
+        XCTAssertEqual(store.keyID, serverKeyID)
+        XCTAssertTrue(prepared.restoredRegisteredKeyReference)
+    }
+
+    func testUnavailableServerRegisteredKeyDoesNotChangeTheLocalReference() async throws {
+        let unacceptedRetryKeyID = Data(repeating: 0x22, count: 32).base64EncodedString()
+        let store = MutableKeyIDStore(keyID: unacceptedRetryKeyID)
+        let client = AppleAppAttestClient(
+            service: FailingAttestationService(keyID: unacceptedRetryKeyID),
+            keyIDStore: store
+        )
+        let challenge = try CustodyRotationAppAttestChallengeV2(
+            data: AssertionURLProtocol.challengeData(expires: 200),
+            nowUnixSeconds: 150
+        )
+
+        do {
+            _ = try await client.prepareCustodyRotationAssertion(challenge: challenge)
+            XCTFail("an unavailable server-registered Apple key unexpectedly recovered")
+        } catch {
+            XCTAssertEqual(error as? PlatformFailure, .appAttestAssertionFailed)
+        }
+        XCTAssertEqual(store.keyID, unacceptedRetryKeyID)
     }
 
     func testRotationChallengeRejectsReplayWindowMismatchAndUnknownFields() throws {
@@ -330,6 +374,13 @@ final class AppAttestAssertionTransportTests: XCTestCase {
             try decodeCanonicalB64URL(object["client_data_sha256_b64url"])
         )
     }
+
+    private static func base64URL(_ value: Data) -> String {
+        value.base64EncodedString()
+            .replacingOccurrences(of: "+", with: "-")
+            .replacingOccurrences(of: "/", with: "_")
+            .replacingOccurrences(of: "=", with: "")
+    }
 }
 
 private func decodeCanonicalB64URL(_ value: String?) throws -> Data {
@@ -364,6 +415,7 @@ private final class RecordingAppAttestService: AppleAppAttestServicing, @uncheck
     let keyID: String
     private(set) var generatedKeyCount = 0
     private(set) var attestedKeyID: String?
+    private(set) var assertedKeyID: String?
     private(set) var attestationHash: Data?
     private(set) var assertionHash: Data?
     init(keyID: String) { self.keyID = keyID }
@@ -377,7 +429,8 @@ private final class RecordingAppAttestService: AppleAppAttestServicing, @uncheck
         attestationHash = clientDataHash
         return Data([1])
     }
-    func generateAssertion(_: String, clientDataHash: Data) async throws -> Data {
+    func generateAssertion(_ keyID: String, clientDataHash: Data) async throws -> Data {
+        assertedKeyID = keyID
         assertionHash = clientDataHash
         return Data(repeating: 0x44, count: 64)
     }

@@ -350,8 +350,19 @@ struct RootTabView: View {
           failureStage = .generateAssertion
           let assertion = try await AppleAppAttestClient()
             .prepareCustodyRotationAssertion(challenge: challenge)
+          if assertion.restoredRegisteredKeyReference {
+            try? LocalHistoryRepository.shared.record(
+              HistoryEvent(
+                id: UUID(), action: "App Attest reference recovered",
+                installation: installation.localAlias,
+                occurredAt: Date().formatted(date: .abbreviated, time: .standard),
+                decision: "Verified", signature: "Exact registered Apple key proved",
+                transfer: "Local opaque key reference restored",
+                verification: "No key or authority generation was created"
+              ))
+          }
           failureStage = .submitAssertion
-          try await appAttestTransport.submitAssertion(assertion)
+          try await appAttestTransport.submitAssertion(assertion.envelope)
           failureStage = .resolveCustodyLifecycle
           let observedLifecycle = try await transport.authorityCustodyStatusV2(
             authorityHost: installation.localAlias

@@ -1,5 +1,12 @@
 # Changelog
 
+- Restore the complete iPhone Simulator candidate gate by giving the Settings
+  navigation and tab surfaces an opaque reviewed canvas, enforcing exactly one
+  known Xcode 26.5/26.6 anonymous contrast finding for each of the three native
+  navigation rows, and explicitly retaining white text on the destructive
+  reset control. Any additional or missing contrast finding fails closed
+  (0.23.4, iOS build 51).
+
 - Correct the formal first-login simulator so Site X.509 can never advance
   directly to first-device identity. The candidate now executes the production
   authority-custody v2 status, initial-rotation and recovery wire boundaries,

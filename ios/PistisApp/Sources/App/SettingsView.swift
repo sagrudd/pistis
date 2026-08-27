@@ -85,6 +85,8 @@ struct SettingsView: View {
         }
         .scrollContentBackground(.hidden)
         .navigationTitle("Settings")
+        .toolbarBackground(MnColor.canvas, for: .navigationBar, .tabBar)
+        .toolbarBackground(.visible, for: .navigationBar, .tabBar)
         .mnScreenBackground()
     }
 }
@@ -148,7 +150,9 @@ private struct PrivacyView: View {
                     VStack(alignment: .leading, spacing: MnSpacing.x3) {
                         Text("Camera frames are not retained.")
                         Text("Provider access tokens are not stored by the application.")
-                        Text("Local history is informational and is not an authoritative evidence store.")
+                        Text(
+                            "Local history is informational and is not an authoritative evidence store."
+                        )
                     }
                 }
             }
@@ -175,8 +179,10 @@ private struct AboutView: View {
                             )
                         )
                         Divider()
-                        Text("Local-first cryptographic identity, authentication, approval, and evidence for scientific computing.")
-                            .font(.body)
+                        Text(
+                            "Local-first cryptographic identity, authentication, approval, and evidence for scientific computing."
+                        )
+                        .font(.body)
                     }
                 }
             }
@@ -190,9 +196,9 @@ private struct AboutView: View {
 enum PistisBuildIdentity {
     static func display(infoDictionary: [String: Any]) -> String {
         guard let version = infoDictionary["CFBundleShortVersionString"] as? String,
-              !version.isEmpty,
-              let build = infoDictionary["CFBundleVersion"] as? String,
-              !build.isEmpty
+            !version.isEmpty,
+            let build = infoDictionary["CFBundleVersion"] as? String,
+            !build.isEmpty
         else { return "Unknown build" }
         return "\(version) (\(build))"
     }

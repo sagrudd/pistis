@@ -45,6 +45,7 @@ struct DestructiveConfirmationButton: View {
                 }
             }
             .font(.headline)
+            .foregroundStyle(MnColor.onBrand)
             .frame(maxWidth: .infinity, minHeight: MnMetrics.minimumTarget)
         }
         .buttonStyle(.borderedProminent)

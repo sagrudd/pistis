@@ -79,6 +79,21 @@ struct AppleAppAttestRegistrationEnvelope: Codable, Equatable, Sendable {
     }
 }
 
+/// An Apple-attested registration whose opaque key identifier is not yet the
+/// phone's primary App Attest reference. The pinned authority must accept the
+/// accompanying envelope before the caller commits this value.
+struct PreparedAppleAppAttestRegistration: Sendable {
+    let envelope: AppleAppAttestRegistrationEnvelope
+    fileprivate let keyID: String
+}
+
+/// One assertion for the exact server-registered custody key plus a redacted
+/// fact stating whether Pistis repaired only its local opaque key reference.
+struct PreparedCustodyRotationAppAttestAssertion: Sendable {
+    let envelope: AppleAppAttestAssertionEnvelope
+    let restoredRegisteredKeyReference: Bool
+}
+
 /// The purpose-separated assertion envelope accepted only by Monas's exact
 /// Site Trust ingress. It deliberately carries neither a challenge nor a
 /// session, and a successful HTTP delivery is not a completed Monas session.
@@ -485,8 +500,9 @@ final class KeychainAppleAppAttestReplacementKeyStore:
 /// Apple App Attest adapter for one Monas registration ceremony.
 ///
 /// The raw Monas challenge exists only for the duration of `prepareRegistration`.
-/// The returned envelope must be delivered directly to the reviewed Monas
-/// authority; callers must not persist, log, or place it in a QR code.
+/// The returned staged registration must be delivered directly to the reviewed
+/// Monas authority and committed only after acceptance; callers must not
+/// persist, log, or place it in a QR code.
 final class AppleAppAttestClient: @unchecked Sendable {
     static let assertionClientDataPrefix = Data(
         "mnemosyne.pistis.site-trust-app-attest-client-data.v1\0".utf8
@@ -513,7 +529,7 @@ final class AppleAppAttestClient: @unchecked Sendable {
         ceremonyID: String,
         siteTrustDomain: String,
         serverChallenge: Data
-    ) async throws -> AppleAppAttestRegistrationEnvelope {
+    ) async throws -> PreparedAppleAppAttestRegistration {
         let clientDataHash = Data(SHA256.hash(data: serverChallenge))
         return try await prepareRegistration(
             ceremonyID: ceremonyID,
@@ -530,7 +546,7 @@ final class AppleAppAttestClient: @unchecked Sendable {
         ceremonyID: String,
         siteTrustDomain: String,
         clientDataHash: Data
-    ) async throws -> AppleAppAttestRegistrationEnvelope {
+    ) async throws -> PreparedAppleAppAttestRegistration {
         guard service.isSupported else { throw PlatformFailure.appAttestUnavailable }
         guard clientDataHash.count == 32, !clientDataHash.allSatisfy({ $0 == 0 }) else {
             throw PlatformFailure.appAttestInvalidInput
@@ -539,32 +555,39 @@ final class AppleAppAttestClient: @unchecked Sendable {
         // Apple permits attestation only once for each App Attest key. A
         // previously retained key therefore cannot be reused for a fresh
         // registration after an interrupted ceremony. Generate a distinct
-        // key for this exact registration and retain its opaque identifier
-        // only after Apple has returned genuine attestation evidence; the
-        // retained identifier is then used exclusively for the following
-        // assertion flow.
+        // key for this exact registration, but do not replace the phone's
+        // retained identifier until Monas accepts the attested envelope.
         let keyID = try await newRegistrationKeyID()
         let attestationObject = try await attest(
             keyID: keyID,
             clientDataHash: clientDataHash
         )
-        // Do not retain a key that Apple did not successfully attest. This
-        // keeps an interrupted registration retry from treating an unproven
-        // key as the device's registered App Attest identity.
+        // Apple attestation proves the new key exists; it does not prove that
+        // Monas accepted the registration. Keep the key identifier staged so
+        // a rejected or interrupted retry cannot orphan the server's accepted
+        // key by replacing the phone's primary reference prematurely.
+        return PreparedAppleAppAttestRegistration(
+            envelope: try AppleAppAttestRegistrationEnvelope(
+                ceremonyID: ceremonyID,
+                siteTrustDomain: siteTrustDomain,
+                appleKeyID: keyID,
+                clientDataHash: clientDataHash,
+                attestationObject: attestationObject
+            ),
+            keyID: keyID
+        )
+    }
+
+    /// Promotes a staged registration only after the pinned authority has
+    /// accepted its exact public envelope.
+    func commitAcceptedRegistration(_ prepared: PreparedAppleAppAttestRegistration) throws {
         do {
-            try keyIDStore.saveKeyID(keyID)
+            try keyIDStore.saveKeyID(prepared.keyID)
         } catch let failure as PlatformFailure {
             throw failure
         } catch {
             throw PlatformFailure.appAttestKeyCreationFailed
         }
-        return try AppleAppAttestRegistrationEnvelope(
-            ceremonyID: ceremonyID,
-            siteTrustDomain: siteTrustDomain,
-            appleKeyID: keyID,
-            clientDataHash: clientDataHash,
-            attestationObject: attestationObject
-        )
     }
 
     /// Uses the registered physical iPhone key to make a single assertion for
@@ -594,17 +617,27 @@ final class AppleAppAttestClient: @unchecked Sendable {
     /// this path must neither rehash nor substitute bootstrap/session material.
     func prepareCustodyRotationAssertion(
         challenge: CustodyRotationAppAttestChallengeV2
-    ) async throws -> AppleAppAttestAssertionEnvelope {
-        guard service.isSupported, let keyID = existingKeyID(),
-            let decodedKeyID = Data(base64Encoded: keyID),
-            decodedKeyID == challenge.keyID
-        else { throw PlatformFailure.appAttestUnavailable }
+    ) async throws -> PreparedCustodyRotationAppAttestAssertion {
+        guard service.isSupported else { throw PlatformFailure.appAttestUnavailable }
+        let expectedKeyID = challenge.keyID.base64EncodedString()
+        let retainedKeyID = existingKeyID()
         let assertion = try await generateAssertion(
-            keyID: keyID,
+            keyID: expectedKeyID,
             clientDataHash: challenge.clientDataHash
         )
-        return try AppleAppAttestAssertionEnvelope(
+        let envelope = try AppleAppAttestAssertionEnvelope(
             ceremonyID: challenge.ceremonyID, assertion: assertion
+        )
+        if retainedKeyID != expectedKeyID {
+            // This is reference restoration, not key replacement. Apple has
+            // just proved that the exact server-registered key remains on this
+            // app/device, and the challenge arrived through the pinned Monas
+            // authority. A missing Apple key fails above without mutation.
+            try keyIDStore.saveKeyID(expectedKeyID)
+        }
+        return PreparedCustodyRotationAppAttestAssertion(
+            envelope: envelope,
+            restoredRegisteredKeyReference: retainedKeyID != expectedKeyID
         )
     }
 

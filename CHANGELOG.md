@@ -1,5 +1,13 @@
 # Changelog
 
+- Stage a freshly attested App Attest registration key until the pinned Monas
+  authority accepts its exact envelope, preventing a rejected first-device
+  retry from replacing the phone's reference to the immutable registered key.
+  An attended custody challenge can restore only that exact server-registered
+  reference after Apple proves the original key still exists on this app and
+  device; unavailable keys and failed proofs remain non-mutating (0.23.5, iOS
+  build 52).
+
 - Restore the complete iPhone Simulator candidate gate by giving the Settings
   navigation and tab surfaces an opaque reviewed canvas, enforcing exactly one
   known Xcode 26.5/26.6 anonymous contrast finding for each of the three native

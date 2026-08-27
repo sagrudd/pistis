@@ -233,7 +233,7 @@ final class SiteRootDelegationCoordinator: ObservableObject {
                     SiteRootGenesisRegistrationRequestV1(
                         presentation: firstDevice,
                         siteRootKey: siteRootKey,
-                        appAttestRegistration: registration
+                        appAttestRegistration: registration.envelope
                     ),
                     progress: { [weak self] progress in
                         Task { @MainActor [weak self] in
@@ -241,6 +241,7 @@ final class SiteRootDelegationCoordinator: ObservableObject {
                         }
                     }
                 )
+                try appAttestClient.commitAcceptedRegistration(registration)
                 try await completeInitialStaticDelegation(delegation, producer: producer)
             }
         } catch let failure as PlatformFailure {
@@ -321,7 +322,8 @@ final class SiteRootDelegationCoordinator: ObservableObject {
                 siteTrustDomain: delegation.siteTrustDomain,
                 clientDataHash: bootstrap.challengeDigest
             )
-            try await appAttestTransport.submitRegistration(registration)
+            try await appAttestTransport.submitRegistration(registration.envelope)
+            try appAttestClient.commitAcceptedRegistration(registration)
             recordEvent(kind: .stageEntered, outcome: .accepted)
         }
         let now = try Self.nowUnixSeconds()
@@ -331,7 +333,7 @@ final class SiteRootDelegationCoordinator: ObservableObject {
         let assertion = try await appAttestClient.prepareCustodyRotationAssertion(
             challenge: challenge
         )
-        try await appAttestTransport.submitAssertion(assertion)
+        try await appAttestTransport.submitAssertion(assertion.envelope)
         phase = .rewrappingCustody
         let rotation = try SecureEnclaveFirstAuthorityCustodyProducerV2(
             authenticationReason: "Approve this exact first-authority custody rotation"

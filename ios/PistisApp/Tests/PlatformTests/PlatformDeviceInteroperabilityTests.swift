@@ -89,11 +89,12 @@ final class PlatformDeviceInteroperabilityTests: XCTestCase {
         let client = AppleAppAttestClient(
             keyIDStore: InMemoryAppleAppAttestKeyIDStore()
         )
-        let envelope = try await client.prepareRegistration(
+        let prepared = try await client.prepareRegistration(
             ceremonyID: "physical-device-app-attest-v1",
             siteTrustDomain: "physical-device-evidence",
             serverChallenge: Data(repeating: 0xa5, count: 32)
         )
+        let envelope = prepared.envelope
 
         XCTAssertEqual(envelope.wireProtocol, "pistis.apple-app-attest-registration.v1")
         XCTAssertEqual(envelope.appIdentifier, "C7A6NQTSY4.org.mnemosynebiosciences.pistis")

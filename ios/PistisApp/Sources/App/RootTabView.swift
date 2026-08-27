@@ -121,7 +121,6 @@ struct RootTabView: View {
                     recoverSiteRootInstallation: recoverSiteRootInstallation,
                     reconciliationMessage: reconciliationMessage,
                     authorityCustodyBusy: authorityCustodyAttempt != nil,
-                    startProviderEnrolment: startProviderEnrolment,
                     continueBrokeredSiteX509: continueBrokeredSiteX509,
                     continueAuthorityCustody: continueAuthorityCustody,
                     selectInstallation: selectInstallation
@@ -262,11 +261,6 @@ struct RootTabView: View {
             }
         }
     }
-
-    private func startProviderEnrolment() {
-    reconciliationMessage = nil
-    routeToProviderEnrolment()
-  }
 
   private func routeToProviderEnrolment() {
         selectedTab = .identities

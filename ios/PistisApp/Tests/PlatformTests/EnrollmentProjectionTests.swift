@@ -346,6 +346,13 @@ final class EnrollmentProjectionTests: XCTestCase {
             InstallationDetailAction(installation: try XCTUnwrap(projection.installations.first)),
             .continueIdentitySetup
         )
+        XCTAssertTrue(
+            InstallationDetailAction.continueIdentitySetup.verifiesLiveAuthorityCustody,
+            "A completed local phase must recheck host custody before provider enrolment"
+        )
+        XCTAssertFalse(
+            InstallationDetailAction.continueBrokeredSiteX509.verifiesLiveAuthorityCustody
+        )
     }
 
     func testTrustedInstallationChecksCustodyBeforeDasAuthorityRetirement() throws {

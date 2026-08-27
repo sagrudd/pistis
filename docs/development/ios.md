@@ -383,6 +383,14 @@ installation screen. It must not immediately send a DAS request to the
 recovery-only listener. When custody was already ready, the existing protected
 DAS continuation remains available.
 
+The same live check is mandatory for a setup installation whose local phase
+already says identity enrolment is required. A host process restart can remove
+the live signer without invalidating that retained local phase. The identity
+continuation action therefore checks authority custody, completes retained App
+Attest and Face ID recovery when required, and opens the signed provider
+presentation only after the signer is live. Local phase completion is never
+treated as current host readiness.
+
 The Identities screen exposes only the accepted server-driven first-device
 surface. It scans and verifies the ADR 0029 version-4 presentation before
 network use. The app displays the verified installation and enables **Begin

@@ -26,6 +26,16 @@ enum InstallationDetailAction: Equatable {
             self = .continueAuthorityCustody
         }
     }
+
+    var verifiesLiveAuthorityCustody: Bool {
+        switch self {
+        case .continueAuthorityCustody, .completeDasAuthorityRetirement,
+             .continueIdentitySetup:
+            return true
+        case .continueBrokeredSiteX509, .none:
+            return false
+        }
+    }
 }
 
 struct InstallationsView: View {
@@ -35,7 +45,6 @@ struct InstallationsView: View {
     let recoverSiteRootInstallation: () -> Void
     let reconciliationMessage: String?
     let authorityCustodyBusy: Bool
-    let startProviderEnrolment: () -> Void
     let continueBrokeredSiteX509: () -> Void
     let continueAuthorityCustody: (InstallationSummary) -> Void
     let selectInstallation: (UUID) async throws -> Void
@@ -45,10 +54,9 @@ struct InstallationsView: View {
             NavigationLink {
                 InstallationDetailView(
                     installation: installation,
-          reconciliationMessage: reconciliationMessage,
-          authorityCustodyBusy: authorityCustodyBusy,
+                    reconciliationMessage: reconciliationMessage,
+                    authorityCustodyBusy: authorityCustodyBusy,
                     forgetExpired: forgetExpired,
-                    startProviderEnrolment: startProviderEnrolment,
                     continueBrokeredSiteX509: continueBrokeredSiteX509,
                     continueAuthorityCustody: continueAuthorityCustody,
                     selectInstallation: selectInstallation
@@ -115,7 +123,6 @@ private struct InstallationDetailView: View {
   let reconciliationMessage: String?
   let authorityCustodyBusy: Bool
     let forgetExpired: (UUID) async throws -> Void
-    let startProviderEnrolment: () -> Void
     let continueBrokeredSiteX509: () -> Void
     let continueAuthorityCustody: (InstallationSummary) -> Void
     let selectInstallation: (UUID) async throws -> Void
@@ -155,7 +162,7 @@ private struct InstallationDetailView: View {
                         VStack(alignment: .leading, spacing: MnSpacing.x2) {
                             MnStatusLabel(
                                 text: action == .continueIdentitySetup
-                                    ? "Next: enrol your identity"
+                                    ? "Next: verify custody and enrol identity"
                                     : action == .continueBrokeredSiteX509
                                         ? "Next: scan protected Site X.509 approval"
                                     : action == .continueAuthorityCustody
@@ -165,7 +172,7 @@ private struct InstallationDetailView: View {
                             )
               Text(
                 action == .continueIdentitySetup
-                  ? "Authority custody is ready, but this installation cannot authenticate or approve work yet. Continue only with a new authority-signed provider presentation."
+                  ? "Pistis will verify live authority custody, recover it with fresh App Attest and Face ID if required, and only then open a new authority-signed provider presentation."
                   : action == .continueBrokeredSiteX509
                     ? "Site Root is retained and will not be reissued. Keep the monas-first-install terminal open and scan its single protected Site X.509 continuation QR."
                   : action == .continueAuthorityCustody
@@ -174,7 +181,7 @@ private struct InstallationDetailView: View {
               )
                             MnPrimaryButton(
                                 action == .continueIdentitySetup
-                                    ? "Continue identity setup"
+                                    ? "Verify custody and continue"
                                     : action == .continueBrokeredSiteX509
                                         ? "Open protected scanner"
                                     : action == .continueAuthorityCustody
@@ -185,22 +192,19 @@ private struct InstallationDetailView: View {
                                     : action == .continueBrokeredSiteX509
                                         ? "qrcode.viewfinder" : "key.viewfinder"
                             ) {
-                                if action == .continueIdentitySetup {
-                                    startProviderEnrolment()
-                                } else if action == .continueBrokeredSiteX509 {
+                                if action == .continueBrokeredSiteX509 {
                                     continueBrokeredSiteX509()
-                                } else {
+                                } else if action.verifiesLiveAuthorityCustody {
                                     continueAuthorityCustody(installation)
                                 }
                             }
               .disabled(
-                action != .continueIdentitySetup
-                  && action != .continueBrokeredSiteX509
+                action != .continueBrokeredSiteX509
                   && authorityCustodyBusy
               )
                             .accessibilityHint(
                                 action == .continueIdentitySetup
-                                    ? "Opens the signed identity-enrolment scanner"
+                                    ? "Checks live authority custody before opening the signed identity-enrolment scanner"
                                     : "Checks the pinned Monas authority and recovers custody if required"
                             )
                         }

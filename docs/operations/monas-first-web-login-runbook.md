@@ -424,8 +424,11 @@ If the status at command entry is `activated-current-pair`, the retained Site
 Root and Site X.509 are already complete. Before a new browser code is safe,
 the terminal deliberately pauses at the distinct authority-custody gate. In
 Pistis open **Installations**, select this setup installation and tap
-**Continue authority recovery**. Approve the fresh App Attest assertion and
-Face ID request. This step has no QR. Keep the command attached until it prints
+**Continue authority recovery**, or **Verify custody and continue** if the
+phone has already retained the completed custody phase. Both actions first
+check the live signer and perform the same retained recovery when required.
+Approve the fresh App Attest assertion and Face ID request. This step has no
+QR. Keep the command attached until it prints
 both:
 
 ```text

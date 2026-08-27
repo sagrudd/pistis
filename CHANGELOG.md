@@ -1,5 +1,11 @@
 # Changelog
 
+- Recheck the live Monas authority-custody state before a retained installation
+  advances from locally completed custody to first-device identity enrolment.
+  A restarted host signer now enters the existing App Attest and Face ID
+  recovery path; provider enrolment opens only after custody is live, and the
+  installation action explicitly describes that gate (0.23.6, iOS build 53).
+
 - Stage a freshly attested App Attest registration key until the pinned Monas
   authority accepts its exact envelope, preventing a rejected first-device
   retry from replacing the phone's reference to the immutable registered key.

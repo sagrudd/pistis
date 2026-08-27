@@ -1,5 +1,12 @@
 # Changelog
 
+- Correct the formal first-login simulator so Site X.509 can never advance
+  directly to first-device identity. The candidate now executes the production
+  authority-custody v2 status, initial-rotation and recovery wire boundaries,
+  explicit App Attest and Face ID outcomes, durable signer checkpoint,
+  out-of-order/replay denial and the no-QR operator action before identity
+  enrolment (0.23.3, iOS build 50).
+
 - Add a test-target-only iPhone Simulator for the complete formal Monas first
   install, Propylaion home login and exact-audience DASObjectStore login. The
   candidate gate drives production QR parsers and signed challenge

@@ -11,7 +11,7 @@ import XCTest
 /// Apple App Attest evidence. It drives the production QR parsers and routing
 /// rules while modelling those hardware results as explicit test inputs. The
 /// physical-device gate remains mandatory for release qualification.
-private struct MonasFirstWebLoginIPhoneSimulator {
+struct MonasFirstWebLoginIPhoneSimulator {
     enum Stage: String, Equatable {
         case reset
         case hostAttached
@@ -23,6 +23,11 @@ private struct MonasFirstWebLoginIPhoneSimulator {
         case siteX509Reviewed
         case siteX509BiometricAccepted
         case siteX509Committed
+        case authorityCustodyStatusChecked
+        case authorityCustodyAppAttestAccepted
+        case authorityCustodyReviewed
+        case authorityCustodyBiometricAccepted
+        case authorityCustodyCommitted
         case firstDeviceReviewed
         case providerIdentityVerified
         case providerIdentityConfirmed
@@ -49,13 +54,16 @@ private struct MonasFirstWebLoginIPhoneSimulator {
         case unsupportedQR
     }
 
-    private(set) var stage: Stage = .reset
-    private(set) var evidence: [String] = []
+    var stage: Stage = .reset
+    var evidence: [String] = []
     private(set) var terminalFailure: Failure?
     private(set) var numericProviderSubject: UInt64?
     private var installationID: Data?
     private var seenQRDigests = Set<Data>()
     private var providerGate = AttendedEnrolmentGate()
+    var authorityCustodyStatus: MonasSiteRootDelegationTransport.AuthorityCustodyStatusV2?
+    var authorityCustodyCorrelation: Data?
+    var authorityCustodyAcceptedSchema: String?
 
     mutating func attachHost() throws {
         try transition(from: .reset, to: .hostAttached, evidence: "host-attached")
@@ -78,7 +86,7 @@ private struct MonasFirstWebLoginIPhoneSimulator {
             let presentation = try SiteRootGenesisRegistrationPresentationV1(
                 qrText: qrText,
                 authorityOrigins: [
-                    URL(string: MonasSiteRootGenesisBrokerEndpointV1.origin)!,
+                    URL(string: MonasSiteRootGenesisBrokerEndpointV1.origin)!
                 ],
                 nowUnixMillis: nowMilliseconds,
                 requireCorrelation: true
@@ -150,7 +158,7 @@ private struct MonasFirstWebLoginIPhoneSimulator {
     }
 
     mutating func reviewFirstDevice(qrText: String, now: Date) throws {
-        try require(.siteX509Committed)
+        try require(.authorityCustodyCommitted)
         try consume(qrText)
         guard GenericScanRoute.classify(qrText, now: now) == .firstDeviceEnrolment else {
             throw fail(.unsupportedQR)
@@ -348,7 +356,7 @@ private struct MonasFirstWebLoginIPhoneSimulator {
         terminalFailure = .cancelled
     }
 
-    private mutating func simulatedBiometric(
+    mutating func simulatedBiometric(
         _ accepted: Bool,
         from expected: Stage,
         to next: Stage,
@@ -375,12 +383,12 @@ private struct MonasFirstWebLoginIPhoneSimulator {
         guard seenQRDigests.insert(digest).inserted else { throw fail(.replay) }
     }
 
-    private mutating func require(_ expected: Stage) throws {
+    mutating func require(_ expected: Stage) throws {
         guard terminalFailure == nil else { throw terminalFailure! }
         guard stage == expected else { throw fail(.outOfOrder) }
     }
 
-    private mutating func fail(_ failure: Failure) -> Failure {
+    mutating func fail(_ failure: Failure) -> Failure {
         terminalFailure = failure
         return failure
     }
@@ -415,6 +423,21 @@ final class MonasFirstWebLoginIPhoneSimulatorTests: XCTestCase {
         try simulator.reviewSiteX509(qrText: siteX509QR(), nowSeconds: nowSeconds)
         try simulator.acceptSiteX509Biometric(true)
         try simulator.commitSiteX509()
+        let custody = try MonasFirstWebLoginCustodySimulatorFixture(
+            mode: .rotation,
+            expiresAtUnixSeconds: nowSeconds + 120
+        )
+        try simulator.observeAuthorityCustodyStatus(.appAttestAssertionRequired)
+        try simulator.acceptAuthorityCustodyAppAttest(
+            true,
+            observedLifecycle: .initialRotationRequired
+        )
+        try simulator.reviewAuthorityCustody(
+            fixture: custody,
+            nowUnixSeconds: nowSeconds
+        )
+        try simulator.acceptAuthorityCustodyBiometric(true)
+        try simulator.commitAuthorityCustody(acceptedData: custody.accepted)
         try simulator.reviewFirstDevice(qrText: try firstDeviceQR(), now: now)
         try simulator.verifyProviderIdentity(
             numericSubject: numericSubject,
@@ -450,29 +473,36 @@ final class MonasFirstWebLoginIPhoneSimulatorTests: XCTestCase {
 
         XCTAssertEqual(simulator.stage, .productSessionEstablished)
         XCTAssertNil(simulator.terminalFailure)
-        XCTAssertEqual(simulator.evidence, [
-            "host-attached",
-            "browser-numeric-provider-subject-accepted",
-            "production-site-root-genesis-presentation-verified",
-            "simulated-site-root-biometric-accepted",
-            "simulated-app-attest-registration-accepted",
-            "site-root-proof-and-delegation-accepted",
-            "production-site-x509-broker-presentation-verified",
-            "simulated-site-x509-biometric-accepted",
-            "site-x509-custody-and-paired-leaf-accepted",
-            "production-first-device-presentation-verified",
-            "numeric-provider-subject-verified",
-            "explicit-provider-account-confirmation",
-            "simulated-device-binding-biometric-accepted",
-            "signed-first-device-receipt-installed",
-            "bootstrap-retired-and-production-authority-activated",
-            "production-signed-propylaion-home-challenge-verified",
-            "simulated-monas-login-biometric-accepted",
-            "verified-monas-session-established-at-home",
-            "production-signed-dasobjectstore-challenge-verified",
-            "simulated-dasobjectstore-login-biometric-accepted",
-            "exact-audience-dasobjectstore-session-established",
-        ])
+        XCTAssertEqual(
+            simulator.evidence,
+            [
+                "host-attached",
+                "browser-numeric-provider-subject-accepted",
+                "production-site-root-genesis-presentation-verified",
+                "simulated-site-root-biometric-accepted",
+                "simulated-app-attest-registration-accepted",
+                "site-root-proof-and-delegation-accepted",
+                "production-site-x509-broker-presentation-verified",
+                "simulated-site-x509-biometric-accepted",
+                "site-x509-custody-and-paired-leaf-accepted",
+                "production-authority-custody-status-checked",
+                "simulated-authority-custody-app-attest-assertion-accepted",
+                "production-authority-custody-v2-presentation-verified",
+                "simulated-authority-custody-biometric-accepted",
+                "durable-thesaurophylax-authority-signer-ready",
+                "production-first-device-presentation-verified",
+                "numeric-provider-subject-verified",
+                "explicit-provider-account-confirmation",
+                "simulated-device-binding-biometric-accepted",
+                "signed-first-device-receipt-installed",
+                "bootstrap-retired-and-production-authority-activated",
+                "production-signed-propylaion-home-challenge-verified",
+                "simulated-monas-login-biometric-accepted",
+                "verified-monas-session-established-at-home",
+                "production-signed-dasobjectstore-challenge-verified",
+                "simulated-dasobjectstore-login-biometric-accepted",
+                "exact-audience-dasobjectstore-session-established",
+            ])
     }
 
     func testCancellationIsTerminalAndCannotAdvance() throws {
@@ -507,18 +537,22 @@ final class MonasFirstWebLoginIPhoneSimulatorTests: XCTestCase {
         var expiredRoot = MonasFirstWebLoginIPhoneSimulator()
         try expiredRoot.attachHost()
         try expiredRoot.acceptBrowserIdentity(numericSubject: numericSubject)
-        XCTAssertThrowsError(try expiredRoot.reviewSiteRoot(
-            qrText: siteRootQR(expiry: nowMilliseconds - 1),
-            nowMilliseconds: nowMilliseconds
-        )) {
+        XCTAssertThrowsError(
+            try expiredRoot.reviewSiteRoot(
+                qrText: siteRootQR(expiry: nowMilliseconds - 1),
+                nowMilliseconds: nowMilliseconds
+            )
+        ) {
             XCTAssertEqual($0 as? MonasFirstWebLoginIPhoneSimulator.Failure, .unsupportedQR)
         }
 
         var substitutedX509 = try throughSiteRoot()
-        XCTAssertThrowsError(try substitutedX509.reviewSiteX509(
-            qrText: siteX509QR(submissionOrigin: "https://attacker.example.test"),
-            nowSeconds: nowSeconds
-        )) {
+        XCTAssertThrowsError(
+            try substitutedX509.reviewSiteX509(
+                qrText: siteX509QR(submissionOrigin: "https://attacker.example.test"),
+                nowSeconds: nowSeconds
+            )
+        ) {
             XCTAssertEqual($0 as? MonasFirstWebLoginIPhoneSimulator.Failure, .unsupportedQR)
         }
     }
@@ -529,22 +563,88 @@ final class MonasFirstWebLoginIPhoneSimulatorTests: XCTestCase {
             XCTAssertEqual($0 as? MonasFirstWebLoginIPhoneSimulator.Failure, .outOfOrder)
         }
 
-        var replay = try throughSiteRoot()
+        var replay = try throughAuthorityCustody()
         let qr = siteX509QR()
-        try replay.reviewSiteX509(qrText: qr, nowSeconds: nowSeconds)
-        try replay.acceptSiteX509Biometric(true)
-        try replay.commitSiteX509()
         XCTAssertThrowsError(try replay.reviewFirstDevice(qrText: qr, now: now)) {
             XCTAssertEqual($0 as? MonasFirstWebLoginIPhoneSimulator.Failure, .replay)
         }
     }
 
+    func testFirstDeviceIsBlockedUntilAuthorityCustodyIsDurable() throws {
+        var simulator = try throughSiteX509()
+        XCTAssertThrowsError(
+            try simulator.reviewFirstDevice(qrText: try firstDeviceQR(), now: now)
+        ) {
+            XCTAssertEqual($0 as? MonasFirstWebLoginIPhoneSimulator.Failure, .outOfOrder)
+        }
+    }
+
+    func testAuthorityCustodyAppAttestAndBiometricDenialsAreTerminal() throws {
+        var attest = try throughSiteX509()
+        try attest.observeAuthorityCustodyStatus(.appAttestAssertionRequired)
+        XCTAssertThrowsError(
+            try attest.acceptAuthorityCustodyAppAttest(
+                false,
+                observedLifecycle: .initialRotationRequired
+            )
+        ) {
+            XCTAssertEqual($0 as? MonasFirstWebLoginIPhoneSimulator.Failure, .appAttestDenied)
+        }
+
+        var biometric = try throughSiteX509()
+        let fixture = try MonasFirstWebLoginCustodySimulatorFixture(
+            mode: .rotation,
+            expiresAtUnixSeconds: nowSeconds + 120
+        )
+        try biometric.observeAuthorityCustodyStatus(.initialRotationRequired)
+        try biometric.reviewAuthorityCustody(fixture: fixture, nowUnixSeconds: nowSeconds)
+        XCTAssertThrowsError(try biometric.acceptAuthorityCustodyBiometric(false)) {
+            XCTAssertEqual($0 as? MonasFirstWebLoginIPhoneSimulator.Failure, .biometricDenied)
+        }
+    }
+
+    func testRetainedAuthorityCustodyRecoveryUsesRecoveryWireBeforeIdentity() throws {
+        var simulator = try throughSiteX509()
+        let recovery = try MonasFirstWebLoginCustodySimulatorFixture(
+            mode: .recovery,
+            expiresAtUnixSeconds: nowSeconds + 120
+        )
+        try simulator.observeAuthorityCustodyStatus(.recoveryRequired)
+        try simulator.reviewAuthorityCustody(
+            fixture: recovery,
+            nowUnixSeconds: nowSeconds
+        )
+        try simulator.acceptAuthorityCustodyBiometric(true)
+        try simulator.commitAuthorityCustody(acceptedData: recovery.accepted)
+        try simulator.reviewFirstDevice(qrText: try firstDeviceQR(), now: now)
+        XCTAssertEqual(simulator.stage, .firstDeviceReviewed)
+    }
+
+    func testAuthorityCustodyAcceptedResponseCannotBeReplayed() throws {
+        var simulator = try throughSiteX509()
+        let custody = try MonasFirstWebLoginCustodySimulatorFixture(
+            mode: .rotation,
+            expiresAtUnixSeconds: nowSeconds + 120
+        )
+        try simulator.observeAuthorityCustodyStatus(.initialRotationRequired)
+        try simulator.reviewAuthorityCustody(fixture: custody, nowUnixSeconds: nowSeconds)
+        try simulator.acceptAuthorityCustodyBiometric(true)
+        try simulator.commitAuthorityCustody(acceptedData: custody.accepted)
+        XCTAssertThrowsError(
+            try simulator.commitAuthorityCustody(acceptedData: custody.accepted)
+        ) {
+            XCTAssertEqual($0 as? MonasFirstWebLoginIPhoneSimulator.Failure, .outOfOrder)
+        }
+    }
+
     func testProviderIdentityInstallationAndAudienceSeparationFailClosed() async throws {
         var wrongProvider = try throughFirstDevice()
-        XCTAssertThrowsError(try wrongProvider.verifyProviderIdentity(
-            numericSubject: numericSubject + 1,
-            challengeExpiry: nowMilliseconds + 120_000
-        )) {
+        XCTAssertThrowsError(
+            try wrongProvider.verifyProviderIdentity(
+                numericSubject: numericSubject + 1,
+                challengeExpiry: nowMilliseconds + 120_000
+            )
+        ) {
             XCTAssertEqual($0 as? MonasFirstWebLoginIPhoneSimulator.Failure, .wrongInstallation)
         }
 
@@ -597,11 +697,29 @@ final class MonasFirstWebLoginIPhoneSimulatorTests: XCTestCase {
     }
 
     private func throughFirstDevice() throws -> MonasFirstWebLoginIPhoneSimulator {
+        var simulator = try throughAuthorityCustody()
+        try simulator.reviewFirstDevice(qrText: try firstDeviceQR(), now: now)
+        return simulator
+    }
+
+    private func throughAuthorityCustody() throws -> MonasFirstWebLoginIPhoneSimulator {
+        var simulator = try throughSiteX509()
+        let custody = try MonasFirstWebLoginCustodySimulatorFixture(
+            mode: .rotation,
+            expiresAtUnixSeconds: nowSeconds + 120
+        )
+        try simulator.observeAuthorityCustodyStatus(.initialRotationRequired)
+        try simulator.reviewAuthorityCustody(fixture: custody, nowUnixSeconds: nowSeconds)
+        try simulator.acceptAuthorityCustodyBiometric(true)
+        try simulator.commitAuthorityCustody(acceptedData: custody.accepted)
+        return simulator
+    }
+
+    private func throughSiteX509() throws -> MonasFirstWebLoginIPhoneSimulator {
         var simulator = try throughSiteRoot()
         try simulator.reviewSiteX509(qrText: siteX509QR(), nowSeconds: nowSeconds)
         try simulator.acceptSiteX509Biometric(true)
         try simulator.commitSiteX509()
-        try simulator.reviewFirstDevice(qrText: try firstDeviceQR(), now: now)
         return simulator
     }
 
@@ -794,7 +912,8 @@ private struct SimulatorAuthenticationFixture {
         result += uint(13) + text("candidate-operator")
         result += uint(14) + bytes(Data(repeating: 0x99, count: 32))
         result += uint(15) + bytes(fingerprint)
-        result += uint(16) + Data([0x81])
+        result +=
+            uint(16) + Data([0x81])
             + text("https://monas.example.test/auth/pistis")
         return result
     }
@@ -830,7 +949,12 @@ private struct SimulatorAuthenticationFixture {
         var borrow = 0
         for index in stride(from: 31, through: 0, by: -1) {
             var value = Int(order[index]) - Int(input[index]) - borrow
-            if value < 0 { value += 256; borrow = 1 } else { borrow = 0 }
+            if value < 0 {
+                value += 256
+                borrow = 1
+            } else {
+                borrow = 0
+            }
             output[index] = UInt8(value)
         }
         return signature.prefix(32) + Data(output)

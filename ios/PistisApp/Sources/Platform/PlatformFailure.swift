@@ -34,6 +34,11 @@ enum PlatformFailure: Error, Equatable, Sendable {
     case cameraUnavailable
     case qrPayloadTooLarge
     case qrPayloadUnsupported
+    /// A structurally valid signed authentication request failed its enrolled
+    /// installation, identity, key, audience, or signature binding.
+    case authenticationRequestInvalid
+    case authenticationRequestExpired
+    case authenticationEndpointInvalid
     /// A Monas authority presentation was acquired on the deliberately narrow
     /// first-device identity scanner instead of the multi-family Scan tab.
     case monasRequestRequiresScanTab
@@ -102,6 +107,12 @@ extension PlatformFailure {
             "This QR code is larger than the Pistis safety limit."
         case .qrPayloadUnsupported:
             "This is not a supported Pistis QR code."
+        case .authenticationRequestInvalid:
+            "This Pistis sign-in request did not match the enrolled installation or identity. No response was submitted."
+        case .authenticationRequestExpired:
+            "This Pistis sign-in request has expired. Return to Monas and request a fresh login QR."
+        case .authenticationEndpointInvalid:
+            "This Pistis sign-in request names an invalid endpoint. No response was submitted."
         case .monasRequestRequiresScanTab:
             "This is a Monas authority QR. Open the Scan tab and scan it there. No proof was submitted."
         case .invalidFirstDevicePresentation:

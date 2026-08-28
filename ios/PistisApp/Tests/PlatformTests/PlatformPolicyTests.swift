@@ -463,6 +463,10 @@ final class PlatformPolicyTests: XCTestCase {
             "This is not a supported Pistis QR code."
         )
         XCTAssertEqual(
+            PlatformFailure.authenticationEndpointInvalid.safeUserMessage,
+            "This Pistis sign-in request names an invalid endpoint. No response was submitted."
+        )
+        XCTAssertEqual(
             PlatformFailure.monasRequestRequiresScanTab.safeUserMessage,
             "This is a Monas authority QR. Open the Scan tab and scan it there. No proof was submitted."
         )
@@ -1013,6 +1017,26 @@ final class PlatformPolicyTests: XCTestCase {
         )
         await coordinator.accept(qrText: "PISTIS1:attacker.0000000000000000")
         XCTAssertEqual(coordinator.phase, .failed(.enrolmentRequired))
+    }
+
+    @MainActor
+    func testProductionVerifierFailuresAreNotCollapsedIntoUnsupportedQR() {
+        XCTAssertEqual(
+            ProductionCeremonyCoordinator.classifiedFailure(.invalidEndpoint),
+            .authenticationEndpointInvalid
+        )
+        XCTAssertEqual(
+            ProductionCeremonyCoordinator.classifiedFailure(.expired),
+            .authenticationRequestExpired
+        )
+        XCTAssertEqual(
+            ProductionCeremonyCoordinator.classifiedFailure(.invalidSignature),
+            .authenticationRequestInvalid
+        )
+        XCTAssertEqual(
+            ProductionCeremonyCoordinator.classifiedFailure(.invalidChecksum),
+            .qrPayloadUnsupported
+        )
     }
 
     @MainActor

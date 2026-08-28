@@ -401,15 +401,32 @@ public enum ProductionChallengeVerifier {
               host == host.lowercased(),
               host.utf8.count <= 253,
               host.unicodeScalars.allSatisfy(\.isASCII),
-              !host.hasSuffix("."),
-              !isNumericIPAddressForm(host)
+              !host.hasSuffix(".")
         else { return false }
+        // A Site may be formally enrolled before it has DNS. Its authority-
+        // signed first-device receipt and TLS SPKI pin bind the exact origin;
+        // the login challenge must therefore accept the same unique dotted-
+        // decimal spelling while continuing to reject ambiguous numeric forms.
+        if isCanonicalIPv4Address(host) { return true }
+        guard !isNumericIPAddressForm(host) else { return false }
         return host.split(separator: ".", omittingEmptySubsequences: false).allSatisfy {
             !$0.isEmpty && $0.utf8.count <= 63
                 && $0.first != "-" && $0.last != "-"
                 && $0.utf8.allSatisfy {
                     (48 ... 57).contains($0) || (97 ... 122).contains($0) || $0 == 45
                 }
+        }
+    }
+
+    private static func isCanonicalIPv4Address(_ host: String) -> Bool {
+        let components = host.split(separator: ".", omittingEmptySubsequences: false)
+        guard components.count == 4 else { return false }
+        return components.allSatisfy { component in
+            let bytes = Array(component.utf8)
+            return !bytes.isEmpty && bytes.count <= 3
+                && bytes.allSatisfy { (48 ... 57).contains($0) }
+                && (bytes.count == 1 || bytes[0] != 48)
+                && UInt16(component).map { $0 <= 255 } == true
         }
     }
 

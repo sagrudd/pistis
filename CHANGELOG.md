@@ -1,5 +1,13 @@
 # Changelog
 
+- Accept canonical dotted-decimal IPv4 login endpoints for formally enrolled
+  appliances whose authority origin and TLS SPKI are pinned by the signed
+  first-device receipt. Ambiguous numeric address spellings still fail closed.
+  The complete Monas first-web-login iPhone Simulator now uses the actual
+  `192.168.0.193:8443` appliance endpoint so DNS-only fixtures cannot hide this
+  regression again. Classified verifier failures now remain distinct from an
+  unsupported QR carrier (0.23.9, iOS build 56, #495).
+
 - Restore Monas normal-login QR interoperability by validating the production
   checksum over the accepted `PISTIS1:` prefix plus encoded frame body. A
   Rust-generated challenge fixture is now consumed directly by Swift, the

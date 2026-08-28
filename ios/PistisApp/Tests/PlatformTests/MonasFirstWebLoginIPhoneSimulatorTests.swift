@@ -914,7 +914,7 @@ private struct SimulatorAuthenticationFixture {
         result += uint(15) + bytes(fingerprint)
         result +=
             uint(16) + Data([0x81])
-            + text("https://monas.example.test/auth/pistis")
+            + text("https://192.168.0.193:8443/auth/pistis/v2/submit")
         return result
     }
 

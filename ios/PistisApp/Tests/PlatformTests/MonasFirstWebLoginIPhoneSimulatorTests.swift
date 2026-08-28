@@ -924,7 +924,7 @@ private struct SimulatorAuthenticationFixture {
             .replacingOccurrences(of: "+", with: "-")
             .replacingOccurrences(of: "/", with: "_")
             .replacingOccurrences(of: "=", with: "")
-        let checksum = SHA256.hash(data: Data(body.utf8)).prefix(8)
+        let checksum = SHA256.hash(data: Data("PISTIS1:\(body)".utf8)).prefix(8)
             .map { String(format: "%02x", $0) }.joined()
         return "PISTIS1:\(body).\(checksum)"
     }

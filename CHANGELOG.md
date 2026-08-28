@@ -1,5 +1,11 @@
 # Changelog
 
+- Restore Monas normal-login QR interoperability by validating the production
+  checksum over the accepted `PISTIS1:` prefix plus encoded frame body. A
+  Rust-generated challenge fixture is now consumed directly by Swift, the
+  complete first-login iPhone Simulator uses the same rule, and the obsolete
+  body-only checksum fails closed (0.23.8, iOS build 55).
+
 - Make the native accessibility gate accept either no SwiftUI navigation-row
   framework contrast findings or the exact reviewed set of three. Partial and
   additional findings remain failures; the gate no longer requires an SDK

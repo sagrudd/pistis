@@ -11,6 +11,46 @@ import Crypto
 #endif
 
 final class ProductionCeremonyTests: XCTestCase {
+    func testAuthoritativeRustChallengeFrameConformanceFixtureDecodes() throws {
+        let fixtureRoot = URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent()
+            .appendingPathComponent("../../../../fixtures/proposed-qr-v2")
+            .standardizedFileURL
+        let transfer = try String(
+            contentsOf: fixtureRoot.appendingPathComponent("challenge-positive.qr.txt"),
+            encoding: .utf8
+        ).trimmingCharacters(in: .whitespacesAndNewlines)
+        let expectedCOSE = try String(
+            contentsOf: fixtureRoot.appendingPathComponent("challenge-positive.cose.hex"),
+            encoding: .utf8
+        ).trimmingCharacters(in: .whitespacesAndNewlines)
+
+        let decoded = try ProductionQRV2.decodeChallenge(transfer)
+        let decodedHex = decoded.map { String(format: "%02x", $0) }.joined()
+        XCTAssertEqual(decodedHex, expectedCOSE)
+    }
+
+    func testLegacyBodyOnlyChecksumFailsClosed() throws {
+        let fixtureURL = URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent()
+            .appendingPathComponent(
+                "../../../../fixtures/proposed-qr-v2/challenge-positive.qr.txt"
+            )
+            .standardizedFileURL
+        let transfer = try String(contentsOf: fixtureURL, encoding: .utf8)
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        let separator = try XCTUnwrap(transfer.lastIndex(of: "."))
+        let bodyStart = transfer.index(transfer.startIndex, offsetBy: 8)
+        let body = String(transfer[bodyStart ..< separator])
+        let legacyChecksum = SHA256.hash(data: Data(body.utf8)).prefix(8)
+            .map { String(format: "%02x", $0) }.joined()
+        let legacy = String(transfer[transfer.startIndex ... separator]) + legacyChecksum
+
+        XCTAssertThrowsError(try ProductionQRV2.decodeChallenge(legacy)) { error in
+            XCTAssertEqual(error as? ProductionCeremonyError, .invalidChecksum)
+        }
+    }
+
     func testProductionChallengeRequiresEnrolledKeyAndVerifiesExactPayload() async throws {
         let key = P256.Signing.PrivateKey()
         let material = try Fixture(key: key)
@@ -287,7 +327,7 @@ private struct Fixture {
             .replacingOccurrences(of: "+", with: "-")
             .replacingOccurrences(of: "/", with: "_")
             .replacingOccurrences(of: "=", with: "")
-        let checksum = SHA256.hash(data: Data(body.utf8)).prefix(8)
+        let checksum = SHA256.hash(data: Data("PISTIS1:\(body)".utf8)).prefix(8)
             .map { String(format: "%02x", $0) }.joined()
         return "PISTIS1:\(body).\(checksum)"
     }

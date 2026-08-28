@@ -18,4 +18,5 @@ qrcode.workspace = true
 workspace = true
 
 [dev-dependencies]
+p256.workspace = true
 serde_json.workspace = true

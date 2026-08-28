@@ -264,7 +264,7 @@ public enum ProductionQRV2 {
                   (48 ... 57).contains($0) || (97 ... 102).contains($0)
               })
         else { throw ProductionCeremonyError.malformedFrame }
-        let expected = SHA256.hash(data: Data(body.utf8)).prefix(8)
+        let expected = SHA256.hash(data: Data("PISTIS1:\(body)".utf8)).prefix(8)
             .map { String(format: "%02x", $0) }.joined()
         guard checksum == expected else { throw ProductionCeremonyError.invalidChecksum }
         var padded = body.replacingOccurrences(of: "-", with: "+")

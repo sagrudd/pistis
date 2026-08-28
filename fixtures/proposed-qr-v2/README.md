@@ -14,6 +14,13 @@ The source COSE fixture contains an authentication response. The outer
 `PISTIS1` checksum detects scanning corruption only. Neither this synthetic
 fixture nor successful parsing grants authority.
 
+`challenge-positive.cose.hex` and `challenge-positive.qr.txt` are the matching
+Rust-generated challenge-kind conformance vectors consumed by the production
+Swift decoder. They use the deliberately compromised P-256 scalar `1` and the
+public protocol challenge payload, so they are test material only. Rust proves
+the exact COSE and outer-frame bytes are stable; Swift proves that the released
+decoder accepts the same prefix-separated checksum contract.
+
 Production parsers reject version 1, challenge/response kind confusion,
 padding, non-ASCII or alternate alphabets, checksum changes, structural
 changes, and invalid COSE.

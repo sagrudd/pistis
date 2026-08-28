@@ -36,10 +36,10 @@ final class PistisUITests: XCTestCase {
                 try application.performAccessibilityAudit(for: .all) {
                     self.handleSettingsViewportFinding($0, in: application)
                 }
-                XCTAssertEqual(
-                    settingsNavigationContrastFindings,
-                    3,
-                    "the Settings audit did not report exactly one framework finding per navigation row"
+                XCTAssertTrue(
+                    settingsNavigationContrastFindings == 0
+                        || settingsNavigationContrastFindings == 3,
+                    "the Settings audit reported only part of the reviewed framework finding set"
                 )
             } else {
                 try application.performAccessibilityAudit()
@@ -56,11 +56,12 @@ final class PistisUITests: XCTestCase {
         if issue.auditType == .dynamicType && issue.element?.label == "About Pistis" {
             return true
         }
-        // Xcode 26.5/26.6 emits one anonymous SwiftUI.AccessibilityNode
-        // contrast finding for each standard NavigationLink row. It exposes
-        // no element, label, identifier or frame. Accept only the exact three
-        // reviewed rows, on the opaque Settings surface, and assert the exact
-        // count after the audit so a new or missing finding fails closed.
+        // Some Xcode 26.5/26.6 runtimes emit one anonymous
+        // SwiftUI.AccessibilityNode contrast finding for each standard
+        // NavigationLink row, while others emit none. The finding exposes no
+        // element, label, identifier or frame. Accept only the exact three
+        // reviewed rows on the opaque Settings surface; a partial set or any
+        // additional finding still fails closed.
         let navigationRows = ["Diagnostics", "Privacy and legal", "About Pistis"]
         if issue.auditType == .contrast,
             issue.element == nil,

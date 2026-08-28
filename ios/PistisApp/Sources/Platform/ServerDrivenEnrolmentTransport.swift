@@ -6,7 +6,10 @@ struct ProviderVerificationHandle: Sendable {
     let operationID: Data
     let providerVerificationID: Data
     let pollingCapability: Data
-    let prompt: GitHubDeviceAuthorizationPrompt
+    /// A fresh provider operation has a displayable GitHub prompt. Retained
+    /// already-verified recovery uses the closed server sentinel and must be
+    /// polled without presenting that inert value to the operator.
+    let prompt: GitHubDeviceAuthorizationPrompt?
     let expiresAtMilliseconds: UInt64
     let pollAfterMilliseconds: UInt64
 }
@@ -35,6 +38,7 @@ struct ServerDrivenEnrolmentTransport: Sendable {
     private static let statusPath = "/auth/pistis/v1/first-device-enrolments/status"
     private static let cancelPath = "/auth/pistis/v1/first-device-enrolments/cancel"
     private static let confirmPath = "/auth/pistis/v1/first-device-enrolments/confirm"
+    private static let retainedVerificationUserCode = "REC0-VERY"
 
     private let presentation: VerifiedFirstDevicePresentation
     private let session: URLSession
@@ -116,12 +120,14 @@ struct ServerDrivenEnrolmentTransport: Sendable {
             operationID: operationID,
             providerVerificationID: verificationID,
             pollingCapability: capability,
-            prompt: .init(
-                userCode: userCode,
-                verificationURI: GitHubEnrolmentConfiguration.verificationURI,
-                expiresInSeconds: 0,
-                intervalSeconds: pollAfter / 1_000
-            ),
+            prompt: userCode == Self.retainedVerificationUserCode
+                ? nil
+                : .init(
+                    userCode: userCode,
+                    verificationURI: GitHubEnrolmentConfiguration.verificationURI,
+                    expiresInSeconds: 0,
+                    intervalSeconds: pollAfter / 1_000
+                ),
             expiresAtMilliseconds: expires,
             pollAfterMilliseconds: pollAfter
         )

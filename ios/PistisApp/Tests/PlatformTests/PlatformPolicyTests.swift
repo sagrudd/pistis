@@ -963,6 +963,27 @@ final class PlatformPolicyTests: XCTestCase {
         XCTAssertNil(state.retainedOperationID)
     }
 
+    func testAcceptedProviderBeginCanOnlyContinueByPollingStatus() {
+        var state = EnrolmentProviderContinuationState()
+        XCTAssertEqual(state.nextAction, .begin)
+
+        state.markBeginAccepted()
+        XCTAssertEqual(state.nextAction, .status)
+        XCTAssertEqual(
+            state.initialStatusFailureAction(hasDisplayablePrompt: true),
+            .continueWithPrompt
+        )
+        XCTAssertEqual(
+            state.initialStatusFailureAction(hasDisplayablePrompt: false),
+            .retryStatus
+        )
+        state.markBeginAccepted()
+        XCTAssertEqual(state.nextAction, .status)
+
+        state.reset()
+        XCTAssertEqual(state.nextAction, .begin)
+    }
+
     func testVerifiedAccountRequiresSeparateExplicitConfirmation() throws {
         let approval = VerifiedProviderApproval(
             subject: 123_456_789,

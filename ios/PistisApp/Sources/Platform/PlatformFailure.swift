@@ -73,6 +73,10 @@ enum PlatformFailure: Error, Equatable, Sendable {
     /// approval attempt and must be reissued by Monas.
     case siteX509PresentationAlreadyAttempted
     case enrolmentBeginRetryRequired
+    /// The host accepted begin and returned an opaque provider handle, but a
+    /// later status projection was temporarily unavailable or malformed. The
+    /// accepted handle must be polled; begin must never be issued again.
+    case providerStatusRetryRequired
     case enrolmentRequired
     case existingEnrolmentMustBeRemoved
     case enrolmentReceiptInvalid
@@ -112,6 +116,8 @@ extension PlatformFailure {
             "Enrol this installation through the authenticated system-browser flow before scanning."
         case .enrolmentBeginRetryRequired:
             "The host did not return a verifiable enrolment response. This exact attempt was retained; retry once or cancel and scan a fresh invitation."
+        case .providerStatusRetryRequired:
+            "The host accepted this enrolment attempt, but its provider status could not be verified. Retry provider status; do not begin again or rescan."
         case .existingEnrolmentMustBeRemoved:
             "An existing Pistis identity already occupies this device. Remove or revoke it before beginning a new enrolment."
         case .enrolmentReceiptInvalid:

@@ -1,5 +1,17 @@
 # Changelog
 
+- Make the native accessibility gate accept either no SwiftUI navigation-row
+  framework contrast findings or the exact reviewed set of three. Partial and
+  additional findings remain failures; the gate no longer requires an SDK
+  false positive to be present (0.23.7, iOS build 54).
+
+- Preserve an accepted first-device provider handle when the initial status
+  projection is temporarily unavailable. Pistis now retries status with that
+  handle and cannot begin a second operation for the already-begun invitation.
+  A fresh GitHub prompt remains available, while retained already-verified
+  recovery never displays its inert server sentinel as an operator code
+  (0.23.7, iOS build 54).
+
 - Recheck the live Monas authority-custody state before a retained installation
   advances from locally completed custody to first-device identity enrolment.
   A restarted host signer now enters the existing App Attest and Face ID

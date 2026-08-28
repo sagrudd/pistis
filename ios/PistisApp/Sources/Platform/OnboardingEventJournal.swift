@@ -564,7 +564,8 @@ extension PlatformFailure {
              .siteRootGenesisTransportUnavailable, .custodyRewrapUnavailable:
             .authorityUnavailable
         case .invalidOAuthCallback, .oauthStateMismatch, .oauthDenied,
-             .enrolmentBeginRetryRequired, .enrolmentRequired,
+             .enrolmentBeginRetryRequired, .providerStatusRetryRequired,
+             .enrolmentRequired,
              .existingEnrolmentMustBeRemoved, .enrolmentReceiptInvalid:
             .provider
         case .enrolmentStorageFailed:

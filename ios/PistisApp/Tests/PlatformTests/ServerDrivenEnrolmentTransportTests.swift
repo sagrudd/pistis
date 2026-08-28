@@ -30,7 +30,7 @@ final class ServerDrivenEnrolmentTransportTests: XCTestCase {
         )
         XCTAssertEqual(handle.providerVerificationID, Data(repeating: 0xaa, count: 16))
         XCTAssertEqual(handle.pollingCapability, Data(repeating: 0xbb, count: 32))
-        XCTAssertEqual(handle.prompt.userCode, "ABCD-1234")
+        XCTAssertEqual(handle.prompt?.userCode, "ABCD-1234")
         let status = try await transport.status(handle)
         XCTAssertEqual(
             status,
@@ -65,6 +65,29 @@ final class ServerDrivenEnrolmentTransportTests: XCTestCase {
             XCTAssertFalse(text.contains("adapter_handle"))
             XCTAssertFalse(text.contains("email"))
         }
+    }
+
+    func testRetainedVerifiedBeginNeverExposesRecoverySentinelAsPrompt() async throws {
+        let configuration = URLSessionConfiguration.ephemeral
+        configuration.protocolClasses = [RetainedEnrolmentURLProtocol.self]
+        let transport = try ServerDrivenEnrolmentTransport(
+            presentation: try sharedPresentation(),
+            configuration: configuration
+        )
+        let publicKey = Data([
+            0x03, 0x6b, 0x17, 0xd1, 0xf2, 0xe1, 0x2c, 0x42,
+            0x47, 0xf8, 0xbc, 0xe6, 0xe5, 0x63, 0xa4, 0x40,
+            0xf2, 0x77, 0x03, 0x7d, 0x81, 0x2d, 0xeb, 0x33,
+            0xa0, 0xf4, 0xa1, 0x39, 0x45, 0xd8, 0x98, 0xc2,
+            0x96,
+        ])
+        let handle = try await transport.begin(
+            operationID: Data(repeating: 0x10, count: 16),
+            deviceKeyID: derivedKeyID(publicKey),
+            devicePublicKey: publicKey,
+            keyAssurance: "secure-enclave-biometry-current-set"
+        )
+        XCTAssertNil(handle.prompt)
     }
 
     func testConfirmRejectsUnsignedOrWrongShapeReceiptResponse() async throws {
@@ -319,4 +342,42 @@ private final class HostileEnrolmentURLProtocol: URLProtocol, @unchecked Sendabl
     }
 
     override func stopLoading() {}
+}
+
+private final class RetainedEnrolmentURLProtocol: URLProtocol, @unchecked Sendable {
+    override class func canInit(with _: URLRequest) -> Bool { true }
+    override class func canonicalRequest(for request: URLRequest) -> URLRequest { request }
+
+    override func startLoading() {
+        let object: [String: Any] = [
+            "version": 1,
+            "provider_verification_id": base64(Data(repeating: 0xaa, count: 16)),
+            "polling_capability": base64(Data(repeating: 0xbb, count: 32)),
+            "user_code": "REC0-VERY",
+            "verification_uri": "https://github.com/login/device",
+            "expires_at_ms": 1_700_000_300_000,
+            "poll_after_ms": 1_000,
+        ]
+        let response = HTTPURLResponse(
+            url: request.url!,
+            statusCode: 200,
+            httpVersion: "HTTP/1.1",
+            headerFields: ["Cache-Control": "no-store"]
+        )!
+        client?.urlProtocol(self, didReceive: response, cacheStoragePolicy: .notAllowed)
+        client?.urlProtocol(
+            self,
+            didLoad: try! JSONSerialization.data(withJSONObject: object)
+        )
+        client?.urlProtocolDidFinishLoading(self)
+    }
+
+    override func stopLoading() {}
+
+    private func base64(_ data: Data) -> String {
+        data.base64EncodedString()
+            .replacingOccurrences(of: "+", with: "-")
+            .replacingOccurrences(of: "/", with: "_")
+            .replacingOccurrences(of: "=", with: "")
+    }
 }

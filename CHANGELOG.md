@@ -1,5 +1,12 @@
 # Changelog
 
+- Preserve an accepted first-device provider handle when the initial status
+  projection is temporarily unavailable. Pistis now retries status with that
+  handle and cannot begin a second operation for the already-begun invitation.
+  A fresh GitHub prompt remains available, while retained already-verified
+  recovery never displays its inert server sentinel as an operator code
+  (0.23.7, iOS build 54).
+
 - Recheck the live Monas authority-custody state before a retained installation
   advances from locally completed custody to first-device identity enrolment.
   A restarted host signer now enters the existing App Attest and Face ID

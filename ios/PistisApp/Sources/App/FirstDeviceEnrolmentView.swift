@@ -52,21 +52,34 @@ struct FirstDeviceEnrolmentView: View {
                             if flow.prompt == nil && flow.verifiedSubject == nil {
                                 Text("Cryptographic host identity verified")
                                     .font(.headline)
-                                Text(
-                                    "The signed installation identity, application configuration, HTTPS origin and certificate key have been verified."
-                                )
-                                .font(.footnote)
-                                MnEvidenceRow(
-                                    label: "Certificate key",
-                                    value: flow.presentation?.tlsSPKISHA256
-                                        .hexadecimal ?? ""
-                                )
-                                Button("Begin secure enrolment") {
-                                    Task { await flow.begin() }
+                                if flow.canRetryProviderStatus {
+                                    Text(
+                                        "The host accepted this exact device operation. Retry only its provider status; a second begin request is prohibited."
+                                    )
+                                    .font(.footnote)
+                                    Button("Retry provider status") {
+                                        Task { await flow.checkVerification() }
+                                    }
+                                    .buttonStyle(.borderedProminent)
+                                    .tint(MnColor.action)
+                                    .disabled(flow.busy)
+                                } else {
+                                    Text(
+                                        "The signed installation identity, application configuration, HTTPS origin and certificate key have been verified."
+                                    )
+                                    .font(.footnote)
+                                    MnEvidenceRow(
+                                        label: "Certificate key",
+                                        value: flow.presentation?.tlsSPKISHA256
+                                            .hexadecimal ?? ""
+                                    )
+                                    Button("Begin secure enrolment") {
+                                        Task { await flow.begin() }
+                                    }
+                                    .buttonStyle(.borderedProminent)
+                                    .tint(MnColor.action)
+                                    .disabled(flow.busy)
                                 }
-                                .buttonStyle(.borderedProminent)
-                                .tint(MnColor.action)
-                                .disabled(flow.busy)
                             } else if let prompt = flow.prompt {
                                 Text(prompt.userCode)
                                     .font(.system(.title2, design: .monospaced).weight(.bold))
@@ -152,12 +165,18 @@ final class FirstDeviceEnrolmentFlow: ObservableObject {
     private var deviceKeyID: Data?
     private var pendingRegistration: Data?
     private var beginRetry = EnrolmentBeginRetryState()
+    private var providerContinuation = EnrolmentProviderContinuationState()
     private var approvalGate = AttendedEnrolmentGate()
     private var eventAttemptID = UUID()
     private var eventReferenceDigest: Data?
     private var eventStage: OnboardingEventStage = .qrValidation
     private var eventSequence: UInt32 = 0
     private var eventAttemptStartedNanoseconds = DispatchTime.now().uptimeNanoseconds
+
+    var canRetryProviderStatus: Bool {
+        providerContinuation.nextAction == .status
+            && prompt == nil && verifiedSubject == nil
+    }
 
     init(
         eventRecorder: any OnboardingEventRecording = OnboardingEventJournal.shared
@@ -204,6 +223,10 @@ final class FirstDeviceEnrolmentFlow: ObservableObject {
         guard !busy, let presentation, let transport else {
             return
         }
+        guard providerContinuation.nextAction == .begin else {
+            await checkVerification()
+            return
+        }
         busy = true
         defer { busy = false }
         var retainExactAttempt = false
@@ -237,14 +260,36 @@ final class FirstDeviceEnrolmentFlow: ObservableObject {
                 keyAssurance: "secure-enclave-biometry-current-set"
             )
             self.handle = handle
+            providerContinuation.markBeginAccepted()
+            prompt = handle.prompt
             beginRetry.markAccepted()
             enterStage(.providerVerification)
-            let initialStatus = try await transport.status(handle)
-            await applyProviderStatus(
-                initialStatus,
-                pendingPrompt: handle.prompt
-            )
-            failure = nil
+            do {
+                let initialStatus = try await transport.status(handle)
+                await applyProviderStatus(
+                    initialStatus,
+                    pendingPrompt: handle.prompt
+                )
+                failure = nil
+            } catch {
+                if providerContinuation.initialStatusFailureAction(
+                    hasDisplayablePrompt: handle.prompt != nil
+                ) == .continueWithPrompt {
+                    // Begin is already durable and the fresh GitHub prompt is
+                    // independently verifiable. Keep that accepted handle and
+                    // let the attended operator continue; the next button
+                    // polls status and can never issue begin again.
+                    recordEvent(
+                        kind: .failed,
+                        outcome: .failed,
+                        failure: .productionEnvelopeUnavailable
+                    )
+                    status = "Open GitHub and approve the displayed code"
+                    failure = nil
+                } else {
+                    fail(PlatformFailure.providerStatusRetryRequired)
+                }
+            }
         } catch {
             if retainExactAttempt {
                 fail(PlatformFailure.enrolmentBeginRetryRequired)
@@ -270,8 +315,9 @@ final class FirstDeviceEnrolmentFlow: ObservableObject {
                 try await transport.status(handle),
                 pendingPrompt: nil
             )
+            failure = nil
         } catch {
-            fail(error)
+            fail(PlatformFailure.providerStatusRetryRequired)
         }
     }
 
@@ -394,6 +440,7 @@ final class FirstDeviceEnrolmentFlow: ObservableObject {
         enrolmentComplete = false
         pendingRegistration = nil
         beginRetry.reset()
+        providerContinuation.reset()
         approvalGate = AttendedEnrolmentGate()
         failure = nil
         status = "Ready to scan"
@@ -594,6 +641,39 @@ struct EnrolmentBeginRetryState {
 
     mutating func reset() {
         retainedOperationID = nil
+    }
+}
+
+enum EnrolmentProviderContinuationAction: Equatable {
+    case begin
+    case status
+}
+
+enum EnrolmentInitialStatusFailureAction: Equatable {
+    case continueWithPrompt
+    case retryStatus
+}
+
+/// One accepted provider begin permanently changes the in-memory retry action
+/// to status polling. It is reset only when the entire uncommitted enrolment is
+/// explicitly cancelled and discarded.
+struct EnrolmentProviderContinuationState {
+    private(set) var nextAction: EnrolmentProviderContinuationAction = .begin
+
+    mutating func markBeginAccepted() {
+        nextAction = .status
+    }
+
+    func initialStatusFailureAction(
+        hasDisplayablePrompt: Bool
+    ) -> EnrolmentInitialStatusFailureAction {
+        nextAction == .status && hasDisplayablePrompt
+            ? .continueWithPrompt
+            : .retryStatus
+    }
+
+    mutating func reset() {
+        nextAction = .begin
     }
 }
 

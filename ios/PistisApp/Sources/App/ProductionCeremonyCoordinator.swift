@@ -47,6 +47,8 @@ final class ProductionCeremonyCoordinator: ObservableObject {
             phase = .review(Self.request(from: verified, trust: enrollment.trust, now: now()))
         } catch let failure as PlatformFailure {
             phase = .failed(failure)
+        } catch let failure as ProductionCeremonyError {
+            phase = .failed(Self.classifiedFailure(failure))
         } catch {
             phase = .failed(.qrPayloadUnsupported)
         }
@@ -109,6 +111,24 @@ final class ProductionCeremonyCoordinator: ObservableObject {
         challenge = nil
         enrollment = nil
         phase = .idle
+    }
+
+    static func classifiedFailure(_ failure: ProductionCeremonyError) -> PlatformFailure {
+        switch failure {
+        case .oversizedFrame:
+            .qrPayloadTooLarge
+        case .malformedFrame, .invalidChecksum, .wrongTransferKind, .invalidChallenge:
+            .qrPayloadUnsupported
+        case .unknownInstallation:
+            .enrolmentRequired
+        case .expired:
+            .authenticationRequestExpired
+        case .invalidEndpoint:
+            .authenticationEndpointInvalid
+        case .inactiveInstallation, .keyMismatch, .invalidSignature, .wrongAudience,
+             .wrongIdentity:
+            .authenticationRequestInvalid
+        }
     }
 
     private static func request(

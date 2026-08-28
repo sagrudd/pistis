@@ -538,6 +538,8 @@ extension PlatformFailure {
         case .cameraPermissionDenied, .cameraUnavailable:
             .camera
         case .qrPayloadTooLarge, .qrPayloadUnsupported,
+             .authenticationRequestInvalid, .authenticationRequestExpired,
+             .authenticationEndpointInvalid,
              .monasRequestRequiresScanTab,
              .invalidFirstDevicePresentation, .siteRootGenesisPresentationExpired,
              .siteRootBundleReceiptPresentationExpired:

@@ -215,11 +215,12 @@ final class ProductionCeremonyTests: XCTestCase {
             "https://jenkins.mnemosyne.test./auth/pistis",
             "https://jenkins..mnemosyne.test/auth/pistis",
             "https://%6aenkins.mnemosyne.test/auth/pistis",
-            "https://127.0.0.1/auth/pistis",
             "https://2130706433/auth/pistis",
             "https://0x7f000001/auth/pistis",
             "https://0177.0.0.1/auth/pistis",
             "https://127.1/auth/pistis",
+            "https://192.168.000.193:8443/auth/pistis",
+            "https://192.168.0.256:8443/auth/pistis",
             "https://[::1]/auth/pistis",
         ] {
             let material = try Fixture(
@@ -238,6 +239,20 @@ final class ProductionCeremonyTests: XCTestCase {
                 XCTAssertEqual(error as? ProductionCeremonyError, .invalidEndpoint)
             }
         }
+    }
+
+    func testChallengeAcceptsCanonicalPinnedApplianceIPv4Endpoint() async throws {
+        let endpoint = "https://192.168.0.193:8443/auth/pistis/v2/submit"
+        let material = try Fixture(key: P256.Signing.PrivateKey(), endpoint: endpoint)
+
+        let verified = try await ProductionChallengeVerifier.verify(
+            qrText: material.qr,
+            trustRepository: FixedTrust(record: material.trust),
+            expectedExternalIdentityID: Data(repeating: 0x44, count: 16),
+            now: Date(timeIntervalSince1970: 1_700_000_001)
+        )
+
+        XCTAssertEqual(verified.endpointHints.map(\.absoluteString), [endpoint])
     }
 }
 

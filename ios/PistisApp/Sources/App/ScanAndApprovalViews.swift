@@ -512,7 +512,7 @@ struct ScanView: View {
 
     private var reviewBinding: Binding<ApprovalRequest?> {
         Binding {
-            if case let .review(request) = ceremony.phase { request } else { nil }
+            ceremony.presentedRequest
         } set: { value in
             if value == nil { ceremony.reset() }
         }
@@ -1140,77 +1140,99 @@ struct ApprovalView: View {
 
     var body: some View {
         NavigationStack {
-            ScrollView {
-                VStack(alignment: .leading, spacing: MnSpacing.x4) {
-                    MnSectionHeading(request.action, orientation: request.subject)
-
-                    MnStatusLabel(text: request.trustState, kind: .success)
-
-                    MnPanel {
+            Group {
+                if let result = resultPresentation {
+                    ApprovalResultView(
+                        result: result,
+                        failureStage: coordinator.failureStage
+                    ) {
+                        coordinator.reset()
+                        dismiss()
+                    }
+                } else {
+                    ScrollView {
                         VStack(alignment: .leading, spacing: MnSpacing.x4) {
-                            MnEvidenceRow(label: "Installation", value: request.installation)
-                            Divider()
-                            MnEvidenceRow(label: "Local user", value: request.localUser)
-                            Divider()
-                            MnEvidenceRow(label: "External identity", value: request.externalIdentity)
-                            Divider()
-                            MnEvidenceRow(
-                                label: "Installation fingerprint",
-                                value: request.fingerprint,
-                                monospaced: true
-                            )
-                            Divider()
-                            MnEvidenceRow(label: "Expires in", value: request.expiry)
-                            Divider()
-                            MnEvidenceRow(label: "Request route", value: request.route)
+                            MnSectionHeading(request.action, orientation: request.subject)
+
+                            MnStatusLabel(text: request.trustState, kind: .success)
+
+                            MnPanel {
+                                VStack(alignment: .leading, spacing: MnSpacing.x4) {
+                                    MnEvidenceRow(
+                                        label: "Installation",
+                                        value: request.installation
+                                    )
+                                    Divider()
+                                    MnEvidenceRow(label: "Local user", value: request.localUser)
+                                    Divider()
+                                    MnEvidenceRow(
+                                        label: "External identity",
+                                        value: request.externalIdentity
+                                    )
+                                    Divider()
+                                    MnEvidenceRow(
+                                        label: "Installation fingerprint",
+                                        value: request.fingerprint,
+                                        monospaced: true
+                                    )
+                                    Divider()
+                                    MnEvidenceRow(label: "Expires in", value: request.expiry)
+                                    Divider()
+                                    MnEvidenceRow(label: "Request route", value: request.route)
+                                }
+                            }
+
+                            Text("Approving asks iOS to verify you before Pistis produces a device signature. Approval alone does not mean the installation accepted it.")
+                                .font(.footnote)
+                                .fixedSize(horizontal: false, vertical: true)
+
+                            VStack(spacing: MnSpacing.x3) {
+                                MnPrimaryButton(
+                                    "Approve and verify",
+                                    systemImage: "checkmark.shield"
+                                ) {
+                                    Task { await coordinator.decide(.approved) }
+                                }
+                                Button("Deny") {
+                                    Task { await coordinator.decide(.denied) }
+                                }
+                                .font(.headline)
+                                .foregroundStyle(MnColor.danger)
+                                .frame(
+                                    maxWidth: .infinity,
+                                    minHeight: MnMetrics.minimumTarget
+                                )
+                            }
+                        }
+                        .padding(MnMetrics.screenGutter)
+                    }
+                    .navigationTitle("Review request")
+                    .navigationBarTitleDisplayMode(.inline)
+                    .toolbar {
+                        ToolbarItem(placement: .cancellationAction) {
+                            Button("Cancel") { dismiss() }
+                                .frame(minHeight: MnMetrics.minimumTarget)
                         }
                     }
-
-                    Text("Approving asks iOS to verify you before Pistis produces a device signature. Approval alone does not mean the installation accepted it.")
-                        .font(.footnote)
-                        .fixedSize(horizontal: false, vertical: true)
-
-                    VStack(spacing: MnSpacing.x3) {
-                        MnPrimaryButton("Approve and verify", systemImage: "checkmark.shield") {
-                            Task { await coordinator.decide(.approved) }
-                        }
-                        Button("Deny") {
-                            Task { await coordinator.decide(.denied) }
-                        }
-                        .font(.headline)
-                        .foregroundStyle(MnColor.danger)
-                        .frame(maxWidth: .infinity, minHeight: MnMetrics.minimumTarget)
-                    }
-                }
-                .padding(MnMetrics.screenGutter)
-            }
-            .navigationTitle("Review request")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") { dismiss() }
-                        .frame(minHeight: MnMetrics.minimumTarget)
-                }
-            }
-            .sheet(item: resultBinding) { result in
-                ApprovalResultView(result: result) {
-                    coordinator.reset()
-                    dismiss()
                 }
             }
             .mnScreenBackground()
         }
+        .interactiveDismissDisabled(decisionIsInFlight)
     }
 
-    private var resultBinding: Binding<ApprovalPresentation?> {
-        Binding {
-            switch coordinator.phase {
-            case let .submitting(decision): .submitting(decision)
-            case let .terminal(status): .terminal(status)
-            case let .failed(failure): .failed(failure)
-            default: nil
-            }
-        } set: { _ in }
+    private var decisionIsInFlight: Bool {
+        if case .submitting = coordinator.phase { return true }
+        return false
+    }
+
+    private var resultPresentation: ApprovalPresentation? {
+        switch coordinator.phase {
+        case let .submitting(decision): .submitting(decision)
+        case let .terminal(status): .terminal(status)
+        case let .failed(failure): .failed(failure)
+        default: nil
+        }
     }
 }
 
@@ -1230,6 +1252,7 @@ private enum ApprovalPresentation: Identifiable {
 
 private struct ApprovalResultView: View {
     let result: ApprovalPresentation
+    let failureStage: ProductionCeremonyStage?
     let done: () -> Void
 
     var body: some View {
@@ -1246,6 +1269,12 @@ private struct ApprovalResultView: View {
                                 text: statusText,
                                 kind: statusKind
                             )
+                            if case .failed = result, let failureStage {
+                                MnEvidenceRow(
+                                    label: "Stopped at",
+                                    value: failureStage.rawValue.capitalized
+                                )
+                            }
                         }
                     }
                     if isTerminal {

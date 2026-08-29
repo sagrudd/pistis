@@ -1,5 +1,12 @@
 # Changelog
 
+- Keep the normal-login approval sheet present while Face ID, device signing,
+  delivery and authority verification run, so a result can no longer disappear
+  when the coordinator leaves its review phase. Failures now name and retain a
+  bounded, redacted stopped stage in local History, and transport, authority
+  rejection and malformed authority results have distinct recovery messages
+  (0.23.10, iOS build 57, #497).
+
 - Accept canonical dotted-decimal IPv4 login endpoints for formally enrolled
   appliances whose authority origin and TLS SPKI are pinned by the signed
   first-device receipt. Ambiguous numeric address spellings still fail closed.

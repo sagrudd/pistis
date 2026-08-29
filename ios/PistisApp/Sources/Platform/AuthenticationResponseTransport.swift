@@ -249,7 +249,12 @@ struct AuthenticationResponseTransport: Sendable {
         request.setValue("application/cose", forHTTPHeaderField: "Content-Type")
         request.setValue("application/json", forHTTPHeaderField: "Accept")
         request.timeoutInterval = 15
-        let (data, response) = try await session.data(for: request)
+        let (data, response): (Data, URLResponse)
+        do {
+            (data, response) = try await session.data(for: request)
+        } catch {
+            throw PlatformFailure.authenticationTransportUnavailable
+        }
         return try decode(data: data, response: response, expectedURL: endpoint)
     }
 
@@ -259,7 +264,12 @@ struct AuthenticationResponseTransport: Sendable {
         request.httpMethod = "GET"
         request.setValue("application/json", forHTTPHeaderField: "Accept")
         request.timeoutInterval = 15
-        let (data, response) = try await session.data(for: request)
+        let (data, response): (Data, URLResponse)
+        do {
+            (data, response) = try await session.data(for: request)
+        } catch {
+            throw PlatformFailure.authenticationTransportUnavailable
+        }
         return try decode(data: data, response: response, expectedURL: endpoint)
     }
 
@@ -278,10 +288,15 @@ struct AuthenticationResponseTransport: Sendable {
         -> AuthoritativeCeremonyStatus
     {
         guard let http = response as? HTTPURLResponse,
-              (200 ... 299).contains(http.statusCode),
               http.url == expectedURL,
               data.count <= Self.maximumResponseBytes
-        else { throw PlatformFailure.productionEnvelopeUnavailable }
+        else { throw PlatformFailure.authenticationAuthorityResponseInvalid }
+        if http.statusCode == 401 || http.statusCode == 403 {
+            throw PlatformFailure.authenticationResponseRejected
+        }
+        guard (200 ... 299).contains(http.statusCode) else {
+            throw PlatformFailure.authenticationAuthorityResponseInvalid
+        }
         do {
             let status = try JSONDecoder().decode(AuthoritativeCeremonyStatus.self, from: data)
             guard status.evidenceID.map({
@@ -290,10 +305,10 @@ struct AuthenticationResponseTransport: Sendable {
                             where: CharacterSet.controlCharacters.contains
                         )
                 }) ?? true
-            else { throw PlatformFailure.productionEnvelopeUnavailable }
+            else { throw PlatformFailure.authenticationAuthorityResponseInvalid }
             return status
         } catch {
-            throw PlatformFailure.productionEnvelopeUnavailable
+            throw PlatformFailure.authenticationAuthorityResponseInvalid
         }
     }
 }

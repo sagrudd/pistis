@@ -195,6 +195,11 @@ final class BaseCampVaultMigrationV1Tests: XCTestCase {
         let fixture = try Fixture()
         let presentation = try fixture.presentation()
 
+        XCTAssertEqual(
+            fixture.sourceDigest.hexadecimal,
+            "a080d0c9b88f8faad5f8238a64a2ae39a758d45147fb19f219af7ffc22180849"
+        )
+
         XCTAssertEqual(presentation.correlation, fixture.correlation)
         XCTAssertEqual(presentation.enrolledDevicePublicSEC1, fixture.devicePublic)
         XCTAssertEqual(presentation.vaultDigest, fixture.vaultDigest)
@@ -524,6 +529,108 @@ final class BaseCampVaultMigrationV1Tests: XCTestCase {
         ))
     }
 
+    func testMigrationPresentationRequiresJSONContentType() async throws {
+        let fixture = try Fixture()
+        let presentationJSON = try fixture.presentationJSON()
+        let configuration = URLSessionConfiguration.ephemeral
+        configuration.protocolClasses = [BaseCampSimulatorURLProtocol.self]
+        let transport = try MonasAppAttestTransport(
+            authorityOrigin: try XCTUnwrap(URL(string: "https://monas.example.test:8443")),
+            expectedSPKISHA256: Data(repeating: 0x71, count: 32),
+            configuration: configuration
+        )
+
+        BaseCampSimulatorURLProtocol.configure(
+            presentationPath: BaseCampVaultMigrationRouteV1.presentationPath,
+            presentation: presentationJSON,
+            contentType: "text/plain"
+        )
+        do {
+            _ = try await transport.fetchBaseCampVaultMigrationV1(
+                expectedDeviceKeyID: fixture.deviceID,
+                expectedRevocationGeneration: fixture.revocation,
+                nowUnixSeconds: fixture.issuedAt + 1
+            )
+            XCTFail("accepted a non-JSON migration presentation")
+        } catch {}
+
+        BaseCampSimulatorURLProtocol.configure(
+            presentationPath: BaseCampVaultMigrationRouteV1.presentationPath,
+            presentation: presentationJSON,
+            contentType: "application/json; charset=UTF-8"
+        )
+        _ = try await transport.fetchBaseCampVaultMigrationV1(
+            expectedDeviceKeyID: fixture.deviceID,
+            expectedRevocationGeneration: fixture.revocation,
+            nowUnixSeconds: fixture.issuedAt + 1
+        )
+    }
+
+    @MainActor
+    func testMigrationLost204RetriesIdenticalBodyWithoutSecondApproval() async throws {
+        let fixture = try Fixture()
+        let vector = try XCTUnwrap(
+            JSONSerialization.jsonObject(
+                with: baseCampVaultVector(named: "migration-vector.json")
+            ) as? [String: Any]
+        )
+        let qr = try XCTUnwrap(vector["qr_json"] as? String)
+        let presentationJSON = Data(
+            try XCTUnwrap(vector["presentation_json"] as? String).utf8
+        )
+        let expectedSubmissionJSON = Data(
+            try XCTUnwrap(vector["submission_json"] as? String).utf8
+        )
+        let signature = try XCTUnwrap(Data(
+            baseCampFixtureHex: try XCTUnwrap(vector["signature_raw_hex"] as? String)
+        ))
+        let presentation = try fixture.presentation()
+        let approval = MigrationApprovalStub(submission: try fixture.produce(
+            presentation, fixedSignature: signature, freshNonceByte: 0xb1
+        ))
+        BaseCampSimulatorURLProtocol.configure(
+            presentationPath: BaseCampVaultMigrationRouteV1.presentationPath,
+            presentation: presentationJSON,
+            transientSubmissionFailures: 1
+        )
+        let configuration = URLSessionConfiguration.ephemeral
+        configuration.protocolClasses = [BaseCampSimulatorURLProtocol.self]
+        let transport = try MonasAppAttestTransport(
+            authorityOrigin: try XCTUnwrap(URL(string: "https://monas.example.test:8443")),
+            expectedSPKISHA256: Data(repeating: 0x71, count: 32),
+            configuration: configuration
+        )
+        let coordinator = BaseCampVaultMigrationCoordinatorV1(
+            transport: transport,
+            trustStore: try TrustStoreStub(
+                revocation: fixture.revocation,
+                installationPublic: fixture.devicePublic
+            ),
+            approval: approval,
+            siteRootRegistration: SiteRootRegistrationStub(value: SiteRootKeyRegistrationV1(
+                schema: SiteRootKeyRegistrationV1.schema,
+                deviceKeyID: fixture.deviceID,
+                publicKeyCompressedSEC1: fixture.devicePublic,
+                secureEnclaveAttestation: "not-asserted"
+            )),
+            now: { Date(timeIntervalSince1970: TimeInterval(fixture.issuedAt + 1)) }
+        )
+
+        await coordinator.accept(qrText: qr)
+        XCTAssertEqual(coordinator.phase, .review)
+        await coordinator.approve()
+        XCTAssertEqual(coordinator.phase, .completed)
+        let approvalCalls = await approval.calls
+        XCTAssertEqual(approvalCalls, 1)
+
+        let requests = BaseCampSimulatorURLProtocol.requests()
+        XCTAssertEqual(requests.map(\.httpMethod), ["GET", "POST", "POST"])
+        XCTAssertEqual(requests[1].url, requests[2].url)
+        let bodies = BaseCampSimulatorURLProtocol.bodies()
+        XCTAssertEqual(bodies[1], expectedSubmissionJSON)
+        XCTAssertEqual(bodies[2], expectedSubmissionJSON)
+    }
+
     func testBaseCampTransportRejectsOriginAndSPKISubstitution() throws {
         let certificateURL = URL(fileURLWithPath: #filePath)
             .deletingLastPathComponent()
@@ -617,7 +724,9 @@ private struct Fixture {
     let issuedAt: UInt64 = 1_000
     var expiresAt: UInt64 = 1_100
     let vaultDigest = Data(repeating: 0x51, count: 32)
-    let sourceDigest = Data(repeating: 0x52, count: 32)
+    var sourceDigest: Data {
+        Data(SHA256.hash(data: Data((secret.hexadecimal + "\n").utf8)))
+    }
     let inventoryDigest = Data(repeating: 0x53, count: 32)
     let deviceSigning: P256.Signing.PrivateKey
     let deviceAgreement: P256.KeyAgreement.PrivateKey
@@ -967,6 +1076,8 @@ final class BaseCampSimulatorURLProtocol: URLProtocol, @unchecked Sendable {
     private static let lock = NSLock()
     private nonisolated(unsafe) static var configuredPresentationPath = ""
     private nonisolated(unsafe) static var configuredPresentation = Data()
+    private nonisolated(unsafe) static var configuredContentType = "application/json"
+    private nonisolated(unsafe) static var transientSubmissionFailuresRemaining = 0
     private nonisolated(unsafe) static var receivedRequests = [URLRequest]()
     private nonisolated(unsafe) static var receivedBodies = [Data?]()
 
@@ -981,7 +1092,19 @@ final class BaseCampSimulatorURLProtocol: URLProtocol, @unchecked Sendable {
         )
         let path = Self.configuredPresentationPath
         let body = Self.configuredPresentation
+        let contentType = Self.configuredContentType
+        let shouldFailSubmission = request.httpMethod == "POST"
+            && request.url?.path.hasSuffix("/submit") == true
+            && Self.transientSubmissionFailuresRemaining > 0
+        if shouldFailSubmission {
+            Self.transientSubmissionFailuresRemaining -= 1
+        }
         Self.lock.unlock()
+
+        if shouldFailSubmission {
+            client?.urlProtocol(self, didFailWithError: URLError(.networkConnectionLost))
+            return
+        }
 
         let isPresentation = request.httpMethod == "GET" && request.url?.path == path
         let isSubmission = request.httpMethod == "POST"
@@ -990,7 +1113,10 @@ final class BaseCampSimulatorURLProtocol: URLProtocol, @unchecked Sendable {
             url: request.url!,
             statusCode: isPresentation ? 200 : (isSubmission ? 204 : 404),
             httpVersion: "HTTP/1.1",
-            headerFields: ["Cache-Control": "no-store"]
+            headerFields: [
+                "Cache-Control": "no-store",
+                "Content-Type": contentType,
+            ]
         )!
         client?.urlProtocol(self, didReceive: response, cacheStoragePolicy: .notAllowed)
         if isPresentation { client?.urlProtocol(self, didLoad: body) }
@@ -999,10 +1125,17 @@ final class BaseCampSimulatorURLProtocol: URLProtocol, @unchecked Sendable {
 
     override func stopLoading() {}
 
-    static func configure(presentationPath: String, presentation: Data) {
+    static func configure(
+        presentationPath: String,
+        presentation: Data,
+        contentType: String = "application/json",
+        transientSubmissionFailures: Int = 0
+    ) {
         lock.lock(); defer { lock.unlock() }
         configuredPresentationPath = presentationPath
         configuredPresentation = presentation
+        configuredContentType = contentType
+        transientSubmissionFailuresRemaining = transientSubmissionFailures
         receivedRequests = []
         receivedBodies = []
     }

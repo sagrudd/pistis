@@ -37,8 +37,6 @@ struct MonasFirstWebLoginIPhoneSimulator {
         case monasLoginReviewed
         case monasLoginBiometricAccepted
         case monasSessionEstablished
-        case productLoginReviewed
-        case productLoginBiometricAccepted
         case productSessionEstablished
     }
 
@@ -294,62 +292,19 @@ struct MonasFirstWebLoginIPhoneSimulator {
         evidence.append("verified-monas-session-established-at-home")
     }
 
-    mutating func reviewProductLogin(
-        qrText: String,
-        trust: InstallationTrustRecord,
-        expectedExternalIdentityID: Data,
-        now: Date
-    ) async throws {
-        try require(.monasSessionEstablished)
-        try consume(qrText)
-        guard GenericScanRoute.classify(qrText) == .ordinaryAuthentication else {
-            throw fail(.unsupportedQR)
-        }
-        let verified: VerifiedAuthenticationChallenge
-        do {
-            verified = try await ProductionChallengeVerifier.verify(
-                qrText: qrText,
-                trustRepository: SimulatorTrust(record: trust),
-                expectedExternalIdentityID: expectedExternalIdentityID,
-                now: now
-            )
-        } catch ProductionCeremonyError.wrongAudience {
-            throw fail(.wrongAudience)
-        } catch ProductionCeremonyError.unknownInstallation {
-            throw fail(.wrongInstallation)
-        } catch {
-            throw fail(.unsupportedQR)
-        }
-        guard verified.installationID == installationID else {
-            throw fail(.wrongInstallation)
-        }
-        guard verified.audience == "dasobjectstore" else {
-            throw fail(.wrongAudience)
-        }
-        stage = .productLoginReviewed
-        evidence.append("production-signed-dasobjectstore-challenge-verified")
-    }
-
-    mutating func acceptProductLoginBiometric(_ accepted: Bool) throws {
-        try simulatedBiometric(
-            accepted,
-            from: .productLoginReviewed,
-            to: .productLoginBiometricAccepted,
-            evidence: "simulated-dasobjectstore-login-biometric-accepted"
-        )
-    }
-
-    mutating func establishProductSession(
+    mutating func establishCentrallyProjectedProductSessions(
         installationID: Data,
-        audience: String
+        projectedAudiences: Set<String>
     ) throws {
-        try require(.productLoginBiometricAccepted)
+        try require(.monasSessionEstablished)
         guard installationID == self.installationID else {
             throw fail(.wrongInstallation)
         }
-        guard audience == "dasobjectstore" else { throw fail(.wrongAudience) }
+        guard projectedAudiences == ["dasobjectstore", "oikodome", "jenkins"] else {
+            throw fail(.wrongAudience)
+        }
         stage = .productSessionEstablished
-        evidence.append("exact-audience-dasobjectstore-session-established")
+        evidence.append("central-session-projected-to-das-oikodome-jenkins")
     }
 
     mutating func cancel() {
@@ -401,16 +356,11 @@ final class MonasFirstWebLoginIPhoneSimulatorTests: XCTestCase {
     private let numericSubject: UInt64 = 3_848_500
     private let installationID = Data(repeating: 0x22, count: 16)
 
-    func testCompleteFirstInstallMonasLoginAndDASObjectStoreAudienceFlow() async throws {
+    func testCompleteFirstInstallMonasLoginAndCentralProductProjectionFlow() async throws {
         var simulator = MonasFirstWebLoginIPhoneSimulator()
         let monasLogin = try SimulatorAuthenticationFixture(
             installationID: installationID,
             audience: "propylaion",
-            authorisedAudiences: ["propylaion", "dasobjectstore"]
-        )
-        let productLogin = try SimulatorAuthenticationFixture(
-            installationID: installationID,
-            audience: "dasobjectstore",
             authorisedAudiences: ["propylaion", "dasobjectstore"]
         )
 
@@ -459,16 +409,9 @@ final class MonasFirstWebLoginIPhoneSimulatorTests: XCTestCase {
             audience: "propylaion",
             redirectedPath: "/home"
         )
-        try await simulator.reviewProductLogin(
-            qrText: productLogin.qr,
-            trust: productLogin.trust,
-            expectedExternalIdentityID: productLogin.externalIdentityID,
-            now: now
-        )
-        try simulator.acceptProductLoginBiometric(true)
-        try simulator.establishProductSession(
+        try simulator.establishCentrallyProjectedProductSessions(
             installationID: installationID,
-            audience: "dasobjectstore"
+            projectedAudiences: ["dasobjectstore", "oikodome", "jenkins"]
         )
 
         XCTAssertEqual(simulator.stage, .productSessionEstablished)
@@ -499,9 +442,7 @@ final class MonasFirstWebLoginIPhoneSimulatorTests: XCTestCase {
                 "production-signed-propylaion-home-challenge-verified",
                 "simulated-monas-login-biometric-accepted",
                 "verified-monas-session-established-at-home",
-                "production-signed-dasobjectstore-challenge-verified",
-                "simulated-dasobjectstore-login-biometric-accepted",
-                "exact-audience-dasobjectstore-session-established",
+                "central-session-projected-to-das-oikodome-jenkins",
             ])
     }
 

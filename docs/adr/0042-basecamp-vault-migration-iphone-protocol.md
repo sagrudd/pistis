@@ -128,7 +128,11 @@ origin, reference, capability, challenge, proof, ciphertext or secret. Pistis
 fetches only the build-fixed path from the retained installation origin using
 the retained TLS SPKI pin. Presentation GET and submission POST use strict
 JSON, reject unknown fields and bodies over 16 KiB, require
-`Cache-Control: no-store`, and accept only an empty `204` submit response.
+`Cache-Control: no-store`, require GET `Content-Type: application/json` with at
+most an optional UTF-8 charset, and accept only an empty `204` submit response.
+After a transient unreachable result, Pistis retries the byte-identical POST
+once at the same pinned origin. It does not create another proof, reopen
+review, or request Face ID again; every non-transient response remains final.
 
 The outer presentation contains its schema plus the exact thirteen named
 THESMIP1 values. The submission contains its schema plus the exact eight named
@@ -202,3 +206,9 @@ binding, cross-site denial, explicit review before Face ID, generic and Site
 Root purpose rejection, and the absence of any ordinary-login Base Camp entry
 point. Simulator UI coverage preserves operation-specific approval labels and
 completion navigation that does not restart Scan.
+
+The migration vector's legacy-source digest is the authoritative SHA-256 of
+the lowercase hexadecimal 32-byte test passphrase plus its final line feed.
+The successor vector includes the exact 621-byte current runtime binding and
+binds its SHA-256 into field 5. Both vectors are test-only complete HTTP and
+cryptographic transcripts, not illustrative placeholders.

@@ -62,6 +62,7 @@ final class BaseCampVaultSuccessorRotationV1Tests: XCTestCase {
             "signature_raw_hex": signature.successorHex,
             "old_ciphertext_hex": fixture.encryptedRecord.successorHex,
             "old_ciphertext_sha256_hex": fixture.recordDigest.successorHex,
+            "current_binding_bytes_hex": fixture.bindingBytes.successorHex,
             "current_binding_sha256_hex": fixture.bindingDigest.successorHex,
             "detached_cose_sign1_hex": submission.coseSign1.successorHex,
             "rewrapped_ciphertext_hex": submission.rewrappedCiphertext.successorHex,
@@ -82,6 +83,11 @@ final class BaseCampVaultSuccessorRotationV1Tests: XCTestCase {
     func testAcceptedAuthoritativeEighteenFieldVector() throws {
         let fixture = try SuccessorFixture()
         let value = try fixture.presentation()
+        XCTAssertEqual(fixture.bindingBytes.count, 621)
+        XCTAssertEqual(
+            fixture.bindingDigest.successorHex,
+            "5e394062c627247a1a843ff03004c17c0226dfc08901de8c371c64a3ecf39d30"
+        )
         XCTAssertEqual(value.currentGeneration, "basecamp-vault-7")
         XCTAssertEqual(value.successorGeneration, "basecamp-vault-8")
         XCTAssertEqual(value.currentBindingDigest, fixture.bindingDigest)
@@ -311,6 +317,110 @@ final class BaseCampVaultSuccessorRotationV1Tests: XCTestCase {
         XCTAssertEqual(body, expectedSubmissionJSON)
     }
 
+    func testSuccessorPresentationRequiresJSONContentType() async throws {
+        let fixture = try SuccessorFixture()
+        let presentationJSON = try fixture.presentationJSON()
+        let configuration = URLSessionConfiguration.ephemeral
+        configuration.protocolClasses = [BaseCampSimulatorURLProtocol.self]
+        let transport = try MonasAppAttestTransport(
+            authorityOrigin: try XCTUnwrap(URL(string: "https://monas.example.test:8443")),
+            expectedSPKISHA256: Data(repeating: 0x72, count: 32),
+            configuration: configuration
+        )
+
+        BaseCampSimulatorURLProtocol.configure(
+            presentationPath: BaseCampVaultSuccessorRotationRouteV1.presentationPath,
+            presentation: presentationJSON,
+            contentType: "text/plain"
+        )
+        do {
+            _ = try await transport.fetchBaseCampVaultSuccessorRotationV1(
+                expectedDeviceKeyID: fixture.deviceID,
+                expectedRevocationGeneration: fixture.revocation,
+                nowUnixSeconds: fixture.issuedAt + 1
+            )
+            XCTFail("accepted a non-JSON successor presentation")
+        } catch {}
+
+        BaseCampSimulatorURLProtocol.configure(
+            presentationPath: BaseCampVaultSuccessorRotationRouteV1.presentationPath,
+            presentation: presentationJSON,
+            contentType: "application/json; charset=utf-8"
+        )
+        _ = try await transport.fetchBaseCampVaultSuccessorRotationV1(
+            expectedDeviceKeyID: fixture.deviceID,
+            expectedRevocationGeneration: fixture.revocation,
+            nowUnixSeconds: fixture.issuedAt + 1
+        )
+    }
+
+    @MainActor
+    func testSuccessorLost204RetriesIdenticalBodyWithoutSecondApproval() async throws {
+        let fixture = try SuccessorFixture()
+        let vector = try XCTUnwrap(
+            JSONSerialization.jsonObject(
+                with: baseCampVaultVector(named: "successor-vector.json")
+            ) as? [String: Any]
+        )
+        let qr = try XCTUnwrap(vector["qr_json"] as? String)
+        let presentationJSON = Data(
+            try XCTUnwrap(vector["presentation_json"] as? String).utf8
+        )
+        let expectedSubmissionJSON = Data(
+            try XCTUnwrap(vector["submission_json"] as? String).utf8
+        )
+        let signature = try XCTUnwrap(Data(
+            successorFixtureHex: try XCTUnwrap(vector["signature_raw_hex"] as? String)
+        ))
+        let presentation = try fixture.presentation()
+        let approval = SuccessorApprovalStub(submission: try fixture.produce(
+            presentation, fixedSignature: signature, freshNonceByte: 0xb2
+        ))
+        BaseCampSimulatorURLProtocol.configure(
+            presentationPath: BaseCampVaultSuccessorRotationRouteV1.presentationPath,
+            presentation: presentationJSON,
+            transientSubmissionFailures: 1
+        )
+        let configuration = URLSessionConfiguration.ephemeral
+        configuration.protocolClasses = [BaseCampSimulatorURLProtocol.self]
+        let transport = try MonasAppAttestTransport(
+            authorityOrigin: try XCTUnwrap(URL(string: "https://monas.example.test:8443")),
+            expectedSPKISHA256: Data(repeating: 0x72, count: 32),
+            configuration: configuration
+        )
+        let coordinator = BaseCampVaultSuccessorCoordinatorV1(
+            transport: transport,
+            trustStore: try SuccessorTrustStoreStub(
+                revocation: fixture.revocation,
+                installationPublic: fixture.devicePublic
+            ),
+            approval: approval,
+            siteRootRegistration: SuccessorSiteRootRegistrationStub(
+                value: SiteRootKeyRegistrationV1(
+                    schema: SiteRootKeyRegistrationV1.schema,
+                    deviceKeyID: fixture.deviceID,
+                    publicKeyCompressedSEC1: fixture.devicePublic,
+                    secureEnclaveAttestation: "not-asserted"
+                )
+            ),
+            now: { Date(timeIntervalSince1970: TimeInterval(fixture.issuedAt + 1)) }
+        )
+
+        await coordinator.accept(qrText: qr)
+        XCTAssertEqual(coordinator.phase, .review)
+        await coordinator.approve()
+        XCTAssertEqual(coordinator.phase, .completed)
+        let approvalCalls = await approval.calls
+        XCTAssertEqual(approvalCalls, 1)
+
+        let requests = BaseCampSimulatorURLProtocol.requests()
+        XCTAssertEqual(requests.map(\.httpMethod), ["GET", "POST", "POST"])
+        XCTAssertEqual(requests[1].url, requests[2].url)
+        let bodies = BaseCampSimulatorURLProtocol.bodies()
+        XCTAssertEqual(bodies[1], expectedSubmissionJSON)
+        XCTAssertEqual(bodies[2], expectedSubmissionJSON)
+    }
+
     @MainActor
     func testSuccessorCoordinatorRequiresReviewAndLocalSiteRootBeforeApproval() async throws {
         let fixture = try SuccessorFixture()
@@ -381,7 +491,6 @@ private struct SuccessorFixture {
     let delegation = "delegation-successor"
     let issuedAt: UInt64 = 1_000
     let expiresAt: UInt64 = 1_100
-    let bindingDigest = Data(repeating: 0x62, count: 32)
     let secret = Data(repeating: 0x31, count: 32)
     let deviceSigning: P256.Signing.PrivateKey
     let deviceAgreement: P256.KeyAgreement.PrivateKey
@@ -397,6 +506,20 @@ private struct SuccessorFixture {
         "site-root-" + Data(SHA256.hash(data: devicePublic)).successorHex
     }
     var recordDigest: Data { Data(SHA256.hash(data: encryptedRecord)) }
+    var bindingBytes: Data {
+        Data((
+            "schema=thesaurophylax.iphone-custody-runtime-binding.v1\n"
+                + "site_trust_domain_id=\(site)\n"
+                + "key_generation=basecamp-vault-7\n"
+                + "device_key_id=\(deviceID)\n"
+                + "enrolled_device_public_sec1_hex=\(devicePublic.successorHex)\n"
+                + "expected_ed25519_public_key_hex=\(expectedPublic.successorHex)\n"
+                + "encrypted_record_sha256_hex=\(recordDigest.successorHex)\n"
+                + "revocation_generation=\(revocation)\n"
+                + "existing_host_public_sec1_hex=\(oldHostPublic.successorHex)\n"
+        ).utf8)
+    }
+    var bindingDigest: Data { Data(SHA256.hash(data: bindingBytes)) }
     var canonicalChallenge: Data { challenge(fields) }
 
     var fields: [Field] {

@@ -483,6 +483,7 @@ struct MonasAppAttestTransport: Sendable {
                 guard let http = response as? HTTPURLResponse,
                       http.url == endpoint,
                       http.statusCode == 200,
+                      Self.responseContentTypeIsJSON(http),
                       !data.isEmpty,
                       data.count <= BaseCampVaultMigrationRouteV1.maximumJSONBytes,
                       http.value(forHTTPHeaderField: "Cache-Control")?
@@ -525,22 +526,30 @@ struct MonasAppAttestTransport: Sendable {
             request.setValue("application/json; charset=utf-8", forHTTPHeaderField: "Content-Type")
             request.setValue("application/json", forHTTPHeaderField: "Accept")
             request.setValue("no-store", forHTTPHeaderField: "Cache-Control")
-            do {
-                let (data, response) = try await originData(for: request)
-                guard let http = response as? HTTPURLResponse,
-                      http.url == endpoint,
-                      http.statusCode == 204,
-                      data.isEmpty,
-                      http.value(forHTTPHeaderField: "Cache-Control")?
-                        .lowercased().contains("no-store") == true
-                else { throw PlatformFailure.custodyRewrapUnavailable }
-                return
-            } catch OriginAttemptFailure.unreachable {
-                lastFailure = .custodyRewrapUnavailable
-            } catch let failure as PlatformFailure {
-                throw failure
-            } catch {
-                throw PlatformFailure.custodyRewrapUnavailable
+            for attempt in 0 ... 1 {
+                do {
+                    let (data, response) = try await originData(for: request)
+                    guard let http = response as? HTTPURLResponse,
+                          http.url == endpoint,
+                          http.statusCode == 204,
+                          data.isEmpty,
+                          http.value(forHTTPHeaderField: "Cache-Control")?
+                            .lowercased().contains("no-store") == true
+                    else { throw PlatformFailure.custodyRewrapUnavailable }
+                    return
+                } catch OriginAttemptFailure.unreachable where attempt == 0 {
+                    // A lost response may follow durable server acceptance. Retry
+                    // the identical bytes once at the identical pinned origin;
+                    // never create another proof or request another Face ID.
+                    continue
+                } catch OriginAttemptFailure.unreachable {
+                    lastFailure = .custodyRewrapUnavailable
+                    break
+                } catch let failure as PlatformFailure {
+                    throw failure
+                } catch {
+                    throw PlatformFailure.custodyRewrapUnavailable
+                }
             }
         }
         throw lastFailure
@@ -563,6 +572,7 @@ struct MonasAppAttestTransport: Sendable {
                 guard let http = response as? HTTPURLResponse,
                       http.url == endpoint,
                       http.statusCode == 200,
+                      Self.responseContentTypeIsJSON(http),
                       !data.isEmpty,
                       data.count <= BaseCampVaultSuccessorRotationRouteV1.maximumJSONBytes,
                       http.value(forHTTPHeaderField: "Cache-Control")?
@@ -603,25 +613,41 @@ struct MonasAppAttestTransport: Sendable {
             request.setValue("application/json; charset=utf-8", forHTTPHeaderField: "Content-Type")
             request.setValue("application/json", forHTTPHeaderField: "Accept")
             request.setValue("no-store", forHTTPHeaderField: "Cache-Control")
-            do {
-                let (data, response) = try await originData(for: request)
-                guard let http = response as? HTTPURLResponse,
-                      http.url == endpoint,
-                      http.statusCode == 204,
-                      data.isEmpty,
-                      http.value(forHTTPHeaderField: "Cache-Control")?
-                        .lowercased().contains("no-store") == true
-                else { throw PlatformFailure.custodyRewrapUnavailable }
-                return
-            } catch OriginAttemptFailure.unreachable {
-                lastFailure = .custodyRewrapUnavailable
-            } catch let failure as PlatformFailure {
-                throw failure
-            } catch {
-                throw PlatformFailure.custodyRewrapUnavailable
+            for attempt in 0 ... 1 {
+                do {
+                    let (data, response) = try await originData(for: request)
+                    guard let http = response as? HTTPURLResponse,
+                          http.url == endpoint,
+                          http.statusCode == 204,
+                          data.isEmpty,
+                          http.value(forHTTPHeaderField: "Cache-Control")?
+                            .lowercased().contains("no-store") == true
+                    else { throw PlatformFailure.custodyRewrapUnavailable }
+                    return
+                } catch OriginAttemptFailure.unreachable where attempt == 0 {
+                    continue
+                } catch OriginAttemptFailure.unreachable {
+                    lastFailure = .custodyRewrapUnavailable
+                    break
+                } catch let failure as PlatformFailure {
+                    throw failure
+                } catch {
+                    throw PlatformFailure.custodyRewrapUnavailable
+                }
             }
         }
         throw lastFailure
+    }
+
+    private static func responseContentTypeIsJSON(_ response: HTTPURLResponse) -> Bool {
+        guard let value = response.value(forHTTPHeaderField: "Content-Type") else {
+            return false
+        }
+        let fields = value.split(separator: ";", omittingEmptySubsequences: false)
+            .map { $0.trimmingCharacters(in: .whitespaces) }
+        guard fields.first?.lowercased() == "application/json" else { return false }
+        if fields.count == 1 { return true }
+        return fields.count == 2 && fields[1].lowercased() == "charset=utf-8"
     }
 
     /// Fetches one role-fixed THESXIR2 presentation from the protected Monas

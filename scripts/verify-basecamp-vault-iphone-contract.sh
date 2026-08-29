@@ -42,6 +42,12 @@ for vector in "$migration_vector" "$successor_vector"; do
         exit 1
     }
 done
+jq -e '
+    .current_binding_bytes_hex | type == "string" and length == 1242
+' "$successor_vector" >/dev/null || {
+    printf '%s\n' 'basecamp iPhone contract: successor lacks exact 621-byte binding' >&2
+    exit 1
+}
 
 verify_sha256() {
     expected=$1
@@ -52,9 +58,9 @@ verify_sha256() {
         exit 1
     }
 }
-verify_sha256 d9de2ec82a1c3fec93134f06aa5e2b4345bb7575631feeee3eaf0d12d5e59773 \
+verify_sha256 4eb17c7d7d60c173a5bc4cffff4920dc71be41f0d75611056c28e54e38e54ce4 \
     "$migration_vector"
-verify_sha256 5bc90b25325a2f43229524325c12f41542e70034e18bc70fe357e63bf7e8cbd1 \
+verify_sha256 808ddb81577bd688054ebb69f7cb72d698c97882a2e08925e3ccd5390dda77c4 \
     "$successor_vector"
 
 require() {
@@ -115,6 +121,8 @@ for test_name in \
     testStrictMigrationOuterCrossBindsPinnedSiteDeviceAndRevocation \
     testBaseCampTransportRejectsOriginAndSPKISubstitution \
     testSimulatorFullMigrationQRGetValidateProduceAndPostFlow \
+    testMigrationPresentationRequiresJSONContentType \
+    testMigrationLost204RetriesIdenticalBodyWithoutSecondApproval \
     testCoordinatorRequiresExplicitReviewBeforeFaceIDApproval; do
     require "$test_name" "$migration_tests"
 done
@@ -126,6 +134,8 @@ for test_name in \
     testProducerOpensUnderNAndRewrapsUnderExactlyNPlusOne \
     testQRIsExactNonBearerFourFieldDescriptor \
     testSimulatorFullSuccessorQRGetValidateProduceAndPostFlow \
+    testSuccessorPresentationRequiresJSONContentType \
+    testSuccessorLost204RetriesIdenticalBodyWithoutSecondApproval \
     testSuccessorCoordinatorRequiresReviewAndLocalSiteRootBeforeApproval; do
     require "$test_name" "$successor_tests"
 done

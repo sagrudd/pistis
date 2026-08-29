@@ -68,6 +68,21 @@ provider client secret, or provider access token. An authorised owner must use
 that team with a provisioned physical iPhone before device, archive, or
 TestFlight validation.
 
+### Release identity witness
+
+`ios/PistisApp/pistis-ios-release.json` is the first-party, machine-readable
+release identity for the native app. It binds the stable Kanon product ID
+`pistis-ios`, the Apple bundle identifier, marketing version and build number
+to the exact application target, Xcode project and Info.plist. Debug and
+Release must both contain the recorded identity; the native test gate verifies
+both configurations and the two file digests independently.
+
+The iOS identity is deliberately separate from the historical Linux
+`pistis-agent` crate and package. Recording an already merged physical-device
+candidate does not rebuild or renumber that candidate. Any later change to an
+identity-bearing Xcode setting, project or Info.plist requires a new iOS app
+version/build, refreshed witness digests and a coordinated Kanon release.
+
 ### Approved physical build gate
 
 The `Release` configuration is reserved for the approved physical build. It

@@ -2,6 +2,8 @@
 
 - Status: Accepted
 - Date: 2026-07-24
+- Amended: 2026-08-29 to distinguish ordinary signed-login intent from
+  governed-action review
 - Owners: iOS, security, protocol, and design
 
 ## Context
@@ -29,7 +31,7 @@ The application is a native SwiftUI application with five primary
 destinations: Identities, Installations, Scan, History, and Settings.
 Consequential tasks use a focused review sheet rather than a dashboard card.
 
-The information hierarchy follows Grammateus:
+Consequential and governed tasks follow the Grammateus information hierarchy:
 
 1. state the requested action and subject;
 2. show installation, user, external-identity, expiry, and route evidence;
@@ -37,6 +39,22 @@ The information hierarchy follows Grammateus:
 4. invoke system local authentication for every signing operation;
 5. report human decision, device signature, transfer receipt, and server
    verification as separate facts.
+
+An ordinary authentication QR is the narrow exception. After Pistis verifies
+the signed challenge against the selected enrolled installation, scanning that
+one-use QR is the operator's explicit request to approve that login. Pistis may
+therefore proceed directly to fresh Face ID and Secure Enclave signing without
+a second application-level **Approve** control. If retained authority custody
+must be restored, the same login task performs the exact pinned App Attest and
+Face-ID-attended continuation before resuming the original challenge. No
+second challenge or detached recovery navigation is permitted.
+
+This exception does not apply to enrolment, authority replacement or movement,
+custody import, destructive action, privilege change, or another governed
+approval. Those operations continue to display their complete review evidence
+and require an explicit application-level decision before local
+authentication. Cancelling Face ID during ordinary login produces no signed
+response; it is not converted into a signed denial.
 
 An approval does not imply signature verification or server acceptance.
 History is an informational, immutable-looking timeline of locally observed
@@ -126,8 +144,10 @@ Google enrolment uses the same system-browser and broker boundary.
 
 QR acquisition uses AVFoundation metadata capture. Frames are not persisted or
 logged. Input bounds, prefix, checksum, closed schema, expiry, purpose, and
-installation bindings are checked before presenting an approval. Moving to the
-background cancels a pending approval.
+installation bindings are checked before any Face ID request. Moving to the
+background cancels a pending approval. A successful ordinary login returns to
+Identities and retires the transient scanner session; selecting Scan creates a
+fresh camera session without restarting the application.
 
 QR response and direct-local submission share one response state machine and
 one signing boundary. Until a COSE ADR and cross-language fixtures are
@@ -184,3 +204,9 @@ separation of approval from verification. The security review required
 system-mediated Keeper participation, non-exportable per-use-authenticated
 Secure Enclave keys, brokered OAuth, explicit fallback states, and honest
 Apple-distribution and COSE blockers.
+
+On 29 August 2026 the programme owner accepted the ordinary-login amendment:
+the verified signed QR scan is the application-level login decision and Face
+ID remains mandatory. The accepted boundary retains explicit evidence review
+for every enrolment, authority-changing, destructive, privilege-changing, and
+otherwise governed operation.

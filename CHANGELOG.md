@@ -1,5 +1,13 @@
 # Changelog
 
+- Streamline registered iOS login: Pistis opens on Scan, treats a verified
+  signed ordinary-login QR as the explicit login intent, checks and attends
+  retained authority custody in context, then completes with Face ID without
+  redundant Approve or Done controls. Authoritative success lands on
+  Identities and the scanner can be reopened without restarting the app;
+  governed and destructive actions retain explicit evidence review
+  (0.24.0, iOS build 58, #499).
+
 - Keep the normal-login approval sheet present while Face ID, device signing,
   delivery and authority verification run, so a result can no longer disappear
   when the coordinator leaves its review phase. Failures now name and retain a

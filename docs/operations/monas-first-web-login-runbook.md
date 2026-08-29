@@ -617,15 +617,19 @@ normal authentication ceremony.
 3. Confirm that the browser reaches `/auth/pistis/v3/login` and displays
    **Approve sign-in with Pistis**, one QR, **Cancel**, and **Waiting for your
    phone…**.
-4. In Pistis, open **Scan** and scan that browser QR.
-5. Verify the Monas installation, GitHub identity, exact audience and expiry.
-   The normal home ceremony's exact audience is `propylaion`; a display label
-   such as “Monas” is not the signed audience.
-6. Approve once with Face ID.
-7. Keep the Pistis result open until it reports the authoritative result. The
-   result must remain visible throughout response preparation, Face ID and
-   device signing, signed-response delivery and authority verification.
-8. Leave the browser open while it polls and finalises the ceremony.
+4. Pistis opens directly on **Scan** after registration. Scan that browser QR.
+5. Pistis verifies the Monas installation, GitHub identity, exact audience and
+   expiry before it requests Face ID. The normal home ceremony's exact audience
+   is `propylaion`; a display label such as “Monas” is not the signed audience.
+6. Complete Face ID. The verified QR scan is the ordinary-login approval, so
+   there is no second **Approve** control. If the retained authority first
+   needs custody recovery, Pistis performs its exact App Attest and attended
+   Face ID continuation in this same task, then resumes this login.
+7. Pistis keeps failures visible. On authoritative success it closes the
+   transient result automatically and lands on **Identities**; no **Done** tap
+   or application restart is required.
+8. Leave the browser open while it polls and finalises the ceremony. Selecting
+   **Scan** again must start a fresh camera session.
 
 ### Pass condition
 
@@ -634,6 +638,8 @@ normal authentication ceremony.
 - The same-origin session projection is available and contains the expected
   principal, authority revision and `dasobjectstore/Administer` entitlement.
 - Refresh preserves the session; logout revokes it.
+- Pistis lands on **Identities**, and returning to **Scan** starts the camera
+  without terminating or relaunching the app.
 
 The browser's ceremony capability remains HttpOnly and is not encoded in the
 QR. The QR contains only the one-use signed Pistis challenge.

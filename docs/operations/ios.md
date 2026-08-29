@@ -148,13 +148,22 @@ Keychain mutation. A development fixture, copied JSON response, bare authority
 key, provider poll success, or TLS success is not an acceptable substitute for
 the signed authority receipt and its authenticated bootstrap proof.
 
-On the Scan tab, all five readiness rows must be ready. Scan the Monas
-`PISTIS1` version-2 QR and compare the displayed audience, installation, local
-user, external-identity identifier, installation fingerprint, expiry, and
-route with the initiating browser. Choose Approve or Deny; both choices must
-produce a fresh Face ID prompt. Success is only the terminal state returned by
-the installation authority. A pending timeout, delivery error, unknown host,
-or malformed authority response must not be described as acceptance.
+After initial onboarding, Pistis opens on Scan. For an ordinary Monas
+`PISTIS1` login, scanning a challenge that verifies against the selected
+enrolled installation is the explicit login decision. Pistis checks live
+authority custody in the same task, performs an exact App Attest and
+Face-ID-attended continuation when required, and then requests fresh Face ID
+for the login signature. There is no separate **Approve** or successful
+**Done** control. Authoritative completion returns to Identities; selecting
+Scan again starts a fresh camera session without restarting Pistis.
+
+This direct path is restricted to the signed `authenticate-session` action.
+Enrolment, Site authority, custody import, destructive, privilege-changing and
+other governed requests still display their evidence and require a separate
+explicit application-level decision. Success remains only the terminal state
+returned by the installation authority. A pending timeout, custody failure,
+delivery error, unknown host, or malformed authority response must remain
+visible and must not be described as acceptance.
 
 For MVP transport, the challenge supplies one HTTPS response endpoint and may
 supply a second HTTPS status endpoint. Both hosts must already appear in the

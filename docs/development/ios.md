@@ -42,9 +42,10 @@ distinct first-device scan because the authority signature authenticates the
 exact HTTPS origin and full TLS SPKI digest before the user confirms the
 independently displayed comparison words. Tests may inject an enrolled record,
 but the application obtains durable production trust only from the
-authenticated Prosopikon enrolment transaction. Approval and denial both
-require fresh local authentication and a Secure Enclave signature;
-cancellation is not a denial.
+authenticated Prosopikon enrolment transaction. For ordinary login only, the
+verified signed QR scan is the explicit approval and fresh Face ID authorises
+the Secure Enclave signature. Governed approval and denial retain separate
+review controls and fresh local authentication; cancellation is not a denial.
 
 ## Native validation
 

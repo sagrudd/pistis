@@ -7,6 +7,7 @@ private func installationNamespace(_ data: Data) -> String {
 
 enum ProductionCeremonyStage: String, Equatable, Sendable {
     case challengeVerification = "QR and installation verification"
+    case custodyReadiness = "authority custody readiness"
     case responsePreparation = "signed response preparation"
     case deviceSignature = "Face ID and device signature"
     case responseDelivery = "signed response delivery"
@@ -19,6 +20,7 @@ final class ProductionCeremonyCoordinator: ObservableObject {
         case idle
         case verifying
         case review(ApprovalRequest)
+        case preparing
         case submitting(AuthenticationDecision)
         case terminal(AuthoritativeCeremonyStatus)
         case failed(PlatformFailure)
@@ -131,6 +133,32 @@ final class ProductionCeremonyCoordinator: ObservableObject {
         }
     }
 
+    /// Treats a verified, signed ordinary-login QR scan as the operator's
+    /// explicit login intent, prepares any required retained custody boundary,
+    /// and then asks iOS for fresh local user verification. Enrolment,
+    /// arbitrary authority changes, and other governed actions do not use this
+    /// entry point.
+    func approveVerifiedLoginIntent(
+        prepareCustody: () async throws -> Void
+    ) async {
+        guard case .review = phase, retainedRequest != nil else {
+            fail(.invalidConfiguration, at: .responsePreparation)
+            return
+        }
+        phase = .preparing
+        failureStage = nil
+        do {
+            try await prepareCustody()
+        } catch let failure as PlatformFailure {
+            fail(failure, at: .custodyReadiness)
+            return
+        } catch {
+            fail(.siteRootAuthorityUnavailable, at: .custodyReadiness)
+            return
+        }
+        await decide(.approved)
+    }
+
     func reset() {
         challenge = nil
         enrollment = nil
@@ -179,7 +207,7 @@ final class ProductionCeremonyCoordinator: ObservableObject {
         switch phase {
         case .idle, .verifying:
             nil
-        case .review, .submitting, .terminal, .failed:
+        case .review, .preparing, .submitting, .terminal, .failed:
             request
         }
     }

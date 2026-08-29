@@ -122,12 +122,38 @@ final class PistisUITests: XCTestCase {
         XCTAssertTrue(application.tabBars.buttons["Settings"].exists)
     }
 
+    func testRegisteredLaunchStartsScannerAndScannerCanBeReopened() {
+        let application = XCUIApplication()
+        application.launch()
+        if application.buttons["Continue to Pistis"].exists {
+            application.buttons["Continue to Pistis"].tap()
+        }
+
+        let scan = application.tabBars.buttons["Scan"]
+        XCTAssertTrue(scan.waitForExistence(timeout: 5))
+        XCTAssertTrue(scan.isSelected)
+        XCTAssertTrue(
+            application.staticTexts["Scan a Pistis or Monas request"]
+                .waitForExistence(timeout: 5)
+        )
+
+        application.tabBars.buttons["Identities"].tap()
+        XCTAssertTrue(application.navigationBars["Identities"].waitForExistence(timeout: 5))
+        scan.tap()
+        XCTAssertTrue(scan.isSelected)
+        XCTAssertTrue(
+            application.staticTexts["Scan a Pistis or Monas request"]
+                .waitForExistence(timeout: 5)
+        )
+    }
+
     func testProtectedFirstDeviceFlowIsAvailableWithoutDirectProviderLogin() {
         let application = XCUIApplication()
         application.launch()
         if application.buttons["Continue to Pistis"].exists {
             application.buttons["Continue to Pistis"].tap()
         }
+        application.tabBars.buttons["Identities"].tap()
 
         XCTAssertTrue(
             application.staticTexts["Protected first-device enrolment"]

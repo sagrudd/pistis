@@ -82,7 +82,7 @@ struct RootTabView: View {
     @Environment(\.scenePhase) private var scenePhase
     @StateObject private var enrollment = EnrollmentProjectionStore()
     @State private var reconciliationMessage: String?
-    @State private var selectedTab = Tab.identities
+    @State private var selectedTab = Tab.scan
     @State private var providerEnrolmentRequested = false
     @State private var authorityCustodyContinuationHost: String?
     @State private var authorityCustodyMode: FirstAuthorityCustodyModeV2 = .rotation
@@ -135,12 +135,17 @@ struct RootTabView: View {
                 ScanView(
                     siteRootTransport: siteRootTransport,
                     expectedSiteRootAuthorityHost: authorityCustodyContinuationHost,
-                    authorityCustodyMode: authorityCustodyMode
-                ) {
-                    authorityCustodyContinuationHost = nil
-                    authorityCustodyMode = .rotation
-                    selectedTab = .installations
-                }
+                    authorityCustodyMode: authorityCustodyMode,
+                    showInstallations: {
+                        authorityCustodyContinuationHost = nil
+                        authorityCustodyMode = .rotation
+                        selectedTab = .installations
+                    },
+                    prepareOrdinaryLogin: prepareOrdinaryLogin,
+                    ordinaryLoginCompleted: {
+                        selectedTab = .identities
+                    }
+                )
                 .id(authorityCustodyMode)
             }
             .tabItem {
@@ -280,6 +285,131 @@ struct RootTabView: View {
         selectedTab = .scan
     }
 
+    /// Checks the retained, pinned authority before an already verified
+    /// ordinary-login request reaches the signing boundary. A ready authority
+    /// adds no prompt. A required rotation or recovery remains attended by its
+    /// own exact Face ID reason, then the original login continues.
+    private func prepareOrdinaryLogin() async throws {
+        guard let activeEnrollment = try await InstallationTrustKeychain.shared.activeEnrollment(),
+              let authorityHost = URL(string: activeEnrollment.httpsOrigin)?.host,
+              let transport = siteRootTransport as? MonasSiteRootDelegationTransport,
+              transport.isConfiguredAuthorityHost(authorityHost)
+        else { throw PlatformFailure.siteRootAuthorityUnavailable }
+
+        let status = try await transport.authorityCustodyStatusV2(
+            authorityHost: authorityHost
+        )
+        guard status != .ready else { return }
+        try await attendAuthorityCustody(
+            status: status,
+            authorityHost: authorityHost,
+            transport: transport,
+            authenticationReason:
+                "Approve this exact authority custody continuation for sign-in"
+        ) { _ in }
+        try? SiteRootInstallationRepository.shared.recordAuthorityCustodyCompleted(
+            authorityHost: authorityHost
+        )
+        try? LocalHistoryRepository.shared.record(
+            HistoryEvent(
+                id: UUID(),
+                action: "Authority custody prepared for sign-in",
+                installation: authorityHost,
+                occurredAt: Date().formatted(date: .abbreviated, time: .standard),
+                decision: "Verified",
+                signature: "Fresh App Attest and Face ID evidence accepted",
+                transfer: "Pinned Monas v2 custody flow completed",
+                verification: "Original signed login request resumed"
+            )
+        )
+        await enrollment.refresh()
+    }
+
+    private func attendAuthorityCustody(
+        status initialStatus: MonasSiteRootDelegationTransport.AuthorityCustodyStatusV2,
+        authorityHost: String,
+        transport: MonasSiteRootDelegationTransport,
+        authenticationReason: String,
+        progress: (AuthorityCustodyContinuationStage) -> Void
+    ) async throws {
+        var status = initialStatus
+        let appAttestTransport = try transport.appAttestTransport(
+            authorityHost: authorityHost
+        )
+        if status == .appAttestAssertionRequired {
+            progress(.fetchChallenge)
+            let now = UInt64(Date().timeIntervalSince1970)
+            let challenge = try await appAttestTransport
+                .fetchCustodyRotationAssertionChallengeV2(nowUnixSeconds: now)
+            progress(.generateAssertion)
+            let assertion = try await AppleAppAttestClient()
+                .prepareCustodyRotationAssertion(challenge: challenge)
+            if assertion.restoredRegisteredKeyReference {
+                try? LocalHistoryRepository.shared.record(
+                    HistoryEvent(
+                        id: UUID(),
+                        action: "App Attest reference recovered",
+                        installation: authorityHost,
+                        occurredAt: Date().formatted(date: .abbreviated, time: .standard),
+                        decision: "Verified",
+                        signature: "Exact registered Apple key proved",
+                        transfer: "Local opaque key reference restored",
+                        verification: "No key or authority generation was created"
+                    )
+                )
+            }
+            progress(.submitAssertion)
+            try await appAttestTransport.submitAssertion(assertion.envelope)
+            progress(.resolveCustodyLifecycle)
+            let observedLifecycle = try await transport.authorityCustodyStatusV2(
+                authorityHost: authorityHost
+            )
+            let transition = try AuthorityCustodyAcceptedAssertionTransitionV2.next(
+                after: status,
+                observedLifecycle: observedLifecycle
+            )
+            status = transition.status
+            progress(transition.stage)
+        }
+
+        progress(.prepareCustody)
+        let producer = try SecureEnclaveFirstAuthorityCustodyProducerV2(
+            authenticationReason: authenticationReason
+        )
+        switch status {
+        case .appAttestAssertionRequired:
+            throw PlatformFailure.siteRootAuthorityUnavailable
+        case .initialRotationRequired:
+            let commitment = try producer.prepareInitialRotation()
+            progress(.beginCustody)
+            let presentation = try await appAttestTransport
+                .beginFirstAuthorityCustodyRotationV2(
+                    commitment,
+                    nowUnixSeconds: UInt64(Date().timeIntervalSince1970)
+                )
+            let submission = try producer.completeInitialRotation(presentation)
+            progress(.completeCustody)
+            _ = try await appAttestTransport.completeFirstAuthorityCustodyRotationV2(
+                submission
+            )
+        case .recoveryRequired:
+            let commitment = try producer.retainedRecoveryCommitment()
+            progress(.beginCustody)
+            let presentation = try await appAttestTransport
+                .beginFirstAuthorityCustodyRecoveryV2(
+                    expectedCommitment: commitment,
+                    nowUnixSeconds: UInt64(Date().timeIntervalSince1970)
+                )
+            let submission = try producer.completeRecovery(presentation)
+            progress(.completeCustody)
+            _ = try await appAttestTransport.completeFirstAuthorityCustodyRecoveryV2(
+                submission
+            )
+        case .ready:
+            break
+        }
+    }
+
     private func continueAuthorityCustody(_ installation: InstallationSummary) {
     guard authorityCustodyAttempt == nil else { return }
     let attempt = UUID()
@@ -301,7 +431,7 @@ struct RootTabView: View {
             else { return }
             var failureStage = AuthorityCustodyContinuationStage.initialStatus
             do {
-        var status = try await transport.authorityCustodyStatusV2(
+        let status = try await transport.authorityCustodyStatusV2(
             authorityHost: installation.localAlias
         )
         switch status {
@@ -332,78 +462,12 @@ struct RootTabView: View {
         case .appAttestAssertionRequired, .initialRotationRequired, .recoveryRequired:
           break
         }
-        let appAttestTransport = try transport.appAttestTransport(
-            authorityHost: installation.localAlias
-        )
-        if status == .appAttestAssertionRequired {
-          failureStage = .fetchChallenge
-          let now = UInt64(Date().timeIntervalSince1970)
-          let challenge =
-            try await appAttestTransport
-            .fetchCustodyRotationAssertionChallengeV2(nowUnixSeconds: now)
-          failureStage = .generateAssertion
-          let assertion = try await AppleAppAttestClient()
-            .prepareCustodyRotationAssertion(challenge: challenge)
-          if assertion.restoredRegisteredKeyReference {
-            try? LocalHistoryRepository.shared.record(
-              HistoryEvent(
-                id: UUID(), action: "App Attest reference recovered",
-                installation: installation.localAlias,
-                occurredAt: Date().formatted(date: .abbreviated, time: .standard),
-                decision: "Verified", signature: "Exact registered Apple key proved",
-                transfer: "Local opaque key reference restored",
-                verification: "No key or authority generation was created"
-              ))
-          }
-          failureStage = .submitAssertion
-          try await appAttestTransport.submitAssertion(assertion.envelope)
-          failureStage = .resolveCustodyLifecycle
-          let observedLifecycle = try await transport.authorityCustodyStatusV2(
-            authorityHost: installation.localAlias
-          )
-          let transition = try AuthorityCustodyAcceptedAssertionTransitionV2.next(
-            after: status, observedLifecycle: observedLifecycle
-          )
-          status = transition.status
-          failureStage = transition.stage
-        }
-        failureStage = .prepareCustody
-        let producer = try SecureEnclaveFirstAuthorityCustodyProducerV2(
+        try await attendAuthorityCustody(
+          status: status,
+          authorityHost: installation.localAlias,
+          transport: transport,
           authenticationReason: "Approve this exact first-authority custody continuation"
-        )
-        switch status {
-        case .appAttestAssertionRequired:
-          throw PlatformFailure.siteRootAuthorityUnavailable
-        case .initialRotationRequired:
-          let commitment = try producer.prepareInitialRotation()
-          failureStage = .beginCustody
-          let presentation =
-            try await appAttestTransport
-            .beginFirstAuthorityCustodyRotationV2(
-              commitment, nowUnixSeconds: UInt64(Date().timeIntervalSince1970)
-            )
-          let submission = try producer.completeInitialRotation(presentation)
-          failureStage = .completeCustody
-          _ = try await appAttestTransport.completeFirstAuthorityCustodyRotationV2(
-            submission
-          )
-        case .recoveryRequired:
-          let commitment = try producer.retainedRecoveryCommitment()
-          failureStage = .beginCustody
-          let presentation =
-            try await appAttestTransport
-            .beginFirstAuthorityCustodyRecoveryV2(
-              expectedCommitment: commitment,
-              nowUnixSeconds: UInt64(Date().timeIntervalSince1970)
-            )
-          let submission = try producer.completeRecovery(presentation)
-          failureStage = .completeCustody
-          _ = try await appAttestTransport.completeFirstAuthorityCustodyRecoveryV2(
-            submission
-          )
-        case .ready:
-          break
-                }
+        ) { failureStage = $0 }
         failureStage = .retainCompletion
         if installation.status != "Trusted" {
           try SiteRootInstallationRepository.shared.recordAuthorityCustodyCompleted(

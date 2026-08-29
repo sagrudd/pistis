@@ -115,6 +115,8 @@ struct ScanView: View {
     private let appAttestReplacementTransport: MonasAppAttestTransport?
     private let expectedSiteRootAuthorityHost: String?
     private let showInstallations: () -> Void
+    private let prepareOrdinaryLogin: () async throws -> Void
+    private let ordinaryLoginCompleted: () -> Void
     @State private var scanning = true
     @State private var importingOfflinePresentation = false
     @State private var importingAppAttestReplacement = false
@@ -126,11 +128,15 @@ struct ScanView: View {
         siteRootTransport: any MonasSiteRootCeremonyTransport,
         expectedSiteRootAuthorityHost: String? = nil,
         authorityCustodyMode: FirstAuthorityCustodyModeV2 = .rotation,
-        showInstallations: @escaping () -> Void = {}
+        showInstallations: @escaping () -> Void = {},
+        prepareOrdinaryLogin: @escaping () async throws -> Void = {},
+        ordinaryLoginCompleted: @escaping () -> Void = {}
     ) {
         self.siteRootTransport = siteRootTransport
         self.expectedSiteRootAuthorityHost = expectedSiteRootAuthorityHost
         self.showInstallations = showInstallations
+        self.prepareOrdinaryLogin = prepareOrdinaryLogin
+        self.ordinaryLoginCompleted = ordinaryLoginCompleted
         if let pinned = siteRootTransport as? MonasSiteRootDelegationTransport {
             appAttestReplacementTransport = try? pinned.appAttestTransport()
         } else {
@@ -296,6 +302,13 @@ struct ScanView: View {
         }
         .onAppear { startScanning() }
         .onDisappear { stopScanning() }
+        .onChange(of: ceremony.phase) { _, phase in
+            guard case let .terminal(status) = phase,
+                  status.state == .completed
+            else { return }
+            ceremony.reset()
+            ordinaryLoginCompleted()
+        }
         .sheet(item: reviewBinding) { request in
             ApprovalView(request: request, coordinator: ceremony)
         }
@@ -407,6 +420,13 @@ struct ScanView: View {
                 await ceremony.accept(qrText: payload.text)
                 if case let .failed(failure) = ceremony.phase {
                     scanFailure = failure
+                    return
+                }
+                await ceremony.approveVerifiedLoginIntent(
+                    prepareCustody: prepareOrdinaryLogin
+                )
+                if case let .failed(failure) = ceremony.phase {
+                    scanFailure = failure
                 }
             }
         case let .failure(failure):
@@ -514,7 +534,10 @@ struct ScanView: View {
         Binding {
             ceremony.presentedRequest
         } set: { value in
-            if value == nil { ceremony.reset() }
+            if value == nil {
+                ceremony.reset()
+                startScanning()
+            }
         }
     }
 
@@ -579,6 +602,7 @@ struct ScanView: View {
         switch ceremony.phase {
         case .verifying: "Verifying enrolled installation"
         case .review: "Verified request ready for review"
+        case .preparing: "Preparing verified sign-in"
         default: scanning ? "Camera active" : "Ready to scan"
         }
     }
@@ -586,7 +610,7 @@ struct ScanView: View {
     private var statusKind: MnStatusKind {
         switch ceremony.phase {
         case .review: .success
-        case .verifying: .warning
+        case .verifying, .preparing: .warning
         default: .neutral
         }
     }
@@ -1222,12 +1246,15 @@ struct ApprovalView: View {
     }
 
     private var decisionIsInFlight: Bool {
-        if case .submitting = coordinator.phase { return true }
-        return false
+        switch coordinator.phase {
+        case .preparing, .submitting: true
+        default: false
+        }
     }
 
     private var resultPresentation: ApprovalPresentation? {
         switch coordinator.phase {
+        case .preparing: .preparing
         case let .submitting(decision): .submitting(decision)
         case let .terminal(status): .terminal(status)
         case let .failed(failure): .failed(failure)
@@ -1237,12 +1264,14 @@ struct ApprovalView: View {
 }
 
 private enum ApprovalPresentation: Identifiable {
+    case preparing
     case submitting(AuthenticationDecision)
     case terminal(AuthoritativeCeremonyStatus)
     case failed(PlatformFailure)
 
     var id: String {
         switch self {
+        case .preparing: "preparing"
         case let .submitting(decision): "submitting-\(decision.rawValue)"
         case let .terminal(status): "terminal-\(status.state.rawValue)"
         case .failed: "failed"
@@ -1294,6 +1323,7 @@ private struct ApprovalResultView: View {
 
     private var title: String {
         switch result {
+        case .preparing: "Preparing sign-in"
         case .submitting: "Recording decision"
         case let .terminal(status): status.state == .completed
             ? "Authentication accepted" : "Authority result"
@@ -1303,6 +1333,8 @@ private struct ApprovalResultView: View {
 
     private var orientation: String {
         switch result {
+        case .preparing:
+            "The signed request is verified. Pistis is checking retained authority custody before Face ID."
         case .submitting:
             "Face ID, device signature, delivery, and authority verification are in progress."
         case let .terminal(status):
@@ -1314,6 +1346,7 @@ private struct ApprovalResultView: View {
 
     private var statusText: String {
         switch result {
+        case .preparing: "Verified QR accepted as sign-in intent"
         case let .submitting(decision): "Human decision: \(decision.rawValue)"
         case let .terminal(status): "Authority state: \(status.state.rawValue)"
         case .failed: "No authoritative completion was recorded"
@@ -1322,13 +1355,16 @@ private struct ApprovalResultView: View {
 
     private var statusKind: MnStatusKind {
         switch result {
-        case .submitting: .warning
+        case .preparing, .submitting: .warning
         case let .terminal(status): status.state == .completed ? .success : .danger
         case .failed: .danger
         }
     }
 
     private var isTerminal: Bool {
-        if case .submitting = result { false } else { true }
+        switch result {
+        case .preparing, .submitting: false
+        case .terminal, .failed: true
+        }
     }
 }

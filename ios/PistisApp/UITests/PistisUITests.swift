@@ -206,6 +206,23 @@ final class PistisUITests: XCTestCase {
         XCTAssertFalse(application.buttons["Sign with Face ID"].exists)
     }
 
+    func testBaseCampGovernedCeremoniesAreNotOrdinaryLoginAutoApproval() {
+        let application = XCUIApplication()
+        application.launch()
+        if application.buttons["Continue to Pistis"].exists {
+            application.buttons["Continue to Pistis"].tap()
+        }
+        application.tabBars.buttons["Scan"].tap()
+
+        XCTAssertTrue(
+            application.staticTexts["basecamp-governed-scan-policy"]
+                .waitForExistence(timeout: 5)
+        )
+        XCTAssertFalse(application.buttons["Approve migration with Face ID"].exists)
+        XCTAssertFalse(application.buttons["Approve successor with Face ID"].exists)
+        XCTAssertFalse(application.buttons["Approve and verify"].exists)
+    }
+
     func testSettingsResetRequiresExplicitConfirmationAndCanBeCancelled() {
         let application = XCUIApplication()
         application.launch()

@@ -1,5 +1,13 @@
 # Changelog
 
+- Add purpose-separated, pinned Base Camp vault migration and successor
+  custody ceremonies. Both validate their complete canonical challenges and
+  exact Monas route envelopes, bind the locally retained Site Root key and
+  revocation, require explicit operation review plus fresh Face ID, and return
+  to Identities without reopening Scan or asking for Done. Generic custody and
+  ordinary login remain unable to approve either operation (0.25.0, iOS build
+  59, #501).
+
 - Streamline registered iOS login: Pistis opens on Scan, treats a verified
   signed ordinary-login QR as the explicit login intent, checks and attends
   retained authority custody in context, then completes with Face ID without

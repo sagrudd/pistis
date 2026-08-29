@@ -72,12 +72,20 @@ enum GenericScanRoute: Equatable {
 /// Pure routing for the JSON families admitted by the generic scanner.
 /// Every selected coordinator still performs its own strict protocol parse.
 enum MonasJSONScanRoute: Equatable {
+    case baseCampVaultMigration
+    case baseCampVaultSuccessorRotation
     case siteOriginRelocation
     case siteRootConvergence
     case mtgsRecovery
     case siteRootDelegation
 
     static func classify(_ text: String) -> Self {
+        if text.contains(BaseCampVaultSuccessorRotationRouteV1.qrSchema) {
+            return .baseCampVaultSuccessorRotation
+        }
+        if text.contains(BaseCampVaultMigrationRouteV1.qrSchema) {
+            return .baseCampVaultMigration
+        }
         if text.contains(SiteOriginRelocationProfileV1.presentationSchema) {
             return .siteOriginRelocation
         }
@@ -109,6 +117,8 @@ struct ScanView: View {
     @StateObject private var mtgsRecovery: MTGSRecoveryCoordinator
     @StateObject private var siteRootConvergence: SiteRootConvergenceCoordinator
     @StateObject private var siteOriginRelocation: SiteOriginRelocationCoordinator
+    @StateObject private var baseCampVaultMigration: BaseCampVaultMigrationCoordinatorV1
+    @StateObject private var baseCampVaultSuccessor: BaseCampVaultSuccessorCoordinatorV1
     @StateObject private var siteX509Offline = SiteX509FirstProvisionOfflineCoordinator()
     @StateObject private var appAttestReplacement = AppAttestKeyReplacementCoordinatorV1()
     private let siteRootTransport: any MonasSiteRootCeremonyTransport
@@ -137,11 +147,20 @@ struct ScanView: View {
         self.showInstallations = showInstallations
         self.prepareOrdinaryLogin = prepareOrdinaryLogin
         self.ordinaryLoginCompleted = ordinaryLoginCompleted
+        let retainedTransport: MonasAppAttestTransport?
         if let pinned = siteRootTransport as? MonasSiteRootDelegationTransport {
-            appAttestReplacementTransport = try? pinned.appAttestTransport()
+            retainedTransport = try? pinned.appAttestTransport()
+            appAttestReplacementTransport = retainedTransport
         } else {
+            retainedTransport = nil
             appAttestReplacementTransport = nil
         }
+        _baseCampVaultMigration = StateObject(
+            wrappedValue: BaseCampVaultMigrationCoordinatorV1(transport: retainedTransport)
+        )
+        _baseCampVaultSuccessor = StateObject(
+            wrappedValue: BaseCampVaultSuccessorCoordinatorV1(transport: retainedTransport)
+        )
         _siteRootCeremony = StateObject(
             wrappedValue: SiteRootDelegationCoordinator(
                 transport: siteRootTransport, authorityCustodyMode: authorityCustodyMode
@@ -225,10 +244,11 @@ struct ScanView: View {
                             text: statusText,
                             kind: statusKind
                         )
-                        Text("Only bounded Pistis v2 and Monas Site Root v1 envelopes are acquired. Each reaches its own mandatory protocol validator before facts are shown.")
+                        Text("Only bounded Pistis and purpose-separated Monas envelopes are acquired. Base Camp migration and successor rotation always require their own review and fresh Face ID; ordinary sign-in cannot approve them. After acceptance, Pistis returns to Identities instead of reopening the camera.")
                             .font(.footnote)
                             .foregroundStyle(MnColor.textPrimary)
                             .background(MnColor.raised)
+                            .accessibilityIdentifier("basecamp-governed-scan-policy")
                             .fixedSize(horizontal: false, vertical: true)
                     }
                 }
@@ -309,6 +329,20 @@ struct ScanView: View {
             ceremony.reset()
             ordinaryLoginCompleted()
         }
+        .onChange(of: baseCampVaultMigration.phase) { _, phase in
+            if phase == .completed {
+                ordinaryLoginCompleted()
+            } else if phase == .cancelled {
+                startScanning()
+            }
+        }
+        .onChange(of: baseCampVaultSuccessor.phase) { _, phase in
+            if phase == .completed {
+                ordinaryLoginCompleted()
+            } else if phase == .cancelled {
+                startScanning()
+            }
+        }
         .sheet(item: reviewBinding) { request in
             ApprovalView(request: request, coordinator: ceremony)
         }
@@ -336,6 +370,18 @@ struct ScanView: View {
                 review: review,
                 coordinator: appAttestReplacement,
                 transport: appAttestReplacementTransport
+            )
+        }
+        .sheet(item: baseCampVaultMigrationReviewBinding) { review in
+            BaseCampVaultMigrationReviewViewV1(
+                review: review,
+                coordinator: baseCampVaultMigration
+            )
+        }
+        .sheet(item: baseCampVaultSuccessorReviewBinding) { review in
+            BaseCampVaultSuccessorReviewViewV1(
+                review: review,
+                coordinator: baseCampVaultSuccessor
             )
         }
         .sheet(item: $firstDeviceScanRequest) { request in
@@ -372,6 +418,22 @@ struct ScanView: View {
             }
             if payload.text.hasPrefix("{") {
                 switch MonasJSONScanRoute.classify(payload.text) {
+                case .baseCampVaultSuccessorRotation:
+                    Task {
+                        await baseCampVaultSuccessor.accept(qrText: payload.text)
+                        if baseCampVaultSuccessor.phase == .failed {
+                            scanFailure = .custodyRewrapUnavailable
+                        }
+                    }
+                    return
+                case .baseCampVaultMigration:
+                    Task {
+                        await baseCampVaultMigration.accept(qrText: payload.text)
+                        if baseCampVaultMigration.phase == .failed {
+                            scanFailure = .custodyRewrapUnavailable
+                        }
+                    }
+                    return
                 case .siteOriginRelocation:
                     siteOriginRelocation.accept(qrText: payload.text)
                     if case .failed = siteOriginRelocation.phase {
@@ -598,6 +660,34 @@ struct ScanView: View {
         }
     }
 
+    private var baseCampVaultMigrationReviewBinding:
+        Binding<BaseCampVaultMigrationPresentedReviewV1?>
+    {
+        Binding {
+            baseCampVaultMigration.presentedReview
+        } set: { value in
+            guard value == nil else { return }
+            if baseCampVaultMigration.phase != .completed {
+                baseCampVaultMigration.reset()
+                startScanning()
+            }
+        }
+    }
+
+    private var baseCampVaultSuccessorReviewBinding:
+        Binding<BaseCampVaultSuccessorPresentedReviewV1?>
+    {
+        Binding {
+            baseCampVaultSuccessor.presentedReview
+        } set: { value in
+            guard value == nil else { return }
+            if baseCampVaultSuccessor.phase != .completed {
+                baseCampVaultSuccessor.reset()
+                startScanning()
+            }
+        }
+    }
+
     private var statusText: String {
         switch ceremony.phase {
         case .verifying: "Verifying enrolled installation"
@@ -615,6 +705,172 @@ struct ScanView: View {
         }
     }
 
+}
+
+private struct BaseCampVaultMigrationReviewViewV1: View {
+    let review: BaseCampVaultMigrationPresentedReviewV1
+    @ObservedObject var coordinator: BaseCampVaultMigrationCoordinatorV1
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        NavigationStack {
+            ScrollView {
+                VStack(alignment: .leading, spacing: MnSpacing.x4) {
+                    MnSectionHeading(
+                        "Migrate the Base Camp vault",
+                        orientation: "Review this one-time credential migration before fresh Face ID. This is not an ordinary sign-in."
+                    )
+                    MnPanel {
+                        VStack(alignment: .leading, spacing: MnSpacing.x3) {
+                            MnEvidenceRow(
+                                label: "Operation", value: review.evidence.operation
+                            )
+                            Divider()
+                            MnEvidenceRow(
+                                label: "Site Trust domain",
+                                value: review.evidence.siteTrustDomain
+                            )
+                            Divider()
+                            MnEvidenceRow(
+                                label: "Recipient", value: review.evidence.recipient
+                            )
+                            Divider()
+                            MnEvidenceRow(
+                                label: "Custody generation",
+                                value: review.evidence.custodyGeneration
+                            )
+                            Divider()
+                            MnEvidenceRow(
+                                label: "Enrolled Site Root device",
+                                value: review.evidence.deviceKeyID,
+                                monospaced: true
+                            )
+                            Divider()
+                            MnEvidenceRow(
+                                label: "Expires",
+                                value: Date(
+                                    timeIntervalSince1970:
+                                        TimeInterval(review.evidence.expiresAtUnixSeconds)
+                                ).formatted(date: .abbreviated, time: .standard)
+                            )
+                        }
+                    }
+                    Text("Approval opens the retained encrypted vault value only inside protected memory, rewraps it to the fresh host key, and submits no plaintext credential.")
+                        .font(.footnote)
+                        .fixedSize(horizontal: false, vertical: true)
+                    switch coordinator.phase {
+                    case .review:
+                        MnPrimaryButton("Approve migration with Face ID", systemImage: "faceid") {
+                            Task { await coordinator.approve() }
+                        }
+                        Button("Deny") { coordinator.cancel(); dismiss() }
+                            .font(.headline)
+                            .foregroundStyle(MnColor.danger)
+                            .frame(maxWidth: .infinity, minHeight: MnMetrics.minimumTarget)
+                    case .approving:
+                        ProgressView("Waiting for Face ID and protected acceptance…")
+                    case .completed:
+                        EmptyView()
+                    case .failed:
+                        MnStatusLabel(text: "Migration stopped safely", kind: .danger)
+                        Text("No credential was exposed, persisted or submitted through a fallback route.")
+                        Button("Close") { coordinator.reset(); dismiss() }
+                    case .cancelled, .fetching, .idle:
+                        EmptyView()
+                    }
+                }
+                .padding(MnMetrics.screenGutter)
+            }
+            .navigationTitle("Base Camp migration")
+            .navigationBarTitleDisplayMode(.inline)
+            .mnScreenBackground()
+        }
+        .interactiveDismissDisabled(coordinator.phase == .approving)
+        .onChange(of: coordinator.phase) { _, phase in
+            if phase == .completed { dismiss() }
+        }
+    }
+}
+
+private struct BaseCampVaultSuccessorReviewViewV1: View {
+    let review: BaseCampVaultSuccessorPresentedReviewV1
+    @ObservedObject var coordinator: BaseCampVaultSuccessorCoordinatorV1
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        NavigationStack {
+            ScrollView {
+                VStack(alignment: .leading, spacing: MnSpacing.x4) {
+                    MnSectionHeading(
+                        "Rotate Base Camp vault custody",
+                        orientation: "Review the exact unused successor generation before fresh Face ID. A settled generation is never delivered twice."
+                    )
+                    MnPanel {
+                        VStack(alignment: .leading, spacing: MnSpacing.x3) {
+                            MnEvidenceRow(label: "Operation", value: review.evidence.operation)
+                            Divider()
+                            MnEvidenceRow(
+                                label: "Site Trust domain",
+                                value: review.evidence.siteTrustDomain
+                            )
+                            Divider()
+                            MnEvidenceRow(
+                                label: "Generation",
+                                value: "\(review.evidence.currentGeneration) → \(review.evidence.successorGeneration)"
+                            )
+                            Divider()
+                            MnEvidenceRow(label: "Recipient", value: review.evidence.recipient)
+                            Divider()
+                            MnEvidenceRow(
+                                label: "Enrolled Site Root device",
+                                value: review.evidence.deviceKeyID,
+                                monospaced: true
+                            )
+                            Divider()
+                            MnEvidenceRow(
+                                label: "Expires",
+                                value: Date(
+                                    timeIntervalSince1970:
+                                        TimeInterval(review.evidence.expiresAtUnixSeconds)
+                                ).formatted(date: .abbreviated, time: .standard)
+                            )
+                        }
+                    }
+                    Text("Approval opens generation N only in protected memory, verifies its payload key, and rewraps it under exactly N+1. It cannot replay N or skip a generation.")
+                        .font(.footnote)
+                        .fixedSize(horizontal: false, vertical: true)
+                    switch coordinator.phase {
+                    case .review:
+                        MnPrimaryButton("Approve successor with Face ID", systemImage: "faceid") {
+                            Task { await coordinator.approve() }
+                        }
+                        Button("Deny") { coordinator.cancel(); dismiss() }
+                            .font(.headline)
+                            .foregroundStyle(MnColor.danger)
+                            .frame(maxWidth: .infinity, minHeight: MnMetrics.minimumTarget)
+                    case .approving:
+                        ProgressView("Waiting for Face ID and protected acceptance…")
+                    case .completed:
+                        EmptyView()
+                    case .failed:
+                        MnStatusLabel(text: "Successor rotation stopped safely", kind: .danger)
+                        Text("No prior generation was reused and no credential was exposed or persisted.")
+                        Button("Close") { coordinator.reset(); dismiss() }
+                    case .cancelled, .fetching, .idle:
+                        EmptyView()
+                    }
+                }
+                .padding(MnMetrics.screenGutter)
+            }
+            .navigationTitle("Base Camp successor")
+            .navigationBarTitleDisplayMode(.inline)
+            .mnScreenBackground()
+        }
+        .interactiveDismissDisabled(coordinator.phase == .approving)
+        .onChange(of: coordinator.phase) { _, phase in
+            if phase == .completed { dismiss() }
+        }
+    }
 }
 
 private struct SiteX509FirstProvisionOfflineReviewView: View {

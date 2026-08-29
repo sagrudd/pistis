@@ -1,0 +1,98 @@
+{
+  "credential_socket": "/run/mnemosyne-thesaurophylax/basecamp-vault-passphrase.sock",
+  "migration": {
+    "canonical_challenge_prefix": "thesaurophylax.basecamp-vault-custody-provisioning.v1\\0",
+    "ordered_tags": [
+      "site_trust_domain",
+      "custody_generation",
+      "device_key_id",
+      "enrolled_device_public_sec1",
+      "current_revocation_generation",
+      "transaction_id",
+      "vault_envelope_sha256",
+      "legacy_source_sha256",
+      "vault_inventory_sha256",
+      "staged_ciphertext_sha256",
+      "expected_ed25519_public_key",
+      "staged_host_public_sec1",
+      "purpose",
+      "recipient",
+      "credential_socket",
+      "delegation_serial",
+      "issued_at_unix_seconds",
+      "expires_at_unix_seconds",
+      "fresh_host_public_sec1"
+    ],
+    "presentation_path": "/v1/pistis/basecamp-vault-migration/presentation",
+    "presentation_schema": "monas.basecamp-vault-migration-presentation.v1",
+    "qr": {
+      "presentation_path": "/v1/pistis/basecamp-vault-migration/presentation",
+      "purpose": "basecamp-vault-passphrase-delivery-v1",
+      "recipient": "mnemosyne-expedition-basecamp.service",
+      "schema": "monas.basecamp-vault-migration-qr.v1"
+    },
+    "submission_path": "/v1/pistis/basecamp-vault-migration/submit",
+    "submission_schema": "monas.basecamp-vault-migration-submission.v1"
+  },
+  "presentation_fields": [
+    "correlation_b64url",
+    "canonical_challenge_b64url",
+    "fresh_host_public_sec1_b64url",
+    "site_trust_domain",
+    "key_generation",
+    "device_key_id",
+    "expected_ed25519_public_key_b64url",
+    "encrypted_record_digest_b64url",
+    "current_revocation_generation",
+    "delegation_serial",
+    "expires_at_unix_seconds",
+    "existing_host_public_sec1_b64url",
+    "existing_encrypted_record_b64url"
+  ],
+  "purpose": "basecamp-vault-passphrase-delivery-v1",
+  "recipient": "mnemosyne-expedition-basecamp.service",
+  "schema": "pistis.basecamp-vault-cross-product-contract.v1",
+  "submission_fields": [
+    "correlation_b64url",
+    "canonical_challenge_b64url",
+    "device_key_id",
+    "delegation_serial",
+    "site_trust_domain",
+    "purpose",
+    "detached_cose_sign1_b64url",
+    "rewrapped_ciphertext_b64url"
+  ],
+  "successor": {
+    "canonical_challenge_prefix": "thesaurophylax.basecamp-vault-successor-rotation.v1\\0",
+    "ordered_tags": [
+      "site_trust_domain",
+      "current_generation",
+      "current_host_public_sec1",
+      "current_ciphertext_sha256",
+      "current_binding_sha256",
+      "successor_generation",
+      "device_key_id",
+      "enrolled_device_public_sec1",
+      "expected_ed25519_public_key",
+      "current_revocation_generation",
+      "transaction_id",
+      "delegation_serial",
+      "issued_at_unix_seconds",
+      "expires_at_unix_seconds",
+      "successor_host_public_sec1",
+      "purpose",
+      "recipient",
+      "credential_socket"
+    ],
+    "presentation_path": "/v1/pistis/basecamp-vault-unlock/presentation",
+    "presentation_schema": "monas.basecamp-vault-successor-rotation-presentation.v1",
+    "qr": {
+      "presentation_path": "/v1/pistis/basecamp-vault-unlock/presentation",
+      "purpose": "basecamp-vault-passphrase-delivery-v1",
+      "recipient": "mnemosyne-expedition-basecamp.service",
+      "schema": "monas.basecamp-vault-successor-rotation-qr.v1"
+    },
+    "submission_path": "/v1/pistis/basecamp-vault-unlock/submit",
+    "submission_schema": "monas.basecamp-vault-successor-rotation-submission.v1"
+  }
+}

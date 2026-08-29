@@ -22,6 +22,8 @@ ui_test=$root/ios/PistisApp/UITests/PistisUITests.swift
 [ -f "$custody_fixture" ] || { printf '%s\n' "candidate gate: custody fixture missing" >&2; exit 1; }
 [ -f "$ui_test" ] || { printf '%s\n' "candidate gate: UI test missing" >&2; exit 1; }
 
+"$root/scripts/verify-basecamp-vault-iphone-contract.sh"
+
 branch=$(git -C "$root" symbolic-ref --quiet --short HEAD || true)
 [ "$branch" = main ] || {
     printf '%s\n' "candidate gate: formal verification must run from merged main" >&2
@@ -32,10 +34,20 @@ branch=$(git -C "$root" symbolic-ref --quiet --short HEAD || true)
     exit 1
 }
 
-for gate in 0 1 2 3 4 5 6 7 8 9 10 11; do
+for gate in 0 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15; do
     count=$(grep -Ec "^## Gate ${gate}( | —)" "$runbook")
     [ "$count" -eq 1 ] || {
         printf '%s\n' "candidate gate: Gate $gate is missing or duplicated in the runbook" >&2
+        exit 1
+    }
+done
+for contract in \
+    'No second QR, Face ID, password or product-owned' \
+    'monas.basecamp-vault-migration-qr.v1' \
+    'monas.basecamp-vault-successor-rotation-qr.v1' \
+    'exact N to N+1 transition'; do
+    grep -F "$contract" "$runbook" >/dev/null || {
+        printf '%s\n' "candidate gate: runbook omits central/Base Camp contract: $contract" >&2
         exit 1
     }
 done
@@ -91,7 +103,7 @@ else
     xcode_result=
 fi
 
-printf '%s\n' "candidate checkpoint: complete Gate 0-11 runbook present"
+printf '%s\n' "candidate checkpoint: complete Gate 0-15 runbook present"
 if [ "$core_log" = /dev/null ]; then
     swift test --package-path "$root/ios/PistisCore"
 else

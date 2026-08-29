@@ -654,26 +654,128 @@ stage and the matching bounded **Pistis sign-in** History entry. That entry must
 not contain a QR payload, identity value, local username, installation
 fingerprint, signed response, endpoint capability or key material.
 
-## Gate 11 — Prove exact-audience product entry
+## Gate 11 — Prove central-session product projection
 
-**Purpose:** demonstrate that a Monas home session does not silently grant a
-product session.
+**Purpose:** demonstrate that one verified Monas login grants only the product
+roles explicitly projected by the central authority, without forcing a second
+authentication ceremony for ordinary page access.
 
-Select DASObjectStore from `/home`. A fresh product-specific Pistis QR must be
-issued. Scan, review the `dasobjectstore` audience, approve with Face ID and
-verify that the resulting product session cannot be replayed for Jenkins,
-Oikodome or another audience.
+1. From `/home`, open DASObjectStore, Oikodome and Jenkins in turn.
+2. Confirm that each product consumes the same central session projection and
+   its exact authorised role. No second QR, Face ID, password or product-owned
+   login is permitted for ordinary page access.
+3. Confirm that a product audience or role absent from the central projection
+   remains denied. A same-origin session is transport, not entitlement.
+4. Confirm that destructive operations, authority changes, user grants and
+   other governed actions still stop for their explicit Pistis review and
+   fresh Face ID step-up.
 
 ### Pass condition
 
-The DASObjectStore web application opens with the exact authorised role, and a
-different product still requires its own ceremony.
+All three product applications open with their exact projected roles after the
+single Gate 10 login. No product receives a role absent from the central
+projection, and governed actions have not been silently approved.
 
 ### Stop conditions
 
-Stop if a home cookie directly opens DASObjectStore, if one product QR grants
-another audience, or if product access is inferred from a username, email,
-local Unix account or legacy password.
+Stop if any product asks for a second ordinary-login QR, if an unprojected role
+is granted, if a governed action skips explicit step-up, or if access is
+inferred from a username, email, local Unix account or legacy password.
+
+## Gate 12 — Attend the one-time Base Camp vault migration
+
+**Purpose:** migrate the retained legacy Jenkins/Base Camp vault credential
+into purpose-separated iPhone custody without exposing the secret.
+
+1. With Base Camp inactive and the legacy credential present, select Jenkins
+   from `/home` using the Gate 10 central session.
+2. Confirm Monas automatically opens `/settings/basecamp-vault-migration` and
+   displays exactly one `monas.basecamp-vault-migration-qr.v1` QR.
+3. Scan in Pistis. Review the fixed operation, Site Trust Domain, recipient
+   `mnemosyne-expedition-basecamp.service`, generation, device and expiry.
+4. Explicitly approve the governed migration and complete fresh Face ID. This
+   is never ordinary-login scan-as-intent and cannot auto-approve.
+
+### Pass condition
+
+Pistis reports accepted completion and lands on **Identities** without
+reopening Scan. The browser records accepted migration and proceeds to the
+automatic first-start gate. No QR, HTTP body, browser state or log contains the
+passphrase or decrypted vault material.
+
+### Stop conditions
+
+Stop if the generic rewrap or Site Root purpose is offered, the fixed recipient
+or generation differs, review/Face ID is skipped, a secret is displayed, or
+the migration QR is reissued after durable acceptance.
+
+## Gate 13 — Prove automatic first Base Camp start
+
+**Purpose:** prove that accepted migration is consumed once and that Jenkins
+becomes available without manual credential handling or another login.
+
+Keep the Jenkins browser window open. Monas must observe durable Thesaurophylax
+acceptance, deliver the new credential through the fixed package-owned socket,
+start `mnemosyne-expedition-basecamp.service`, retire the legacy plaintext
+source under the documented recovery contract, and redirect to Jenkins.
+
+### Pass condition
+
+Jenkins opens through the existing central session, Base Camp remains active,
+and the accepted generation cannot be delivered again. No additional QR,
+Face ID, password, `systemctl start`, or browser login is required.
+
+### Stop conditions
+
+Stop if the browser remains indefinitely pending, the service starts before
+durable acceptance, the legacy source remains eligible, the same generation is
+replayed, or a manual secret/activation step is requested.
+
+## Gate 14 — Stop Base Camp and attend successor rotation
+
+**Purpose:** prove that a later start never reuses the settled migration
+generation and is recovered through a fresh attended successor.
+
+1. Record the active generation N, then stop Base Camp with
+   `sudo systemctl stop mnemosyne-expedition-basecamp.service`.
+2. Select Jenkins again from `/home` without logging in again.
+3. Confirm Monas automatically opens `/settings/basecamp-vault-unlock` and
+   displays exactly one `monas.basecamp-vault-successor-rotation-qr.v1` QR.
+4. Scan in Pistis, review the exact N to N+1 transition, explicitly approve,
+   and complete fresh Face ID.
+
+### Pass condition
+
+Pistis accepts a purpose-separated successor for exactly N+1 and lands on
+**Identities** without reopening Scan. Migration is not reissued, and repeat,
+gap, rollback or overflow generations are denied.
+
+### Stop conditions
+
+Stop if Base Camp starts with generation N, a migration or generic QR appears,
+the successor is not exactly N+1, explicit review/Face ID is skipped, or a
+second ordinary Monas login is requested.
+
+## Gate 15 — Prove automatic second Base Camp start
+
+**Purpose:** prove durable successor reconciliation and normal repeated
+Jenkins access.
+
+Keep the Jenkins browser window open while Monas reconciles the accepted
+successor. It must deliver N+1 exactly once through the fixed package-owned
+credential socket, start Base Camp, and redirect to Jenkins under the existing
+central session.
+
+### Pass condition
+
+Base Camp remains active at N+1, Jenkins opens without another login ceremony,
+and refresh preserves the centrally projected session and role.
+
+### Stop conditions
+
+Stop if the accepted successor is lost after a transient HTTP response loss,
+another Face ID is required merely to reconcile the identical accepted body,
+the provider remains active after delivery, or Jenkins requires a second QR.
 
 ## Completion record
 
@@ -683,8 +785,11 @@ The run is complete only when every gate has a recorded pass. Retain:
 - coarse timestamps and unit states;
 - redacted receipt/evidence digests;
 - the GitHub numeric-subject confirmation;
-- the authority revision and exact product entitlement; and
-- test results for reset, first install, normal login and audience separation.
+- the authority revision and exact projected product entitlements;
+- Base Camp migration generation, successor N to N+1 transition and coarse
+  service states; and
+- test results for reset, first install, normal login, central projection,
+  governed migration and successor rotation.
 
 Do not retain codes, QR payloads, browser capabilities, session cookies,
 provider tokens, private keys or raw App Attest objects.

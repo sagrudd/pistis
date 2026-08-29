@@ -119,6 +119,6 @@ recovery or complete development teardown before a reset phone can be treated
 as a fresh first installation.
 
 [ADR 0042](0042-basecamp-vault-migration-iphone-protocol.md) accepts the
-purpose-separated, route-independent iPhone validator and producer for the
-attended Base Camp vault migration. Monas routing and application presentation
-remain deferred to a coordinated follow-up decision.
+purpose-separated iPhone validators, producers, pinned Monas routes and
+governed application presentation for Base Camp migration and every later
+unused successor generation.

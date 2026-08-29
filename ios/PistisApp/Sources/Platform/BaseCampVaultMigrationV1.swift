@@ -36,8 +36,12 @@ struct BaseCampVaultMigrationReviewV1: Equatable, Sendable {
 /// Strict Pistis projection of the existing thirteen-field THESMIP1 carriage.
 ///
 /// Construction parses the complete nineteen-field Base Camp challenge and
-/// cross-checks every duplicated carriage value. The three `expected` values
-/// come from retained enrolled trust, never from the presentation itself.
+/// cross-checks every duplicated carriage value. Device and revocation
+/// expectations come from retained enrolled trust, never from the
+/// presentation itself. The wire adapter supplies the Site expectation only
+/// after the response crosses the retained origin/SPKI boundary; it exists to
+/// require byte-identical outer/challenge claims and is not a second locally
+/// persisted Site authority.
 /// This type has no decoder, route, URL, QR or persistence surface.
 struct BaseCampVaultMigrationPresentationV1: Equatable, Sendable {
     let correlation: Data
@@ -244,7 +248,12 @@ enum BaseCampVaultMigrationCryptographicCoreV1 {
         _ presentation: BaseCampVaultMigrationPresentationV1,
         enrolledDevicePublicSEC1: Data,
         sign: (Data) throws -> Data,
-        deriveSharedSecret: (Data) throws -> Data
+        deriveSharedSecret: (Data) throws -> Data,
+        seal: (Data, SymmetricKey, Data) throws -> Data = {
+            try SecureEnclaveIphoneMediatedCustodyRewrapProducer.seal(
+                $0, key: $1, aadDigest: $2
+            )
+        }
     ) throws -> IphoneMediatedCustodyRewrapSubmissionV1 {
         guard enrolledDevicePublicSEC1 == presentation.enrolledDevicePublicSEC1 else {
             throw PlatformFailure.custodyRewrapUnavailable
@@ -294,11 +303,7 @@ enum BaseCampVaultMigrationCryptographicCoreV1 {
             sharedSecret: freshShared,
             aadDigest: freshAAD
         )
-        let ciphertext = try SecureEnclaveIphoneMediatedCustodyRewrapProducer.seal(
-            secret,
-            key: freshKey,
-            aadDigest: freshAAD
-        )
+        let ciphertext = try seal(secret, freshKey, freshAAD)
         guard ciphertext.count == 60 else {
             throw PlatformFailure.custodyRewrapUnavailable
         }
@@ -318,12 +323,26 @@ enum BaseCampVaultMigrationCryptographicCoreV1 {
         _ presentation: BaseCampVaultMigrationPresentationV1,
         hostPublicSEC1: Data
     ) -> Data {
+        purposeAAD(
+            siteTrustDomain: presentation.siteTrustDomain,
+            keyGeneration: presentation.keyGeneration,
+            deviceKeyID: presentation.deviceKeyID,
+            hostPublicSEC1: hostPublicSEC1
+        )
+    }
+
+    static func purposeAAD(
+        siteTrustDomain: String,
+        keyGeneration: String,
+        deviceKeyID: String,
+        hostPublicSEC1: Data
+    ) -> Data {
         var material = Data()
         for value in [
             Data(BaseCampVaultMigrationProfileV1.purpose.utf8),
-            Data(presentation.siteTrustDomain.utf8),
-            Data(presentation.keyGeneration.utf8),
-            Data(presentation.deviceKeyID.utf8),
+            Data(siteTrustDomain.utf8),
+            Data(keyGeneration.utf8),
+            Data(deviceKeyID.utf8),
             hostPublicSEC1,
         ] {
             material.append(contentsOf: UInt32(value.count).baseCampBigEndianBytes)

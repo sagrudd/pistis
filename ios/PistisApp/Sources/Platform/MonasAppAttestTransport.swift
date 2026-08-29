@@ -463,6 +463,167 @@ struct MonasAppAttestTransport: Sendable {
         )
     }
 
+    /// Fetches the purpose-separated Base Camp migration presentation only
+    /// from the retained installation's pinned origin and build-fixed path.
+    /// The QR is merely a route discriminator and cannot select either value.
+    func fetchBaseCampVaultMigrationV1(
+        expectedDeviceKeyID: String,
+        expectedRevocationGeneration: UInt64,
+        nowUnixSeconds: UInt64
+    ) async throws -> BaseCampVaultMigrationPresentationV1 {
+        var lastFailure = PlatformFailure.custodyRewrapUnavailable
+        for endpoint in candidateEndpoints(BaseCampVaultMigrationRouteV1.presentationPath) {
+            var request = URLRequest(url: endpoint)
+            request.httpMethod = "GET"
+            request.timeoutInterval = 15
+            request.setValue("application/json", forHTTPHeaderField: "Accept")
+            request.setValue("no-store", forHTTPHeaderField: "Cache-Control")
+            do {
+                let (data, response) = try await originData(for: request)
+                guard let http = response as? HTTPURLResponse,
+                      http.url == endpoint,
+                      http.statusCode == 200,
+                      !data.isEmpty,
+                      data.count <= BaseCampVaultMigrationRouteV1.maximumJSONBytes,
+                      http.value(forHTTPHeaderField: "Cache-Control")?
+                        .lowercased().contains("no-store") == true
+                else { throw PlatformFailure.custodyRewrapUnavailable }
+                return try BaseCampVaultMigrationPresentationWireV1(
+                    data: data,
+                    expectedDeviceKeyID: expectedDeviceKeyID,
+                    expectedRevocationGeneration: expectedRevocationGeneration,
+                    nowUnixSeconds: nowUnixSeconds
+                ).presentation
+            } catch OriginAttemptFailure.unreachable {
+                lastFailure = .custodyRewrapUnavailable
+            } catch let failure as PlatformFailure {
+                throw failure
+            } catch {
+                throw PlatformFailure.custodyRewrapUnavailable
+            }
+        }
+        throw lastFailure
+    }
+
+    /// Submits one exact Base Camp migration response. Success is an empty,
+    /// non-cacheable 204; no response body may become a new authority object.
+    func submitBaseCampVaultMigrationV1(
+        _ submission: IphoneMediatedCustodyRewrapSubmissionV1
+    ) async throws {
+        let body = try JSONEncoder.sorted.encode(
+            BaseCampVaultMigrationSubmissionWireV1(submission)
+        )
+        guard !body.isEmpty,
+              body.count <= BaseCampVaultMigrationRouteV1.maximumJSONBytes
+        else { throw PlatformFailure.custodyRewrapUnavailable }
+        var lastFailure = PlatformFailure.custodyRewrapUnavailable
+        for endpoint in candidateEndpoints(BaseCampVaultMigrationRouteV1.submissionPath) {
+            var request = URLRequest(url: endpoint)
+            request.httpMethod = "POST"
+            request.httpBody = body
+            request.timeoutInterval = 15
+            request.setValue("application/json; charset=utf-8", forHTTPHeaderField: "Content-Type")
+            request.setValue("application/json", forHTTPHeaderField: "Accept")
+            request.setValue("no-store", forHTTPHeaderField: "Cache-Control")
+            do {
+                let (data, response) = try await originData(for: request)
+                guard let http = response as? HTTPURLResponse,
+                      http.url == endpoint,
+                      http.statusCode == 204,
+                      data.isEmpty,
+                      http.value(forHTTPHeaderField: "Cache-Control")?
+                        .lowercased().contains("no-store") == true
+                else { throw PlatformFailure.custodyRewrapUnavailable }
+                return
+            } catch OriginAttemptFailure.unreachable {
+                lastFailure = .custodyRewrapUnavailable
+            } catch let failure as PlatformFailure {
+                throw failure
+            } catch {
+                throw PlatformFailure.custodyRewrapUnavailable
+            }
+        }
+        throw lastFailure
+    }
+
+    func fetchBaseCampVaultSuccessorRotationV1(
+        expectedDeviceKeyID: String,
+        expectedRevocationGeneration: UInt64,
+        nowUnixSeconds: UInt64
+    ) async throws -> BaseCampVaultSuccessorRotationPresentationV1 {
+        var lastFailure = PlatformFailure.custodyRewrapUnavailable
+        for endpoint in candidateEndpoints(BaseCampVaultSuccessorRotationRouteV1.presentationPath) {
+            var request = URLRequest(url: endpoint)
+            request.httpMethod = "GET"
+            request.timeoutInterval = 15
+            request.setValue("application/json", forHTTPHeaderField: "Accept")
+            request.setValue("no-store", forHTTPHeaderField: "Cache-Control")
+            do {
+                let (data, response) = try await originData(for: request)
+                guard let http = response as? HTTPURLResponse,
+                      http.url == endpoint,
+                      http.statusCode == 200,
+                      !data.isEmpty,
+                      data.count <= BaseCampVaultSuccessorRotationRouteV1.maximumJSONBytes,
+                      http.value(forHTTPHeaderField: "Cache-Control")?
+                        .lowercased().contains("no-store") == true
+                else { throw PlatformFailure.custodyRewrapUnavailable }
+                return try BaseCampVaultSuccessorPresentationWireV1(
+                    data: data,
+                    expectedDeviceKeyID: expectedDeviceKeyID,
+                    expectedRevocationGeneration: expectedRevocationGeneration,
+                    nowUnixSeconds: nowUnixSeconds
+                ).presentation
+            } catch OriginAttemptFailure.unreachable {
+                lastFailure = .custodyRewrapUnavailable
+            } catch let failure as PlatformFailure {
+                throw failure
+            } catch {
+                throw PlatformFailure.custodyRewrapUnavailable
+            }
+        }
+        throw lastFailure
+    }
+
+    func submitBaseCampVaultSuccessorRotationV1(
+        _ submission: IphoneMediatedCustodyRewrapSubmissionV1
+    ) async throws {
+        let body = try JSONEncoder.sorted.encode(
+            BaseCampVaultSuccessorSubmissionWireV1(submission)
+        )
+        guard !body.isEmpty,
+              body.count <= BaseCampVaultSuccessorRotationRouteV1.maximumJSONBytes
+        else { throw PlatformFailure.custodyRewrapUnavailable }
+        var lastFailure = PlatformFailure.custodyRewrapUnavailable
+        for endpoint in candidateEndpoints(BaseCampVaultSuccessorRotationRouteV1.submissionPath) {
+            var request = URLRequest(url: endpoint)
+            request.httpMethod = "POST"
+            request.httpBody = body
+            request.timeoutInterval = 15
+            request.setValue("application/json; charset=utf-8", forHTTPHeaderField: "Content-Type")
+            request.setValue("application/json", forHTTPHeaderField: "Accept")
+            request.setValue("no-store", forHTTPHeaderField: "Cache-Control")
+            do {
+                let (data, response) = try await originData(for: request)
+                guard let http = response as? HTTPURLResponse,
+                      http.url == endpoint,
+                      http.statusCode == 204,
+                      data.isEmpty,
+                      http.value(forHTTPHeaderField: "Cache-Control")?
+                        .lowercased().contains("no-store") == true
+                else { throw PlatformFailure.custodyRewrapUnavailable }
+                return
+            } catch OriginAttemptFailure.unreachable {
+                lastFailure = .custodyRewrapUnavailable
+            } catch let failure as PlatformFailure {
+                throw failure
+            } catch {
+                throw PlatformFailure.custodyRewrapUnavailable
+            }
+        }
+        throw lastFailure
+    }
+
     /// Fetches one role-fixed THESXIR2 presentation from the protected Monas
     /// origin. The request is bodyless and carries no cookie, bearer, browser
     /// state, endpoint hint or retry/fallback authority.

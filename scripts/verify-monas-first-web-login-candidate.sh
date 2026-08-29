@@ -22,6 +22,8 @@ ui_test=$root/ios/PistisApp/UITests/PistisUITests.swift
 [ -f "$custody_fixture" ] || { printf '%s\n' "candidate gate: custody fixture missing" >&2; exit 1; }
 [ -f "$ui_test" ] || { printf '%s\n' "candidate gate: UI test missing" >&2; exit 1; }
 
+"$root/scripts/verify-basecamp-vault-iphone-contract.sh"
+
 branch=$(git -C "$root" symbolic-ref --quiet --short HEAD || true)
 [ "$branch" = main ] || {
     printf '%s\n' "candidate gate: formal verification must run from merged main" >&2

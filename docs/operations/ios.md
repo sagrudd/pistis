@@ -165,6 +165,21 @@ returned by the installation authority. A pending timeout, custody failure,
 delivery error, unknown host, or malformed authority response must remain
 visible and must not be described as acceptance.
 
+Base Camp vault migration and later-start successor rotation are governed
+examples. Scan the exact four-field QR shown by the authenticated Monas
+settings page. Pistis fetches the presentation only from the retained
+origin/TLS-SPKI boundary, derives the actual local Site Root device identifier,
+binds retained revocation, and displays the exact operation, Site Trust Domain,
+recipient, generation transition, device and expiry. Choose the operation-
+specific approval and complete fresh Face ID. Ordinary login never approves
+this flow. Accepted completion returns to Identities without reopening the
+camera or requiring **Done**; cancellation or a stopped attempt may return to
+Scan. No vault secret appears in the QR, HTTP response, application state or
+logs. The retained origin and TLS SPKI authorize the server's Site Trust
+Domain claim; Monas derives that claim from sealed installation inputs and the
+current Prosopikon binding, while Pistis requires byte-identical outer and
+signed-challenge values plus the retained local device and revocation state.
+
 For MVP transport, the challenge supplies one HTTPS response endpoint and may
 supply a second HTTPS status endpoint. Both hosts must already appear in the
 authenticated enrolment allow-list. Request and response bodies are limited to

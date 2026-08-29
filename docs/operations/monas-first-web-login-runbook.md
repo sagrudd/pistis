@@ -622,7 +622,10 @@ normal authentication ceremony.
    The normal home ceremony's exact audience is `propylaion`; a display label
    such as “Monas” is not the signed audience.
 6. Approve once with Face ID.
-7. Leave the browser open while it polls and finalises the ceremony.
+7. Keep the Pistis result open until it reports the authoritative result. The
+   result must remain visible throughout response preparation, Face ID and
+   device signing, signed-response delivery and authority verification.
+8. Leave the browser open while it polls and finalises the ceremony.
 
 ### Pass condition
 
@@ -640,7 +643,10 @@ QR. The QR contains only the one-use signed Pistis challenge.
 Stop if no QR is rendered, Pistis classifies it as onboarding or Site Root,
 the audience is wrong, the browser says authentication unavailable, the phone
 approves but the browser never finalises, or `/home` appears without a verified
-Pistis session.
+Pistis session. On a phone-side failure, record the displayed **Stopped at**
+stage and the matching bounded **Pistis sign-in** History entry. That entry must
+not contain a QR payload, identity value, local username, installation
+fingerprint, signed response, endpoint capability or key material.
 
 ## Gate 11 — Prove exact-audience product entry
 

@@ -563,8 +563,11 @@ extension PlatformFailure {
              .siteRootGenesisCompletionRejected:
             .authorityRejected
         case .siteRootAuthorityUnavailable, .siteRootGenesisDelegationUnavailable,
-             .siteRootGenesisTransportUnavailable, .custodyRewrapUnavailable:
+             .siteRootGenesisTransportUnavailable, .custodyRewrapUnavailable,
+             .authenticationTransportUnavailable:
             .authorityUnavailable
+        case .authenticationResponseRejected:
+            .authorityRejected
         case .invalidOAuthCallback, .oauthStateMismatch, .oauthDenied,
              .enrolmentBeginRetryRequired, .providerStatusRetryRequired,
              .enrolmentRequired,
@@ -574,7 +577,8 @@ extension PlatformFailure {
             .storage
         case .operationCancelled:
             .cancelled
-        case .productionEnvelopeUnavailable, .siteX509PresentationAlreadyAttempted:
+        case .productionEnvelopeUnavailable, .siteX509PresentationAlreadyAttempted,
+             .authenticationAuthorityResponseInvalid:
             .unknown
         case .onboardingEventUploadUnavailable, .onboardingEventUploadRejected:
             .unknown

@@ -54,6 +54,9 @@ enum PlatformFailure: Error, Equatable, Sendable {
     case siteRootBundleReceiptPresentationExpired
     case operationCancelled
     case productionEnvelopeUnavailable
+    case authenticationTransportUnavailable
+    case authenticationResponseRejected
+    case authenticationAuthorityResponseInvalid
     case siteRootAuthorityUnavailable
     /// The fixed broker rejected the first-device registration before Monas
     /// could issue a delegation. A fresh QR is required.
@@ -123,6 +126,14 @@ extension PlatformFailure {
             "This Site Root receipt QR has expired. Return to Monas and request a newly issued QR. No proof was submitted."
         case .operationCancelled:
             "Scanning stopped before a code was captured."
+        case .authenticationTransportUnavailable:
+            "Pistis signed the response but could not reach the enrolled Monas HTTPS origin. No authoritative completion was recorded."
+        case .authenticationResponseRejected:
+            "Monas received the signed response but rejected it. No authenticated session was issued."
+        case .authenticationAuthorityResponseInvalid:
+            "Monas returned a response that Pistis could not verify as an authoritative result. No authenticated session was issued."
+        case .productionEnvelopeUnavailable:
+            "Pistis could not produce or verify the protected sign-in response. No authoritative completion was recorded."
         case .enrolmentRequired:
             "Enrol this installation through the authenticated system-browser flow before scanning."
         case .enrolmentBeginRetryRequired:

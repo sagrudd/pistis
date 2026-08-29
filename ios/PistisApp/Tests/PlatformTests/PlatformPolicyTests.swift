@@ -1020,6 +1020,99 @@ final class PlatformPolicyTests: XCTestCase {
     }
 
     @MainActor
+    func testNormalLoginReviewRemainsPresentedThroughEveryDecisionOutcome() {
+        let request = ApprovalRequest(
+            id: UUID(),
+            action: "Authenticate session",
+            subject: "propylaion",
+            installation: "Mnemosyne Monas",
+            localUser: "operator",
+            externalIdentity: "REDACTED",
+            fingerprint: "REDACTED",
+            expiry: "300 seconds",
+            route: "Scanned QR code",
+            trustState: "Enrolled installation verified"
+        )
+        let terminal = AuthoritativeCeremonyStatus(state: .completed, evidenceID: nil)
+
+        XCTAssertNil(
+            ProductionCeremonyCoordinator.presentationRequest(request, during: .idle)
+        )
+        XCTAssertNil(
+            ProductionCeremonyCoordinator.presentationRequest(request, during: .verifying)
+        )
+        for phase in [
+            ProductionCeremonyCoordinator.Phase.review(request),
+            .submitting(.approved),
+            .terminal(terminal),
+            .failed(.authenticationTransportUnavailable),
+        ] {
+            XCTAssertEqual(
+                ProductionCeremonyCoordinator.presentationRequest(request, during: phase),
+                request
+            )
+        }
+    }
+
+    func testNormalLoginFailuresExposeDistinctBoundedRecoveryMessages() {
+        XCTAssertEqual(
+            PlatformFailure.authenticationTransportUnavailable.safeUserMessage,
+            "Pistis signed the response but could not reach the enrolled Monas HTTPS origin. No authoritative completion was recorded."
+        )
+        XCTAssertEqual(
+            PlatformFailure.authenticationResponseRejected.safeUserMessage,
+            "Monas received the signed response but rejected it. No authenticated session was issued."
+        )
+        XCTAssertEqual(
+            PlatformFailure.authenticationAuthorityResponseInvalid.safeUserMessage,
+            "Monas returned a response that Pistis could not verify as an authoritative result. No authenticated session was issued."
+        )
+        XCTAssertEqual(
+            ProductionCeremonyStage.deviceSignature.rawValue,
+            "Face ID and device signature"
+        )
+        XCTAssertFalse(
+            PlatformFailure.authenticationResponseRejected.safeUserMessage
+                .localizedCaseInsensitiveContains("key")
+        )
+    }
+
+    @MainActor
+    func testNormalLoginHistoryRetainsStageWithoutIdentityOrRequestMaterial() throws {
+        let request = ApprovalRequest(
+            id: UUID(),
+            action: "Authenticate session",
+            subject: "propylaion",
+            installation: "Mnemosyne Monas",
+            localUser: "sensitive-local-user",
+            externalIdentity: "sensitive-external-identity",
+            fingerprint: "sensitive-installation-fingerprint",
+            expiry: "300 seconds",
+            route: "Scanned QR code",
+            trustState: "Enrolled installation verified"
+        )
+        let event = ProductionCeremonyCoordinator.failureHistoryEvent(
+            request: request,
+            failure: .authenticationTransportUnavailable,
+            stage: .responseDelivery,
+            occurredAt: "29 Aug 2026 at 07:00"
+        )
+        let encoded = try XCTUnwrap(String(data: JSONEncoder().encode(event), encoding: .utf8))
+
+        XCTAssertEqual(event.signature, "Stopped at signed response delivery")
+        XCTAssertTrue(encoded.contains("Mnemosyne Monas"))
+        for forbidden in [
+            request.localUser,
+            request.externalIdentity,
+            request.fingerprint,
+            request.subject,
+            "PISTIS1:",
+        ] {
+            XCTAssertFalse(encoded.contains(forbidden), forbidden)
+        }
+    }
+
+    @MainActor
     func testProductionVerifierFailuresAreNotCollapsedIntoUnsupportedQR() {
         XCTAssertEqual(
             ProductionCeremonyCoordinator.classifiedFailure(.invalidEndpoint),

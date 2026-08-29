@@ -1043,6 +1043,7 @@ final class PlatformPolicyTests: XCTestCase {
         )
         for phase in [
             ProductionCeremonyCoordinator.Phase.review(request),
+            .preparing,
             .submitting(.approved),
             .terminal(terminal),
             .failed(.authenticationTransportUnavailable),
@@ -1066,6 +1067,10 @@ final class PlatformPolicyTests: XCTestCase {
         XCTAssertEqual(
             PlatformFailure.authenticationAuthorityResponseInvalid.safeUserMessage,
             "Monas returned a response that Pistis could not verify as an authoritative result. No authenticated session was issued."
+        )
+        XCTAssertEqual(
+            ProductionCeremonyStage.custodyReadiness.rawValue,
+            "authority custody readiness"
         )
         XCTAssertEqual(
             ProductionCeremonyStage.deviceSignature.rawValue,

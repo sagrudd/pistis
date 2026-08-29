@@ -14,11 +14,13 @@ runbook=$root/docs/operations/monas-first-web-login-runbook.md
 project=$root/ios/PistisApp/Pistis.xcodeproj
 simulator_test=$root/ios/PistisApp/Tests/PlatformTests/MonasFirstWebLoginIPhoneSimulatorTests.swift
 custody_fixture=$root/ios/PistisApp/Tests/PlatformTests/MonasFirstWebLoginCustodySimulatorFixture.swift
+ui_test=$root/ios/PistisApp/UITests/PistisUITests.swift
 
 [ -f "$runbook" ] || { printf '%s\n' "candidate gate: runbook missing" >&2; exit 1; }
 [ -d "$project" ] || { printf '%s\n' "candidate gate: Xcode project missing" >&2; exit 1; }
 [ -f "$simulator_test" ] || { printf '%s\n' "candidate gate: simulator test missing" >&2; exit 1; }
 [ -f "$custody_fixture" ] || { printf '%s\n' "candidate gate: custody fixture missing" >&2; exit 1; }
+[ -f "$ui_test" ] || { printf '%s\n' "candidate gate: UI test missing" >&2; exit 1; }
 
 branch=$(git -C "$root" symbolic-ref --quiet --short HEAD || true)
 [ "$branch" = main ] || {
@@ -41,6 +43,7 @@ done
 for contract in \
     'testFirstDeviceIsBlockedUntilAuthorityCustodyIsDurable' \
     'testRetainedAuthorityCustodyRecoveryUsesRecoveryWireBeforeIdentity' \
+    'testVerifiedLoginIntentRunsCustodyReadinessWithoutSeparateApproval' \
     'simulated-authority-custody-app-attest-assertion-accepted' \
     'durable-thesaurophylax-authority-signer-ready'; do
     grep -F "$contract" "$simulator_test" >/dev/null || {
@@ -48,6 +51,10 @@ for contract in \
         exit 1
     }
 done
+grep -F 'testRegisteredLaunchStartsScannerAndScannerCanBeReopened' "$ui_test" >/dev/null || {
+    printf '%s\n' "candidate gate: UI suite omits registered scanner lifecycle" >&2
+    exit 1
+}
 grep -F 'FirstAuthorityCustodyRotationV2Wire.presentation' "$custody_fixture" >/dev/null || {
     printf '%s\n' "candidate gate: simulator omits production rotation wire" >&2
     exit 1

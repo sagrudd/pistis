@@ -505,6 +505,34 @@ final class MonasFirstWebLoginIPhoneSimulatorTests: XCTestCase {
             ])
     }
 
+    @MainActor
+    func testVerifiedLoginIntentRunsCustodyReadinessWithoutSeparateApproval() async throws {
+        let fixture = try SimulatorAuthenticationFixture(
+            installationID: installationID,
+            audience: "propylaion",
+            authorisedAudiences: ["propylaion"]
+        )
+        let coordinator = ProductionCeremonyCoordinator(
+            trustStore: SimulatorEnrollmentStore(enrollment: fixture.enrollment),
+            now: { Date(timeIntervalSince1970: 1_700_000_060) }
+        )
+        await coordinator.accept(qrText: fixture.qr)
+        guard case .review = coordinator.phase else {
+            return XCTFail("signed ordinary-login QR did not reach verified intent")
+        }
+
+        var custodyWasChecked = false
+        await coordinator.approveVerifiedLoginIntent {
+            custodyWasChecked = true
+            throw PlatformFailure.siteRootAuthorityUnavailable
+        }
+
+        XCTAssertTrue(custodyWasChecked)
+        XCTAssertEqual(coordinator.failureStage, .custodyReadiness)
+        XCTAssertEqual(coordinator.phase, .failed(.siteRootAuthorityUnavailable))
+        XCTAssertNotNil(coordinator.presentedRequest)
+    }
+
     func testCancellationIsTerminalAndCannotAdvance() throws {
         var simulator = MonasFirstWebLoginIPhoneSimulator()
         try simulator.attachHost()
@@ -843,9 +871,26 @@ private actor SimulatorTrust: InstallationTrustReading {
     }
 }
 
+private actor SimulatorEnrollmentStore: InstallationTrustStoring {
+    let enrollment: AuthenticatedEnrollmentOutput
+
+    init(enrollment: AuthenticatedEnrollmentOutput) {
+        self.enrollment = enrollment
+    }
+
+    func record(installationID: Data) -> InstallationTrustRecord? {
+        enrollment.trust.installationID == installationID ? enrollment.trust : nil
+    }
+
+    func activeEnrollment() -> AuthenticatedEnrollmentOutput? { enrollment }
+    func installAuthenticated(_: AuthenticatedEnrollmentOutput) {}
+    func revoke(installationID _: Data) {}
+}
+
 private struct SimulatorAuthenticationFixture {
     let qr: String
     let trust: InstallationTrustRecord
+    let enrollment: AuthenticatedEnrollmentOutput
     let externalIdentityID = Data(repeating: 0x44, count: 16)
 
     init(
@@ -886,6 +931,18 @@ private struct SimulatorAuthenticationFixture {
             revocationGeneration: 1,
             expiresAt: Date(timeIntervalSince1970: 1_800_000_000),
             active: true
+        )
+        enrollment = try AuthenticatedEnrollmentOutput(
+            trust: trust,
+            responseContext: DeviceResponseContext(
+                deviceID: Data(repeating: 0x91, count: 16),
+                deviceKeyID: Data(repeating: 0x92, count: 32),
+                userID: trust.userID,
+                externalIdentityID: trust.externalIdentityID
+            ),
+            allowedHosts: ["192.168.0.193"],
+            httpsOrigin: "https://192.168.0.193:8443",
+            tlsSPKISHA256: Data(repeating: 0x93, count: 32)
         )
     }
 

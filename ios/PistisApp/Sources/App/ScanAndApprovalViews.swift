@@ -248,6 +248,7 @@ struct ScanView: View {
                             .font(.footnote)
                             .foregroundStyle(MnColor.textPrimary)
                             .background(MnColor.raised)
+                            .accessibilityIdentifier("basecamp-governed-scan-policy")
                             .fixedSize(horizontal: false, vertical: true)
                     }
                 }

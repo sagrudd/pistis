@@ -215,9 +215,8 @@ final class PistisUITests: XCTestCase {
         application.tabBars.buttons["Scan"].tap()
 
         XCTAssertTrue(
-            application.staticTexts[
-                "Only bounded Pistis and purpose-separated Monas envelopes are acquired. Base Camp migration and successor rotation always require their own review and fresh Face ID; ordinary sign-in cannot approve them. After acceptance, Pistis returns to Identities instead of reopening the camera."
-            ].waitForExistence(timeout: 5)
+            application.staticTexts["basecamp-governed-scan-policy"]
+                .waitForExistence(timeout: 5)
         )
         XCTAssertFalse(application.buttons["Approve migration with Face ID"].exists)
         XCTAssertFalse(application.buttons["Approve successor with Face ID"].exists)

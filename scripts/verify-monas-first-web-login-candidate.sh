@@ -42,7 +42,11 @@ for gate in 0 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15; do
     }
 done
 for contract in \
-    'No second QR, Face ID, password or product-owned' \
+    'No second QR, Face ID, password or' \
+    'DASObjectStore and Oikodome open directly through the Gate 10 central session.' \
+    'Selecting inactive Jenkins preserves that same session and redirects to the' \
+    'Jenkins does not open at this gate: it opens only after Gate 13' \
+    'Jenkins has not yet been claimed open.' \
     'monas.basecamp-vault-migration-qr.v1' \
     'monas.basecamp-vault-successor-rotation-qr.v1' \
     'exact N to N+1 transition'; do
@@ -51,6 +55,10 @@ for contract in \
         exit 1
     }
 done
+if grep -F 'All three product applications open' "$runbook" >/dev/null; then
+    printf '%s\n' "candidate gate: runbook claims Jenkins opens before Gate 13" >&2
+    exit 1
+fi
 
 for contract in \
     'testFirstDeviceIsBlockedUntilAuthorityCustodyIsDurable' \

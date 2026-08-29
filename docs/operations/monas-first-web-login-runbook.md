@@ -660,37 +660,47 @@ fingerprint, signed response, endpoint capability or key material.
 roles explicitly projected by the central authority, without forcing a second
 authentication ceremony for ordinary page access.
 
-1. From `/home`, open DASObjectStore, Oikodome and Jenkins in turn.
-2. Confirm that each product consumes the same central session projection and
-   its exact authorised role. No second QR, Face ID, password or product-owned
-   login is permitted for ordinary page access.
-3. Confirm that a product audience or role absent from the central projection
+1. From `/home`, open DASObjectStore and Oikodome in turn.
+2. Confirm that both products consume the same central session projection and
+   their exact authorised roles. No second QR, Face ID, password or
+   product-owned login is permitted for ordinary page access.
+3. Return to `/home` and select Jenkins while Base Camp is inactive. The same
+   central session must be preserved while Monas redirects the browser to the
+   governed `/settings/basecamp-vault-migration` custody route. Jenkins must
+   not open at this gate and no second ordinary login is permitted.
+4. Confirm that a product audience or role absent from the central projection
    remains denied. A same-origin session is transport, not entitlement.
-4. Confirm that destructive operations, authority changes, user grants and
+5. Confirm that destructive operations, authority changes, user grants and
    other governed actions still stop for their explicit Pistis review and
    fresh Face ID step-up.
 
 ### Pass condition
 
-All three product applications open with their exact projected roles after the
-single Gate 10 login. No product receives a role absent from the central
+DASObjectStore and Oikodome open directly through the Gate 10 central session.
+Selecting inactive Jenkins preserves that same session and redirects to the
+governed Base Camp custody route without a second login. Jenkins does not open
+at this gate: it opens only after Gate 13 has proved migration consumption and
+automatic first start. No product receives a role absent from the central
 projection, and governed actions have not been silently approved.
 
 ### Stop conditions
 
-Stop if any product asks for a second ordinary-login QR, if an unprojected role
-is granted, if a governed action skips explicit step-up, or if access is
-inferred from a username, email, local Unix account or legacy password.
+Stop if DASObjectStore or Oikodome asks for a second ordinary-login QR, if
+inactive Jenkins opens rather than entering the governed custody route, if the
+Jenkins selection loses the central session, if an unprojected role is granted,
+if a governed action skips explicit step-up, or if access is inferred from a
+username, email, local Unix account or legacy password.
 
 ## Gate 12 — Attend the one-time Base Camp vault migration
 
 **Purpose:** migrate the retained legacy Jenkins/Base Camp vault credential
 into purpose-separated iPhone custody without exposing the secret.
 
-1. With Base Camp inactive and the legacy credential present, select Jenkins
-   from `/home` using the Gate 10 central session.
-2. Confirm Monas automatically opens `/settings/basecamp-vault-migration` and
-   displays exactly one `monas.basecamp-vault-migration-qr.v1` QR.
+1. Continue in the same browser and central session at the governed
+   `/settings/basecamp-vault-migration` route reached in Gate 11.
+2. Confirm Monas displays exactly one
+   `monas.basecamp-vault-migration-qr.v1` QR. Jenkins remains unavailable until
+   Gate 13; the migration route is not a Jenkins application page.
 3. Scan in Pistis. Review the fixed operation, Site Trust Domain, recipient
    `mnemosyne-expedition-basecamp.service`, generation, device and expiry.
 4. Explicitly approve the governed migration and complete fresh Face ID. This
@@ -700,7 +710,8 @@ into purpose-separated iPhone custody without exposing the secret.
 
 Pistis reports accepted completion and lands on **Identities** without
 reopening Scan. The browser records accepted migration and proceeds to the
-automatic first-start gate. No QR, HTTP body, browser state or log contains the
+automatic first-start gate while retaining the Gate 10 session. Jenkins has
+not yet been claimed open. No QR, HTTP body, browser state or log contains the
 passphrase or decrypted vault material.
 
 ### Stop conditions

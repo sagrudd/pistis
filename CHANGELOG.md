@@ -1,5 +1,12 @@
 # Changelog
 
+- Publish the first-party `pistis-ios` release manifest for the already merged
+  0.25.0 build 59 candidate. The machine-readable record binds the stable Kanon
+  product identity and Apple bundle identifier to the exact Xcode project,
+  application target, Info.plist and both app build configurations without
+  changing the candidate binary or the separate Linux `pistis-agent` product
+  (#503).
+
 - Add purpose-separated, pinned Base Camp vault migration and successor
   custody ceremonies. Both validate their complete canonical challenges and
   exact Monas route envelopes, bind the locally retained Site Root key and

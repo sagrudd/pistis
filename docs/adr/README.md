@@ -117,3 +117,8 @@ Face-ID-gated erasure of every Pistis identity, installation and app-owned key
 on one iPhone. It never claims authority revocation and requires authority
 recovery or complete development teardown before a reset phone can be treated
 as a fresh first installation.
+
+[ADR 0042](0042-basecamp-vault-migration-iphone-protocol.md) accepts the
+purpose-separated, route-independent iPhone validator and producer for the
+attended Base Camp vault migration. Monas routing and application presentation
+remain deferred to a coordinated follow-up decision.

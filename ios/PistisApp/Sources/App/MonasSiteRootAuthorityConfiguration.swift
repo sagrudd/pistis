@@ -174,4 +174,24 @@ enum ProductionMonasSiteRootTransportFactory {
         else { return UnavailableMonasSiteRootDelegationTransport() }
         return transport
     }
+
+    /// Restores the native authority transport from the signed enrolment that
+    /// Pistis retained after first-device installation. The origin and TLS
+    /// SPKI are not caller input: `AuthenticatedEnrollmentOutput` can only be
+    /// created from the verified Monas completion receipt and its initializer
+    /// already enforces the canonical endpoint shape. Requiring the origin
+    /// host to be present in the same signed allow-list prevents a malformed
+    /// record from widening the authority boundary.
+    static func make(
+        verifiedEnrollment enrollment: AuthenticatedEnrollmentOutput
+    ) -> MonasSiteRootDelegationTransport? {
+        guard let origin = URL(string: enrollment.httpsOrigin),
+              let host = CanonicalHTTPSHost.from(origin),
+              enrollment.allowedHosts.contains(host)
+        else { return nil }
+        return try? MonasSiteRootDelegationTransport(
+            authorityOrigin: origin,
+            expectedSPKISHA256: enrollment.tlsSPKISHA256
+        )
+    }
 }

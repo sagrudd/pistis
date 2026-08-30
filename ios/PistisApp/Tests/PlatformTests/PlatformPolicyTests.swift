@@ -380,6 +380,46 @@ final class PlatformPolicyTests: XCTestCase {
         )
     }
 
+    func testVerifiedEnrollmentRestoresTheRetainedPrivateIPv4Authority() throws {
+        let base = try enrollmentOutput(marker: 0x40)
+        let enrollment = try AuthenticatedEnrollmentOutput(
+            trust: base.trust,
+            responseContext: base.responseContext,
+            allowedHosts: ["192.168.0.193"],
+            httpsOrigin: "https://192.168.0.193:8443",
+            tlsSPKISHA256: Data(repeating: 0x2a, count: 32)
+        )
+
+        let transport = try XCTUnwrap(
+            ProductionMonasSiteRootTransportFactory.make(
+                verifiedEnrollment: enrollment
+            )
+        )
+        XCTAssertEqual(
+            transport.genesisAuthorityOrigin?.absoluteString,
+            "https://192.168.0.193:8443"
+        )
+        XCTAssertTrue(transport.isConfiguredAuthorityHost("192.168.0.193"))
+        XCTAssertFalse(transport.isConfiguredAuthorityHost("192.168.1.192"))
+    }
+
+    func testVerifiedEnrollmentRejectsAnOriginOutsideItsSignedHostAllowList() throws {
+        let base = try enrollmentOutput(marker: 0x41)
+        let enrollment = try AuthenticatedEnrollmentOutput(
+            trust: base.trust,
+            responseContext: base.responseContext,
+            allowedHosts: ["192.168.1.192"],
+            httpsOrigin: "https://192.168.0.193:8443",
+            tlsSPKISHA256: Data(repeating: 0x2b, count: 32)
+        )
+
+        XCTAssertNil(
+            ProductionMonasSiteRootTransportFactory.make(
+                verifiedEnrollment: enrollment
+            )
+        )
+    }
+
     func testFirstProvisionBrokerTransportUsesOnlyTheFixedInstallOrigin() throws {
         let transport = try MonasSiteX509FirstProvisionBrokerTransport()
         XCTAssertEqual(

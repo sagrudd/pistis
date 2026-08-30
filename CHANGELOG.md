@@ -1,5 +1,13 @@
 # Changelog
 
+- Restore the native Monas transport from the signed retained enrolment at
+  application startup and after enrolment changes. Generic builds continue to
+  use only the fixed install broker until that receipt is present; an enrolled
+  private-IP installation now reaches the pinned authority custody and login
+  routes without embedding customer origins in the binary. Add regressions for
+  the `192.168.0.193:8443` authority and an origin outside its signed host
+  allow-list (0.25.1, iOS build 60).
+
 - Publish the first-party `pistis-ios` release manifest for the already merged
   0.25.0 build 59 candidate. The machine-readable record binds the stable Kanon
   product identity and Apple bundle identifier to the exact Xcode project,

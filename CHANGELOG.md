@@ -1,5 +1,12 @@
 # Changelog
 
+- Advance only `pistis-agent` to 0.1.1, matching its workspace constraint and
+  locked package version, so a changed selected repository source has a real
+  semantic-version advance. Authentication, protocols, iOS versions, existing
+  Monas source pins and persisted data are unchanged. Retain a version-consistency
+  regression; source-only issue #506 and
+  [Kanon #336](https://github.com/sagrudd/kanon/pull/336) coordinate this correction.
+
 - Restore the native Monas transport from the signed retained enrolment at
   application startup and after enrolment changes. Generic builds continue to
   use only the fixed install broker until that receipt is present; an enrolled

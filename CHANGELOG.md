@@ -1,5 +1,18 @@
 # Changelog
 
+- Correct British-English documentation and one Face ID approval label without
+  changing authentication or protocol behaviour (iOS 0.25.2, build 61; #508).
+  Agent 0.1.1 and existing source pins are unchanged. Source coordination:
+  [Kanon #337](https://github.com/sagrudd/kanon/pull/337). No physical-device
+  qualification or signed-archive claim follows from this source-only repair.
+
+- Advance only `pistis-agent` to 0.1.1, matching its workspace constraint and
+  locked package version, so a changed selected repository source has a real
+  semantic-version advance. Authentication, protocols, iOS versions, existing
+  Monas source pins and persisted data are unchanged. Retain a version-consistency
+  regression; source-only issue #506 and
+  [Kanon #336](https://github.com/sagrudd/kanon/pull/336) coordinate this correction.
+
 - Restore the native Monas transport from the signed retained enrolment at
   application startup and after enrolment changes. Generic builds continue to
   use only the fixed install broker until that receipt is present; an enrolled
@@ -116,7 +129,7 @@
 
 - Bound the one-use Site Root bundle-receipt provision to its steady custody
   continuation by retrying only the short, explicit authority-unavailable
-  window while the NUC finalizes and exposes the attended unlock socket. The
+  window while the NUC finalises and exposes the attended unlock socket. The
   retry is bounded, preserves the same Face ID ceremony, and fails closed for
   permanent failures (0.22.16, iOS build 46).
 
@@ -269,7 +282,7 @@
   instead of allowing automatic signing to select a development profile
   (0.20.7, iOS build 22).
 
-- Add a hard gate for the approved physical iPhone artifact: a build used for
+- Add a hard gate for the approved physical iPhone artefact: a build used for
   Monas first-device registration must be Apple Distribution-signed, must have
   production App Attest enabled, and must not carry `get-task-allow`. This
   prevents a development-signed `Release` build from reaching a production

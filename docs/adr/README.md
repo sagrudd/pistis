@@ -108,8 +108,8 @@ delivery on one retained Monas/Thesaurophylax stream before bootstrap advances.
 HTTPS-only Site Root authority-key replacement transaction. Monas is the sole
 effective-generation record and Prosopikon/Thesaurophylax acknowledge the exact
 record before `Activated`; Pistis promotes only after that global state. It
-remains blocked on naming and accepting the typed custody/operator authorization
-artifact and must not be implemented as a boolean, QR fallback or App Attest-
+remains blocked on naming and accepting the typed custody/operator authorisation
+artefact and must not be implemented as a boolean, QR fallback or App Attest-
 only recovery.
 
 [ADR 0041](0041-explicit-local-device-reset.md) accepts an explicit,

@@ -175,7 +175,7 @@ specific approval and complete fresh Face ID. Ordinary login never approves
 this flow. Accepted completion returns to Identities without reopening the
 camera or requiring **Done**; cancellation or a stopped attempt may return to
 Scan. No vault secret appears in the QR, HTTP response, application state or
-logs. The retained origin and TLS SPKI authorize the server's Site Trust
+logs. The retained origin and TLS SPKI authorise the server's Site Trust
 Domain claim; Monas derives that claim from sealed installation inputs and the
 current Prosopikon binding, while Pistis requires byte-identical outer and
 signed-challenge values plus the retained local device and revocation state.

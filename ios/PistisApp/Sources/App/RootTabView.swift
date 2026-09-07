@@ -531,7 +531,7 @@ struct RootTabView: View {
             )
             stage = .authenticate
             let ceremony = try await FaceIDCeremonyContext.authenticate(
-                reason: "Authorize the DAS local-authority replacement receipt"
+                reason: "Authorise the DAS local-authority replacement receipt"
             )
             let submission = try SecureEnclaveDasReplacementReceiptProducerV1()
                 .produce(presentation, using: ceremony)

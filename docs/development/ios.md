@@ -97,7 +97,7 @@ scripts/build-approved-iphone-archive.sh \
   /path/to/Pistis.xcarchive
 ```
 
-Export the verified archive as an Ad Hoc IPA, and repeat the same artifact
+Export the verified archive as an Ad Hoc IPA, and repeat the same artefact
 gate against the app extracted from the IPA:
 
 ```sh
@@ -107,14 +107,14 @@ scripts/export-approved-iphone-ipa.sh \
 ```
 
 If an archive has already been produced by the reviewed distribution process,
-run the artifact gate directly:
+run the artefact gate directly:
 
 ```sh
 scripts/verify-approved-iphone-build.sh \
   /path/to/Release-iphoneos/Pistis.app
 ```
 
-The gate rejects development-signed artifacts, `get-task-allow`, a non-production
+The gate rejects development-signed artefacts, `get-task-allow`, a non-production
 App Attest entitlement, an unexpected bundle identifier, or an unexpected Apple
 team. A build that fails this check must not be used for a Monas first-device
 QR; Monas deliberately accepts production App Attest evidence only.

@@ -38,6 +38,8 @@ struct SiteRootConvergenceReviewView: View {
 
     @ViewBuilder private var detailRows: some View {
         switch review.kind {
+        case let .bundleReceiptUnlock(generation):
+            LabeledContent("Receipt key generation", value: generation)
         case let .bundleReceiptProvision(generation):
             LabeledContent("Receipt key generation", value: String(generation))
         case let .siteX509Provision(generation):
@@ -82,6 +84,7 @@ struct SiteRootConvergenceReviewView: View {
 
     private var title: String {
         switch review.kind {
+        case .bundleReceiptUnlock: "Unlock Site Root receipt signer"
         case .bundleReceiptProvision: "Provision Site Root receipt custody"
         case .siteX509Provision: "Provision Site X.509 custody"
         case .acknowledgement: "Approve signed HTTPS convergence"
@@ -90,6 +93,8 @@ struct SiteRootConvergenceReviewView: View {
 
     private var orientation: String {
         switch review.kind {
+        case .bundleReceiptUnlock:
+            "Unlock the existing receipt signer without provisioning or replacing its key."
         case .bundleReceiptProvision:
             "Create the distinct one-use receipt signing generation in protected custody."
         case .siteX509Provision:
@@ -101,6 +106,7 @@ struct SiteRootConvergenceReviewView: View {
 
     private var buttonTitle: String {
         switch review.kind {
+        case .bundleReceiptUnlock: "Unlock with Face ID"
         case .bundleReceiptProvision: "Provision with Face ID"
         case .siteX509Provision: "Approve both roles with Face ID"
         case .acknowledgement: "Approve with Face ID"

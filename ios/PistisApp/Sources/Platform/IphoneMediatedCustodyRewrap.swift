@@ -343,6 +343,13 @@ final class SecureEnclaveIphoneMediatedCustodyRewrapProducer: @unchecked Sendabl
 final class SecureEnclaveSiteRootBundleReceiptRewrapProducerV1: @unchecked Sendable {
     private let signer: SecureEnclaveSigner
 
+    static func requireDeviceBinding(_ publicKey: Data, deviceKeyID: String) throws {
+        let actual = "site-root-" + Data(SHA256.hash(data: publicKey)).map {
+            String(format: "%02x", $0)
+        }.joined()
+        guard actual == deviceKeyID else { throw PlatformFailure.custodyRewrapUnavailable }
+    }
+
     init() throws {
         signer = try SecureEnclaveSigner(
             namespace: "site-root-delegation-v1",
@@ -358,12 +365,7 @@ final class SecureEnclaveSiteRootBundleReceiptRewrapProducerV1: @unchecked Senda
             throw PlatformFailure.custodyRewrapUnavailable
         }
         let publicKey = try signer.publicKey(using: ceremony).compressedSEC1
-        let deviceID = "site-root-" + Data(SHA256.hash(data: publicKey)).map {
-            String(format: "%02x", $0)
-        }.joined()
-        guard deviceID == presentation.deviceKeyID else {
-            throw PlatformFailure.custodyRewrapUnavailable
-        }
+        try Self.requireDeviceBinding(publicKey, deviceKeyID: presentation.deviceKeyID)
         let protected = try DetachedES256Cose.protectedHeaders(kid: presentation.deviceKeyID)
         let structure = try DetachedES256Cose.signatureStructure(
             protected: protected, payload: presentation.canonicalChallenge

@@ -1,5 +1,12 @@
 # Changelog
 
+- Restore the omitted standalone retained Site Root receipt unlock scan route
+  using the existing pinned authority, explicit review and fresh Face ID.
+  Cancelled or stale work cannot produce or submit proof; the existing
+  provision-to-unlock continuation and key namespaces are unchanged
+  (0.25.3, iOS build 62, #510; Kanon339). Physical-device acceptance remains
+  distinct from source and simulator qualification.
+
 - Restore the native Monas transport from the signed retained enrolment at
   application startup and after enrolment changes. Generic builds continue to
   use only the fixed install broker until that receipt is present; an enrolled

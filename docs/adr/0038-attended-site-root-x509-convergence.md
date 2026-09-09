@@ -105,3 +105,84 @@ new governed transaction and replacement build. Physical-iPhone acceptance
 must retain exact-revision evidence for one Face ID per bounded ceremony,
 successful relaunch/recovery, and the final authenticated Monas session without
 retaining QR or proof material.
+
+## Accepted amendment: standalone retained receipt unlock
+
+- Amendment status: Accepted, 2026-09-09, after independent security/design
+  review and owner-authorised bounded repair decision; device acceptance remains pending.
+- Date: 2026-09-09
+- Issue: `PIS-RECEIPT-UNLOCK` (#510)
+- Affected owners: Pistis (scan/review/Face ID), Monas (pinned presentation and
+  relay), Thesaurophylax (existing receipt custody). Proxenos registration and
+  convergence authority are unchanged.
+
+The current phone implements receipt unlock only as the automatic continuation
+of successful receipt provision. Monas also exposes an already-defined
+standalone unlock descriptor for an existing receipt signer. Omitting that
+descriptor from the scanner leaves the retained recovery path inaccessible;
+it does not justify rerunning provision or creating a new receipt key.
+
+The proposed fix admits exactly the existing four-field JSON descriptor:
+
+- `schema`: `monas.site-root-bundle-receipt-unlock-qr.v1`;
+- `purpose`: `thesaurophylax.site-root-bundle-receipt-rewrap.v1`;
+- `role`: `site-root-bundle-receipt`; and
+- `presentation_path`: `/v1/pistis/site-root-bundle-receipt-unlock/presentation`.
+
+Reject unknown, duplicate, missing or mistyped fields, alternate paths and
+oversized input. The descriptor is routing information, not approval or
+authenticated challenge facts. It supplies no authority URL, trust pin, Site
+selection, credential or key. The coordinator selects only the existing
+direct pinned-origin transport, never the first-provision broker. Fetch the
+existing bounded protected challenge through that transport and validate its
+canonical framing, authenticated Site facts, purpose, generation and expiry
+before exposing review facts or requesting authentication. This does not
+claim an independent device-key match before review: local setup/history
+observations are not trust authority, and public-key access must not cause an
+extra biometric prompt before the explicit decision.
+
+Show a distinct governed **Unlock Site Root receipt signer** review with the
+validated Site, generation and expiry. Explicit approval invokes a fresh
+Face-ID-only context and the existing Secure Enclave receipt rewrap producer;
+do not borrow an earlier provision/login context. Revalidate expiry and let
+the existing producer check the actual Site Root device-key/purpose binding
+inside that approved fresh ceremony before proof production or submission;
+wrong binding must fail before either. Submit through the same fixed pinned route,
+and distinguish local approval/rewrap from authoritative server acceptance.
+Cancellation, backgrounding, stale fetch completion or reset retires local
+pending state and must not sign or submit. A replacement scan cannot approve
+facts fetched for a previous scan. No automatic retry after signing/submission
+and no second endpoint are introduced.
+
+The existing same-ceremony automatic provision-to-unlock continuation remains
+unchanged. Standalone unlock neither provisions nor registers a key, reruns
+enrolment, modifies the operating-system trust store, alters a key namespace,
+exports private material nor changes the existing rewrap wire/proof contract.
+
+The added scan route could otherwise enable wrong-purpose approval, arbitrary
+network requests or stale asynchronous work. Closed descriptor parsing,
+pinned transport, exact fetched-fact validation, explicit governed review and
+fresh local authentication preserve those boundaries. A printed descriptor
+alone cannot authorise custody use. Device compromise is not mitigated by
+route parsing; existing Secure Enclave and biometric guarantees remain the
+limits of assurance.
+
+Propose iOS **0.25.3+62**, a compatible patch for an omitted entry to the
+existing accepted protocol rather than a new custody capability. Coordinate
+the exact iOS identity witness in Kanon339 before release; 0.25.2+61 remains
+reserved for the separate language-only companion in Kanon337. Preserve
+`org.mnemosynebiosciences.pistis`, the existing development team, keychain
+access groups, entitlements and retained keys. An owner-authorised operator
+performs any later reviewed same-identity update, preserving the app container
+and keychain without uninstalling or resetting. Verify the target and the
+approved Distribution Ad Hoc artefact's bundle, team and production
+entitlements before update; genuine operating-system/device-unlock prompts
+remain attended. No user build or device is modified by this proposal.
+
+Required source evidence covers the actual Monas descriptor, all closed-shape
+denials, direct-versus-broker routing, fetched challenge validation, reset and
+stale completion, explicit review and no-submit cancellation. Portable Swift
+tests and unsigned native compilation/tests remain separate from physical
+iPhone Face ID, relaunch and same-identity upgrade acceptance. Retain missing
+native/device evidence honestly; no signing or camera substitute establishes
+production interoperability.

@@ -1,5 +1,11 @@
 # Changelog
 
+- Acknowledge the unchanged native Site Root assertion using the existing
+  protected phone ACK registration and existing keys. Distinct native and phone
+  identities no longer cause rejection; missing or mismatched registration
+  denies without key creation or registration fallback (iOS 0.25.7+66, #518;
+  Kanon339). Fresh Face ID and the server's final transaction checks remain.
+
 - Send the receipt POST with the exact `application/json` media type required
   by installed Monas, removing only the incompatible charset parameter.
   Actual-request admission regression covers the fixed route, nine-field body

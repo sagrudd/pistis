@@ -1293,6 +1293,7 @@ struct SiteRootConvergenceServiceV2: Sendable {
     }
 
     func acknowledge(_ presentation: SiteRootConvergenceAckPresentationV2) async throws {
+        let record = try store.current()
         let ceremony = try await FaceIDCeremonyContext.authenticate(
             reason: "Approve this exact Site Root HTTPS convergence"
         )
@@ -1304,59 +1305,17 @@ struct SiteRootConvergenceServiceV2: Sendable {
             namespace: "site-root-convergence-ack-v2",
             authenticationReason: "Approve this exact Site Root HTTPS convergence"
         )
-        guard try siteRoot.hasExistingKey() else { throw PlatformFailure.keyNotFound }
-        let siteRootPublic = try siteRoot.publicKey(using: ceremony)
-        let target = Data(SHA256.hash(data: siteRootPublic.compressedSEC1))
-        guard target == presentation.assertion.targetID else {
-            throw PlatformFailure.invalidConfiguration
+        guard try siteRoot.hasExistingKey(), try ack.hasExistingKey() else {
+            throw PlatformFailure.keyNotFound
         }
-        let ackPublic = try ack.create(using: ceremony).compressedSEC1
-        let registrationPayload = Data("PXAK/v2".utf8) + presentation.assertion.siteUUID
-            + target + ackPublic
-        guard registrationPayload.count == 88 else { throw PlatformFailure.invalidConfiguration }
-        let registrationProtected = try DetachedES256Cose.protectedHeaders(
-            kid: target, contentType: SiteRootConvergenceProfileV2.pxakContentType
+        let siteRootPublic = try siteRoot.publicKey(using: ceremony).compressedSEC1
+        let ackPublic = try ack.publicKey(using: ceremony).compressedSEC1
+        try await RetainedSiteRootAcknowledgementV2.submit(
+            presentation, record: record, siteRootPublic: siteRootPublic,
+            ackPublic: ackPublic, nowMilliseconds: Self.nowUnixSeconds() * 1_000,
+            sign: { try ack.sign(message: $0, using: ceremony) },
+            send: { try await self.transport.submitAck($0, endpoint: $1) }
         )
-        let registrationStructure = try DetachedES256Cose.signatureStructure(
-            protected: registrationProtected, payload: registrationPayload
-        )
-        let registrationSignature = try siteRoot.sign(
-            message: registrationStructure, using: ceremony
-        )
-        let registrationProof = try DetachedES256Cose.envelope(
-            protected: registrationProtected, signature: registrationSignature
-        )
-        let result = try await transport.registerAckKey(
-            SiteRootConvergenceAckRegistrationV2(
-                siteUUID: presentation.assertion.siteUUIDText,
-                targetID: target,
-                ackPublicKeyCompressedSEC1: ackPublic,
-                enrolledDeviceProofCOSE: registrationProof
-            )
-        )
-        guard result.generation == presentation.assertion.ackKeyGeneration else {
-            throw PlatformFailure.siteRootAuthorityUnavailable
-        }
-        try store.retain(SiteRootConvergenceAckRecordV2(
-            siteUUID: result.siteUUID,
-            targetIDB64URL: SiteRootConvergenceEncoding.encode(target),
-            ackPublicKeyB64URL: SiteRootConvergenceEncoding.encode(ackPublic),
-            generation: result.generation
-        ))
-        let ackProtected = try DetachedES256Cose.protectedHeaders(
-            kid: SiteRootConvergenceEncoding.uint64Bytes(result.generation),
-            contentType: SiteRootConvergenceProfileV2.pxraContentType
-        )
-        let ackStructure = try DetachedES256Cose.signatureStructure(
-            protected: ackProtected, payload: presentation.unsignedPXRA
-        )
-        let ackSignature = try ack.sign(message: ackStructure, using: ceremony)
-        let proof = try DetachedES256Cose.envelope(
-            protected: ackProtected, signature: ackSignature
-        )
-        let signed = presentation.unsignedPXRA + proof
-        guard signed.count <= 768 else { throw PlatformFailure.invalidConfiguration }
-        try await transport.submitAck(signed, endpoint: presentation.submissionURL)
     }
 
     private static func siteRootDeviceKeyID(_ publicKey: Data) -> String {

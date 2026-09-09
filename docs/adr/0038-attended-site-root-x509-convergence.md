@@ -337,3 +337,42 @@ boundary, not real server custody verification or physical success. Existing
 Face ID, cryptographic fixtures, fixed TLS, lifetime, cancellation and uncertain
 submission diagnostics remain unchanged. Any later device update requires the
 existing same-identity approved archive/export gates; never uninstall or reset.
+
+### Accepted correction: native ACK target and phone signer are distinct
+
+Issue518, iOS0.25.7+66, Kanon339; owner and independent contract review accepted
+this compatible correction on 2026-09-09 before implementation. Proxenos PXRA/v2
+tag2 is the native target whose observed root is acknowledged. PXAK/v2 instead
+binds the ACK signer identifier derived as SHA256 of the enrolled phone's Site
+Root compressed public key. These identifiers are deliberately unequal. The
+phone currently compares them and throws invalidConfiguration after Face ID,
+before registration or ACK submission; that comparison is not the contract.
+
+Keep the derived phone identifier in PXAK registration and its COSE kid only;
+that registration occurs in the existing authenticated pre-native broker flow.
+The retained completion listener does not expose registration. Final ACK must
+reuse only `SiteRootConvergenceAckStoreV2.current()` and both existing Secure
+Enclave keys. Require record Site equal PXRA Site, record signer hash equal the
+actual Site Root compressed-key hash, record ACK public key equal the actual
+existing ACK key, and record positive generation equal PXRA ACK generation.
+The current 0.25.6 broker `leafApproval` path persists that record only after
+validating the authenticated leaf presentation. This source fact does not
+claim the physical phone currently has a readable record. Missing or mismatched
+record/key denies; no creation, repair, re-registration or fallback is allowed.
+Keep the complete native PXRA bytes unchanged. Monas/Proxenos retain their
+existing enrolled-proof and configured-signer registration checks. Proxenos
+independently checks the signed native target against the
+retained transaction: do not invent a phone-native inventory or substitute the
+phone identifier into the native assertion. Wrong registration binding or
+generation denies before ACK signing/submission; wrong native target denies
+at the owner-side pending-transaction verifier. Reuse is the same protected
+record/existing-key pattern as the existing leaf-approval producer, not authority
+from display history. Existing QR framing, expiry,
+fixed TLS, explicit fresh Face ID, key namespaces, proof bytes and server replay
+checks remain unchanged. No new approval authority, fallback or key replacement.
+
+Retain a real Proxenos-generated PXRA fixture with source provenance and an
+actual phone producer sequencing regression with deliberately distinct native
+and signer identifiers. Use synthetic keys only; no physical Secure Enclave or
+OS installation claim follows from the fixture. Preserve app bundle, team,
+keychain groups and entitlements through the existing approved archive gates.

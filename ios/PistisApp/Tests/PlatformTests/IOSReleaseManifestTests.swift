@@ -41,10 +41,10 @@ final class IOSReleaseManifestTests: XCTestCase {
         XCTAssertEqual(manifest.schemaVersion, "mnemosyne.pistis.ios-release-manifest.v1")
         XCTAssertEqual(manifest.productID, "pistis-ios")
         XCTAssertEqual(manifest.repository, "sagrudd/pistis")
-        XCTAssertEqual(manifest.version, "0.25.4+63")
+        XCTAssertEqual(manifest.version, "0.25.5+64")
         XCTAssertEqual(manifest.bundleIdentifier, "org.mnemosynebiosciences.pistis")
-        XCTAssertEqual(manifest.marketingVersion, "0.25.4")
-        XCTAssertEqual(manifest.buildNumber, "63")
+        XCTAssertEqual(manifest.marketingVersion, "0.25.5")
+        XCTAssertEqual(manifest.buildNumber, "64")
         XCTAssertEqual(manifest.targetName, "Pistis")
         XCTAssertEqual(manifest.buildConfigurations, ["Debug", "Release"])
 

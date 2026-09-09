@@ -246,3 +246,72 @@ Any later owner-authorised same-identity phone update requires the reviewed
 approved archive and target identity verification, without uninstalling,
 resetting or replacing retained device keys. This source decision does not
 claim a signed artefact, installation, physical acceptance or formal release.
+
+## Accepted amendment: foreground selected-authority refresh
+
+- Status: Accepted, 2026-09-09, after owner and independent security review;
+  implementation and physical acceptance remain separate.
+- Issue: `PIS-FOREGROUND-BINDING` (#514); prospective Kanon #339 coordination.
+- Proposed compatible patch: **0.25.5+64**.
+
+The generic app initially uses the fixed first-install broker. Its transport
+store loads the selected authenticated enrolment at launch and on enrolment
+change notifications. Protected storage is available only while unlocked.
+A failed launch read currently leaves the broker selected; foregrounding
+refreshes the displayed inventory but not this transport. A standalone receipt
+scan can therefore reach the broker's deliberately unavailable direct operation
+without making an appliance request. This source lifecycle gap is not yet
+established as the cause of the observed physical-phone failure.
+
+Refresh the same selected authenticated-enrolment binding when the application
+becomes active. Use the existing protected loader and verified-enrolment factory;
+neither a QR, displayed history, cached public setup information nor a host name
+may provide authority. Retain the exact origin, enrolled allow-list and TLS
+policy checks. When no current valid binding can be read, remove a previous
+direct binding and report a distinct, non-sensitive local binding-unavailable
+state for direct receipt unlock. Do not imply server rejection or lost keys.
+The fixed broker remains available only for its existing supported operations.
+
+A changed binding invalidates the scanner's previous coordinators through the
+existing transport revision/view-identity boundary. It does not automatically
+fetch, approve, sign or submit any operation. Existing cancellation, explicit
+governed review, fresh Face ID, device-key checks and wire/cryptographic rules
+remain unchanged. No credential, key, trust record or selected installation is
+written by refresh. A transient storage failure may stop a pending operation;
+retaining stale authority to avoid that interruption is not an acceptable
+alternative. Repeated identical successful refreshes must not reset an active
+ceremony. Late asynchronous results must not reinstate an obsolete selection.
+
+Reproduce an initially unavailable loader followed by a valid authenticated
+selection and foreground refresh, and test missing/invalid bindings, removal
+of a stale direct binding, unchanged-binding stability and stale completion.
+Use a narrow injected loader for deterministic tests; production continues to
+use only the existing protected storage API. Native source tests do not prove
+actual Keychain lock behaviour, camera interaction or physical recovery.
+Preserve app identity, entitlements and keys; any later device update remains a
+separately verified same-identity operation without uninstall/reset.
+
+### Accepted diagnostic clarification for the same patch
+
+The observed generic authority error does not establish the lifecycle gap as
+the physical cause. Add closed, non-sensitive diagnostics only to receipt
+unlock GET and POST. Report the operation (`presentation` or `submission`) and
+one fixed category: cancelled, TLS, timeout, offline, DNS, connection,
+connection-lost, authentication-challenge, other network failure,
+non-HTTP response, unexpected endpoint, HTTP status, missing no-store header,
+empty presentation, oversized presentation, or unexpected submission body.
+Only a numeric HTTP status in 100–599 may supplement the closed category;
+other status values map to a fixed invalid-status category. Map only known
+`URLError.Code` constants; unknown errors map to other network failure.
+Never expose underlying descriptions, NSError userInfo, URLs, headers, bodies,
+pins, QR contents, proofs or custody material. Existing presentation parser
+failures remain the separate custody-unavailable error.
+
+Preserve the same endpoint, TLS policy, timeout, response predicates and
+cancelled-operation checks. Do not add a retry or alternate pin. Presentation
+failures may say no proof was sent. A failure after entering the submission
+transport must instead say that submission was not confirmed: the request
+may have reached the authority, so it must not claim that no proof was sent
+or invite automatic replay. HTTP acknowledgement remains distinct from local
+approval and server custody completion. This clarification is accepted after
+owner review, before its diagnostic implementation.

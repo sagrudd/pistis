@@ -8,26 +8,49 @@ import SwiftUI
 final class SiteRootTransportStore: ObservableObject {
     @Published private(set) var transport: any MonasSiteRootCeremonyTransport
     @Published private(set) var revision = 0
-    private var boundOrigin: String?
-    private var boundSPKI: Data?
+    private var boundEnrollment: AuthenticatedEnrollmentOutput?
+    private var refreshGeneration: UInt64 = 0
+    private let initialTransport: any MonasSiteRootCeremonyTransport
+    private let loadEnrollment: () async throws -> AuthenticatedEnrollmentOutput?
 
-    init() {
-        transport = ProductionMonasSiteRootTransportFactory.make()
+    init(loadEnrollment: (() async throws -> AuthenticatedEnrollmentOutput?)? = nil) {
+        self.loadEnrollment = loadEnrollment ?? {
+            try await InstallationTrustKeychain.shared.activeEnrollment()
+        }
+        initialTransport = ProductionMonasSiteRootTransportFactory.make()
+        transport = initialTransport
     }
 
     func refresh() async {
-        guard let enrollment = try? await InstallationTrustKeychain.shared.activeEnrollment(),
+        refreshGeneration &+= 1
+        let generation = refreshGeneration
+        let loaded = try? await loadEnrollment()
+        guard generation == refreshGeneration else { return }
+        guard let enrollment = loaded,
               let bound = ProductionMonasSiteRootTransportFactory.make(
                   verifiedEnrollment: enrollment
               )
-        else { return }
-        guard boundOrigin != enrollment.httpsOrigin
-                || boundSPKI != enrollment.tlsSPKISHA256
-        else { return }
-        boundOrigin = enrollment.httpsOrigin
-        boundSPKI = enrollment.tlsSPKISHA256
+        else {
+            guard boundEnrollment != nil else { return }
+            boundEnrollment = nil
+            // Preserve only the original reviewed build profile (the fixed
+            // broker in a generic build), never a stale selected enrolment.
+            transport = initialTransport
+            revision &+= 1
+            return
+        }
+        guard boundEnrollment != enrollment else { return }
+        boundEnrollment = enrollment
         transport = bound
         revision &+= 1
+    }
+
+    func scenePhaseChanged(_ phase: ScenePhase) async {
+        guard phase == .active else {
+            refreshGeneration &+= 1
+            return
+        }
+        await refresh()
     }
 }
 
@@ -45,6 +68,7 @@ struct PistisApp: App {
 }
 
 private struct AppContainerView: View {
+    @Environment(\.scenePhase) private var scenePhase
     @AppStorage(PistisOnboardingState.completedKey)
     private var hasCompletedOnboarding = false
     @ObservedObject var siteRootTransportStore: SiteRootTransportStore
@@ -64,6 +88,9 @@ private struct AppContainerView: View {
         .id(siteRootTransportStore.revision)
         .task {
             await siteRootTransportStore.refresh()
+        }
+        .onChange(of: scenePhase) { _, phase in
+            Task { await siteRootTransportStore.scenePhaseChanged(phase) }
         }
         .onReceive(
             NotificationCenter.default.publisher(

@@ -38,6 +38,7 @@ final class SiteRootConvergenceCoordinator: ObservableObject {
     private let service: SiteRootConvergenceServiceV2?
     private let brokerService: SiteRootConvergenceServiceV2?
     private let authorityOrigin: URL?
+    private let standaloneUnlockAvailable: Bool
     private var pending: Pending?
     private var operationID = UUID()
     private var standaloneUnlock = false
@@ -67,8 +68,10 @@ final class SiteRootConvergenceCoordinator: ObservableObject {
         brokerTransport: (
             any MonasSiteRootConvergenceSubmitting & MonasSiteX509BrokerContinuing
         )? = nil,
-        authorityOrigin: URL? = nil
+        authorityOrigin: URL? = nil,
+        standaloneUnlockAvailable: Bool = true
     ) {
+        self.standaloneUnlockAvailable = standaloneUnlockAvailable
         self.authorityOrigin = authorityOrigin ?? transport?.authorityOrigin
         service = transport.map { SiteRootConvergenceServiceV2(transport: $0) }
         if let brokerTransport {
@@ -186,7 +189,9 @@ final class SiteRootConvergenceCoordinator: ObservableObject {
         phase = .unlockingBundleReceipt
         do {
             _ = try SiteRootBundleReceiptUnlockDescriptorV1(qrText: qrText)
-            guard let service else { throw PlatformFailure.siteRootAuthorityUnavailable }
+            guard standaloneUnlockAvailable, let service else {
+                throw PlatformFailure.siteRootBindingUnavailable
+            }
             let value = try await service.fetchStandaloneBundleReceiptUnlock()
             guard operationID == operation, !Task.isCancelled else { return }
             let review = SiteRootConvergenceReview(

@@ -4,6 +4,16 @@ import XCTest
 @testable import Pistis
 
 final class StandaloneReceiptUnlockTests: XCTestCase {
+    @MainActor
+    func testMissingDirectBindingHasLocalFailureWithoutBrokerRequest() async throws {
+        let coordinator = SiteRootConvergenceCoordinator(
+            transport: try MonasSiteX509FirstProvisionBrokerTransport(),
+            standaloneUnlockAvailable: false
+        )
+        await coordinator.acceptStandaloneUnlock(qrText: descriptor)
+        XCTAssertEqual(coordinator.phase, .failed(.siteRootBindingUnavailable))
+        XCTAssertNil(coordinator.presentedReview)
+    }
     // Exact serialised four-field QrDescriptor from deployed Monas
     // 7f6952486c56595f7c6652f2447b2007316e9e69,
     // crates/monas-server/src/site_root_bundle_receipt_unlock_relay.rs:33–42.

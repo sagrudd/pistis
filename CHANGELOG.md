@@ -1,5 +1,11 @@
 # Changelog
 
+- Send the receipt POST with the exact `application/json` media type required
+  by installed Monas, removing only the incompatible charset parameter.
+  Actual-request admission regression covers the fixed route, nine-field body
+  and rejected old header; no server relaxation or proof replay is introduced
+  (iOS 0.25.6+65, #516; Kanon339).
+
 - Refresh the selected authenticated Site Root transport on foreground entry,
   invalidate unavailable or changed bindings, and prevent late loads restoring
   stale authority. Receipt unlock distinguishes local binding, presentation

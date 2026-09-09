@@ -1,5 +1,10 @@
 # Changelog
 
+- Restore the receipt ciphertext's existing fixed wrapping domain for both
+  retained-record opening and fresh rewrap, independently of its unchanged
+  external proof purpose. No fallback, key replacement or provisioning replay
+  is introduced (iOS 0.25.4+63, #512; Thesaurophylax #298; Kanon339).
+
 - Restore the omitted standalone retained Site Root receipt unlock scan route
   using the existing pinned authority, explicit review and fresh Face ID.
   Cancelled or stale work cannot produce or submit proof; the existing

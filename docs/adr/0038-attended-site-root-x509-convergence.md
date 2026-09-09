@@ -186,3 +186,63 @@ tests and unsigned native compilation/tests remain separate from physical
 iPhone Face ID, relaunch and same-identity upgrade acceptance. Retain missing
 native/device evidence honestly; no signing or camera substitute establishes
 production interoperability.
+
+## Accepted amendment: retained receipt wrapping-domain compatibility
+
+- Status: Accepted, 2026-09-09, after delegated owner review of the exact
+  compatibility boundary; implementation review and device acceptance remain separate.
+- Issue: `PIS-RECEIPT-AAD` (#512); coordinated with Thesaurophylax #298 and
+  Kanon #339. Proposed compatible iOS patch: **0.25.4+63**.
+- Owners: Pistis (device rewrap), Thesaurophylax (retained ciphertext and proof
+  admission), Monas (unchanged canonical challenge and relay).
+
+The existing receipt protocol has distinct purpose domains:
+
+| Boundary | Exact value |
+| --- | --- |
+| External proof purpose | `thesaurophylax.site-root-bundle-receipt-rewrap.v1` |
+| Canonical challenge prefix | The full external purpose followed by NUL |
+| Retained and fresh ciphertext AAD domain | `site-root-bundle-receipt` |
+| Internal provider/signer scope intent | `site-root-bundle-receipt` |
+
+Thesaurophylax's actual receipt provisioning implementation at canonical
+`f6354aca13f9cbc5fe416a655ad65f722e54423c`, in
+`portable_site_trust_receipt_issuer_v1.rs`, selects the short domain in
+`purpose_aad` and passes that digest to the custody record's `write_new`.
+The provision challenge itself binds this digest. Pistis canonical
+`f0071a4ce64b6d8aff294c4a680b2ebb980acef2` instead uses the full proof purpose
+for both opening that record and fresh rewrap. Those bytes cannot authenticate
+the provisioned record. This is a cross-component compatibility defect, not a
+reason to regenerate the retained receipt key or reinterpret ciphertext.
+
+Correct only the fixed receipt AAD domain in the existing iOS producer to the
+short value for both old-record opening and fresh rewrap. Preserve the exact
+U32-length-prefixed SHA-256 encoding, field order, Site, generation, device-key
+identifier and compressed host key. The external proof purpose and canonical
+challenge remain full and unchanged. The paired Thesaurophylax correction
+selects the full external proof expectation while retaining its short AAD and
+internal scope. Neither correction alone establishes interoperability.
+
+There is exactly one accepted AAD domain: no alias, alternate-domain probing,
+decryption fallback, schema negotiation or record migration. Existing review,
+fresh Face ID, actual device-key binding, expiry/cancellation checks, fixed
+pinned transport, detached proof, seed/public-key equality and server replay
+admission remain unchanged. No new UI, key namespace, provision operation,
+service action, private-key export or cryptographic primitive is introduced.
+Domain separation remains fail-closed; wrong domain or any changed bound field
+must fail authentication rather than select another key or purpose.
+
+Retain an explicitly synthetic interoperability vector produced using the
+actual Thesaurophylax receipt provision path, with public source provenance and
+test-only key material. Native Swift tests must open that old short-AAD record,
+preserve its exact seed, and authenticate fresh rewrap with the same short
+domain; the full proof-purpose string used as AAD must fail. Cross-check the
+fresh output with the existing server wrapping implementation. Keep these
+software fixtures distinct from physical Secure Enclave, Face ID and live
+retained-record acceptance; no production record or key enters test evidence.
+
+Preserve the existing bundle, team, keychain groups and production entitlements.
+Any later owner-authorised same-identity phone update requires the reviewed
+approved archive and target identity verification, without uninstalling,
+resetting or replacing retained device keys. This source decision does not
+claim a signed artefact, installation, physical acceptance or formal release.

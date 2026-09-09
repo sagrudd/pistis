@@ -1004,6 +1004,70 @@ struct SiteRootConvergenceServiceV2: Sendable {
         }
     }
 
+    func fetchStandaloneBundleReceiptUnlock() async throws
+        -> IphoneMediatedCustodyRewrapPresentationV1
+    {
+        let value = try await transport.fetchBundleReceiptUnlock(nowUnixSeconds: Self.nowUnixSeconds())
+        try Self.validateStandaloneUnlock(value, nowUnixSeconds: Self.nowUnixSeconds())
+        return value
+    }
+
+    static func validateStandaloneUnlock(
+        _ value: IphoneMediatedCustodyRewrapPresentationV1, nowUnixSeconds: UInt64
+    ) throws {
+        let prefix = "site-root-bundle-receipt-"
+        let generation = String(value.keyGeneration.dropFirst(prefix.count))
+        let site = String(value.siteTrustDomain.dropFirst(5))
+        guard value.keyGeneration.hasPrefix(prefix),
+              let number = UInt64(generation), number > 0, String(number) == generation,
+              value.siteTrustDomain.hasPrefix("site-"),
+              let uuid = UUID(uuidString: site), uuid.uuidString.lowercased() == site,
+              uuid != UUID(uuid: (0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)),
+              value.expiresAtUnixSeconds > nowUnixSeconds,
+              value.expiresAtUnixSeconds - nowUnixSeconds <= 300,
+              value.canonicalChallenge == (try? SecureEnclaveIphoneMediatedCustodyRewrapProducer
+                .canonicalChallenge(for: value, schema: SiteRootBundleReceiptRewrapV1.challengeSchema))
+        else { throw PlatformFailure.custodyRewrapUnavailable }
+    }
+
+    @MainActor
+    func unlockBundleReceipt(
+        _ value: IphoneMediatedCustodyRewrapPresentationV1,
+        requireCurrentOperation: () throws -> Void
+    ) async throws {
+        try await Self.performStandaloneUnlock(
+            requireCurrent: {
+                try requireCurrentOperation()
+                try Self.validateStandaloneUnlock(value, nowUnixSeconds: Self.nowUnixSeconds())
+            },
+            authenticate: {
+                try await FaceIDCeremonyContext.authenticate(
+                    reason: "Unlock this existing Site Root receipt signer"
+                )
+            },
+            produce: {
+                try SecureEnclaveSiteRootBundleReceiptRewrapProducerV1().produce(value, using: $0)
+            },
+            submit: { try await self.transport.submitBundleReceiptUnlock($0) }
+        )
+    }
+
+    /// The sequencing seam tests cancellation without pretending to exercise biometrics.
+    @MainActor
+    static func performStandaloneUnlock<Authentication, Submission>(
+        requireCurrent: () throws -> Void,
+        authenticate: () async throws -> Authentication,
+        produce: (Authentication) throws -> Submission,
+        submit: (Submission) async throws -> Void
+    ) async throws {
+        try requireCurrent()
+        let authentication = try await authenticate()
+        try requireCurrent()
+        let submission = try produce(authentication)
+        try requireCurrent()
+        try await submit(submission)
+    }
+
     @MainActor
     func provisionBundleReceipt(
         _ presentation: SiteRootBundleReceiptProvisionPresentationV1,

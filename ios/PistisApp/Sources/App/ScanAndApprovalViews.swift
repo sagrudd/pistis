@@ -93,6 +93,7 @@ enum MonasJSONScanRoute: Equatable {
             || text.contains(SiteRootConvergenceProfileV2.x509BrokerProvisionSchema)
             || text.contains(SiteRootConvergenceProfileV2.x509ProvisionSchema)
             || text.contains(SiteRootConvergenceProfileV2.provisionSchema)
+            || text.contains(SiteRootBundleReceiptUnlockDescriptorV1.schema)
             || text.contains(SiteRootConvergenceProfileV2.ackSchema)
         {
             return .siteRootConvergence
@@ -112,6 +113,7 @@ private struct FirstDeviceScanRequest: Identifiable {
 }
 
 struct ScanView: View {
+    @Environment(\.scenePhase) private var scenePhase
     @StateObject private var ceremony = ProductionCeremonyCoordinator()
     @StateObject private var siteRootCeremony: SiteRootDelegationCoordinator
     @StateObject private var mtgsRecovery: MTGSRecoveryCoordinator
@@ -321,7 +323,13 @@ struct ScanView: View {
             readiness = await PasswordlessReadinessProbe.current()
         }
         .onAppear { startScanning() }
-        .onDisappear { stopScanning() }
+        .onDisappear {
+            stopScanning()
+            siteRootConvergence.cancelStandaloneUnlock()
+        }
+        .onChange(of: scenePhase) { _, phase in
+            if phase == .background { siteRootConvergence.cancelStandaloneUnlock() }
+        }
         .onChange(of: ceremony.phase) { _, phase in
             guard case let .terminal(status) = phase,
                   status.state == .completed
@@ -441,6 +449,15 @@ struct ScanView: View {
                     }
                     return
                 case .siteRootConvergence:
+                    if payload.text.contains(SiteRootBundleReceiptUnlockDescriptorV1.schema) {
+                        Task {
+                            await siteRootConvergence.acceptStandaloneUnlock(qrText: payload.text)
+                            if case let .failed(failure) = siteRootConvergence.phase {
+                                scanFailure = failure
+                            }
+                        }
+                        return
+                    }
                     siteRootConvergence.accept(qrText: payload.text)
                     if case let .failed(failure) = siteRootConvergence.phase {
                         scanFailure = failure
@@ -498,6 +515,7 @@ struct ScanView: View {
     }
 
     private func startScanning() {
+        siteRootConvergence.cancelStandaloneUnlock()
         ceremony.reset()
         scanFailure = nil
         scanning = true

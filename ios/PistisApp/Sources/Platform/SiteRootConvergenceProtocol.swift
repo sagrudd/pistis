@@ -1,5 +1,22 @@
 import Foundation
 
+/// Monas site_root_bundle_receipt_unlock_relay.rs: routing only, never authority.
+struct SiteRootBundleReceiptUnlockDescriptorV1 {
+    static let schema = "monas.site-root-bundle-receipt-unlock-qr.v1"
+    static let presentationPath = "/v1/pistis/site-root-bundle-receipt-unlock/presentation"
+
+    init(qrText: String) throws {
+        let object = try SiteRootConvergenceEncoding.object(qrText, maximumBytes: 1_024)
+        guard Set(object.keys) == ["schema", "purpose", "role", "presentation_path"],
+              SiteRootConvergenceEncoding.string(object, "schema") == Self.schema,
+              SiteRootConvergenceEncoding.string(object, "purpose")
+                == SiteRootBundleReceiptRewrapV1.purpose,
+              SiteRootConvergenceEncoding.string(object, "role") == "site-root-bundle-receipt",
+              SiteRootConvergenceEncoding.string(object, "presentation_path") == Self.presentationPath
+        else { throw PlatformFailure.qrPayloadUnsupported }
+    }
+}
+
 enum SiteRootConvergenceProfileV2 {
     static let provisionSchema = "monas.site-root-bundle-receipt-provision-presentation.v1"
     static let provisionSubmissionSchema =

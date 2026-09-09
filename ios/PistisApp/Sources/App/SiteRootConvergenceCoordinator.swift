@@ -3,6 +3,7 @@ import Foundation
 struct SiteRootConvergenceReview: Equatable, Identifiable {
     enum Kind: Equatable {
         case bundleReceiptProvision(generation: UInt64)
+        case bundleReceiptUnlock(generation: String)
         case siteX509Provision(generation: UInt64)
         case acknowledgement(action: UnsignedSiteRootConvergenceAssertionV2.Action,
                              rootGeneration: UInt64, trustRevision: UInt64)
@@ -38,9 +39,12 @@ final class SiteRootConvergenceCoordinator: ObservableObject {
     private let brokerService: SiteRootConvergenceServiceV2?
     private let authorityOrigin: URL?
     private var pending: Pending?
+    private var operationID = UUID()
+    private var standaloneUnlock = false
 
     private enum Pending {
         case provision(SiteRootBundleReceiptProvisionPresentationV1)
+        case unlock(IphoneMediatedCustodyRewrapPresentationV1)
         case siteX509(SiteX509FirstProvisionPresentationV1)
         case siteX509Broker(SiteX509FirstProvisionBrokerPresentationV1)
         case siteX509ContinuationRecovery(SiteX509ContinuationRecoveryPresentationV1)
@@ -175,14 +179,50 @@ final class SiteRootConvergenceCoordinator: ObservableObject {
         }
     }
 
+    func acceptStandaloneUnlock(qrText: String) async {
+        guard phase == .idle else { return }
+        let operation = operationID
+        standaloneUnlock = true
+        phase = .unlockingBundleReceipt
+        do {
+            _ = try SiteRootBundleReceiptUnlockDescriptorV1(qrText: qrText)
+            guard let service else { throw PlatformFailure.siteRootAuthorityUnavailable }
+            let value = try await service.fetchStandaloneBundleReceiptUnlock()
+            guard operationID == operation, !Task.isCancelled else { return }
+            let review = SiteRootConvergenceReview(
+                site: value.siteTrustDomain,
+                expiresAt: Date(timeIntervalSince1970: TimeInterval(value.expiresAtUnixSeconds)),
+                kind: .bundleReceiptUnlock(generation: value.keyGeneration)
+            )
+            pending = .unlock(value)
+            presentedReview = review
+            phase = .review(review)
+        } catch {
+            guard operationID == operation else { return }
+            phase = .failed((error as? PlatformFailure) ?? .siteRootAuthorityUnavailable)
+        }
+    }
+
+    func cancelStandaloneUnlock() {
+        if standaloneUnlock { reset() }
+    }
+
     func approve() async {
         guard case .review = phase, let pending,
               let service = selectedService(for: pending)
         else { return }
+        let operation = operationID
         phase = .authenticating
         do {
             let completedBrokeredSiteX509: Bool
             switch pending {
+            case let .unlock(value):
+                try await service.unlockBundleReceipt(value) {
+                    guard self.operationID == operation, !Task.isCancelled else {
+                        throw PlatformFailure.custodyRewrapUnavailable
+                    }
+                }
+                completedBrokeredSiteX509 = false
             case let .provision(value):
                 try await service.provisionBundleReceipt(value) {
                     self.phase = .unlockingBundleReceipt
@@ -212,18 +252,23 @@ final class SiteRootConvergenceCoordinator: ObservableObject {
                 try? SiteRootInstallationRepository.shared
                     .recordBrokeredSiteX509Completed()
             }
+            guard operationID == operation else { return }
             self.pending = nil
             phase = .completed
         } catch let failure as PlatformFailure {
+            guard operationID == operation else { return }
             self.pending = nil
             phase = .failed(failure)
         } catch {
+            guard operationID == operation else { return }
             self.pending = nil
             phase = .failed(.siteRootAuthorityUnavailable)
         }
     }
 
     func reset() {
+        operationID = UUID()
+        standaloneUnlock = false
         pending = nil
         presentedReview = nil
         phase = .idle

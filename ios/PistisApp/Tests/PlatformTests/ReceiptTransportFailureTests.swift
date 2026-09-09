@@ -5,6 +5,59 @@ import XCTest
 final class ReceiptTransportFailureTests: XCTestCase {
     private let endpoint = URL(string: "https://receipt.example.test:8443/presentation")!
 
+    func testActualSubmissionConformsToInstalledMonasHTTPContract() async throws {
+        var root = URL(fileURLWithPath: #filePath)
+        for _ in 0 ..< 5 { root.deleteLastPathComponent() }
+        let contract = try JSONDecoder().decode(ReceiptHTTPContract.self, from:
+            Data(contentsOf: root.appendingPathComponent("fixtures/receipt-http-v1/contract.json")))
+        XCTAssertEqual(contract.sourceRevision, "03f7877440581b41d83e333fbadb52a1d8c3f020")
+        XCTAssertEqual(contract.fields.count, 9)
+        ReceiptTestURLProtocol.capture.reset(contract: contract)
+        defer { ReceiptTestURLProtocol.capture.reset() }
+        let configuration = URLSessionConfiguration.ephemeral
+        configuration.protocolClasses = [ReceiptTestURLProtocol.self]
+        let transport = try MonasSiteRootConvergenceTransport(
+            authorityOrigin: URL(string: "https://receipt.example.test:8443")!,
+            trustPolicy: .bootstrapLeafSPKI(Data(repeating: 1, count: 32)),
+            configuration: configuration
+        )
+        let submission = IphoneMediatedCustodyRewrapSubmissionV1(
+            correlation: Data(repeating: 1, count: 16), canonicalPayload: Data([1]),
+            deviceKeyID: "synthetic", delegationSerial: "synthetic", siteTrustDomain: "synthetic",
+            purpose: SiteRootBundleReceiptRewrapV1.purpose, coseSign1: Data([1]), rewrappedCiphertext: Data([1])
+        )
+        // This is the real request producer, not a hand-written request fixture.
+        try await transport.submitBundleReceiptUnlock(submission)
+        let requests = ReceiptTestURLProtocol.capture.requests()
+        XCTAssertEqual(requests.count, 1)
+        let sent = try XCTUnwrap(requests.first)
+        XCTAssertEqual(sent.httpMethod, "POST")
+        XCTAssertEqual(sent.url?.absoluteString,
+                       "https://receipt.example.test:8443/v1/pistis/site-root-bundle-receipt-unlock/submit")
+        XCTAssertEqual(sent.value(forHTTPHeaderField: "Content-Type"), contract.contentType)
+        let body = try XCTUnwrap(sent.httpBody)
+        let fields = try JSONDecoder().decode([String: String].self, from: body)
+        XCTAssertEqual(Set(fields.keys), Set(contract.fields))
+        XCTAssertEqual(fields["schema"], contract.schema)
+
+        // Replay only synthetic captured test bytes through the isolated adapter.
+        // The old header cannot reach synthetic acceptance; no live proof exists.
+        let session = URLSession(configuration: configuration)
+        var old = sent
+        old.setValue("application/json; charset=utf-8", forHTTPHeaderField: "Content-Type")
+        let (_, rejected) = try await session.data(for: old)
+        XCTAssertEqual((rejected as? HTTPURLResponse)?.statusCode, 400)
+        for extra in [false, true] {
+            var changed = fields
+            if extra { changed["unknown"] = "synthetic" }
+            else { changed.removeValue(forKey: "schema") }
+            var invalid = sent
+            invalid.httpBody = try JSONEncoder().encode(changed)
+            let (_, response) = try await session.data(for: invalid)
+            XCTAssertEqual((response as? HTTPURLResponse)?.statusCode, 400)
+        }
+    }
+
     func testKnownNetworkCategoriesAndUnknownDetailsAreNeverRendered() {
         let cases: [(URLError.Code, SiteRootReceiptTransportFailure.Reason)] = [
             (.cancelled, .cancelled), (.timedOut, .timeout),
@@ -139,19 +192,67 @@ private final class ReceiptTestURLProtocol: URLProtocol, @unchecked Sendable {
     final class Capture: @unchecked Sendable {
         private let lock = NSLock()
         private var values: [URLRequest] = []
-        func reset() { lock.lock(); defer { lock.unlock() }; values = [] }
-        func append(_ request: URLRequest) { lock.lock(); defer { lock.unlock() }; values.append(request) }
+        private var contract: ReceiptHTTPContract?
+        func reset(contract: ReceiptHTTPContract? = nil) {
+            lock.lock(); defer { lock.unlock() }; values = []; self.contract = contract
+        }
+        func status(for request: URLRequest) -> Int {
+            lock.lock(); defer { lock.unlock() }
+            values.append(request)
+            guard let contract else { return 503 }
+            guard request.value(forHTTPHeaderField: "Content-Type") == contract.contentType,
+                  let body = request.httpBody,
+                  let values = try? JSONDecoder().decode([String: String].self, from: body),
+                  Set(values.keys) == Set(contract.fields)
+            else { return 400 }
+            return values["schema"] == contract.schema ? 202 : 403
+        }
         func requests() -> [URLRequest] { lock.lock(); defer { lock.unlock() }; return values }
     }
     static let capture = Capture()
     override class func canInit(with request: URLRequest) -> Bool { true }
     override class func canonicalRequest(for request: URLRequest) -> URLRequest { request }
     override func startLoading() {
-        Self.capture.append(request)
-        let response = HTTPURLResponse(url: request.url!, statusCode: 503, httpVersion: nil,
+        // URLSession may hand URLProtocol the unchanged upload bytes as a
+        // stream rather than httpBody. Read only that bounded synthetic input;
+        // never fabricate a body to make the admission adapter succeed.
+        var captured = request
+        if captured.httpBody == nil, let stream = request.httpBodyStream {
+            let body = Self.readBody(stream)
+            captured.httpBodyStream = nil
+            captured.httpBody = body
+        }
+        let status = Self.capture.status(for: captured)
+        let response = HTTPURLResponse(url: request.url!, statusCode: status, httpVersion: nil,
                                        headerFields: ["Cache-Control": "no-store"])!
         client?.urlProtocol(self, didReceive: response, cacheStoragePolicy: .notAllowed)
         client?.urlProtocolDidFinishLoading(self)
     }
     override func stopLoading() {}
+
+    private static func readBody(_ stream: InputStream) -> Data? {
+        stream.open()
+        defer { stream.close() }
+        var data = Data()
+        var buffer = [UInt8](repeating: 0, count: 4_096)
+        while true {
+            let count = stream.read(&buffer, maxLength: buffer.count)
+            if count < 0 { return nil }
+            if count == 0 { return data }
+            data.append(contentsOf: buffer.prefix(count))
+            if data.count > 16_384 { return nil }
+        }
+    }
+}
+
+private struct ReceiptHTTPContract: Decodable {
+    let sourceRevision: String
+    let contentType: String
+    let schema: String
+    let fields: [String]
+    enum CodingKeys: String, CodingKey {
+        case sourceRevision = "source_revision"
+        case contentType = "content_type"
+        case schema, fields
+    }
 }

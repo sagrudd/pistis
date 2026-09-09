@@ -715,7 +715,7 @@ struct MonasSiteRootConvergenceTransport: MonasSiteRootConvergenceSubmitting, Se
         request.httpMethod = "POST"
         request.timeoutInterval = 15
         request.httpBody = body
-        request.setValue("application/json; charset=utf-8", forHTTPHeaderField: "Content-Type")
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.setValue("application/json", forHTTPHeaderField: "Accept")
         request.setValue("no-store", forHTTPHeaderField: "Cache-Control")
         _ = try await receiptResponse(request, endpoint: endpoint, operation: .submission)

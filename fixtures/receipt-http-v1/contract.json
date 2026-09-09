@@ -1,0 +1,19 @@
+{
+  "repository": "sagrudd/monas",
+  "source_revision": "03f7877440581b41d83e333fbadb52a1d8c3f020",
+  "source_path": "crates/monas-server/src/site_root_bundle_receipt_unlock_relay.rs",
+  "source_sha256": "d0a797a76de2ce163a4c5e2a236ddbb3ccaaa20990df61355fcd84dc37e1c9f0",
+  "content_type": "application/json",
+  "schema": "monas.retained-iphone-custody-rewrap-submission.v1",
+  "fields": [
+    "schema",
+    "correlation_b64url",
+    "canonical_challenge_b64url",
+    "device_key_id",
+    "delegation_serial",
+    "site_trust_domain",
+    "purpose",
+    "detached_cose_sign1_b64url",
+    "rewrapped_ciphertext_b64url"
+  ]
+}

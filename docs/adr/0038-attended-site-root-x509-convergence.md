@@ -315,3 +315,25 @@ may have reached the authority, so it must not claim that no proof was sent
 or invite automatic replay. HTTP acknowledgement remains distinct from local
 approval and server custody completion. This clarification is accepted after
 owner review, before its diagnostic implementation.
+
+### Receipt POST media-type compatibility correction
+
+Owner-authorised compatible correction, 2026-09-09, issue #516; prospective
+iOS **0.25.6+65**, linked Kanon #339. Monas 0.124.9 canonical
+`03f7877440581b41d83e333fbadb52a1d8c3f020` accepts only the exact receipt POST
+Content-Type `application/json`. Pistis currently adds `; charset=utf-8` and
+therefore receives HTTP400 before JSON decoding, pending-state consumption or
+custody submission. Send the exact existing server media type on this one
+receipt endpoint. No server parser relaxation, body/schema change, alternate
+route, trust change, proof replay or approval-protocol change is introduced.
+The next genuine phone operation still requires its existing fresh approval.
+
+Retain the exact canonical server header/body contract as a source-referenced
+fixture. Capture the actual Swift submission request and pass it through a
+synthetic server-predicate adapter: the current header/body must reach202;
+the old charset-bearing header must reach400, never acceptance. Assert all
+nine string fields and the schema. This adapter models only the HTTP admission
+boundary, not real server custody verification or physical success. Existing
+Face ID, cryptographic fixtures, fixed TLS, lifetime, cancellation and uncertain
+submission diagnostics remain unchanged. Any later device update requires the
+existing same-identity approved archive/export gates; never uninstall or reset.

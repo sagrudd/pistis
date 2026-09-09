@@ -10,6 +10,8 @@ enum IphoneMediatedCustodyRewrapPurposeV1 {
 
 enum SiteRootBundleReceiptRewrapV1 {
     static let purpose = "thesaurophylax.site-root-bundle-receipt-rewrap.v1"
+    // Existing provisioned ciphertext domain, distinct from the proof purpose.
+    static let wrapAADDomain = "site-root-bundle-receipt"
     static let challengeSchema = Data(
         "thesaurophylax.site-root-bundle-receipt-rewrap.v1\0".utf8
     )
@@ -421,7 +423,7 @@ final class SecureEnclaveSiteRootBundleReceiptRewrapProducerV1: @unchecked Senda
     ) -> Data {
         var material = Data()
         for value in [
-            Data(SiteRootBundleReceiptRewrapV1.purpose.utf8),
+            Data(SiteRootBundleReceiptRewrapV1.wrapAADDomain.utf8),
             Data(presentation.siteTrustDomain.utf8), Data(presentation.keyGeneration.utf8),
             Data(presentation.deviceKeyID.utf8), host,
         ] {

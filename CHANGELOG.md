@@ -1,5 +1,12 @@
 # Changelog
 
+- Refresh the selected authenticated Site Root transport on foreground entry,
+  invalidate unavailable or changed bindings, and prevent late loads restoring
+  stale authority. Receipt unlock distinguishes local binding, presentation
+  and uncertain submission failures using closed non-sensitive diagnostics;
+  no retry, trust fallback or key change is introduced (iOS 0.25.5+64, #514;
+  Kanon339). The lifecycle regression is not proof of the physical failure's cause.
+
 - Restore the receipt ciphertext's existing fixed wrapping domain for both
   retained-record opening and fresh rewrap, independently of its unchanged
   external proof purpose. No fallback, key replacement or provisioning replay

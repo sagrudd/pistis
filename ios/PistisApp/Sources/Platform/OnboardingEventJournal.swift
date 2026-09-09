@@ -562,7 +562,9 @@ extension PlatformFailure {
              .siteRootGenesisDelegationConsumed,
              .siteRootGenesisCompletionRejected:
             .authorityRejected
-        case .siteRootAuthorityUnavailable, .siteRootGenesisDelegationUnavailable,
+        case .siteRootAuthorityUnavailable, .siteRootBindingUnavailable,
+             .siteRootReceiptTransport, .siteRootReceiptSubmissionInvalid,
+             .siteRootGenesisDelegationUnavailable,
              .siteRootGenesisTransportUnavailable, .custodyRewrapUnavailable,
              .authenticationTransportUnavailable:
             .authorityUnavailable

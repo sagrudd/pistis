@@ -5,6 +5,93 @@ import XCTest
 @testable import Pistis
 
 final class PlatformPolicyTests: XCTestCase {
+    @MainActor
+    func testForegroundReloadsAuthorityAfterInitialProtectedStorageFailure() async throws {
+        let output = try enrollmentOutput(marker: 0x41)
+        var reads = 0
+        let store = SiteRootTransportStore(loadEnrollment: {
+            reads += 1
+            if reads == 1 { throw PlatformFailure.invalidConfiguration }
+            return output
+        })
+        await store.refresh()
+        XCTAssertFalse(store.transport is MonasSiteRootDelegationTransport)
+        await store.scenePhaseChanged(.active)
+        XCTAssertEqual(reads, 2)
+        XCTAssertTrue(store.transport is MonasSiteRootDelegationTransport)
+        XCTAssertEqual(store.transport.genesisAuthorityOrigin?.absoluteString, output.httpsOrigin)
+    }
+
+    @MainActor
+    func testBindingRefreshPreservesIdenticalSelectionButInvalidatesChangedIdentity() async throws {
+        var output = try enrollmentOutput(marker: 0x41)
+        let store = SiteRootTransportStore(loadEnrollment: { output })
+        await store.refresh()
+        XCTAssertEqual(store.revision, 1)
+        await store.scenePhaseChanged(.active)
+        XCTAssertEqual(store.revision, 1)
+        // Same origin and TLS pin, but a different authenticated installation.
+        output = try enrollmentOutput(marker: 0x42)
+        await store.refresh()
+        XCTAssertEqual(store.revision, 2)
+    }
+
+    @MainActor
+    func testMissingFailedAndInvalidBindingCannotRetainSelectedAuthority() async throws {
+        let valid = try enrollmentOutput(marker: 0x41)
+        let invalid = try AuthenticatedEnrollmentOutput(
+            trust: valid.trust, responseContext: valid.responseContext,
+            allowedHosts: ["different.example.test"], httpsOrigin: valid.httpsOrigin,
+            tlsSPKISHA256: valid.tlsSPKISHA256
+        )
+        for denied in [Result<AuthenticatedEnrollmentOutput?, Error>.success(nil),
+                       .failure(PlatformFailure.invalidConfiguration), .success(invalid)] {
+            var result: Result<AuthenticatedEnrollmentOutput?, Error> = .success(valid)
+            let store = SiteRootTransportStore(loadEnrollment: { try result.get() })
+            await store.refresh()
+            XCTAssertTrue(store.transport is MonasSiteRootDelegationTransport)
+            result = denied
+            await store.refresh()
+            XCTAssertFalse(store.transport is MonasSiteRootDelegationTransport)
+            XCTAssertEqual(store.revision, 2)
+            await store.refresh()
+            XCTAssertEqual(store.revision, 2)
+        }
+    }
+
+    @MainActor
+    func testLateBindingLoadCannotUndoNewerMissingSelectionOrBackground() async throws {
+        let output = try enrollmentOutput(marker: 0x41)
+        for background in [false, true] {
+            var pending: CheckedContinuation<AuthenticatedEnrollmentOutput?, Never>?
+            var reads = 0
+            let store = SiteRootTransportStore(loadEnrollment: {
+                reads += 1
+                if reads == 1 {
+                    return await withCheckedContinuation { pending = $0 }
+                }
+                return nil
+            })
+            let first = Task { await store.refresh() }
+            while pending == nil { await Task.yield() }
+            if background { await store.scenePhaseChanged(.background) }
+            else { await store.refresh() }
+            pending?.resume(returning: output)
+            await first.value
+            XCTAssertFalse(store.transport is MonasSiteRootDelegationTransport)
+            XCTAssertEqual(store.revision, 0)
+        }
+    }
+
+    func testForegroundBindingRefreshIsConnectedToAppLifecycle() throws {
+        let root = URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent().deletingLastPathComponent()
+            .deletingLastPathComponent()
+        let source = try String(contentsOf: root.appendingPathComponent("Sources/App/PistisApp.swift"), encoding: .utf8)
+        XCTAssertTrue(source.contains(".onChange(of: scenePhase)"))
+        XCTAssertTrue(source.contains("await siteRootTransportStore.scenePhaseChanged(phase)"))
+    }
+
     func testScannerAcceptsEveryAttendedFirstInstallQRFamily() {
         let compatibility = QRPayloadProfile.pistisAuthenticationOrMonasSiteRoot
 
@@ -401,6 +488,10 @@ final class PlatformPolicyTests: XCTestCase {
         )
         XCTAssertTrue(transport.isConfiguredAuthorityHost("192.168.0.193"))
         XCTAssertFalse(transport.isConfiguredAuthorityHost("192.168.1.192"))
+        // Receipt transport must not silently select the broker or another
+        // default origin instead of the same authenticated native authority.
+        XCTAssertEqual(try transport.siteRootConvergenceTransport().authorityOrigin,
+                       transport.genesisAuthorityOrigin)
     }
 
     func testVerifiedEnrollmentRejectsAnOriginOutsideItsSignedHostAllowList() throws {

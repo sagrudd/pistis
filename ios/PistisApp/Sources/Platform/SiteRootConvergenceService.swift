@@ -445,11 +445,13 @@ struct MonasSiteRootConvergenceTransport: MonasSiteRootConvergenceSubmitting, Se
         )
     }
 
-    init(authorityOrigin: URL, trustPolicy: MonasServerTrustPolicy) throws {
+    init(
+        authorityOrigin: URL, trustPolicy: MonasServerTrustPolicy,
+        configuration: URLSessionConfiguration = .ephemeral
+    ) throws {
         guard authorityOrigin.scheme == "https", authorityOrigin.host != nil
         else { throw PlatformFailure.invalidConfiguration }
         self.authorityOrigin = authorityOrigin
-        let configuration = URLSessionConfiguration.ephemeral
         configuration.httpShouldSetCookies = false
         configuration.urlCache = nil
         configuration.requestCachePolicy = .reloadIgnoringLocalCacheData
@@ -687,8 +689,7 @@ struct MonasSiteRootConvergenceTransport: MonasSiteRootConvergenceSubmitting, Se
         request.timeoutInterval = 15
         request.setValue("application/json", forHTTPHeaderField: "Accept")
         request.setValue("no-store", forHTTPHeaderField: "Cache-Control")
-        let data = try await response(request, endpoint: endpoint, maximum: 16_384)
-        guard !data.isEmpty else { throw PlatformFailure.siteRootAuthorityUnavailable }
+        let data = try await receiptResponse(request, endpoint: endpoint, operation: .presentation)
         return try MonasRetainedCustodyPresentationResponseV1(
             data: data,
             nowUnixSeconds: nowUnixSeconds,
@@ -701,7 +702,7 @@ struct MonasSiteRootConvergenceTransport: MonasSiteRootConvergenceSubmitting, Se
         _ submission: IphoneMediatedCustodyRewrapSubmissionV1
     ) async throws {
         guard submission.purpose == SiteRootBundleReceiptRewrapV1.purpose else {
-            throw PlatformFailure.siteRootAuthorityUnavailable
+            throw PlatformFailure.siteRootReceiptSubmissionInvalid
         }
         let endpoint = try fixedEndpoint(
             "/v1/pistis/site-root-bundle-receipt-unlock/submit"
@@ -717,15 +718,21 @@ struct MonasSiteRootConvergenceTransport: MonasSiteRootConvergenceSubmitting, Se
         request.setValue("application/json; charset=utf-8", forHTTPHeaderField: "Content-Type")
         request.setValue("application/json", forHTTPHeaderField: "Accept")
         request.setValue("no-store", forHTTPHeaderField: "Cache-Control")
-        do {
-            let (data, rawResponse) = try await session.data(for: request)
-            guard let http = rawResponse as? HTTPURLResponse, http.url == endpoint,
-                  http.statusCode == 202, data.isEmpty,
-                  http.value(forHTTPHeaderField: "Cache-Control")?
-                    .lowercased().contains("no-store") == true
-            else { throw PlatformFailure.siteRootAuthorityUnavailable }
-        } catch let failure as PlatformFailure { throw failure }
-        catch { throw PlatformFailure.siteRootAuthorityUnavailable }
+        _ = try await receiptResponse(request, endpoint: endpoint, operation: .submission)
+    }
+
+    private func receiptResponse(
+        _ request: URLRequest, endpoint: URL, operation: SiteRootReceiptTransportFailure.Operation
+    ) async throws -> Data {
+        let result: (Data, URLResponse)
+        do { result = try await session.data(for: request) }
+        catch {
+            throw PlatformFailure.siteRootReceiptTransport(.network(error, operation: operation))
+        }
+        try SiteRootReceiptTransportFailure.validate(
+            data: result.0, response: result.1, endpoint: endpoint, operation: operation
+        )
+        return result.0
     }
 
     private func postJSON(
@@ -875,13 +882,21 @@ enum SiteRootBundleReceiptUnlockReadiness {
             do {
                 return try await fetch()
             } catch let failure as PlatformFailure
-                where failure == .siteRootAuthorityUnavailable
+                where retryablePresentationFailure(failure)
             {
                 guard attempt < maximumAttempts else { throw failure }
                 try await pause()
             }
         }
         throw PlatformFailure.siteRootAuthorityUnavailable
+    }
+
+    static func retryablePresentationFailure(_ failure: PlatformFailure) -> Bool {
+        if failure == .siteRootAuthorityUnavailable { return true }
+        if case let .siteRootReceiptTransport(value) = failure {
+            return value.operation == .presentation
+        }
+        return false
     }
 }
 

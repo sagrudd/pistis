@@ -196,7 +196,9 @@ struct ScanView: View {
         _siteRootConvergence = StateObject(wrappedValue: SiteRootConvergenceCoordinator(
             transport: convergenceTransport,
             brokerTransport: brokerConvergenceTransport,
-            authorityOrigin: convergenceAuthorityOrigin
+            authorityOrigin: convergenceAuthorityOrigin,
+            standaloneUnlockAvailable: siteRootTransport is MonasSiteRootDelegationTransport
+                && convergenceTransport != nil
         ))
         _siteOriginRelocation = StateObject(wrappedValue: SiteOriginRelocationCoordinator(
             authorityTransport: siteRootTransport as? MonasSiteRootDelegationTransport

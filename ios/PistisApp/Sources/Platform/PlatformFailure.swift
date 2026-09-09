@@ -3,6 +3,9 @@ import Foundation
 /// Non-sensitive failures exposed by platform adapters.
 enum PlatformFailure: Error, Equatable, Sendable {
     case invalidConfiguration
+    case siteRootBindingUnavailable
+    case siteRootReceiptTransport(SiteRootReceiptTransportFailure)
+    case siteRootReceiptSubmissionInvalid
     case secureHardwareUnavailable
     case keyCreationFailed
     case keyNotFound
@@ -148,6 +151,12 @@ extension PlatformFailure {
             "The signed enrolment response verified, but Pistis could not retain it securely on this iPhone."
         case .siteRootAuthorityUnavailable:
             "The Monas Site Root authority is unavailable. No proof was submitted."
+        case .siteRootBindingUnavailable:
+            "The selected installation's protected authority binding is unavailable on this iPhone. No request or proof was sent."
+        case let .siteRootReceiptTransport(failure):
+            failure.message
+        case .siteRootReceiptSubmissionInvalid:
+            "Receipt submission was rejected locally before sending. No proof was sent."
         case .siteRootGenesisRegistrationRejected:
             "Monas rejected this first-device registration. Return to the install window and request a newly issued QR. No proof was submitted."
         case .siteRootGenesisDelegationUnavailable:

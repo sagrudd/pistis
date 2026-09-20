@@ -426,9 +426,14 @@ the terminal deliberately pauses at the distinct authority-custody gate. In
 Pistis open **Installations**, select this setup installation and tap
 **Continue authority recovery**, or **Verify custody and continue** if the
 phone has already retained the completed custody phase. Both actions first
-check the live signer and perform the same retained recovery when required.
-Approve the fresh App Attest assertion and Face ID request. This step has no QR.
-Keep the command attached until it prints both:
+check the live signer and perform the same retained recovery only when the
+server reports that a new attended ceremony is required. Approve the fresh App
+Attest assertion and Face ID request only in that case. A retained terminal
+`completed` custody status means that the attended custody completion was
+already accepted but authority activation is still being confirmed: keep the
+command attached and wait for normal readiness. Do not fetch another App
+Attest challenge or repeat Face ID. This step has no QR. Keep the command
+attached until it prints both:
 
 ```text
 Monas first-install checkpoint: attended authority custody complete.

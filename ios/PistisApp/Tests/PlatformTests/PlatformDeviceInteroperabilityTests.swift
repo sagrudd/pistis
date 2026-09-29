@@ -2,169 +2,158 @@ import Foundation
 import LocalAuthentication
 import Security
 import XCTest
-
 @testable import Pistis
 
 final class PlatformDeviceInteroperabilityTests: XCTestCase {
-  func testPinnedSigningInputFixtureIsUsable() throws {
-    let harness = try DeviceInteroperabilityHarness.fixture(from: Bundle(for: Self.self))
-    XCTAssertEqual(harness.signatureStructure.count, 320)
-  }
+    func testPinnedSigningInputFixtureIsUsable() throws {
+        let harness = try DeviceInteroperabilityHarness.fixture(from: Bundle(for: Self.self))
+        XCTAssertEqual(harness.signatureStructure.count, 320)
+    }
 
-  func testRecordDerivesKeyIDAndRejectsHighS() throws {
-    let publicKey = DevicePublicKey(
-      compressedSEC1: Data([
-        0x03, 0x6b, 0x17, 0xd1, 0xf2, 0xe1, 0x2c, 0x42,
-        0x47, 0xf8, 0xbc, 0xe6, 0xe5, 0x63, 0xa4, 0x40,
-        0xf2, 0x77, 0x03, 0x7d, 0x81, 0x2d, 0xeb, 0x33,
-        0xa0, 0xf4, 0xa1, 0x39, 0x45, 0xd8, 0x98, 0xc2,
-        0x96,
-      ]),
-      assurance: .secureEnclaveFaceIDCurrentSet
-    )
-    let signature = Data(
-      [1] + Array(repeating: 0, count: 31)
-        + Array(repeating: 0, count: 31) + [1])
-    let record = try DeviceInteroperabilityRecord(
-      publicKey: publicKey,
-      signatureStructure: Data([0xa0]),
-      rawES256Signature: signature
-    )
+    func testRecordDerivesKeyIDAndRejectsHighS() throws {
+        let publicKey = DevicePublicKey(
+            compressedSEC1: Data([
+                0x03, 0x6b, 0x17, 0xd1, 0xf2, 0xe1, 0x2c, 0x42,
+                0x47, 0xf8, 0xbc, 0xe6, 0xe5, 0x63, 0xa4, 0x40,
+                0xf2, 0x77, 0x03, 0x7d, 0x81, 0x2d, 0xeb, 0x33,
+                0xa0, 0xf4, 0xa1, 0x39, 0x45, 0xd8, 0x98, 0xc2,
+                0x96,
+            ]),
+            assurance: .secureEnclaveFaceIDCurrentSet
+        )
+        let signature = Data([1] + Array(repeating: 0, count: 31)
+            + Array(repeating: 0, count: 31) + [1])
+        let record = try DeviceInteroperabilityRecord(
+            publicKey: publicKey,
+            signatureStructure: Data([0xa0]),
+            rawES256Signature: signature
+        )
 
-    XCTAssertEqual(
-      record.keyIDHex,
-      "7ad63df38de8c402c7259db7bbc1b97b6890ffaa0a4adf78bc2b873efcabbf8d"
-    )
-    XCTAssertEqual(record.signatureStructureSHA256Hex.count, 64)
-    XCTAssertEqual(
-      record.rawES256SignatureHex, signature.map { String(format: "%02x", $0) }.joined())
+        XCTAssertEqual(
+            record.keyIDHex,
+            "7ad63df38de8c402c7259db7bbc1b97b6890ffaa0a4adf78bc2b873efcabbf8d"
+        )
+        XCTAssertEqual(record.signatureStructureSHA256Hex.count, 64)
+        XCTAssertEqual(record.rawES256SignatureHex, signature.map { String(format: "%02x", $0) }.joined())
 
-    var highS = signature
-    highS.replaceSubrange(32..<64, with: Data(repeating: 0xff, count: 32))
-    XCTAssertThrowsError(
-      try DeviceInteroperabilityRecord(
-        publicKey: publicKey,
-        signatureStructure: Data([0xa0]),
-        rawES256Signature: highS
-      )
-    )
-  }
+        var highS = signature
+        highS.replaceSubrange(32 ..< 64, with: Data(repeating: 0xff, count: 32))
+        XCTAssertThrowsError(
+            try DeviceInteroperabilityRecord(
+                publicKey: publicKey,
+                signatureStructure: Data([0xa0]),
+                rawES256Signature: highS
+            )
+        )
+    }
 
-  func testPhysicalCeremonyRequiresFaceIDRatherThanGenericBiometrics() {
-    XCTAssertTrue(SecureEnclaveSigner.isFaceID(.faceID))
-    XCTAssertFalse(SecureEnclaveSigner.isFaceID(.touchID))
-    XCTAssertFalse(SecureEnclaveSigner.isFaceID(.none))
-  }
+    func testPhysicalCeremonyRequiresFaceIDRatherThanGenericBiometrics() {
+        XCTAssertTrue(SecureEnclaveSigner.isFaceID(.faceID))
+        XCTAssertFalse(SecureEnclaveSigner.isFaceID(.touchID))
+        XCTAssertFalse(SecureEnclaveSigner.isFaceID(.none))
+    }
 
-  func testTaggedSoftwareKeyLookupRequiresSecureEnclaveToken() {
-    let query = SecureEnclaveSigner.keyLookupQuery(
-      applicationTag: Data("pistis-test-key".utf8),
-      authenticationContext: LAContext()
-    )
+    func testTaggedSoftwareKeyLookupRequiresSecureEnclaveToken() {
+        let query = SecureEnclaveSigner.keyLookupQuery(
+            applicationTag: Data("pistis-test-key".utf8),
+            authenticationContext: LAContext()
+        )
 
-    XCTAssertEqual(
-      query[kSecAttrTokenID] as? String,
-      kSecAttrTokenIDSecureEnclave as String
-    )
-  }
+        XCTAssertEqual(
+            query[kSecAttrTokenID] as? String,
+            kSecAttrTokenIDSecureEnclave as String
+        )
+    }
 
-  #if targetEnvironment(simulator)
+    #if targetEnvironment(simulator)
     func testPhysicalDeviceHarnessFailsClosedOnSimulator() throws {
-      let harness = try DeviceInteroperabilityHarness.fixture(from: Bundle(for: Self.self))
-      XCTAssertThrowsError(try harness.observe())
+        let harness = try DeviceInteroperabilityHarness.fixture(from: Bundle(for: Self.self))
+        XCTAssertThrowsError(try harness.observe())
     }
 
     func testDirectSigningFailsClosedOnSimulator() throws {
-      let signer = try SecureEnclaveSigner(
-        namespace: "simulator-direct-signing-guard",
-        authenticationReason: "Test simulator rejection."
-      )
-      XCTAssertThrowsError(try signer.sign(message: Data([0xa0]))) { error in
-        XCTAssertEqual(error as? PlatformFailure, .secureHardwareUnavailable)
-      }
-    }
-  #else
-    func testPhysicalDeviceAppAttestRegistrationPreparation() async throws {
-      guard ProcessInfo.processInfo.environment["PISTIS_RUN_PHYSICAL_APP_ATTEST"] == "1" else {
-        throw XCTSkip(
-          "Set PISTIS_RUN_PHYSICAL_APP_ATTEST=1 for the reviewed physical-device App Attest ceremony."
+        let signer = try SecureEnclaveSigner(
+            namespace: "simulator-direct-signing-guard",
+            authenticationReason: "Test simulator rejection."
         )
-      }
+        XCTAssertThrowsError(try signer.sign(message: Data([0xa0]))) { error in
+            XCTAssertEqual(error as? PlatformFailure, .secureHardwareUnavailable)
+        }
+    }
+    #else
+    func testPhysicalDeviceAppAttestRegistrationPreparation() async throws {
+        guard ProcessInfo.processInfo.environment["PISTIS_RUN_PHYSICAL_APP_ATTEST"] == "1" else {
+            throw XCTSkip("Set PISTIS_RUN_PHYSICAL_APP_ATTEST=1 for the reviewed physical-device App Attest ceremony.")
+        }
 
-      let client = AppleAppAttestClient(
-        keyIDStore: InMemoryAppleAppAttestKeyIDStore()
-      )
-      let prepared = try await client.prepareRegistration(
-        ceremonyID: "physical-device-app-attest-v1",
-        siteTrustDomain: "physical-device-evidence",
-        serverChallenge: Data(repeating: 0xa5, count: 32)
-      )
-      let envelope = prepared.envelope
+        let client = AppleAppAttestClient(
+            keyIDStore: InMemoryAppleAppAttestKeyIDStore()
+        )
+        let prepared = try await client.prepareRegistration(
+            ceremonyID: "physical-device-app-attest-v1",
+            siteTrustDomain: "physical-device-evidence",
+            serverChallenge: Data(repeating: 0xa5, count: 32)
+        )
+        let envelope = prepared.envelope
 
-      XCTAssertEqual(envelope.wireProtocol, "pistis.apple-app-attest-registration.v1")
-      XCTAssertEqual(envelope.appIdentifier, "C7A6NQTSY4.org.mnemosynebiosciences.pistis")
-      XCTAssertFalse(envelope.keyIDB64URL.isEmpty)
-      XCTAssertFalse(envelope.attestationObjectB64URL.isEmpty)
+        XCTAssertEqual(envelope.wireProtocol, "pistis.apple-app-attest-registration.v1")
+        XCTAssertEqual(envelope.appIdentifier, "C7A6NQTSY4.org.mnemosynebiosciences.pistis")
+        XCTAssertFalse(envelope.keyIDB64URL.isEmpty)
+        XCTAssertFalse(envelope.attestationObjectB64URL.isEmpty)
 
-      // Retain only a correlation-safe record; no attestation object, key ID,
-      // or challenge digest may enter XCTest output or repository evidence.
-      let attachment = XCTAttachment(string: envelope.redactedDiagnostic)
-      attachment.name = "pistis-app-attest-physical-device-redacted-observation.txt"
-      attachment.lifetime = .keepAlways
-      add(attachment)
+        // Retain only a correlation-safe record; no attestation object, key ID,
+        // or challenge digest may enter XCTest output or repository evidence.
+        let attachment = XCTAttachment(string: envelope.redactedDiagnostic)
+        attachment.name = "pistis-app-attest-physical-device-redacted-observation.txt"
+        attachment.lifetime = .keepAlways
+        add(attachment)
     }
 
     func testPhysicalDeviceInteroperabilityCeremony() throws {
-      guard ProcessInfo.processInfo.environment["PISTIS_RUN_PHYSICAL_INTEROPERABILITY"] == "1"
-      else {
-        throw XCTSkip(
-          "Set PISTIS_RUN_PHYSICAL_INTEROPERABILITY=1 for the reviewed physical-device ceremony.")
-      }
+        guard ProcessInfo.processInfo.environment["PISTIS_RUN_PHYSICAL_INTEROPERABILITY"] == "1" else {
+            throw XCTSkip("Set PISTIS_RUN_PHYSICAL_INTEROPERABILITY=1 for the reviewed physical-device ceremony.")
+        }
 
-      let harness = try DeviceInteroperabilityHarness.fixture(from: Bundle(for: Self.self))
-      let record = try harness.observe()
-      let attachment = XCTAttachment(string: try record.renderedJSON())
-      attachment.name = "pistis-epic18-non-secret-interoperability-observation.json"
-      attachment.lifetime = .keepAlways
-      add(attachment)
+        let harness = try DeviceInteroperabilityHarness.fixture(from: Bundle(for: Self.self))
+        let record = try harness.observe()
+        let attachment = XCTAttachment(string: try record.renderedJSON())
+        attachment.name = "pistis-epic18-non-secret-interoperability-observation.json"
+        attachment.lifetime = .keepAlways
+        add(attachment)
     }
 
     func testPhysicalRetainedSiteRootAckKeyContinuity() async throws {
-      guard ProcessInfo.processInfo.environment["PISTIS_RUN_PHYSICAL_ACK_CONTINUITY"] == "1" else {
-        throw XCTSkip(
-          "Set PISTIS_RUN_PHYSICAL_ACK_CONTINUITY=1 only for the approved in-place update continuity check."
+        guard ProcessInfo.processInfo.environment["PISTIS_RUN_PHYSICAL_ACK_CONTINUITY"] == "1" else {
+            throw XCTSkip("Set PISTIS_RUN_PHYSICAL_ACK_CONTINUITY=1 only for the approved in-place update continuity check.")
+        }
+        let environment = ProcessInfo.processInfo.environment
+        guard let site = environment["PISTIS_PRE_UPDATE_ACK_SITE_UUID"],
+              let publicText = environment["PISTIS_PRE_UPDATE_ACK_PUBLIC_KEY_B64URL"],
+              let publicKey = SiteRootConvergenceEncoding.base64URL(publicText),
+              let generationText = environment["PISTIS_PRE_UPDATE_ACK_GENERATION"],
+              let generation = UInt64(generationText)
+        else { throw PlatformFailure.invalidConfiguration }
+        let record = try SiteRootConvergenceAckStoreV2().current()
+        XCTAssertEqual(record.siteUUID, site)
+        try await SiteRootAckContinuityServiceV1.check(
+            preUpdatePublicKey: publicKey,
+            preUpdateGeneration: generation,
+            registration: record
         )
-      }
-      let environment = ProcessInfo.processInfo.environment
-      guard let site = environment["PISTIS_PRE_UPDATE_ACK_SITE_UUID"],
-        let publicText = environment["PISTIS_PRE_UPDATE_ACK_PUBLIC_KEY_B64URL"],
-        let publicKey = SiteRootConvergenceEncoding.base64URL(publicText),
-        let generationText = environment["PISTIS_PRE_UPDATE_ACK_GENERATION"],
-        let generation = UInt64(generationText)
-      else { throw PlatformFailure.invalidConfiguration }
-      let record = try SiteRootConvergenceAckStoreV2().current()
-      XCTAssertEqual(record.siteUUID, site)
-      try await SiteRootAckContinuityServiceV1.check(
-        preUpdatePublicKey: publicKey,
-        preUpdateGeneration: generation,
-        registration: record
-      )
-      let digest = Data(SHA256.hash(data: publicKey))
-        .map { String(format: "%02x", $0) }.joined()
-      let attachment = XCTAttachment(
-        string: "verified=true; generation=\(generation); public-key-sha256=\(digest)")
-      attachment.name = "pistis-site-root-ack-update-continuity-redacted.txt"
-      attachment.lifetime = .keepAlways
-      add(attachment)
+        let digest = Data(SHA256.hash(data: publicKey))
+            .map { String(format: "%02x", $0) }.joined()
+        let attachment = XCTAttachment(
+            string: "verified=true; generation=\(generation); public-key-sha256=\(digest)")
+        attachment.name = "pistis-site-root-ack-update-continuity-redacted.txt"
+        attachment.lifetime = .keepAlways
+        add(attachment)
     }
-  #endif
+    #endif
 }
 
-private final class InMemoryAppleAppAttestKeyIDStore: AppleAppAttestKeyIDStoring,
-  @unchecked Sendable
-{
-  private var keyID: String?
+private final class InMemoryAppleAppAttestKeyIDStore: AppleAppAttestKeyIDStoring, @unchecked Sendable {
+    private var keyID: String?
 
-  func loadKeyID() -> String? { keyID }
-  func saveKeyID(_ keyID: String) throws { self.keyID = keyID }
+    func loadKeyID() -> String? { keyID }
+    func saveKeyID(_ keyID: String) throws { self.keyID = keyID }
 }

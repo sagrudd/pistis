@@ -105,6 +105,7 @@ Architecture and operations
    operations/monas-first-web-login-runbook
    operations/qr-authentication
    operations/formal-site-root-qr-scanner
+   operations/offline-site-root-acknowledgement
    operations/ios
    operations/app-attest-assertion-ingress
    operations/android

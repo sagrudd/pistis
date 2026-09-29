@@ -696,6 +696,19 @@ final class AppleAppAttestClient: @unchecked Sendable {
         return try await generateAssertion(keyID: keyID, clientDataHash: clientDataHash)
     }
 
+    /// Produces an assertion over a local Site Root continuity challenge with
+    /// the already-retained App Attest key ID. It does not save a key ID,
+    /// contact Monas, or create a production login or approval session.
+    func prepareSiteRootAckContinuityAssertion(
+        expectedKeyID: String,
+        clientDataHash: Data
+    ) async throws -> Data {
+        guard service.isSupported, clientDataHash.count == 32,
+            let keyID = existingKeyID(), keyID == expectedKeyID
+        else { throw PlatformFailure.appAttestUnavailable }
+        return try await generateAssertion(keyID: keyID, clientDataHash: clientDataHash)
+    }
+
     /// Generates and attests a distinct candidate key without changing the
     /// currently admitted App Attest key identifier.
     func stageReplacementKey(

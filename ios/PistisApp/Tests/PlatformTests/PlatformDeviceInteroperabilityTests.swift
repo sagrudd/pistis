@@ -121,6 +121,33 @@ final class PlatformDeviceInteroperabilityTests: XCTestCase {
         attachment.lifetime = .keepAlways
         add(attachment)
     }
+
+    func testPhysicalRetainedSiteRootAckKeyContinuity() async throws {
+        guard ProcessInfo.processInfo.environment["PISTIS_RUN_PHYSICAL_ACK_CONTINUITY"] == "1" else {
+            throw XCTSkip("Set PISTIS_RUN_PHYSICAL_ACK_CONTINUITY=1 only for the approved in-place update continuity check.")
+        }
+        let environment = ProcessInfo.processInfo.environment
+        guard let site = environment["PISTIS_PRE_UPDATE_ACK_SITE_UUID"],
+              let publicText = environment["PISTIS_PRE_UPDATE_ACK_PUBLIC_KEY_B64URL"],
+              let publicKey = SiteRootConvergenceEncoding.base64URL(publicText),
+              let generationText = environment["PISTIS_PRE_UPDATE_ACK_GENERATION"],
+              let generation = UInt64(generationText)
+        else { throw PlatformFailure.invalidConfiguration }
+        let record = try SiteRootConvergenceAckStoreV2().current()
+        XCTAssertEqual(record.siteUUID, site)
+        try await SiteRootAckContinuityServiceV1.check(
+            preUpdatePublicKey: publicKey,
+            preUpdateGeneration: generation,
+            registration: record
+        )
+        let digest = Data(SHA256.hash(data: publicKey))
+            .map { String(format: "%02x", $0) }.joined()
+        let attachment = XCTAttachment(
+            string: "verified=true; generation=\(generation); public-key-sha256=\(digest)")
+        attachment.name = "pistis-site-root-ack-update-continuity-redacted.txt"
+        attachment.lifetime = .keepAlways
+        add(attachment)
+    }
     #endif
 }
 

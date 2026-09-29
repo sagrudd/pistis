@@ -13,9 +13,34 @@ enum RetainedSiteRootAcknowledgementV2 {
         send: (Data, URL) async throws -> Void
     ) async throws {
         try Task.checkCancellation()
+        let signed = try signedAcknowledgement(
+            presentation.unsignedPXRA,
+            record: record,
+            siteRootPublic: siteRootPublic,
+            ackPublic: ackPublic,
+            nowMilliseconds: nowMilliseconds,
+            sign: sign
+        )
+        try Task.checkCancellation()
+        try await send(signed, presentation.submissionURL)
+    }
+
+    /// Creates the existing PXRA/v2 response without transport.
+    ///
+    /// Offline export uses the same registered Secure Enclave key and byte
+    /// format as the online submission path, but never performs a network
+    /// operation.
+    static func signedAcknowledgement(
+        _ unsignedPXRA: Data,
+        record: SiteRootConvergenceAckRecordV2?,
+        siteRootPublic: Data,
+        ackPublic: Data,
+        nowMilliseconds: UInt64,
+        sign: (Data) throws -> Data
+    ) throws -> Data {
         guard let record else { throw PlatformFailure.invalidConfiguration }
         let assertion = try UnsignedSiteRootConvergenceAssertionV2(
-            presentation.unsignedPXRA, nowUnixMilliseconds: nowMilliseconds
+            unsignedPXRA, nowUnixMilliseconds: nowMilliseconds
         )
         let signerID = Data(SHA256.hash(data: siteRootPublic))
         guard siteRootPublic.count == 33, ackPublic.count == 33,
@@ -32,13 +57,12 @@ enum RetainedSiteRootAcknowledgementV2 {
             contentType: SiteRootConvergenceProfileV2.pxraContentType
         )
         let structure = try DetachedES256Cose.signatureStructure(
-            protected: headers, payload: presentation.unsignedPXRA
+            protected: headers, payload: unsignedPXRA
         )
         let signature = try sign(structure)
         let proof = try DetachedES256Cose.envelope(protected: headers, signature: signature)
-        let signed = presentation.unsignedPXRA + proof
+        let signed = unsignedPXRA + proof
         guard signed.count <= 768 else { throw PlatformFailure.invalidConfiguration }
-        try Task.checkCancellation()
-        try await send(signed, presentation.submissionURL)
+        return signed
     }
 }

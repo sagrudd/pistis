@@ -694,6 +694,13 @@
 
 ## Unreleased
 
+- Add proposal-gated, offline `PXRP/v1` Site Root presentation verification
+  and exact `PXRA/v2` file export. The release profile has no Proxenos pin by
+  default and fails closed until a dedicated Site-bound key is independently
+  verified; online Monas HTTPS behaviour remains unchanged. Add local ACK-key
+  and separate App Attest continuity probes for a reviewed in-place update.
+  No phone, trust state, or host operation is performed by these source changes.
+
 ### Added
 
 - Add the compatible `pistis-monas` 0.7.0 retained provider-confirmation

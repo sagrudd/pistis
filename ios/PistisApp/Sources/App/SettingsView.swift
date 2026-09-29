@@ -31,6 +31,21 @@ struct SettingsView: View {
                 )
             }
 
+            Section("Site Root") {
+                NavigationLink {
+                    OfflineSiteRootAcknowledgementView()
+                } label: {
+                    VStack(alignment: .leading, spacing: MnSpacing.x2) {
+                        Text("Offline Site Root acknowledgement")
+                            .font(.body)
+                        Text("Requires a release-pinned Proxenos presentation key")
+                            .font(.footnote)
+                            .foregroundStyle(MnColor.textPrimary)
+                    }
+                }
+                .frame(minHeight: MnMetrics.minimumTarget)
+            }
+
             Section("Application") {
                 NavigationLink {
                     DiagnosticsView()

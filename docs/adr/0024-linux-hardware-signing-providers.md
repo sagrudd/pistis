@@ -114,6 +114,25 @@ This order is an implementation priority, not an automatic preference chain.
 A deployment names one provider. If that provider fails, the authority fails
 closed; it does not attempt the other provider.
 
+### Initial candidate scope proposal
+
+The first implementation candidate is proposed to be one physical TPM 2.0 on
+the NUC running Ubuntu 26.04 x86_64. This is a bounded qualification target,
+not a supported-host declaration, package coordinate, release, or permission
+to activate the authority. Before implementation, read-only inventory must
+confirm that the selected device is a physical TPM 2.0 rather than a vTPM and
+record the exact model, firmware, host, kernel, TPM stack and interface. The
+candidate remains blocked until that inventory and the hardware-specific
+qualification plan are reviewed.
+
+Acceptance of this ADR would authorize no vTPM, PKCS#11 device, network HSM,
+other host, package format, or production deployment. Each requires a separate
+owner-selected candidate and its own provider, transport, hardware and
+host-qualification review. In particular, a PKCS#11 module must not be loaded
+into the authority process or treated as trusted solely because its digest or
+token identity is pinned; module isolation and its residual process-compromise
+risk require a separate accepted design.
+
 ### Deployment topology
 
 Only the Monas/Prosopikon authentication-authority boundary holds or invokes

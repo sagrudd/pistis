@@ -61,37 +61,40 @@ keys, and Thesaurophylax custody keys. It must never be reused as any of those
 keys or represented as proof of human presence, user approval, Site Trust, or
 certificate issuance.
 
-The signer is a cryptographic primitive inside the Monas/Prosopikon authority
-boundary; it does not make authorization decisions, create sessions, or grant
-installation or trust changes. A request may reach it only after the host has
-validated an allowed installation-signing purpose and its complete bindings.
-Callers must not be able to submit arbitrary bytes from a CLI, browser, worker,
-or network interface. Before consuming the signed result, the host transaction
+The signer is a cryptographic primitive called by Monas inside the Prosopikon
+host-authority boundary. The Prosopikon `HostCompletionPort` described by ADR
+0017 is the sole owner of authorization decisions, session issuance, key
+generation and revocation state, one-use consumption, and audit commits. Monas
+may transport the exact request and result but cannot create sessions, select
+or restore a key generation, or grant installation or trust changes. A request
+may reach the signer only after the `HostCompletionPort` has validated an
+allowed installation-signing purpose and its complete bindings. Callers must
+not be able to submit arbitrary bytes from a CLI, browser, worker, or network
+interface. Before consuming the signed result, the same Prosopikon transaction
 rechecks the exact purpose, audience, target, key generation, expiry,
-revocation state, and one-use binding under the accepted host-authority
-contract. The production conformance suite must prove that invalid or
-unapproved purposes cannot reach the provider and that a signature alone
-cannot create authority.
+revocation state, and one-use binding. The production conformance suite must
+prove that invalid or unapproved purposes cannot reach the provider and that a
+signature alone cannot create authority.
 
 ### Key identity lifecycle and rollback
 
 The enrolled public key, key identifier, provider type, exact provider object
 locator, and monotonically increasing authority generation form one identity
 record. Every signing request is bound to the current generation. The
-generation and revocation authority remain with the durable Monas/Prosopikon
-host transaction described by ADR 0017; provider readiness and local provider
-state cannot select or restore an identity.
+generation and revocation authority remain exclusively with the durable
+Prosopikon `HostCompletionPort` transaction described by ADR 0017; Monas
+readiness and local provider state cannot select or restore an identity.
 
 Provider key creation and authority enrollment are separate staged operations.
 A newly created key is unusable until its exact public identity is committed
 as current by the host authority. A crash before that commit leaves no signing
 authority; recovery may resume only the exact staged provider object and
 matching public identity. It must not discover or silently choose another key.
-The authority transition to a successor generation atomically makes the
-successor current, revokes the predecessor, invalidates sessions and pending
-work bound to the predecessor, and records the redacted audit event. A crash
-must recover either the previous committed generation or the successor
-committed generation, never a mixed state.
+The Prosopikon `HostCompletionPort` transition to a successor generation
+atomically makes the successor current, revokes the predecessor, invalidates
+sessions and pending work bound to the predecessor, and records the redacted
+audit event. A crash must recover either the previous committed generation or
+the successor committed generation, never a mixed state.
 
 Restoring an older database or configuration must not make a revoked
 generation current again. The implementation must select and qualify an

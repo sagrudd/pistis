@@ -52,6 +52,54 @@ must never cause automatic provider fallback. A software signer may exist only
 inside explicitly test-only construction and cannot satisfy production,
 packaging, deployment, or physical-host evidence.
 
+### Signing purpose and authority separation
+
+This provider key is a machine-held installation-signing key. It is distinct
+from the human Pistis signer on the physical iPhone, App Attest or Secure
+Enclave keys, Site Root or certificate-issuer keys, package-release signing
+keys, and Thesaurophylax custody keys. It must never be reused as any of those
+keys or represented as proof of human presence, user approval, Site Trust, or
+certificate issuance.
+
+The signer is a cryptographic primitive inside the Monas/Prosopikon authority
+boundary; it does not make authorization decisions, create sessions, or grant
+installation or trust changes. A request may reach it only after the host has
+validated an allowed installation-signing purpose and its complete bindings.
+Callers must not be able to submit arbitrary bytes from a CLI, browser, worker,
+or network interface. Before consuming the signed result, the host transaction
+rechecks the exact purpose, audience, target, key generation, expiry,
+revocation state, and one-use binding under the accepted host-authority
+contract. The production conformance suite must prove that invalid or
+unapproved purposes cannot reach the provider and that a signature alone
+cannot create authority.
+
+### Key identity lifecycle and rollback
+
+The enrolled public key, key identifier, provider type, exact provider object
+locator, and monotonically increasing authority generation form one identity
+record. Every signing request is bound to the current generation. The
+generation and revocation authority remain with the durable Monas/Prosopikon
+host transaction described by ADR 0017; provider readiness and local provider
+state cannot select or restore an identity.
+
+Provider key creation and authority enrollment are separate staged operations.
+A newly created key is unusable until its exact public identity is committed
+as current by the host authority. A crash before that commit leaves no signing
+authority; recovery may resume only the exact staged provider object and
+matching public identity. It must not discover or silently choose another key.
+The authority transition to a successor generation atomically makes the
+successor current, revokes the predecessor, invalidates sessions and pending
+work bound to the predecessor, and records the redacted audit event. A crash
+must recover either the previous committed generation or the successor
+committed generation, never a mixed state.
+
+Restoring an older database or configuration must not make a revoked
+generation current again. The implementation must select and qualify an
+anti-rollback source for the committed generation; a restorable local database
+copy alone does not establish that property. Until that source and the
+crash/recovery transition are defined, key rotation and production recovery
+remain blocked.
+
 ### Provider order
 
 The first production provider is **TPM2**. It is used when the authority host

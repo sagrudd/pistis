@@ -113,15 +113,21 @@ A newly created key is unusable until its exact public identity is committed
 as current by the host authority. A crash before that commit leaves no signing
 authority; recovery may resume only the exact staged provider object and
 matching public identity. It must not discover or silently choose another key.
-The governed enrollment operation stages a successor identity. A durable
-Prosopikon host-authority transition atomically makes that generation current
-and revokes the predecessor; the `HostCompletionPort` invalidates sessions
-and pending work bound to the predecessor and records the corresponding audit
-event through its authority transaction. A crash must recover either the
-previous committed generation or the successor committed generation, never a
-mixed state. The implementation must define how these authority records,
-session invalidation, and audit entries share the transaction boundary before
-this lifecycle is accepted.
+The governed enrollment operation stages a successor identity. The design
+does not yet establish an atomic boundary between making the successor current,
+revoking the predecessor, invalidating predecessor-bound sessions and pending
+work, and recording the audit event. These effects must not be treated as
+atomic merely because the host authority owns them. Before this lifecycle is
+accepted, the implementation must specify either one shared durable commit
+boundary covering all of them, or a staged transition protocol with durable
+phase markers, idempotent completion, fail-closed signing/session checks, and
+crash recovery that prevents mixed state from granting authority. Recovery
+must select one committed generation and derive session validity from that
+outcome, with no stale session authorized; intermediate states must grant
+neither generation signing or session authority until reconciled.
+Audit evidence must identify the committed outcome and any recovered
+transition. The selected protocol and its transaction ownership remain open
+design decisions, not solved behavior in this ADR.
 
 Restoring an older database or configuration must not make a revoked
 generation current again. The implementation must select and qualify an

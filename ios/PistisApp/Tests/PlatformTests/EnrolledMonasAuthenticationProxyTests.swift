@@ -23,7 +23,6 @@ final class EnrolledMonasAuthenticationProxyTests: XCTestCase {
     let before = await store.activeEnrollment()
     let signer = TestOnlySecureEnclave()
     let faceID = TestOnlyFaceID(approved: true)
-    let appAttest = TestOnlyAppAttest()
     let challenge = try await ProductionChallengeVerifier.verify(
       qrText: fixture.qr,
       trustRepository: store,
@@ -55,7 +54,6 @@ final class EnrolledMonasAuthenticationProxyTests: XCTestCase {
       devicePublicKey: signer.publicKey
     )
 
-    XCTAssertEqual(appAttest.requestCount, 0, "ordinary login does not use App Attest")
     try handoff.submit(response, for: challenge, nowMilliseconds: nowMilliseconds)
     XCTAssertEqual(handoff.status, .completed)
     XCTAssertEqual(
@@ -98,9 +96,19 @@ final class EnrolledMonasAuthenticationProxyTests: XCTestCase {
     let store = ProxyEnrollmentStore(expired.enrollment)
     let faceID = TestOnlyFaceID(approved: true)
 
-    await assertChallengeRejected(expired.qr, store: store, now: now)
-    await assertChallengeRejected(wrongInstallation.qr, store: store, now: now)
-    await assertChallengeRejected(wrongAudience.qr, store: store, now: now)
+    await assertChallengeRejected(expired.qr, store: store, now: now, expected: .expired)
+    await assertChallengeRejected(
+      wrongInstallation.qr,
+      store: store,
+      now: now,
+      expected: .unknownInstallation
+    )
+    await assertChallengeRejected(
+      wrongAudience.qr,
+      store: store,
+      now: now,
+      expected: .wrongAudience
+    )
     XCTAssertEqual(faceID.promptCount, 0)
   }
 
@@ -237,7 +245,8 @@ final class EnrolledMonasAuthenticationProxyTests: XCTestCase {
   private func assertChallengeRejected(
     _ qr: String,
     store: ProxyEnrollmentStore,
-    now: Date
+    now: Date,
+    expected: ProductionCeremonyError
   ) async {
     do {
       _ = try await ProductionChallengeVerifier.verify(
@@ -247,8 +256,10 @@ final class EnrolledMonasAuthenticationProxyTests: XCTestCase {
         now: now
       )
       XCTFail("invalid challenge unexpectedly passed production verification")
+    } catch let error as ProductionCeremonyError {
+      XCTAssertEqual(error, expected)
     } catch {
-      // The contract requires rejection before a local approval prompt.
+      XCTFail("challenge failed with an unexpected error: \(error)")
     }
   }
 }
@@ -336,12 +347,6 @@ private final class TestOnlyFaceID {
     promptCount += 1
     return approved
   }
-}
-
-/// App Attest is intentionally not invoked by the ordinary Monas login
-/// contract exercised here.
-private struct TestOnlyAppAttest {
-  private(set) var requestCount = 0
 }
 
 private enum TestMonasCeremonyState: Equatable {

@@ -5,9 +5,9 @@
   signing material, synthetic Face ID, and a one-use in-memory Monas callback;
   expired, wrong-installation and wrong-audience challenges stop before local
   approval. It records that ordinary login preserves installed enrollment and
-  does not invoke App Attest, install or revoke trust. This is development test
-  evidence only, with no device or live authority operation (iOS 0.25.8+67;
-  related to #377).
+  does not install or revoke trust. App Attest is outside the ordinary-login
+  contract. This is development test evidence only, with no device or live
+  authority operation (iOS 0.25.8+68; related to #377).
 
 - Acknowledge the unchanged native Site Root assertion using the existing
   protected phone ACK registration and existing keys. Distinct native and phone

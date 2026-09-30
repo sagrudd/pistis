@@ -840,7 +840,9 @@ struct SimulatorAuthenticationFixture {
         authorisedAudiences: Set<String>,
         challengeInstallationID: Data? = nil,
         issuedAtMilliseconds: UInt64 = 1_700_000_000_000,
-        expiresAtMilliseconds: UInt64 = 1_700_000_120_000
+        expiresAtMilliseconds: UInt64 = 1_700_000_120_000,
+        submitEndpoint: String =
+            "https://192.168.0.193:8443/auth/pistis/v2/submit"
     ) throws {
         let key = P256.Signing.PrivateKey()
         let keyID = Data(repeating: 0x21, count: 32)
@@ -851,7 +853,8 @@ struct SimulatorAuthenticationFixture {
             fingerprint: fingerprint,
             audience: audience,
             issuedAtMilliseconds: issuedAtMilliseconds,
-            expiresAtMilliseconds: expiresAtMilliseconds
+            expiresAtMilliseconds: expiresAtMilliseconds,
+            submitEndpoint: submitEndpoint
         )
         let signingInput = try CoseSign1.signatureStructure(keyID: keyID, payload: payload)
         let signature = Self.lowS(try key.signature(for: signingInput).rawRepresentation)
@@ -898,7 +901,8 @@ struct SimulatorAuthenticationFixture {
         fingerprint: Data,
         audience: String,
         issuedAtMilliseconds: UInt64,
-        expiresAtMilliseconds: UInt64
+        expiresAtMilliseconds: UInt64,
+        submitEndpoint: String
     ) -> Data {
         var result = Data([0xb1])
         result += uint(0) + uint(1)
@@ -917,9 +921,7 @@ struct SimulatorAuthenticationFixture {
         result += uint(13) + text("candidate-operator")
         result += uint(14) + bytes(Data(repeating: 0x99, count: 32))
         result += uint(15) + bytes(fingerprint)
-        result +=
-            uint(16) + Data([0x81])
-            + text("https://192.168.0.193:8443/auth/pistis/v2/submit")
+        result += uint(16) + Data([0x81]) + text(submitEndpoint)
         return result
     }
 

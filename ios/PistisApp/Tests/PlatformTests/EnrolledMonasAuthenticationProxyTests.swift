@@ -74,6 +74,82 @@ final class EnrolledMonasAuthenticationProxyTests: XCTestCase {
     XCTAssertEqual(faceID.promptCount, 1)
   }
 
+  @MainActor
+  func testMonasV3SubmitHintUsesProductionVerifierAndRejectsRouteSubstitution() async throws {
+    let submitURL = try XCTUnwrap(
+      URL(
+        string:
+          "https://192.168.0.193:8443/auth/pistis/v3/submit?challenge_id=66666666-6666-6666-6666-666666666666"
+      )
+    )
+    let fixture = try SimulatorAuthenticationFixture(
+      installationID: installationID,
+      audience: "propylaion",
+      authorisedAudiences: ["propylaion"],
+      submitEndpoint: submitURL.absoluteString
+    )
+    let store = ProxyEnrollmentStore(fixture.enrollment)
+    let challenge = try await ProductionChallengeVerifier.verify(
+      qrText: fixture.qr,
+      trustRepository: store,
+      expectedExternalIdentityID: fixture.externalIdentityID,
+      now: Date(timeIntervalSince1970: Double(nowMilliseconds) / 1_000)
+    )
+    XCTAssertEqual(challenge.endpointHints, [submitURL])
+    XCTAssertEqual(challenge.challengeID, Data(repeating: 0x66, count: 16))
+
+    let payload = try AuthenticationResponseEncoder.payload(
+      challenge: challenge,
+      context: fixture.enrollment.responseContext,
+      decision: .approved,
+      issuedAtMilliseconds: nowMilliseconds,
+      userVerifiedAtMilliseconds: nowMilliseconds
+    )
+    let signer = TestOnlySecureEnclave()
+    let response = try signer.sign(
+      payload: payload,
+      deviceKeyID: fixture.enrollment.responseContext.deviceKeyID
+    )
+    var authority = TestMonasLoginCallback(
+      audience: "propylaion",
+      successPath: "/home",
+      browserCapability: "test-only-v3-browser-capability",
+      expectedPayload: payload,
+      expectedDeviceKeyID: fixture.enrollment.responseContext.deviceKeyID,
+      devicePublicKey: signer.publicKey,
+      expectedSubmitURL: submitURL
+    )
+
+    let substitutedURL = try XCTUnwrap(
+      URL(
+        string:
+          "https://192.168.0.193:8443/auth/pistis/v2/submit?challenge_id=66666666-6666-6666-6666-666666666666"
+      )
+    )
+    XCTAssertThrowsError(
+      try authority.submit(
+        response,
+        for: challenge,
+        nowMilliseconds: nowMilliseconds,
+        to: substitutedURL
+      )
+    )
+    XCTAssertEqual(authority.status, .pending)
+
+    try authority.submit(
+      response,
+      for: challenge,
+      nowMilliseconds: nowMilliseconds,
+      to: submitURL
+    )
+    XCTAssertEqual(authority.status, .completed)
+    XCTAssertEqual(
+      try authority.finalize(browserCapability: authority.testCapability),
+      TestMonasSession(audience: "propylaion", successPath: "/home")
+    )
+    XCTAssertThrowsError(try authority.finalize(browserCapability: authority.testCapability))
+  }
+
   func testExpiredAndMisbindingChallengesFailBeforeFaceID() async throws {
     let now = Date(timeIntervalSince1970: Double(nowMilliseconds) / 1_000)
     let expired = try SimulatorAuthenticationFixture(
@@ -394,7 +470,8 @@ private struct TestMonasLoginCallback {
     browserCapability: String,
     expectedPayload: Data,
     expectedDeviceKeyID: Data,
-    devicePublicKey: P256.Signing.PublicKey
+    devicePublicKey: P256.Signing.PublicKey,
+    expectedSubmitURL: URL? = nil
   ) {
     self.audience = audience
     self.successPath = successPath
@@ -402,16 +479,23 @@ private struct TestMonasLoginCallback {
     self.expectedPayload = expectedPayload
     self.expectedDeviceKeyID = expectedDeviceKeyID
     self.devicePublicKey = devicePublicKey
+    self.expectedSubmitURL = expectedSubmitURL
   }
+
+  private let expectedSubmitURL: URL?
 
   mutating func submit(
     _ response: Data,
     for challenge: VerifiedAuthenticationChallenge,
-    nowMilliseconds: UInt64
+    nowMilliseconds: UInt64,
+    to submitURL: URL? = nil
   ) throws {
     guard status == .pending,
       nowMilliseconds < challenge.expiresAtMilliseconds
     else { throw ProxyFailure.expiredOrConsumed }
+    if let expectedSubmitURL, submitURL != expectedSubmitURL {
+      throw ProxyFailure.invalidRoute
+    }
     let cose = try CoseSign1.decode(response)
     guard cose.keyID == expectedDeviceKeyID,
       cose.payload == expectedPayload,
@@ -439,4 +523,5 @@ private enum ProxyFailure: Error {
   case expiredOrConsumed
   case invalidResponse
   case callbackUnavailable
+  case invalidRoute
 }

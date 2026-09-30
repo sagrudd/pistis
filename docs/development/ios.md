@@ -51,10 +51,12 @@ review controls and fresh local authentication; cancellation is not a denial.
 ordinary signed Monas login on an existing enrollment. It calls Pistis' actual
 challenge verifier and response encoder, then uses an ephemeral software
 P-256 test signer, a synthetic Face ID result, and an in-memory Monas callback
-that permits one response and one fixed-audience finalization. Monas is not
-started or contacted: the callback model checks documented state transitions,
-but does not prove the live HTTP adapter, durable replay store, browser cookie,
-or session issuance. Expiry, wrong installation/audience, and a valid COSE
+that permits one response and one fixed-audience finalization. Its v3 QR
+fixture uses Monas' signed `/auth/pistis/v3/submit?challenge_id=…` hint and
+checks that the callback rejects a substituted v2 route. Monas is not started
+or contacted: the callback model checks documented state transitions, but does
+not prove the live HTTP adapter, durable replay store, browser cookie, or
+session issuance. Expiry, wrong installation/audience, and a valid COSE
 signature from the wrong device key are rejected in the local models. The test
 also checks that the retained enrollment is unchanged and that the login flow
 does not install or revoke trust. App Attest is outside the ordinary-login

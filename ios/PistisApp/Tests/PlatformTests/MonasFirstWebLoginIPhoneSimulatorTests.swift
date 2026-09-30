@@ -828,7 +828,7 @@ private actor SimulatorEnrollmentStore: InstallationTrustStoring {
     func revoke(installationID _: Data) {}
 }
 
-private struct SimulatorAuthenticationFixture {
+struct SimulatorAuthenticationFixture {
     let qr: String
     let trust: InstallationTrustRecord
     let enrollment: AuthenticatedEnrollmentOutput
@@ -837,16 +837,21 @@ private struct SimulatorAuthenticationFixture {
     init(
         installationID: Data,
         audience: String,
-        authorisedAudiences: Set<String>
+        authorisedAudiences: Set<String>,
+        challengeInstallationID: Data? = nil,
+        issuedAtMilliseconds: UInt64 = 1_700_000_000_000,
+        expiresAtMilliseconds: UInt64 = 1_700_000_120_000
     ) throws {
         let key = P256.Signing.PrivateKey()
         let keyID = Data(repeating: 0x21, count: 32)
         let fingerprint = Data(repeating: 0x31, count: 32)
         let payload = Self.challenge(
-            installationID: installationID,
+            installationID: challengeInstallationID ?? installationID,
             keyID: keyID,
             fingerprint: fingerprint,
-            audience: audience
+            audience: audience,
+            issuedAtMilliseconds: issuedAtMilliseconds,
+            expiresAtMilliseconds: expiresAtMilliseconds
         )
         let signingInput = try CoseSign1.signatureStructure(keyID: keyID, payload: payload)
         let signature = Self.lowS(try key.signature(for: signingInput).rawRepresentation)
@@ -891,13 +896,15 @@ private struct SimulatorAuthenticationFixture {
         installationID: Data,
         keyID: Data,
         fingerprint: Data,
-        audience: String
+        audience: String,
+        issuedAtMilliseconds: UInt64,
+        expiresAtMilliseconds: UInt64
     ) -> Data {
         var result = Data([0xb1])
         result += uint(0) + uint(1)
         result += uint(1) + text("pistis.authentication-challenge.v1")
-        result += uint(2) + uint(1_700_000_000_000)
-        result += uint(3) + uint(1_700_000_120_000)
+        result += uint(2) + uint(issuedAtMilliseconds)
+        result += uint(3) + uint(expiresAtMilliseconds)
         result += uint(4) + bytes(installationID)
         result += uint(5) + bytes(keyID)
         result += uint(6) + bytes(Data(repeating: 0x66, count: 16))

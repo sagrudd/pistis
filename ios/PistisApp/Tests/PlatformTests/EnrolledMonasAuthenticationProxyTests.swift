@@ -96,16 +96,24 @@ final class EnrolledMonasAuthenticationProxyTests: XCTestCase {
     let store = ProxyEnrollmentStore(expired.enrollment)
     let faceID = TestOnlyFaceID(approved: true)
 
-    await assertChallengeRejected(expired.qr, store: store, now: now, expected: .expired)
+    await assertChallengeRejected(
+      expired.qr,
+      store: store,
+      faceID: faceID,
+      now: now,
+      expected: .expired
+    )
     await assertChallengeRejected(
       wrongInstallation.qr,
       store: store,
+      faceID: faceID,
       now: now,
       expected: .unknownInstallation
     )
     await assertChallengeRejected(
       wrongAudience.qr,
       store: store,
+      faceID: faceID,
       now: now,
       expected: .wrongAudience
     )
@@ -245,6 +253,7 @@ final class EnrolledMonasAuthenticationProxyTests: XCTestCase {
   private func assertChallengeRejected(
     _ qr: String,
     store: ProxyEnrollmentStore,
+    faceID: TestOnlyFaceID,
     now: Date,
     expected: ProductionCeremonyError
   ) async {
@@ -255,6 +264,7 @@ final class EnrolledMonasAuthenticationProxyTests: XCTestCase {
         expectedExternalIdentityID: Data(repeating: 0x44, count: 16),
         now: now
       )
+      _ = faceID.evaluate()
       XCTFail("invalid challenge unexpectedly passed production verification")
     } catch let error as ProductionCeremonyError {
       XCTAssertEqual(error, expected)
@@ -311,9 +321,7 @@ private struct TestOnlySecureEnclave {
       0x79, 0xdc, 0xe5, 0x61, 0x7e, 0x31, 0x92, 0xa8,
     ])
     let scalar = signature.suffix(32)
-    guard !scalar.lexicographicallyPrecedes(halfOrder), scalar != halfOrder else {
-      return signature
-    }
+    guard sGreaterThanHalfOrder(scalar, halfOrder: halfOrder) else { return signature }
     let order: [UInt8] = [
       0xff, 0xff, 0xff, 0xff, 0x00, 0x00, 0x00, 0x00,
       0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
@@ -334,6 +342,13 @@ private struct TestOnlySecureEnclave {
       output[index] = UInt8(value)
     }
     return signature.prefix(32) + Data(output)
+  }
+
+  private static func sGreaterThanHalfOrder(
+    _ scalar: Data.SubSequence,
+    halfOrder: Data
+  ) -> Bool {
+    !scalar.lexicographicallyPrecedes(halfOrder) && scalar != halfOrder
   }
 }
 

@@ -115,7 +115,7 @@ final class EnrolledMonasAuthenticationProxyTests: XCTestCase {
     let suiteName = "org.mnemosynebiosciences.pistis.tests.\(UUID().uuidString)"
     let defaults = try XCTUnwrap(UserDefaults(suiteName: suiteName))
     let coordinator = ProductionCeremonyCoordinator(
-      trustStore: store,
+      testingWith: store,
       history: LocalHistoryRepository(defaults: defaults),
       now: { fixedNow },
       makeEnvelopeProducer: { enrollment, _ in
@@ -196,7 +196,7 @@ final class EnrolledMonasAuthenticationProxyTests: XCTestCase {
     let suiteName = "org.mnemosynebiosciences.pistis.tests.\(UUID().uuidString)"
     let defaults = try XCTUnwrap(UserDefaults(suiteName: suiteName))
     let coordinator = ProductionCeremonyCoordinator(
-      trustStore: store,
+      testingWith: store,
       history: LocalHistoryRepository(defaults: defaults),
       now: { fixedNow },
       makeEnvelopeProducer: { enrollment, _ in

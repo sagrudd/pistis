@@ -46,25 +46,14 @@ final class ProductionCeremonyCoordinator: ObservableObject {
         Self.presentationRequest(retainedRequest, during: phase)
     }
 
-    /// Optional factories provide deterministic simulator coverage of the
-    /// production ceremony path. Normal app construction uses the Secure
-    /// Enclave signer and pinned HTTPS transport below.
     init(
         trustStore: any InstallationTrustStoring = InstallationTrustKeychain.shared,
-        history: LocalHistoryRepository = .shared,
-        now: @escaping @Sendable () -> Date = Date.init,
-        makeEnvelopeProducer: (@Sendable (
-            AuthenticatedEnrollmentOutput,
-            AuthenticationDecision
-        ) throws -> any ProductionEnvelopeProducing)? = nil,
-        makeResponseTransport: (@Sendable (
-            AuthenticatedEnrollmentOutput
-        ) throws -> any AuthenticationResponseDelivering)? = nil
+        now: @escaping @Sendable () -> Date = Date.init
     ) {
         self.trustStore = trustStore
-        self.history = history
+        history = .shared
         self.now = now
-        self.makeEnvelopeProducer = makeEnvelopeProducer ?? { enrollment, decision in
+        makeEnvelopeProducer = { enrollment, decision in
             let signer = try SecureEnclaveSigner(
                 namespace: installationNamespace(enrollment.trust.installationID),
                 authenticationReason: decision == .approved
@@ -76,7 +65,7 @@ final class ProductionCeremonyCoordinator: ObservableObject {
                 deviceKeyID: enrollment.responseContext.deviceKeyID
             )
         }
-        self.makeResponseTransport = makeResponseTransport ?? { enrollment in
+        makeResponseTransport = { enrollment in
             try AuthenticationResponseTransport(
                 allowedHosts: enrollment.allowedHosts,
                 httpsOrigin: enrollment.httpsOrigin,
@@ -84,6 +73,29 @@ final class ProductionCeremonyCoordinator: ObservableObject {
             )
         }
     }
+
+#if DEBUG
+    /// Test-only adapter seam for exercising production ceremony coordination
+    /// without device keys, Face ID, or a live authority.
+    init(
+        testingWith trustStore: any InstallationTrustStoring,
+        history: LocalHistoryRepository,
+        now: @escaping @Sendable () -> Date,
+        makeEnvelopeProducer: @escaping @Sendable (
+            AuthenticatedEnrollmentOutput,
+            AuthenticationDecision
+        ) throws -> any ProductionEnvelopeProducing,
+        makeResponseTransport: @escaping @Sendable (
+            AuthenticatedEnrollmentOutput
+        ) throws -> any AuthenticationResponseDelivering
+    ) {
+        self.trustStore = trustStore
+        self.history = history
+        self.now = now
+        self.makeEnvelopeProducer = makeEnvelopeProducer
+        self.makeResponseTransport = makeResponseTransport
+    }
+#endif
 
     func accept(qrText: String) async {
         phase = .verifying

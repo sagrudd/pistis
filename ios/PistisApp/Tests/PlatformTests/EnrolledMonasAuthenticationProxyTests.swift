@@ -196,22 +196,53 @@ final class EnrolledMonasAuthenticationProxyTests: XCTestCase {
     XCTAssertEqual(faceID.promptCount, 0)
   }
 
-  func testCallbackCannotFinalizePendingOrUseAnotherBrowserCapability() throws {
+  func testCallbackCannotFinalizePendingOrUseAnotherBrowserCapability() async throws {
+    let fixture = try SimulatorAuthenticationFixture(
+      installationID: installationID,
+      audience: "propylaion",
+      authorisedAudiences: ["propylaion"]
+    )
+    let store = ProxyEnrollmentStore(fixture.enrollment)
+    let challenge = try await ProductionChallengeVerifier.verify(
+      qrText: fixture.qr,
+      trustRepository: store,
+      expectedExternalIdentityID: fixture.externalIdentityID,
+      now: Date(timeIntervalSince1970: Double(nowMilliseconds) / 1_000)
+    )
+    let payload = try AuthenticationResponseEncoder.payload(
+      challenge: challenge,
+      context: fixture.enrollment.responseContext,
+      decision: .approved,
+      issuedAtMilliseconds: nowMilliseconds,
+      userVerifiedAtMilliseconds: nowMilliseconds
+    )
     let signer = TestOnlySecureEnclave()
+    let response = try signer.sign(
+      payload: payload,
+      deviceKeyID: fixture.enrollment.responseContext.deviceKeyID
+    )
     var handoff = TestMonasLoginCallback(
       audience: "propylaion",
       successPath: "/home",
       browserCapability: "test-only-one-use-browser-capability",
-      expectedPayload: Data(),
-      expectedDeviceKeyID: Data(repeating: 0x92, count: 32),
+      expectedPayload: payload,
+      expectedDeviceKeyID: fixture.enrollment.responseContext.deviceKeyID,
       devicePublicKey: signer.publicKey
     )
 
-    XCTAssertThrowsError(try handoff.finalize(browserCapability: "wrong-capability"))
-    XCTAssertThrowsError(
-      try handoff.finalize(browserCapability: handoff.testCapability)
-    )
+    XCTAssertThrowsError(try handoff.finalize(browserCapability: handoff.testCapability))
     XCTAssertEqual(handoff.status, .pending)
+
+    try handoff.submit(response, for: challenge, nowMilliseconds: nowMilliseconds)
+    XCTAssertEqual(handoff.status, .completed)
+    XCTAssertThrowsError(try handoff.finalize(browserCapability: "wrong-capability"))
+    XCTAssertFalse(handoff.finalized)
+    XCTAssertEqual(handoff.status, .completed)
+    XCTAssertEqual(
+      try handoff.finalize(browserCapability: handoff.testCapability),
+      TestMonasSession(audience: "propylaion", successPath: "/home")
+    )
+    XCTAssertTrue(handoff.finalized)
   }
 
   func testMonasRejectsAValidSignatureFromTheWrongDeviceKey() async throws {
@@ -305,21 +336,48 @@ final class EnrolledMonasAuthenticationProxyTests: XCTestCase {
     XCTAssertEqual(authority.status, .pending)
   }
 
-  func testFaceIDDenialLeavesMonasCeremonyPending() throws {
+  func testFaceIDDenialSkipsModeledMonasSubmission() async throws {
+    let fixture = try SimulatorAuthenticationFixture(
+      installationID: installationID,
+      audience: "propylaion",
+      authorisedAudiences: ["propylaion"]
+    )
+    let store = ProxyEnrollmentStore(fixture.enrollment)
+    let challenge = try await ProductionChallengeVerifier.verify(
+      qrText: fixture.qr,
+      trustRepository: store,
+      expectedExternalIdentityID: fixture.externalIdentityID,
+      now: Date(timeIntervalSince1970: Double(nowMilliseconds) / 1_000)
+    )
     let faceID = TestOnlyFaceID(approved: false)
     let approved = faceID.evaluate()
     let signer = TestOnlySecureEnclave()
+    let payload = try AuthenticationResponseEncoder.payload(
+      challenge: challenge,
+      context: fixture.enrollment.responseContext,
+      decision: .approved,
+      issuedAtMilliseconds: nowMilliseconds,
+      userVerifiedAtMilliseconds: nowMilliseconds
+    )
     var handoff = TestMonasLoginCallback(
       audience: "propylaion",
       successPath: "/home",
       browserCapability: "test-only-one-use-browser-capability",
-      expectedPayload: Data(),
-      expectedDeviceKeyID: Data(repeating: 0x92, count: 32),
+      expectedPayload: payload,
+      expectedDeviceKeyID: fixture.enrollment.responseContext.deviceKeyID,
       devicePublicKey: signer.publicKey
     )
 
     XCTAssertFalse(approved)
     XCTAssertEqual(faceID.promptCount, 1)
+    if approved {
+      let response = try signer.sign(
+        payload: payload,
+        deviceKeyID: fixture.enrollment.responseContext.deviceKeyID
+      )
+      try handoff.submit(response, for: challenge, nowMilliseconds: nowMilliseconds)
+    }
+    XCTAssertEqual(handoff.submitAttemptCount, 0)
     XCTAssertEqual(handoff.status, .pending)
     XCTAssertThrowsError(
       try handoff.finalize(browserCapability: handoff.testCapability)
@@ -461,6 +519,7 @@ private struct TestMonasLoginCallback {
   private let devicePublicKey: P256.Signing.PublicKey
   private(set) var status: TestMonasCeremonyState = .pending
   private(set) var finalized = false
+  private(set) var submitAttemptCount = 0
 
   var testCapability: String { browserCapability }
 
@@ -490,6 +549,7 @@ private struct TestMonasLoginCallback {
     nowMilliseconds: UInt64,
     to submitURL: URL? = nil
   ) throws {
+    submitAttemptCount += 1
     guard status == .pending,
       nowMilliseconds < challenge.expiresAtMilliseconds
     else { throw ProxyFailure.expiredOrConsumed }

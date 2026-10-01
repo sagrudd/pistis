@@ -59,8 +59,10 @@ not prove the live HTTP adapter, durable replay store, browser cookie, or
 session issuance. Expiry, wrong installation/audience, and a valid COSE
 signature from the wrong device key are rejected in the local models. The test
 also checks that the retained enrollment is unchanged and that the login flow
-does not install or revoke trust. App Attest is outside the ordinary-login
-contract covered here. Run it with
+does not install or revoke trust. A separate test-only branch confirms that a
+synthetic Face ID denial makes no callback submission attempt; it does not
+exercise the production coordinator's biometric-to-transport wiring. App Attest
+is outside the ordinary-login contract covered here. Run it with
 `xcodebuild` and `-only-testing:PistisTests/EnrolledMonasAuthenticationProxyTests`.
 Passing the suite is source-level evidence; it does not qualify camera
 scanning, iOS biometrics, App Attest, Keychain, a physical iPhone, Monas

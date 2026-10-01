@@ -6,8 +6,10 @@
   The v3 fixture carries Monas' exact `/auth/pistis/v3/submit?challenge_id=…`
   hint and rejects v2 route substitution. Expired, wrong-installation and
   wrong-audience challenges stop before local approval. It records that ordinary
-  login preserves installed enrollment and does not install or revoke trust.
-  App Attest is outside the ordinary-login contract. This is development test
+  login preserves installed enrollment and does not install or revoke trust;
+  the callback model rejects a wrong browser capability after response
+  acceptance, and a synthetic Face ID denial takes its no-submit branch. App
+  Attest is outside the ordinary-login contract. This is development test
   evidence only, with no device or live authority operation (iOS 0.25.8+68;
   related to #377).
 

@@ -1,5 +1,18 @@
 # Changelog
 
+- Add an offline enrolled-device authentication proxy test suite. It exercises
+  the production Monas QR verifier and response encoder with ephemeral test
+  signing material, synthetic Face ID, and a one-use in-memory Monas callback.
+  The v3 fixture carries Monas' exact `/auth/pistis/v3/submit?challenge_id=…`
+  hint and rejects v2 route substitution. Expired, wrong-installation and
+  wrong-audience challenges stop before local approval. Its composed proxy leaves its in-memory enrollment fixture unchanged and
+  makes no install or revoke call on the test store;
+  the callback model rejects a wrong browser capability after response
+  acceptance, and a synthetic Face ID denial takes its no-submit branch. App
+  Attest is outside the ordinary-login contract. This is development test
+  evidence only, with no device or live authority operation (iOS 0.25.8+68;
+  related to #377).
+
 - Acknowledge the unchanged native Site Root assertion using the existing
   protected phone ACK registration and existing keys. Distinct native and phone
   identities no longer cause rejection; missing or mismatched registration

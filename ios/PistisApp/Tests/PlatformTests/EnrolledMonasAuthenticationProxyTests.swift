@@ -75,6 +75,158 @@ final class EnrolledMonasAuthenticationProxyTests: XCTestCase {
   }
 
   @MainActor
+  func testProductionCoordinatorConnectsLocalApprovalToMonasTransport() async throws {
+    let submitURL = try XCTUnwrap(
+      URL(
+        string:
+          "https://192.168.0.193:8443/auth/pistis/v3/submit?challenge_id=66666666-6666-6666-6666-666666666666"
+      )
+    )
+    let fixture = try SimulatorAuthenticationFixture(
+      installationID: installationID,
+      audience: "propylaion",
+      authorisedAudiences: ["propylaion"],
+      submitEndpoint: submitURL.absoluteString
+    )
+    let store = ProxyEnrollmentStore(fixture.enrollment)
+    let fixedNow = Date(timeIntervalSince1970: Double(nowMilliseconds) / 1_000)
+    let challenge = try await ProductionChallengeVerifier.verify(
+      qrText: fixture.qr,
+      trustRepository: store,
+      expectedExternalIdentityID: fixture.externalIdentityID,
+      now: fixedNow
+    )
+    let payload = try AuthenticationResponseEncoder.payload(
+      challenge: challenge,
+      context: fixture.enrollment.responseContext,
+      decision: .approved,
+      issuedAtMilliseconds: nowMilliseconds,
+      userVerifiedAtMilliseconds: nowMilliseconds
+    )
+    let signer = TestOnlySecureEnclave()
+    let proxy = CoordinatorMonasProxy(
+      challenge: challenge,
+      expectedPayload: payload,
+      deviceKeyID: fixture.enrollment.responseContext.deviceKeyID,
+      devicePublicKey: signer.publicKey,
+      nowMilliseconds: nowMilliseconds,
+      approved: true
+    )
+    let suiteName = "org.mnemosynebiosciences.pistis.tests.\(UUID().uuidString)"
+    let defaults = try XCTUnwrap(UserDefaults(suiteName: suiteName))
+    let coordinator = ProductionCeremonyCoordinator(
+      testingWith: store,
+      history: LocalHistoryRepository(defaults: defaults),
+      now: { fixedNow },
+      makeEnvelopeProducer: { enrollment, _ in
+        CoordinatorTestEnvelope(
+          proxy: proxy,
+          signer: signer,
+          deviceKeyID: enrollment.responseContext.deviceKeyID
+        )
+      },
+      makeResponseTransport: { _ in proxy }
+    )
+    defer { defaults.removePersistentDomain(forName: suiteName) }
+
+    await coordinator.accept(qrText: fixture.qr)
+    guard case .review = coordinator.phase else {
+      return XCTFail("production coordinator did not retain the verified review")
+    }
+    await coordinator.approveVerifiedLoginIntent {
+      await proxy.prepareCustody()
+    }
+
+    XCTAssertEqual(
+      coordinator.phase,
+      .terminal(AuthoritativeCeremonyStatus(state: .completed, evidenceID: "test-evidence"))
+    )
+    let session = try await proxy.finalize(browserCapability: "test-only-one-use-browser-capability")
+    XCTAssertEqual(session, TestMonasSession(audience: "propylaion", successPath: "/home"))
+    let observation = await proxy.observation()
+    XCTAssertEqual(observation.events, ["custody", "face-id", "submit", "finalize"])
+    XCTAssertEqual(observation.promptCount, 1)
+    XCTAssertEqual(observation.submitCount, 1)
+    let after = await store.activeEnrollment()
+    let installCount = await store.installCount
+    let revokeCount = await store.revokeCount
+    XCTAssertEqual(after, fixture.enrollment)
+    XCTAssertEqual(installCount, 0)
+    XCTAssertEqual(revokeCount, 0)
+  }
+
+  @MainActor
+  func testProductionCoordinatorStopsAfterSyntheticFaceIDDenial() async throws {
+    let submitURL = try XCTUnwrap(
+      URL(
+        string:
+          "https://192.168.0.193:8443/auth/pistis/v3/submit?challenge_id=66666666-6666-6666-6666-666666666666"
+      )
+    )
+    let fixture = try SimulatorAuthenticationFixture(
+      installationID: installationID,
+      audience: "propylaion",
+      authorisedAudiences: ["propylaion"],
+      submitEndpoint: submitURL.absoluteString
+    )
+    let store = ProxyEnrollmentStore(fixture.enrollment)
+    let fixedNow = Date(timeIntervalSince1970: Double(nowMilliseconds) / 1_000)
+    let challenge = try await ProductionChallengeVerifier.verify(
+      qrText: fixture.qr,
+      trustRepository: store,
+      expectedExternalIdentityID: fixture.externalIdentityID,
+      now: fixedNow
+    )
+    let payload = try AuthenticationResponseEncoder.payload(
+      challenge: challenge,
+      context: fixture.enrollment.responseContext,
+      decision: .approved,
+      issuedAtMilliseconds: nowMilliseconds,
+      userVerifiedAtMilliseconds: nowMilliseconds
+    )
+    let signer = TestOnlySecureEnclave()
+    let proxy = CoordinatorMonasProxy(
+      challenge: challenge,
+      expectedPayload: payload,
+      deviceKeyID: fixture.enrollment.responseContext.deviceKeyID,
+      devicePublicKey: signer.publicKey,
+      nowMilliseconds: nowMilliseconds,
+      approved: false
+    )
+    let suiteName = "org.mnemosynebiosciences.pistis.tests.\(UUID().uuidString)"
+    let defaults = try XCTUnwrap(UserDefaults(suiteName: suiteName))
+    let coordinator = ProductionCeremonyCoordinator(
+      testingWith: store,
+      history: LocalHistoryRepository(defaults: defaults),
+      now: { fixedNow },
+      makeEnvelopeProducer: { enrollment, _ in
+        CoordinatorTestEnvelope(
+          proxy: proxy,
+          signer: signer,
+          deviceKeyID: enrollment.responseContext.deviceKeyID
+        )
+      },
+      makeResponseTransport: { _ in proxy }
+    )
+    defer { defaults.removePersistentDomain(forName: suiteName) }
+
+    await coordinator.accept(qrText: fixture.qr)
+    await coordinator.approveVerifiedLoginIntent {}
+
+    XCTAssertEqual(coordinator.phase, .failed(.userVerificationCancelled))
+    let observation = await proxy.observation()
+    XCTAssertEqual(observation.events, ["face-id"])
+    XCTAssertEqual(observation.promptCount, 1)
+    XCTAssertEqual(observation.submitCount, 0)
+    let after = await store.activeEnrollment()
+    let installCount = await store.installCount
+    let revokeCount = await store.revokeCount
+    XCTAssertEqual(after, fixture.enrollment)
+    XCTAssertEqual(installCount, 0)
+    XCTAssertEqual(revokeCount, 0)
+  }
+
+  @MainActor
   func testMonasV3SubmitHintUsesProductionVerifierAndRejectsRouteSubstitution() async throws {
     let submitURL = try XCTUnwrap(
       URL(
@@ -408,6 +560,118 @@ final class EnrolledMonasAuthenticationProxyTests: XCTestCase {
   }
 }
 
+private struct CoordinatorProxyObservation: Sendable {
+  let events: [String]
+  let promptCount: Int
+  let submitCount: Int
+}
+
+/// Synthetic biometric producer and Monas callback authority used only by the
+/// coordinator-boundary regression. The callback accepts one COSE response
+/// and exposes one configured browser session.
+private actor CoordinatorMonasProxy: AuthenticationResponseDelivering {
+  private let challenge: VerifiedAuthenticationChallenge
+  private let expectedPayload: Data
+  private let deviceKeyID: Data
+  private let devicePublicKey: P256.Signing.PublicKey
+  private let nowMilliseconds: UInt64
+  private let approved: Bool
+  private let submitEndpoint: URL
+  private var events: [String] = []
+  private var promptCount = 0
+  private var submitCount = 0
+  private var state: TestMonasCeremonyState = .pending
+  private var finalized = false
+
+  init(
+    challenge: VerifiedAuthenticationChallenge,
+    expectedPayload: Data,
+    deviceKeyID: Data,
+    devicePublicKey: P256.Signing.PublicKey,
+    nowMilliseconds: UInt64,
+    approved: Bool
+  ) {
+    self.challenge = challenge
+    self.expectedPayload = expectedPayload
+    self.deviceKeyID = deviceKeyID
+    self.devicePublicKey = devicePublicKey
+    self.nowMilliseconds = nowMilliseconds
+    self.approved = approved
+    submitEndpoint = challenge.endpointHints[0]
+  }
+
+  func prepareCustody() { events.append("custody") }
+
+  func evaluateFaceID() -> Bool {
+    promptCount += 1
+    events.append("face-id")
+    return approved
+  }
+
+  func submit(envelope: Data, to endpoint: URL) async throws
+    -> AuthoritativeCeremonyStatus
+  {
+    events.append("submit")
+    submitCount += 1
+    guard approved,
+      state == .pending,
+      endpoint == submitEndpoint,
+      nowMilliseconds < challenge.expiresAtMilliseconds
+    else { throw ProxyFailure.expiredOrConsumed }
+    let cose = try CoseSign1.decode(envelope)
+    guard cose.keyID == deviceKeyID,
+      cose.payload == expectedPayload,
+      devicePublicKey.isValidSignature(
+        try P256.Signing.ECDSASignature(rawRepresentation: cose.signature),
+        for: cose.signatureStructure()
+      )
+    else { throw ProxyFailure.invalidResponse }
+    state = .completed
+    return AuthoritativeCeremonyStatus(state: .completed, evidenceID: "test-evidence")
+  }
+
+  func status(at endpoint: URL) async throws -> AuthoritativeCeremonyStatus {
+    guard endpoint == challenge.endpointHints.dropFirst().first else {
+      throw ProxyFailure.callbackUnavailable
+    }
+    return AuthoritativeCeremonyStatus(
+      state: state == .completed ? .completed : .pending,
+      evidenceID: state == .completed ? "test-evidence" : nil
+    )
+  }
+
+  func finalize(browserCapability: String) throws -> TestMonasSession {
+    events.append("finalize")
+    guard state == .completed,
+      !finalized,
+      browserCapability == "test-only-one-use-browser-capability"
+    else { throw ProxyFailure.callbackUnavailable }
+    finalized = true
+    return TestMonasSession(audience: "propylaion", successPath: "/home")
+  }
+
+  func observation() -> CoordinatorProxyObservation {
+    CoordinatorProxyObservation(
+      events: events,
+      promptCount: promptCount,
+      submitCount: submitCount
+    )
+  }
+}
+
+private struct CoordinatorTestEnvelope: ProductionEnvelopeProducing, @unchecked Sendable {
+  let proxy: CoordinatorMonasProxy
+  let signer: TestOnlySecureEnclave
+  let deviceKeyID: Data
+
+  func produceEnvelope(canonicalPayload: Data) async throws -> Data {
+    guard await proxy.evaluateFaceID() else {
+      throw PlatformFailure.userVerificationCancelled
+    }
+    return try signer.sign(payload: canonicalPayload, deviceKeyID: deviceKeyID)
+  }
+}
+
 private actor ProxyEnrollmentStore: InstallationTrustStoring {
   private let retained: AuthenticatedEnrollmentOutput
   private(set) var installCount = 0
@@ -430,7 +694,7 @@ private actor ProxyEnrollmentStore: InstallationTrustStoring {
 
 /// Ephemeral software P-256 key used only as a test stand-in for the enrolled
 /// Secure Enclave signer. It never reaches a keychain or leaves the test.
-private struct TestOnlySecureEnclave {
+private struct TestOnlySecureEnclave: @unchecked Sendable {
   private let key = P256.Signing.PrivateKey()
   var publicKey: P256.Signing.PublicKey { key.publicKey }
 

@@ -1,5 +1,15 @@
 # Changelog
 
+- Exercise the real `ProductionCeremonyCoordinator` through synthetic local
+  approval and an in-memory Monas v3 submit adapter. The offline test
+  verifies custody preparation precedes the biometric gate, the coordinator's
+  signed COSE response reaches the exact verified submit hint, the synthetic
+  authority returns completion, and denial stops before transport. The test
+  manually consumes its test-only browser capability; it does not invoke the
+  production browser callback. Production adapters
+  remain the defaults; tests do not touch installed trust, an enrolled phone,
+  physical Face ID, or a live authority (iOS 0.25.9+69; extends #523).
+
 - Add an offline enrolled-device authentication proxy test suite. It exercises
   the production Monas QR verifier and response encoder with ephemeral test
   signing material, synthetic Face ID, and a one-use in-memory Monas callback.

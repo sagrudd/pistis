@@ -29,7 +29,15 @@ final class ProductionCeremonyCoordinator: ObservableObject {
     @Published private(set) var phase: Phase = .idle
     @Published private(set) var failureStage: ProductionCeremonyStage?
     private let trustStore: any InstallationTrustStoring
+    private let history: LocalHistoryRepository
     private let now: @Sendable () -> Date
+    private let makeEnvelopeProducer: @Sendable (
+        AuthenticatedEnrollmentOutput,
+        AuthenticationDecision
+    ) throws -> any ProductionEnvelopeProducing
+    private let makeResponseTransport: @Sendable (
+        AuthenticatedEnrollmentOutput
+    ) throws -> any AuthenticationResponseDelivering
     private var challenge: VerifiedAuthenticationChallenge?
     private var enrollment: AuthenticatedEnrollmentOutput?
     private var retainedRequest: ApprovalRequest?
@@ -43,8 +51,51 @@ final class ProductionCeremonyCoordinator: ObservableObject {
         now: @escaping @Sendable () -> Date = Date.init
     ) {
         self.trustStore = trustStore
+        history = .shared
         self.now = now
+        makeEnvelopeProducer = { enrollment, decision in
+            let signer = try SecureEnclaveSigner(
+                namespace: installationNamespace(enrollment.trust.installationID),
+                authenticationReason: decision == .approved
+                    ? "Approve this Pistis authentication request"
+                    : "Deny this Pistis authentication request"
+            )
+            return try SecureEnclaveProductionEnvelope(
+                signer: signer,
+                deviceKeyID: enrollment.responseContext.deviceKeyID
+            )
+        }
+        makeResponseTransport = { enrollment in
+            try AuthenticationResponseTransport(
+                allowedHosts: enrollment.allowedHosts,
+                httpsOrigin: enrollment.httpsOrigin,
+                tlsSPKISHA256: enrollment.tlsSPKISHA256
+            )
+        }
     }
+
+#if DEBUG
+    /// Test-only adapter seam for exercising production ceremony coordination
+    /// without device keys, Face ID, or a live authority.
+    init(
+        testingWith trustStore: any InstallationTrustStoring,
+        history: LocalHistoryRepository,
+        now: @escaping @Sendable () -> Date,
+        makeEnvelopeProducer: @escaping @Sendable (
+            AuthenticatedEnrollmentOutput,
+            AuthenticationDecision
+        ) throws -> any ProductionEnvelopeProducing,
+        makeResponseTransport: @escaping @Sendable (
+            AuthenticatedEnrollmentOutput
+        ) throws -> any AuthenticationResponseDelivering
+    ) {
+        self.trustStore = trustStore
+        self.history = history
+        self.now = now
+        self.makeEnvelopeProducer = makeEnvelopeProducer
+        self.makeResponseTransport = makeResponseTransport
+    }
+#endif
 
     func accept(qrText: String) async {
         phase = .verifying
@@ -92,26 +143,13 @@ final class ProductionCeremonyCoordinator: ObservableObject {
                 userVerifiedAtMilliseconds: timestamp
             )
             stage = .deviceSignature
-            let signer = try SecureEnclaveSigner(
-                namespace: installationNamespace(enrollment.trust.installationID),
-                authenticationReason: decision == .approved
-                    ? "Approve this Pistis authentication request"
-                    : "Deny this Pistis authentication request"
-            )
-            let producer = try SecureEnclaveProductionEnvelope(
-                signer: signer,
-                deviceKeyID: enrollment.responseContext.deviceKeyID
-            )
+            let producer = try makeEnvelopeProducer(enrollment, decision)
             let envelope = try await producer.produceEnvelope(canonicalPayload: payload)
             guard envelope.count <= AuthenticationResponseTransport.maximumEnvelopeBytes,
                   let submitEndpoint = challenge.endpointHints.first
             else { throw PlatformFailure.invalidConfiguration }
             stage = .responseDelivery
-            let transport = try AuthenticationResponseTransport(
-                allowedHosts: enrollment.allowedHosts,
-                httpsOrigin: enrollment.httpsOrigin,
-                tlsSPKISHA256: enrollment.tlsSPKISHA256
-            )
+            let transport = try makeResponseTransport(enrollment)
             var status = try await transport.submit(envelope: envelope, to: submitEndpoint)
             let statusEndpoint = challenge.endpointHints.dropFirst().first
             var attempts = 0
@@ -171,7 +209,7 @@ final class ProductionCeremonyCoordinator: ObservableObject {
         failureStage = stage
         phase = .failed(failure)
         guard let request = presentedRequest else { return }
-        try? LocalHistoryRepository.shared.record(
+        try? history.record(
             Self.failureHistoryEvent(
                 request: request,
                 failure: failure,
@@ -184,7 +222,7 @@ final class ProductionCeremonyCoordinator: ObservableObject {
     private func record(status: AuthoritativeCeremonyStatus) {
         guard let request = presentedRequest else { return }
         let completed = status.state == .completed
-        try? LocalHistoryRepository.shared.record(
+        try? history.record(
             HistoryEvent(
                 id: UUID(),
                 action: "Pistis sign-in",

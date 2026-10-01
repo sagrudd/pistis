@@ -197,7 +197,13 @@ final class RedirectRejectingSessionDelegate:
 
 /// Bounded HTTPS response delivery. A signed endpoint hint is transport input,
 /// not authority; the caller supplies the host allow-list from enrolled trust.
-struct AuthenticationResponseTransport: Sendable {
+protocol AuthenticationResponseDelivering: Sendable {
+    func submit(envelope: Data, to endpoint: URL) async throws
+        -> AuthoritativeCeremonyStatus
+    func status(at endpoint: URL) async throws -> AuthoritativeCeremonyStatus
+}
+
+struct AuthenticationResponseTransport: AuthenticationResponseDelivering {
     static let maximumEnvelopeBytes = 2_048
     static let maximumResponseBytes = 2_048
 

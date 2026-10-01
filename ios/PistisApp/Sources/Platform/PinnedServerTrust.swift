@@ -184,11 +184,30 @@ final class PinnedEnrolmentSessionDelegate:
               ),
               let trust = challenge.protectionSpace.serverTrust,
               let chain = SecTrustCopyCertificateChain(trust) as? [SecCertificate],
-              let leaf = chain.first
+              chain.first != nil,
+              Self.acceptsServerTrust(
+                  trust,
+                  host: challenge.protectionSpace.host,
+                  trustPolicy: trustPolicy
+              )
         else {
             completionHandler(.cancelAuthenticationChallenge, nil)
             return
         }
+        completionHandler(.useCredential, URLCredential(trust: trust))
+    }
+
+    /// Applies the exact trust policy used by the enrolled URLSession path.
+    /// Keeping this evaluator internal lets simulator tests exercise real
+    /// Security.framework chain validation without opening a network socket.
+    static func acceptsServerTrust(
+        _ trust: SecTrust,
+        host: String,
+        trustPolicy: MonasServerTrustPolicy
+    ) -> Bool {
+        guard let chain = SecTrustCopyCertificateChain(trust) as? [SecCertificate],
+              let leaf = chain.first
+        else { return false }
         let anchor: SecCertificate
         switch trustPolicy {
         case let .bootstrapLeafSPKI(expectedSPKISHA256):
@@ -197,35 +216,25 @@ final class PinnedEnrolmentSessionDelegate:
                 certificateDER: certificateDER,
                 expectedSPKISHA256: expectedSPKISHA256
             ) else {
-                completionHandler(.cancelAuthenticationChallenge, nil)
-                return
+                return false
             }
             anchor = leaf
         case let .siteRootGeneration(rootDER, fingerprintSHA256, generation):
             guard generation > 0,
                   Data(SHA256.hash(data: rootDER)) == fingerprintSHA256,
                   let root = SecCertificateCreateWithData(nil, rootDER as CFData)
-            else {
-                completionHandler(.cancelAuthenticationChallenge, nil)
-                return
-            }
+            else { return false }
             anchor = root
         }
         guard SecTrustSetPolicies(
             trust,
-              SecPolicyCreateSSL(
-                  true,
-                  challenge.protectionSpace.host as CFString
-              )
+            SecPolicyCreateSSL(true, host as CFString)
         ) == errSecSuccess,
               SecTrustSetAnchorCertificates(trust, [anchor] as CFArray) == errSecSuccess,
               SecTrustSetAnchorCertificatesOnly(trust, true) == errSecSuccess,
               SecTrustEvaluateWithError(trust, nil)
-        else {
-            completionHandler(.cancelAuthenticationChallenge, nil)
-            return
-        }
-        completionHandler(.useCredential, URLCredential(trust: trust))
+        else { return false }
+        return true
     }
 
     /// Testable, fail-closed certificate-key comparison shared by the

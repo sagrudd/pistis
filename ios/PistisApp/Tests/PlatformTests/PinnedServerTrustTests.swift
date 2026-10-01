@@ -1,5 +1,6 @@
 import CryptoKit
 import Foundation
+import Security
 import XCTest
 
 @testable import Pistis
@@ -46,6 +47,94 @@ final class PinnedServerTrustTests: XCTestCase {
         } catch {
             XCTAssertEqual(error as? PlatformFailure, .invalidConfiguration)
         }
+    }
+
+    func testSiteRootTrustAcceptsRotatedLeafWithoutPinOrReenrolment() throws {
+        let rootDER = try fixture(named: "site-root-generation-7")
+        let policy = try MonasServerTrustPolicy(
+            siteRootDER: rootDER,
+            fingerprintSHA256: Data(SHA256.hash(data: rootDER)),
+            generation: 7
+        )
+        let firstLeaf = try fixture(named: "site-leaf-generation-7-a")
+        let rotatedLeaf = try fixture(named: "site-leaf-generation-7-b")
+        let firstSPKI = Data(SHA256.hash(data: try CertificateSPKI.extract(from: firstLeaf)))
+        let rotatedSPKI = Data(SHA256.hash(data: try CertificateSPKI.extract(from: rotatedLeaf)))
+        XCTAssertNotEqual(firstSPKI, rotatedSPKI)
+
+        let firstTrust = try trust(
+            for: "site-leaf-generation-7-a",
+            issuer: "site-root-generation-7"
+        )
+        let rotatedTrust = try trust(
+            for: "site-leaf-generation-7-b",
+            issuer: "site-root-generation-7"
+        )
+        XCTAssertTrue(
+            PinnedEnrolmentSessionDelegate.acceptsServerTrust(
+                firstTrust,
+                host: "monas.example.test",
+                trustPolicy: policy
+            ),
+            "first-leaf trust result: \(String(describing: SecTrustCopyResult(firstTrust)))"
+        )
+        XCTAssertTrue(
+            PinnedEnrolmentSessionDelegate.acceptsServerTrust(
+                rotatedTrust,
+                host: "monas.example.test",
+                trustPolicy: policy
+            ),
+            "rotated-leaf trust result: \(String(describing: SecTrustCopyResult(rotatedTrust)))"
+        )
+    }
+
+    func testSiteRootTrustRejectsDifferentRootGenerationAndHostname() throws {
+        let rootDER = try fixture(named: "site-root-generation-7")
+        let policy = try MonasServerTrustPolicy(
+            siteRootDER: rootDER,
+            fingerprintSHA256: Data(SHA256.hash(data: rootDER)),
+            generation: 7
+        )
+
+        XCTAssertFalse(
+            PinnedEnrolmentSessionDelegate.acceptsServerTrust(
+                try trust(for: "site-leaf-generation-8", issuer: "site-root-generation-8"),
+                host: "monas.example.test",
+                trustPolicy: policy
+            ),
+            "a leaf issued by the replacement root must not pass the retained generation"
+        )
+        XCTAssertFalse(
+            PinnedEnrolmentSessionDelegate.acceptsServerTrust(
+                try trust(for: "site-leaf-wrong-host", issuer: "site-root-generation-7"),
+                host: "monas.example.test",
+                trustPolicy: policy
+            ),
+            "the retained root does not override TLS hostname validation"
+        )
+    }
+
+    func testSiteRootTrustRejectsExpiredLeaf() throws {
+        let rootDER = try fixture(named: "site-root-generation-7")
+        let policy = try MonasServerTrustPolicy(
+            siteRootDER: rootDER,
+            fingerprintSHA256: Data(SHA256.hash(data: rootDER)),
+            generation: 7
+        )
+        let expiredAt = try XCTUnwrap(
+            ISO8601DateFormatter().date(from: "2040-01-01T00:00:00Z")
+        )
+        XCTAssertFalse(
+            PinnedEnrolmentSessionDelegate.acceptsServerTrust(
+                try trust(
+                    for: "site-leaf-generation-7-a",
+                    issuer: "site-root-generation-7",
+                    verifyDate: expiredAt
+                ),
+                host: "monas.example.test",
+                trustPolicy: policy
+            )
+        )
     }
 
     func testNormalLoginTransportClassifiesAuthorityRejection() async throws {
@@ -114,11 +203,55 @@ final class PinnedServerTrustTests: XCTestCase {
     }
 
     private func fixture() throws -> Data {
+        try fixture(named: "pistis-example-test")
+    }
+
+    private func fixture(named name: String) throws -> Data {
         let url = URL(fileURLWithPath: #filePath)
             .deletingLastPathComponent()
-            .appendingPathComponent("../Fixtures/pistis-example-test.der")
+            .appendingPathComponent("../Fixtures/\(name).der")
             .standardizedFileURL
         return try Data(contentsOf: url)
+    }
+
+    private func trust(
+        for certificateName: String,
+        issuer issuerName: String? = nil,
+        verifyDate: Date? = nil
+    ) throws -> SecTrust {
+        let certificate = try XCTUnwrap(
+            SecCertificateCreateWithData(
+                nil,
+                try fixture(named: certificateName) as CFData
+            )
+        )
+        let chain: [SecCertificate]
+        if let issuerName {
+            let issuer = try XCTUnwrap(
+                SecCertificateCreateWithData(
+                    nil,
+                    try fixture(named: issuerName) as CFData
+                )
+            )
+            chain = [certificate, issuer]
+        } else {
+            chain = [certificate]
+        }
+        var createdTrust: SecTrust?
+        XCTAssertEqual(
+            SecTrustCreateWithCertificates(
+                chain as CFArray,
+                SecPolicyCreateBasicX509(),
+                &createdTrust
+            ),
+            errSecSuccess
+        )
+        let trust = try XCTUnwrap(createdTrust)
+        XCTAssertEqual(SecTrustSetNetworkFetchAllowed(trust, false), errSecSuccess)
+        if let verifyDate {
+            XCTAssertEqual(SecTrustSetVerifyDate(trust, verifyDate as CFDate), errSecSuccess)
+        }
+        return trust
     }
 
     private func authenticationTransport() throws -> AuthenticationResponseTransport {

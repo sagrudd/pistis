@@ -1,5 +1,7 @@
 # Changelog
 
+- Pin Pistis Monas' offline Site X.509 carrier to Thesaurophylax 0.79.9 at exact source revision `eb2f180ee7b8cb8673fa325a9235a5ba2709adb9`. The consumed public module and carrier types remain source-compatible; no protocol or phone behaviour changes. Bump `pistis-monas` to 0.11.1 for the dependency provenance update.
+
 - Exercise the real `ProductionCeremonyCoordinator` through synthetic local
   approval and an in-memory Monas v3 submit adapter. The offline test
   verifies custody preparation precedes the biometric gate, the coordinator's

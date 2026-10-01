@@ -57,9 +57,10 @@ checks that the callback rejects a substituted v2 route. Monas is not started
 or contacted: the callback model checks documented state transitions, but does
 not prove the live HTTP adapter, durable replay store, browser cookie, or
 session issuance. Expiry, wrong installation/audience, and a valid COSE
-signature from the wrong device key are rejected in the local models. The test
-also checks that the retained enrollment is unchanged and that the login flow
-does not install or revoke trust. A separate test-only branch confirms that a
+signature from the wrong device key are rejected in the local models. The test also checks that its in-memory enrollment fixture is unchanged and
+that the composed proxy makes no install or revoke call on its test store. It
+does not exercise the production coordinator or prove the live login path
+leaves device trust unchanged. A separate test-only branch confirms that a
 synthetic Face ID denial makes no callback submission attempt; it does not
 exercise the production coordinator's biometric-to-transport wiring. App Attest
 is outside the ordinary-login contract covered here. Run it with

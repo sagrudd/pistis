@@ -70,6 +70,39 @@ enum AuthorityCustodyAcceptedAssertionTransitionV2 {
     }
 }
 
+/// Selects the only permitted response to a server-owned custody status before
+/// either client entry point can reach an App Attest or Face ID operation.
+enum AuthorityCustodyEntryDecisionV2: Equatable {
+    case proceed
+    case awaitAuthorityActivation
+    case attendCustody
+
+    static func ordinaryLogin(
+        status: MonasSiteRootDelegationTransport.AuthorityCustodyStatusV2
+    ) -> Self {
+        decision(status: status)
+    }
+
+    static func installationContinuation(
+        status: MonasSiteRootDelegationTransport.AuthorityCustodyStatusV2
+    ) -> Self {
+        decision(status: status)
+    }
+
+    private static func decision(
+        status: MonasSiteRootDelegationTransport.AuthorityCustodyStatusV2
+    ) -> Self {
+        switch status {
+        case .ready:
+            return .proceed
+        case .custodyCompleted:
+            return .awaitAuthorityActivation
+        case .appAttestAssertionRequired, .initialRotationRequired, .recoveryRequired:
+            return .attendCustody
+        }
+    }
+}
+
 struct RootTabView: View {
     private enum Tab: Hashable {
         case identities
@@ -299,7 +332,17 @@ struct RootTabView: View {
         let status = try await transport.authorityCustodyStatusV2(
             authorityHost: authorityHost
         )
-        guard status != .ready else { return }
+        switch AuthorityCustodyEntryDecisionV2.ordinaryLogin(status: status) {
+        case .proceed:
+            return
+        case .awaitAuthorityActivation:
+            // Completion is durable evidence that the attended ceremony
+            // finished, not evidence that a later authority process is ready.
+            // Do not route the user through App Attest or Face ID again.
+            throw PlatformFailure.siteRootAuthorityUnavailable
+        case .attendCustody:
+            break
+        }
         try await attendAuthorityCustody(
             status: status,
             authorityHost: authorityHost,
@@ -379,6 +422,10 @@ struct RootTabView: View {
         switch status {
         case .appAttestAssertionRequired:
             throw PlatformFailure.siteRootAuthorityUnavailable
+        case .custodyCompleted:
+            // This terminal state can only be advanced by normal authority
+            // activation; it must never create a second attended ceremony.
+            throw PlatformFailure.siteRootAuthorityUnavailable
         case .initialRotationRequired:
             let commitment = try producer.prepareInitialRotation()
             progress(.beginCustody)
@@ -434,8 +481,8 @@ struct RootTabView: View {
         let status = try await transport.authorityCustodyStatusV2(
             authorityHost: installation.localAlias
         )
-        switch status {
-                case .ready:
+        switch AuthorityCustodyEntryDecisionV2.installationContinuation(status: status) {
+                case .proceed:
                     if AuthorityCustodyContinuationDecision.afterCustodyReady(
                         installation: installation,
                         recoveredThisAttempt: false
@@ -457,9 +504,15 @@ struct RootTabView: View {
             reconciliationMessage =
               "Authority custody is ready. Continue identity setup for this installation."
             routeToProviderEnrolment()
-          }
+                    }
                     return
-        case .appAttestAssertionRequired, .initialRotationRequired, .recoveryRequired:
+        case .awaitAuthorityActivation:
+          reconciliationMessage =
+            "Authority custody was accepted. The authority is activating; do not repeat Face ID."
+          await enrollment.refresh()
+          selectedTab = .installations
+          return
+        case .attendCustody:
           break
         }
         try await attendAuthorityCustody(

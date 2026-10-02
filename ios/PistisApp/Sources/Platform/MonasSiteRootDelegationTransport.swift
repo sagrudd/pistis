@@ -80,6 +80,10 @@ struct MonasSiteRootDelegationTransport: MonasSiteRootCeremonyTransport,
         case appAttestAssertionRequired
         case initialRotationRequired
         case recoveryRequired
+        /// The server has durably accepted the custody completion, but has
+        /// not asserted that a later authority process is ready. Callers must
+        /// wait for normal readiness and must not start another ceremony.
+        case custodyCompleted
         case ready
     }
 
@@ -233,6 +237,7 @@ struct MonasSiteRootDelegationTransport: MonasSiteRootCeremonyTransport,
                 switch state {
                 case "initial-rotation-required": return .initialRotationRequired
                 case "recovery-required": return .recoveryRequired
+                case "completed": return .custodyCompleted
                 case "ready": return .ready
                 default: throw PlatformFailure.siteRootAuthorityUnavailable
                 }

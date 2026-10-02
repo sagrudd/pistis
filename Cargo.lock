@@ -1096,7 +1096,7 @@ dependencies = [
 
 [[package]]
 name = "pistis-monas"
-version = "0.11.0"
+version = "0.11.1"
 dependencies = [
  "base64",
  "ciborium",
@@ -1540,8 +1540,8 @@ dependencies = [
 
 [[package]]
 name = "thesaurophylax-api"
-version = "0.68.0"
-source = "git+https://github.com/sagrudd/thesaurophylax.git?rev=e357078731d3fd9fad914bc0acb859cc20097fd4#e357078731d3fd9fad914bc0acb859cc20097fd4"
+version = "0.79.9"
+source = "git+https://github.com/sagrudd/thesaurophylax.git?rev=eb2f180ee7b8cb8673fa325a9235a5ba2709adb9#eb2f180ee7b8cb8673fa325a9235a5ba2709adb9"
 dependencies = [
  "base64",
  "ciborium",
@@ -1558,21 +1558,21 @@ dependencies = [
 
 [[package]]
 name = "thesaurophylax-core"
-version = "0.68.0"
-source = "git+https://github.com/sagrudd/thesaurophylax.git?rev=e357078731d3fd9fad914bc0acb859cc20097fd4#e357078731d3fd9fad914bc0acb859cc20097fd4"
+version = "0.79.9"
+source = "git+https://github.com/sagrudd/thesaurophylax.git?rev=eb2f180ee7b8cb8673fa325a9235a5ba2709adb9#eb2f180ee7b8cb8673fa325a9235a5ba2709adb9"
 
 [[package]]
 name = "thesaurophylax-policy"
-version = "0.68.0"
-source = "git+https://github.com/sagrudd/thesaurophylax.git?rev=e357078731d3fd9fad914bc0acb859cc20097fd4#e357078731d3fd9fad914bc0acb859cc20097fd4"
+version = "0.79.9"
+source = "git+https://github.com/sagrudd/thesaurophylax.git?rev=eb2f180ee7b8cb8673fa325a9235a5ba2709adb9#eb2f180ee7b8cb8673fa325a9235a5ba2709adb9"
 dependencies = [
  "thesaurophylax-core",
 ]
 
 [[package]]
 name = "thesaurophylax-store"
-version = "0.68.0"
-source = "git+https://github.com/sagrudd/thesaurophylax.git?rev=e357078731d3fd9fad914bc0acb859cc20097fd4#e357078731d3fd9fad914bc0acb859cc20097fd4"
+version = "0.79.9"
+source = "git+https://github.com/sagrudd/thesaurophylax.git?rev=eb2f180ee7b8cb8673fa325a9235a5ba2709adb9#eb2f180ee7b8cb8673fa325a9235a5ba2709adb9"
 dependencies = [
  "thesaurophylax-core",
 ]

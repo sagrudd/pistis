@@ -9,7 +9,7 @@ reimplementation. Source revision `60ec3ae9657c0ea92b72e330cdfc399d678465a8`
 The retained emitter was executed with the existing compiled library:
 
 ```text
-rustc emit.rs --edition=2024 -L dependency=/private/tmp/proxenos-convergence-primary-group/target/debug/deps --extern proxenos=/private/tmp/proxenos-convergence-primary-group/target/debug/deps/libproxenos-a2723802b1365d7a.rlib -o /private/tmp/pistis-ack-vector
+rustc tests/fixtures/retained-ack/emit.rs --edition=2024 -L dependency=/private/tmp/proxenos-convergence-primary-group/target/debug/deps --extern proxenos=/private/tmp/proxenos-convergence-primary-group/target/debug/deps/libproxenos-a2723802b1365d7a.rlib -o /private/tmp/pistis-ack-vector
 /private/tmp/pistis-ack-vector
 ```
 

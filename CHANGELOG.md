@@ -1,5 +1,7 @@
 # Changelog
 
+- Pin Pistis Monas' offline Site X.509 carrier to Thesaurophylax 0.79.9 at exact source revision `eb2f180ee7b8cb8673fa325a9235a5ba2709adb9`. The public PXFP v2 carrier now accepts presentation expiry up to 900 seconds (previously 300 seconds); its wire encoding and transcript remain unchanged. Stacked PR #528 adds the 900/901-second boundary regression and protocol documentation. Bump `pistis-monas` to 0.11.1 for this dependency and contract update.
+
 - Exercise the real `ProductionCeremonyCoordinator` through synthetic local
   approval and an in-memory Monas v3 submit adapter. The offline test
   verifies custody preparation precedes the biometric gate, the coordinator's

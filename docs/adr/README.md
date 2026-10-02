@@ -122,3 +122,7 @@ as a fresh first installation.
 purpose-separated iPhone validators, producers, pinned Monas routes and
 governed application presentation for Base Camp migration and every later
 unused successor generation.
+
+[ADR 0043](0043-proposed-enrolled-site-root-successor-adoption.md) proposes a
+target-authorised, enrolment-preserving Site Root successor transition. Its
+contract and implementation remain unaccepted and unimplemented.

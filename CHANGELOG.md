@@ -1,9 +1,9 @@
 # Changelog
 
 - Correct the Jenkins CI guide to describe protected exact-source qualification
-  and terminal commit-status publication. Remove the retired checkout command
-  and webhook status claim; the trusted manifest and CI behaviour are unchanged
-  (#529).
+  and terminal commit-status publication. Remove the production claim for the
+  test-only checkout helper and the webhook status claim; the trusted manifest
+  and CI behaviour are unchanged (#529).
 
 - Document the accepted PXFP first-provision expiry bound and cover its public API boundary: a challenge lifetime of exactly 900 seconds is accepted and 901 seconds is denied. Bump `pistis-monas` to 0.11.2 for this compatible contract update.
 

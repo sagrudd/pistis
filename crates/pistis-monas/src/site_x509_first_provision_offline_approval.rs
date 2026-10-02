@@ -142,13 +142,16 @@ mod tests {
     use p256::ecdsa::{Signature, SigningKey, signature::Signer as _};
     use serde::Deserialize;
     use sha2::{Digest as _, Sha256};
-    use thesaurophylax_api::site_x509_first_provision_offline_v2::{
-        SiteX509FirstProvisionOfflinePresentationV2,
-        site_x509_first_provision_app_attest_client_data_hash_v2,
+    use thesaurophylax_api::site_x509_first_provision_offline_v2::site_x509_first_provision_app_attest_client_data_hash_v2;
+    use thesaurophylax_api::site_x509_first_provision_wire_v1::{
+        decode_site_x509_first_provision_challenge_v1,
+        encode_site_x509_first_provision_challenge_v1,
     };
 
     use super::*;
-    use crate::MONAS_PRODUCTION_APP_ATTEST_APP_IDENTIFIER_V1;
+    use crate::{
+        MONAS_PRODUCTION_APP_ATTEST_APP_IDENTIFIER_V1, SiteX509FirstProvisionOfflinePresentationV2,
+    };
 
     #[derive(Deserialize)]
     struct Fixture {
@@ -246,6 +249,87 @@ mod tests {
             bundle_version: "1.0.0".into(),
         };
         (response, acceptance)
+    }
+
+    fn replace_challenge_expiry(challenge: &[u8], expiry_unix_seconds: u64) -> Vec<u8> {
+        const MAGIC: &[u8; 8] = b"PXFP/v1\x01";
+        const EXPIRY_TAG: u8 = 0x0d;
+
+        assert!(challenge.starts_with(MAGIC));
+        let mut updated = challenge.to_vec();
+        let mut offset = MAGIC.len();
+        while offset + 3 <= updated.len() {
+            let tag = updated[offset];
+            let length = usize::from(u16::from_be_bytes([
+                updated[offset + 1],
+                updated[offset + 2],
+            ]));
+            let value_start = offset + 3;
+            let value_end = value_start + length;
+            assert!(value_end <= updated.len());
+            if tag == EXPIRY_TAG {
+                assert_eq!(length, 8);
+                updated[value_start..value_end].copy_from_slice(&expiry_unix_seconds.to_be_bytes());
+                return updated;
+            }
+            offset = value_end;
+        }
+        panic!("canonical first-provision challenge has an expiry field");
+    }
+
+    #[test]
+    fn public_pxfp_presentation_accepts_900_second_lifetime_and_denies_901() {
+        const LIFETIME_SECONDS: u64 = 900;
+
+        let fixture: Fixture = serde_json::from_str(include_str!(concat!(
+            env!("CARGO_MANIFEST_DIR"),
+            "/../../fixtures/protocol-v1/site-x509-first-provision/pxfp-offline-v2-customer-appliance.json"
+        )))
+        .expect("reviewed fixture parses");
+        let presentation_bytes = decode_hex(&fixture.presentation_hex);
+        let presentation = SiteX509FirstProvisionOfflinePresentationV2::decode(
+            &presentation_bytes,
+            fixture.observed_at_unix_seconds,
+        )
+        .expect("reviewed presentation is canonical");
+        let retained = presentation
+            .retained_binding()
+            .expect("reviewed presentation has a retained binding");
+        let mut challenge = decode_site_x509_first_provision_challenge_v1(
+            presentation.canonical_challenge(),
+            retained.prepared_at_unix_seconds,
+        )
+        .expect("retained canonical challenge is valid");
+        challenge.expires_at_unix_seconds = retained.prepared_at_unix_seconds + LIFETIME_SECONDS;
+        let challenge_at_limit = encode_site_x509_first_provision_challenge_v1(
+            &challenge,
+            retained.prepared_at_unix_seconds,
+        )
+        .expect("provider accepts the exact 900-second challenge");
+
+        SiteX509FirstProvisionOfflinePresentationV2::new(
+            challenge_at_limit.clone(),
+            retained.context.clone(),
+            retained.replay_reference,
+            retained.ceremony_challenge,
+            retained.prepared_at_unix_seconds,
+        )
+        .expect("Pistis accepts the provider's exact lifetime boundary");
+
+        let challenge_over_limit = replace_challenge_expiry(
+            &challenge_at_limit,
+            retained.prepared_at_unix_seconds + LIFETIME_SECONDS + 1,
+        );
+        assert!(
+            SiteX509FirstProvisionOfflinePresentationV2::new(
+                challenge_over_limit,
+                retained.context,
+                retained.replay_reference,
+                retained.ceremony_challenge,
+                retained.prepared_at_unix_seconds,
+            )
+            .is_err()
+        );
     }
 
     #[test]

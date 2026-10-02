@@ -43,13 +43,14 @@ reviewed macOS Jenkins worker with full Xcode and owner-controlled Apple
 resources.
 
 The task requires `network` to fetch those pinned tools and advisory data.
-`jenkins-submit-checkout` binds a reviewed clean checkout to an exact revision
-and submits it as `trusted_revision`; do not expose this policy through the
-untrusted webhook path.
+The manifest requests `trusted_revision`. The GitHub webhook path is
+`untrusted` and cannot qualify this policy or produce its required status.
+The old `jenkins-submit-checkout` helper is test-only; it is not a production
+command.
 
-## Validate and submit a milestone candidate
+## Validate the contract
 
-From `../jenkins`, validate the contract:
+From `../jenkins`, resolve the contract without submitting an Expedition:
 
 ```sh
 cargo run -p expedition-basecamp --bin expedition -- resolve \
@@ -57,30 +58,31 @@ cargo run -p expedition-basecamp --bin expedition -- resolve \
   --manifest ../pistis/.mnemosyne/expedition.json
 ```
 
-Submit the exact clean checkout without putting credentials in shell history:
+## Qualify an exact reviewed source
 
-```sh
-export EXPEDITION_VAULT_PASSPHRASE
-expedition jenkins-submit-checkout \
-  --policy integrations/pistis/policy.json \
-  --manifest ../pistis/.mnemosyne/expedition.json \
-  --task-catalog integrations/pistis/task-catalog.json \
-  --source-checkout ../pistis \
-  --state-db .expedition/basecamp.db \
-  --secrets-vault .expedition/secrets.vault \
-  --jenkins-token-secret-id jenkins.api-token
-unset EXPEDITION_VAULT_PASSPHRASE
-```
+Use Base Camp's [protected ADR-0012 source-qualification flow](https://github.com/sagrudd/jenkins/blob/main/docs/adr/0012-monas-exact-source-qualification.md).
+An authorised installation owner must first install an immutable admission for
+the exact reviewed repository, commit, tree and review ref. Its protected
+evidence binds the original source manifest bytes, reviewed policy and task
+catalogue, resolved plan, installation configuration and service-owned clean
+checkout. An admission for another revision cannot be reused.
 
-Submission refuses a dirty checkout. Expedition derives and retains the exact
-HTTPS origin and commit, and Jenkins independently verifies that revision.
-Submit only after the combined local gates and required reviews pass.
+The existing same-origin Base Camp browser session is freshly revalidated
+through Monas/Pistis for the `release_owner` role on each protected action.
+Inspect and confirm the admission, then separately inspect and confirm its
+dispatch. The requests select only the admission ID and the returned
+inspection digest; they do not supply a checkout path, manifest, trust level,
+credential or verdict. Keep the browser session cookie in the browser.
+Jenkins independently verifies and runs the admitted immutable revision.
 
-For automatic pull-request status, configure Base Camp's authenticated GitHub
-webhook adapter. It reports the stable `mnemosyne/expedition` commit status;
-branch protection should require that context only after webhook delivery has
-been verified. Until then, the retained Expedition dossier is the merge
-evidence.
+Only after a real, complete terminal dossier is retained can the separate
+protected status inspection and confirmation bind a derived classic
+`mnemosyne/expedition` commit-status intent for that exact revision. Delivery
+also requires the accepted, installed Thesaurophylax exact-source status
+projection and its current provider authority. A queued Expedition, a retained
+dossier for another revision or a GitHub Check Run does not satisfy this strict
+status requirement. Missing or mismatched admission, review, configuration,
+terminal evidence or provider authority leaves the pull request blocked.
 
 After every successful run, the Jenkins adapter publishes the retained Sphinx
 archive only if the tested revision equals the current `main`. Configure the

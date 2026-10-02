@@ -1,5 +1,12 @@
 # Changelog
 
+- Correct the Jenkins CI guide to describe protected exact-source qualification
+  and terminal commit-status publication. Remove the production claim for the
+  test-only checkout helper and the webhook status claim; the trusted manifest
+  and CI behaviour are unchanged (#529).
+
+- Document the accepted PXFP first-provision expiry bound and cover its public API boundary: a challenge lifetime of exactly 900 seconds is accepted and 901 seconds is denied. Bump `pistis-monas` to 0.11.2 for this compatible contract update.
+
 - Pin Pistis Monas' offline Site X.509 carrier to Thesaurophylax 0.79.9 at exact source revision `eb2f180ee7b8cb8673fa325a9235a5ba2709adb9`. The public PXFP v2 carrier now accepts presentation expiry up to 900 seconds (previously 300 seconds); its wire encoding and transcript remain unchanged. Stacked PR #528 adds the 900/901-second boundary regression and protocol documentation. Bump `pistis-monas` to 0.11.1 for this dependency and contract update.
 
 - Exercise the real `ProductionCeremonyCoordinator` through synthetic local

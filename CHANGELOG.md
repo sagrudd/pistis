@@ -1,5 +1,13 @@
 # Changelog
 
+- Keep enrolled Monas TLS trust anchored to the retained Site Root generation
+  while extracting the existing trust evaluator into an internal test seam.
+  Simulator regressions prove same-root leaf-key rotation succeeds without a
+  leaf pin, while another root generation, a mismatched hostname, and an
+  expired leaf fail. This is X.509 path, hostname and time validation only;
+  it does not establish positive revocation checking or physical-iPhone
+  acceptance (iOS 0.25.10+70; test-only extension to #448).
+
 - Exercise the real `ProductionCeremonyCoordinator` through synthetic local
   approval and an in-memory Monas v3 submit adapter. The offline test
   verifies custody preparation precedes the biometric gate, the coordinator's

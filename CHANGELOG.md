@@ -1,6 +1,8 @@
 # Changelog
 
-- Pin Pistis Monas' offline Site X.509 carrier to Thesaurophylax 0.79.9 at exact source revision `eb2f180ee7b8cb8673fa325a9235a5ba2709adb9`. The consumed public module and carrier types remain source-compatible; no protocol or phone behaviour changes. Bump `pistis-monas` to 0.11.1 for the dependency provenance update.
+- Document the accepted PXFP first-provision expiry bound and cover its public API boundary: a challenge lifetime of exactly 900 seconds is accepted and 901 seconds is denied. Bump `pistis-monas` to 0.11.2 for this compatible contract update.
+
+- Pin Pistis Monas' offline Site X.509 carrier to Thesaurophylax 0.79.9 at exact source revision `eb2f180ee7b8cb8673fa325a9235a5ba2709adb9`. This adopts the provider's accepted 900-second (15-minute) challenge lifetime; carrier encoding and approval transcript remain unchanged, while the previous 300-second expiry limit is extended. Bump `pistis-monas` to 0.11.1 for the dependency contract update.
 
 - Exercise the real `ProductionCeremonyCoordinator` through synthetic local
   approval and an in-memory Monas v3 submit adapter. The offline test

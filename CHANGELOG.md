@@ -1,5 +1,11 @@
 # Changelog
 
+- Add independently recipient-authenticated offline X.509 custody review,
+  existing enrolled-key Face ID response production and opaque JSON export.
+  Import, expiry, cancellation and protected registration changes deny before
+  production; host acceptance remains separate (iOS 0.26.0+70, #532; Kanon
+  source preparation allocated 1.71.35).
+
 - Exercise the real `ProductionCeremonyCoordinator` through synthetic local
   approval and an in-memory Monas v3 submit adapter. The offline test
   verifies custody preparation precedes the biometric gate, the coordinator's

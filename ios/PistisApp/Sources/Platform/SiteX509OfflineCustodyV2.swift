@@ -1,4 +1,5 @@
 import CryptoKit
+import Darwin
 import Foundation
 
 /// An immutable presentation authenticated through a separately entered host digest.
@@ -7,6 +8,26 @@ struct SiteX509OfflineCustodyV2: Sendable {
     static let maximumFileBytes = 24_576
     let presentation: SiteX509AttendedUnlockPresentationV2
     let registration: SiteRootConvergenceAckRecordV2
+
+    /// Open once without following a final symlink or blocking on a FIFO.
+    /// Verify and read the same descriptor; pathname metadata grants no authority.
+    static func readRegularFile(_ url: URL) throws -> Data {
+        guard url.isFileURL else { throw PlatformFailure.custodyRewrapUnavailable }
+        let descriptor = open(url.path, O_RDONLY | O_NOFOLLOW | O_NONBLOCK | O_CLOEXEC)
+        guard descriptor >= 0 else { throw PlatformFailure.custodyRewrapUnavailable }
+        let file = FileHandle(fileDescriptor: descriptor, closeOnDealloc: true)
+        defer { try? file.close() }
+        var metadata = stat()
+        guard fstat(descriptor, &metadata) == 0,
+              metadata.st_mode & S_IFMT == S_IFREG,
+              metadata.st_size > 0, metadata.st_size <= maximumFileBytes
+        else { throw PlatformFailure.custodyRewrapUnavailable }
+        let bytes = try file.read(upToCount: maximumFileBytes + 1) ?? Data()
+        guard bytes.count == metadata.st_size else {
+            throw PlatformFailure.custodyRewrapUnavailable
+        }
+        return bytes
+    }
 
     init(
         data: Data,

@@ -1,9 +1,43 @@
 import CryptoKit
+import Darwin
 import XCTest
 
 @testable import Pistis
 
 final class SiteX509OfflineCustodyV2Tests: XCTestCase {
+    func testSingleDescriptorImportRejectsSubstitutedSymlinkAndFIFO() throws {
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: false)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let selected = directory.appendingPathComponent("selected.json")
+        let original = directory.appendingPathComponent("original.json")
+        let bytes = try CustodyFixture().data()
+        try bytes.write(to: selected)
+        try bytes.write(to: original)
+        XCTAssertEqual(try SiteX509OfflineCustodyV2.readRegularFile(selected), bytes)
+        let metadata = try selected.resourceValues(forKeys: [.isRegularFileKey])
+        XCTAssertEqual(metadata.isRegularFile, true)
+        try FileManager.default.removeItem(at: selected)
+        try FileManager.default.createSymbolicLink(at: selected, withDestinationURL: original)
+        XCTAssertThrowsError(try SiteX509OfflineCustodyV2.readRegularFile(selected))
+        try FileManager.default.removeItem(at: selected)
+        XCTAssertEqual(mkfifo(selected.path, S_IRUSR | S_IWUSR), 0)
+        XCTAssertThrowsError(try SiteX509OfflineCustodyV2.readRegularFile(selected))
+        XCTAssertEqual(try Data(contentsOf: original), bytes)
+    }
+
+    func testSingleDescriptorImportRejectsDirectoryEmptyAndOversizedFiles() throws {
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: false)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        XCTAssertThrowsError(try SiteX509OfflineCustodyV2.readRegularFile(directory))
+        let selected = directory.appendingPathComponent("selected.json")
+        try Data().write(to: selected)
+        XCTAssertThrowsError(try SiteX509OfflineCustodyV2.readRegularFile(selected))
+        try Data(repeating: 0, count: SiteX509OfflineCustodyV2.maximumFileBytes + 1).write(to: selected)
+        XCTAssertThrowsError(try SiteX509OfflineCustodyV2.readRegularFile(selected))
+    }
+
     func testBothRolesUseCompleteIndependentDigestAndEnrolledRootHash() throws {
         for role in SiteX509AttendedUnlockRoleV2.allCases {
             let fixture = try CustodyFixture(role: role)

@@ -28,6 +28,9 @@ is supplied by this source change.
 
 The importer bounds the file and rejects duplicate JSON before the existing
 role-specific V2 decoder. Unknown, trailing, malformed or oversized input denies.
+It opens once with no-follow and nonblocking flags, verifies regular-file type
+and size on that descriptor, and reads bounded bytes from the same descriptor.
+Replacing a selected path with a symlink or FIFO cannot bypass those checks.
 The existing strict parser also limits individual strings to 4,096 bytes. Exactly
 32 independent digest bytes must match SHA-256 of the fully reconstructed
 challenge before any Secure Enclave operation or scalar decryption. Imported

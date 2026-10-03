@@ -446,17 +446,7 @@ struct ScanView: View {
         let scoped = url.startAccessingSecurityScopedResource()
         defer { if scoped { url.stopAccessingSecurityScopedResource() } }
         do {
-            let metadata = try url.resourceValues(forKeys: [
-                .fileSizeKey, .isRegularFileKey, .isSymbolicLinkKey,
-            ])
-            guard metadata.isRegularFile == true, metadata.isSymbolicLink != true,
-                  let size = metadata.fileSize, size > 0,
-                  size <= SiteX509OfflineCustodyV2.maximumFileBytes
-            else { throw PlatformFailure.custodyRewrapUnavailable }
-            let file = try FileHandle(forReadingFrom: url)
-            defer { try? file.close() }
-            let bytes = try file.read(upToCount: SiteX509OfflineCustodyV2.maximumFileBytes + 1) ?? Data()
-            guard bytes.count == size else { throw PlatformFailure.custodyRewrapUnavailable }
+            let bytes = try SiteX509OfflineCustodyV2.readRegularFile(url)
             scanning = false
             siteX509Custody.accept(bytes)
             scanFailure = nil

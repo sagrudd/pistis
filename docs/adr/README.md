@@ -122,3 +122,7 @@ as a fresh first installation.
 purpose-separated iPhone validators, producers, pinned Monas routes and
 governed application presentation for Base Camp migration and every later
 unused successor generation.
+
+[ADR 0044](0044-offline-x509-custody-recipient-authentication.md) accepts the
+offline custody phone interface with an independently authenticated complete
+challenge digest before key use. Host and physical qualification remain separate.

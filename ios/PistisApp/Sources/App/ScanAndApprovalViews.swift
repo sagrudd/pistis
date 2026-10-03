@@ -122,6 +122,7 @@ struct ScanView: View {
     @StateObject private var baseCampVaultMigration: BaseCampVaultMigrationCoordinatorV1
     @StateObject private var baseCampVaultSuccessor: BaseCampVaultSuccessorCoordinatorV1
     @StateObject private var siteX509Offline = SiteX509FirstProvisionOfflineCoordinator()
+    @StateObject private var siteX509Custody = SiteX509OfflineCustodyCoordinatorV2()
     @StateObject private var appAttestReplacement = AppAttestKeyReplacementCoordinatorV1()
     private let siteRootTransport: any MonasSiteRootCeremonyTransport
     private let appAttestReplacementTransport: MonasAppAttestTransport?
@@ -131,6 +132,7 @@ struct ScanView: View {
     private let ordinaryLoginCompleted: () -> Void
     @State private var scanning = true
     @State private var importingOfflinePresentation = false
+    @State private var importingCustodyPresentation = false
     @State private var importingAppAttestReplacement = false
     @State private var firstDeviceScanRequest: FirstDeviceScanRequest?
     @State private var scanFailure: PlatformFailure?
@@ -278,6 +280,15 @@ struct ScanView: View {
                 .buttonStyle(.bordered)
                 .disabled(appAttestReplacementTransport == nil)
 
+                Button {
+                    importingCustodyPresentation = true
+                } label: {
+                    Label("Import Site X.509 custody challenge", systemImage: "lock.doc")
+                }
+                .font(.headline)
+                .frame(maxWidth: .infinity, minHeight: MnMetrics.minimumTarget)
+                .buttonStyle(.bordered)
+
                 MnPanel {
                     VStack(alignment: .leading, spacing: MnSpacing.x4) {
                         MnStatusLabel(
@@ -375,6 +386,14 @@ struct ScanView: View {
         .sheet(item: siteX509OfflineReviewBinding) { review in
             SiteX509FirstProvisionOfflineReviewView(review: review, coordinator: siteX509Offline)
         }
+        .sheet(isPresented: Binding(
+            get: { siteX509Custody.importedID != nil },
+            set: { shown in
+                if !shown { siteX509Custody.cancel(); startScanning() }
+            }
+        )) {
+            SiteX509OfflineCustodyReviewViewV2(coordinator: siteX509Custody)
+        }
         .sheet(item: appAttestReplacementReviewBinding) { review in
             AppAttestKeyReplacementReviewView(
                 review: review,
@@ -411,6 +430,27 @@ struct ScanView: View {
         ) { result in
             handleAppAttestReplacementFile(result)
         }
+        .fileImporter(
+            isPresented: $importingCustodyPresentation,
+            allowedContentTypes: [.json, .data],
+            allowsMultipleSelection: false
+        ) { result in
+            handleCustodyPresentationFile(result)
+        }
+    }
+
+    @MainActor
+    private func handleCustodyPresentationFile(_ result: Result<[URL], Error>) {
+        guard case let .success(urls) = result, urls.count == 1 else { return }
+        let url = urls[0]
+        let scoped = url.startAccessingSecurityScopedResource()
+        defer { if scoped { url.stopAccessingSecurityScopedResource() } }
+        do {
+            let bytes = try SiteX509OfflineCustodyV2.readRegularFile(url)
+            scanning = false
+            siteX509Custody.accept(bytes)
+            scanFailure = nil
+        } catch { scanFailure = .custodyRewrapUnavailable }
     }
 
     @MainActor

@@ -88,6 +88,8 @@ Architecture and operations
    adr/0034-iphone-attested-site-trust-fact
    adr/0035-retained-iphone-custody-presentation-relay
    adr/0041-explicit-local-device-reset
+   adr/0044-offline-x509-custody-recipient-authentication
+   contracts/site-x509-offline-custody-review-v2
    protocol/README
    protocol/domain-model
    protocol/action-approval

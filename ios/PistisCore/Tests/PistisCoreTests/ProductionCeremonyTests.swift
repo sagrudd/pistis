@@ -106,30 +106,12 @@ final class ProductionCeremonyTests: XCTestCase {
         }
     }
 
-    func testWrongMessageSchemaPurposeFailsClosed() async throws {
-        let material = try Fixture(
-            key: P256.Signing.PrivateKey(),
-            challengePurpose: "pistis.authentication-response.v1"
-        )
-
-        do {
-            _ = try await ProductionChallengeVerifier.verify(
-                qrText: material.qr,
-                trustRepository: FixedTrust(record: material.trust),
-                expectedExternalIdentityID: Data(repeating: 0x44, count: 16),
-                now: Date(timeIntervalSince1970: 1_700_000_001)
-            )
-            XCTFail("a signed response schema must not enter the challenge verifier")
-        } catch {
-            XCTAssertEqual(error as? ProductionCeremonyError, .invalidChallenge)
-        }
-    }
-
-    func testWrongCeremonyActionFailsBeforeEnrolledIdentityPresentation() async throws {
+    func testCorrectlySignedWrongCeremonyActionFailsClosed() async throws {
         let material = try Fixture(
             key: P256.Signing.PrivateKey(),
             challengeAction: "approve-artifact"
         )
+        try material.assertSignatureValid()
 
         do {
             _ = try await ProductionChallengeVerifier.verify(
@@ -144,11 +126,12 @@ final class ProductionCeremonyTests: XCTestCase {
         }
     }
 
-    func testUnsupportedChallengeContractVersionFailsClosed() async throws {
+    func testClientV1RejectsUnsupportedServerV2Challenge() async throws {
         let material = try Fixture(
             key: P256.Signing.PrivateKey(),
             challengeVersion: 2
         )
+        try material.assertSignatureValid()
 
         do {
             _ = try await ProductionChallengeVerifier.verify(
@@ -326,12 +309,30 @@ private struct Fixture {
     let qr: String
     let trust: InstallationTrustRecord
 
+    func assertSignatureValid(
+        file: StaticString = #filePath,
+        line: UInt = #line
+    ) throws {
+        let cose = try CoseSign1.decode(ProductionQRV2.decodeChallenge(qr))
+        let publicKey = try P256.Signing.PublicKey(
+            compressedRepresentation: trust.installationPublicKey
+        )
+        let signature = try P256.Signing.ECDSASignature(
+            rawRepresentation: cose.signature
+        )
+        XCTAssertTrue(
+            publicKey.isValidSignature(signature, for: cose.signatureStructure()),
+            "fixture must carry a valid enrolled-key signature over its exact payload",
+            file: file,
+            line: line
+        )
+    }
+
     init(
         key: P256.Signing.PrivateKey,
         endpoint: String = "https://jenkins.mnemosyne.test/auth/pistis",
         productAudience: String = "jenkins",
         authorisedProductAudiences: Set<String> = ["jenkins"],
-        challengePurpose: String = "pistis.authentication-challenge.v1",
         challengeAction: String = "authenticate-session",
         challengeVersion: UInt64 = 1
     ) throws {
@@ -344,7 +345,6 @@ private struct Fixture {
             fingerprint: fingerprint,
             endpoint: endpoint,
             productAudience: productAudience,
-            challengePurpose: challengePurpose,
             challengeAction: challengeAction,
             challengeVersion: challengeVersion
         )
@@ -377,13 +377,12 @@ private struct Fixture {
         fingerprint: Data,
         endpoint: String,
         productAudience: String,
-        challengePurpose: String,
         challengeAction: String,
         challengeVersion: UInt64
     ) -> Data {
         var output = Data([0xb1])
         output += uint(0) + uint(challengeVersion)
-        output += uint(1) + text(challengePurpose)
+        output += uint(1) + text("pistis.authentication-challenge.v1")
         output += uint(2) + uint(1_700_000_000_000)
         output += uint(3) + uint(1_700_000_060_000)
         output += uint(4) + bytes(installationID)

@@ -106,6 +106,63 @@ final class ProductionCeremonyTests: XCTestCase {
         }
     }
 
+    func testWrongMessageSchemaPurposeFailsClosed() async throws {
+        let material = try Fixture(
+            key: P256.Signing.PrivateKey(),
+            challengePurpose: "pistis.authentication-response.v1"
+        )
+
+        do {
+            _ = try await ProductionChallengeVerifier.verify(
+                qrText: material.qr,
+                trustRepository: FixedTrust(record: material.trust),
+                expectedExternalIdentityID: Data(repeating: 0x44, count: 16),
+                now: Date(timeIntervalSince1970: 1_700_000_001)
+            )
+            XCTFail("a signed response schema must not enter the challenge verifier")
+        } catch {
+            XCTAssertEqual(error as? ProductionCeremonyError, .invalidChallenge)
+        }
+    }
+
+    func testWrongCeremonyActionFailsBeforeEnrolledIdentityPresentation() async throws {
+        let material = try Fixture(
+            key: P256.Signing.PrivateKey(),
+            challengeAction: "approve-artifact"
+        )
+
+        do {
+            _ = try await ProductionChallengeVerifier.verify(
+                qrText: material.qr,
+                trustRepository: FixedTrust(record: material.trust),
+                expectedExternalIdentityID: Data(repeating: 0x44, count: 16),
+                now: Date(timeIntervalSince1970: 1_700_000_001)
+            )
+            XCTFail("a signed non-authentication action must not enter login")
+        } catch {
+            XCTAssertEqual(error as? ProductionCeremonyError, .invalidChallenge)
+        }
+    }
+
+    func testUnsupportedChallengeContractVersionFailsClosed() async throws {
+        let material = try Fixture(
+            key: P256.Signing.PrivateKey(),
+            challengeVersion: 2
+        )
+
+        do {
+            _ = try await ProductionChallengeVerifier.verify(
+                qrText: material.qr,
+                trustRepository: FixedTrust(record: material.trust),
+                expectedExternalIdentityID: Data(repeating: 0x44, count: 16),
+                now: Date(timeIntervalSince1970: 1_700_000_001)
+            )
+            XCTFail("an unsupported server/client challenge version must be denied")
+        } catch {
+            XCTAssertEqual(error as? ProductionCeremonyError, .invalidChallenge)
+        }
+    }
+
     func testUnknownInstallationFailsClosedInsteadOfTrustingScannedKey() async throws {
         let material = try Fixture(key: P256.Signing.PrivateKey())
         do {
@@ -273,7 +330,10 @@ private struct Fixture {
         key: P256.Signing.PrivateKey,
         endpoint: String = "https://jenkins.mnemosyne.test/auth/pistis",
         productAudience: String = "jenkins",
-        authorisedProductAudiences: Set<String> = ["jenkins"]
+        authorisedProductAudiences: Set<String> = ["jenkins"],
+        challengePurpose: String = "pistis.authentication-challenge.v1",
+        challengeAction: String = "authenticate-session",
+        challengeVersion: UInt64 = 1
     ) throws {
         let installationID = Data(repeating: 0x11, count: 16)
         let keyID = Data(repeating: 0x22, count: 32)
@@ -283,7 +343,10 @@ private struct Fixture {
             keyID: keyID,
             fingerprint: fingerprint,
             endpoint: endpoint,
-            productAudience: productAudience
+            productAudience: productAudience,
+            challengePurpose: challengePurpose,
+            challengeAction: challengeAction,
+            challengeVersion: challengeVersion
         )
         let structure = try CoseSign1.signatureStructure(keyID: keyID, payload: payload)
         let signature = Self.lowS(try key.signature(for: structure).rawRepresentation)
@@ -313,11 +376,14 @@ private struct Fixture {
         keyID: Data,
         fingerprint: Data,
         endpoint: String,
-        productAudience: String
+        productAudience: String,
+        challengePurpose: String,
+        challengeAction: String,
+        challengeVersion: UInt64
     ) -> Data {
         var output = Data([0xb1])
-        output += uint(0) + uint(1)
-        output += uint(1) + text("pistis.authentication-challenge.v1")
+        output += uint(0) + uint(challengeVersion)
+        output += uint(1) + text(challengePurpose)
         output += uint(2) + uint(1_700_000_000_000)
         output += uint(3) + uint(1_700_000_060_000)
         output += uint(4) + bytes(installationID)
@@ -326,7 +392,7 @@ private struct Fixture {
         output += uint(7) + bytes(Data(repeating: 0x77, count: 32))
         output += uint(8) + bytes(Data(repeating: 0x88, count: 16))
         output += uint(9) + bytes(Data(repeating: 0x44, count: 16))
-        output += uint(10) + text("authenticate-session")
+        output += uint(10) + text(challengeAction)
         output += uint(11) + text(productAudience)
         output += uint(12) + text("Mnemosyne Jenkins")
         output += uint(13) + text("stephen")

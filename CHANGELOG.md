@@ -1,5 +1,9 @@
 # Changelog
 
+- Add signed negative fixtures for a non-authentication request action and an
+  unsupported authentication-challenge contract version. Both fail closed
+  before presentation; no production contract changes (iOS 0.25.11+71; AUTH-03).
+
 - Exercise the real `ProductionCeremonyCoordinator` through synthetic local
   approval and an in-memory Monas v3 submit adapter. The offline test
   verifies custody preparation precedes the biometric gate, the coordinator's

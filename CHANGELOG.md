@@ -1,6 +1,6 @@
 # Changelog
 
-- Prepare Pistis for iOS 0.25.10+70 as a source-only companion to
+- Prepare Pistis for iOS 0.25.11+71 as a source-only companion to
   Synoptikon's local QR/biometric conformance tool (MNE-1252). Preserve the
   native Apple `Network` Site Trust path while supplying a Linux-only
   canonical IP parser for the portable core. Add Xcode-targeted coordinator

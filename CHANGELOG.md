@@ -1,16 +1,30 @@
 # Changelog
 
-- Declare the selected Thesaurophylax 0.79.9 API version alongside its
-  unchanged exact source pin. Admit only its canonical Git repository for
-  dependency checks and require pinned revisions; retain wildcard and unknown
-  Git source denials.
+- Reconcile the INT-07 parent with the accepted AUTH-03 source baseline,
+  preserving iOS 0.25.12+72, protocol 0.2.1 and QR 0.1.1. Select the reviewed
+  Thesaurophylax 0.79.9 API at
+  `eb2f180ee7b8cb8673fa325a9235a5ba2709adb9` instead of the baseline 0.68.0
+  source. Its public PXFP v2 carrier accepts presentation expiry up to 900
+  seconds (previously 300); encoding and transcript are unchanged. Stacked
+  PR #528 retains the 900/901-second boundary regression and documentation.
+  Use `pistis-monas` 0.11.4 for this compatible dependency/contract source
+  group. Final compatibility qualification and coordinated Kanon preparation
+  remain required; no installed authority or terminal status is claimed.
 
-- Complete the Site Trust endpoint API annotations required by strict source
-  lint checks, with no parsing or host-matching behaviour change. Release this
-  compatible maintenance change as `pistis-protocol` 0.2.1. Refresh the fuzz
-  manifest and lock witnesses for the protocol and already maintained QR package
-  versions. Refactor test helpers to preserve their exact fixture bytes while
-  meeting the existing strict lint checks.
+- Constrain the existing Thesaurophylax API dependency to its selected 0.68.0
+  version and permit its canonical Git repository under revision-only source
+  policy. Preserve the pinned revision, lock graphs and existing dependency
+  denial rules (AUTH-03 SOURCE).
+
+- Repair inherited strict-lint test fixtures without changing production
+  protocol behaviour. Add the required protocol API annotations and align
+  fuzz path-package versions with their actual declarations
+  (`pistis-protocol` 0.2.1; `pistis-monas` 0.11.3; AUTH-03 SOURCE).
+
+- Check enrolled-client ceremony compatibility with correctly signed unsupported
+  version and action regressions. Keep retained Site Root leaf rotation tests
+  deterministic with a fixed valid verification date; retain hostname, root
+  generation and expired-leaf denials (iOS 0.25.12+72, AUTH-03 SOURCE).
 
 - Prepare Pistis for iOS 0.25.11+71 as a source-only companion to
   Synoptikon's local QR/biometric conformance tool (MNE-1252). Preserve the
@@ -26,8 +40,6 @@
   caches rather than treating vendor documentation as maintained prose.
   Correct the existing British-English spelling findings without changing
   protocol fields or ADR decisions.
-
-- Pin Pistis Monas' offline Site X.509 carrier to Thesaurophylax 0.79.9 at exact source revision `eb2f180ee7b8cb8673fa325a9235a5ba2709adb9`. The public PXFP v2 carrier now accepts presentation expiry up to 900 seconds (previously 300 seconds); its wire encoding and transcript remain unchanged. Stacked PR #528 adds the 900/901-second boundary regression and protocol documentation. Bump `pistis-monas` to 0.11.1 for this dependency and contract update.
 
 - Exercise the real `ProductionCeremonyCoordinator` through synthetic local
   approval and an in-memory Monas v3 submit adapter. The offline test

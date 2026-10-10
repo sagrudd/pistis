@@ -225,6 +225,18 @@ host selects its verified profile rather than an operator-entered hostname.
 Replays, expiry, changed origin, changed TLS material, changed installation or
 transaction, cross-host substitution, and downgrade all fail closed.
 
+For the enrolled Monas transport, a retained Site Root generation is the
+trust anchor; the server leaf is not pinned. Reissuing the Monas leaf under the
+same retained root therefore does not require a Pistis reinstall, renewed
+approval, or leaf-pin update. TLS still validates the requested hostname and
+certificate validity period, and a leaf chaining to another root is rejected.
+This guarantee is limited to ordinary X.509 path, hostname, and time
+validation. Positive revocation checking remains an interoperability gate:
+Proxenos and Monas have not selected and exposed an authoritative status
+source, so Pistis does not claim that a revoked leaf is detected. Do not enable
+a required-positive revocation policy until that source and its freshness and
+failure semantics are accepted and served by Monas.
+
 For the first Site Root device, the brokered QR is the only supported route.
 After explicit review, Face ID creates the separate Secure Enclave Site Root
 key. Pistis generates a fresh Apple App Attest key for this exact registration

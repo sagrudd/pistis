@@ -23,7 +23,7 @@ credential. The user/persona records and their grants therefore survive device
 wipe, destruction or theft. The database is not, by itself, a signing
 authority. A replacement flow must first quarantine the lost installation,
 preserve those records, and require an independent typed custody/operator
-authorization before binding a new phone. Terminal predecessor revocation is
+authorisation before binding a new phone. Terminal predecessor revocation is
 committed with final replacement activation, not as a half-completed
 preliminary side effect.
 
@@ -43,19 +43,19 @@ missing certificate, origin or TLS trust configuration.
 1. A fixed, selector-free operator command verifies the protected registered
    and completed genesis, the active App Attest registration/counter, the
    Prosopikon installation/device projection, the retained permitted-user and
-   persona records, and a typed, package-owned custody/operator authorization
-   artifact. It places the exact lost/stolen installation in durable
+   persona records, and a typed, package-owned custody/operator authorisation
+   artefact. It places the exact lost/stolen installation in durable
    `Quarantined` state, invalidates its sessions and pending ceremonies, and
    records one `Requested` intent containing the old Site Root generation,
    candidate generation, replacement installation binding, exact
    principal/external-identity target, challenge and expiry. The independent
    authorizer record binds its exact device, installation, identity binding,
-   policy generation, revocation generation, purpose, artifact type and
+   policy generation, revocation generation, purpose, artefact type and
    evidence digest. A normal replacement requires a purpose-specific signature
    from an active device for that exact principal/external identity, or an
-   explicitly authorised administrator recovery artifact. When every trusted
+   explicitly authorised administrator recovery artefact. When every trusted
    installation is lost, the independent recovery-custodian path applies. None
-   of these authorizer artifacts may be supplied by, or inferred from, the
+   of these authorizer artefacts may be supplied by, or inferred from, the
    fresh candidate phone's App Attest registration.
 2. Pistis creates fresh candidate Secure Enclave and App Attest keys in
    distinct pending namespaces after Face ID, and starts a fresh
@@ -65,7 +65,7 @@ missing certificate, origin or TLS trust configuration.
    assertion and custody seed are never required from the candidate and cannot
    be reused. The submission carries the fresh candidate App Attest and custody
    bundle separately from the already-verified authorizer evidence; proving
-   possession of either candidate key is not recovery authorization.
+   possession of either candidate key is not recovery authorisation.
    When the retained external-identity provider is available, the candidate
    must also complete fresh authentication that resolves to the exact retained
    provider, issuer and immutable subject binding. Provider authentication is
@@ -103,7 +103,7 @@ missing certificate, origin or TLS trust configuration.
    `Activated` generation, rather than reading the genesis key directly, before
    the replacement route can be mounted or production activation can proceed.
 
-The custody/operator authorization artifact is intentionally a required
+The custody/operator authorisation artefact is intentionally a required
 acceptance input, not a boolean flag or an invented local token. Its exact
 producer, verifier, protected path and canonical schema must be named and
 accepted in issue #461 before protocol implementation starts. App Attest alone
@@ -116,7 +116,7 @@ is not sufficient recovery authority.
   trust exception or QR fallback. Retries may use only the package-pinned
   bounded origin set and must carry the identical retained transaction bytes.
 - Wrong installation/device/domain, generation, old/candidate key, App Attest
-  counter, custody artifact, purpose, expiry, nonce, signature, content type,
+  counter, custody artefact, purpose, expiry, nonce, signature, content type,
   method, canonical encoding or trailing bytes deny without state change.
 - A quarantined or terminally revoked stolen installation cannot submit,
   observe as active, or be rebound; its permitted-user/persona records remain
@@ -131,7 +131,7 @@ is not sufficient recovery authority.
   cannot satisfy, replace or select the recovery authorizer.
 - Authorizer verification requires exact equality for authorizer device,
   installation, identity binding, policy generation, revocation generation,
-  recovery purpose, artifact type and evidence digest. Missing, stale,
+  recovery purpose, artefact type and evidence digest. Missing, stale,
   substituted or cross-principal fields deny without state change.
 - When its retained provider remains available, fresh authentication must
   resolve to the exact retained provider, issuer and immutable external subject.
@@ -149,7 +149,7 @@ is not sufficient recovery authority.
   retry and Observe are byte/idempotent.
 - Quarantine immediately makes the stolen installation's App Attest and
   custody evidence, Site Root signatures and every other phone-originated
-  proof ineligible to authorize current operations, while preserving their
+  proof ineligible to authorise current operations, while preserving their
   immutable records for rollback-safe adjudication. Before `Activated` they
   are not terminally revoked; the previously activated Site Root remains only
   the server-side trust anchor and historic effective generation needed to

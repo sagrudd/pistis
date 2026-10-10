@@ -591,6 +591,48 @@ mod tests {
         .unwrap()
     }
 
+    fn registration_payload(
+        device_public: &PublicKey,
+        principal_id: [u8; 16],
+        installation_id: [u8; 16],
+    ) -> Vec<u8> {
+        to_vec(&Value::Map(BTreeMap::from([
+            (0, Value::Text("pistis.enrolment-binding.v1".into())),
+            (1, Value::Bytes(vec![1; 16])),
+            (2, Value::Bytes(vec![2; 16])),
+            (3, Value::Bytes(vec![3; 16])),
+            (4, Value::Bytes(principal_id.to_vec())),
+            (5, Value::Bytes(installation_id.to_vec())),
+            (6, Value::Text("github.com".into())),
+            (7, Value::Text("12345".into())),
+            (8, Value::Bytes(device_public.canonical_bytes().to_vec())),
+            (
+                9,
+                Value::Bytes(derive_key_id(device_public).into_bytes().to_vec()),
+            ),
+            (10, Value::Unsigned(1)),
+            (11, Value::Unsigned(1)),
+            (12, Value::Unsigned(2)),
+            (13, Value::Bytes(vec![4; 32])),
+            (14, Value::Bytes(vec![5; 32])),
+            (15, Value::Unsigned(999)),
+        ])))
+        .unwrap()
+    }
+
+    fn authority_bundle(initial: &SigningKey, receipt_signer: &SigningKey) -> Vec<u8> {
+        to_vec(&Value::Map(BTreeMap::from([
+            (0, Value::Unsigned(1)),
+            (
+                1,
+                Value::Text("pistis.first-device-authority-bundle.v1".into()),
+            ),
+            (2, Value::Bytes(descriptor(initial))),
+            (3, Value::Bytes(descriptor(receipt_signer))),
+        ])))
+        .unwrap()
+    }
+
     fn fixture() -> (
         ProviderEnrolmentConfirmResponseV2,
         ExpectedProviderEnrolmentConfirmationV2,
@@ -605,39 +647,10 @@ mod tests {
         let external_identity_id = [12_u8; 16];
         let device_public = public_key(&device_signer);
         let installation_public = public_key(&installation_signer);
-        let registration_payload = to_vec(&Value::Map(BTreeMap::from([
-            (0, Value::Text("pistis.enrolment-binding.v1".into())),
-            (1, Value::Bytes(vec![1; 16])),
-            (2, Value::Bytes(vec![2; 16])),
-            (3, Value::Bytes(vec![3; 16])),
-            (4, Value::Bytes(principal_id.to_vec())),
-            (5, Value::Bytes(installation_id.to_vec())),
-            (6, Value::Text("github.com".into())),
-            (7, Value::Text("12345".into())),
-            (8, Value::Bytes(device_public.canonical_bytes().to_vec())),
-            (
-                9,
-                Value::Bytes(derive_key_id(&device_public).into_bytes().to_vec()),
-            ),
-            (10, Value::Unsigned(1)),
-            (11, Value::Unsigned(1)),
-            (12, Value::Unsigned(2)),
-            (13, Value::Bytes(vec![4; 32])),
-            (14, Value::Bytes(vec![5; 32])),
-            (15, Value::Unsigned(999)),
-        ])))
-        .unwrap();
+        let registration_payload =
+            registration_payload(&device_public, principal_id, installation_id);
         let registration = sign(&registration_payload, &device_signer);
-        let authority_bundle = to_vec(&Value::Map(BTreeMap::from([
-            (0, Value::Unsigned(1)),
-            (
-                1,
-                Value::Text("pistis.first-device-authority-bundle.v1".into()),
-            ),
-            (2, Value::Bytes(descriptor(&initial))),
-            (3, Value::Bytes(descriptor(&receipt_signer))),
-        ])))
-        .unwrap();
+        let authority_bundle = authority_bundle(&initial, &receipt_signer);
         let receipt_payload = to_vec(&Value::Map(BTreeMap::from([
             (0, Value::Unsigned(2)),
             (

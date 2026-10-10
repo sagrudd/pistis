@@ -170,6 +170,7 @@ features.
 - If live Kanon services are unavailable, use a verified pinned Kanon snapshot
   or lockset. Do not bypass identity or compatibility validation to make a
   release proceed.
+
 ## Authoritative release graph: Kanon -> Terraform -> artefact
 
 Kanon at `https://github.com/sagrudd/kanon` is the sole authority for this
@@ -221,6 +222,7 @@ Before completing a change, run the repository's Kanon/lockset and package
 gates and record the exact lockset ID, digest and source revisions in the
 change or pull request. If a required Kanon or Terraform change is not
 available, report that as a blocker rather than shipping stale content.
+
 ## Programme Governance
 
 This repository participates in the Mnemosyne Programme.

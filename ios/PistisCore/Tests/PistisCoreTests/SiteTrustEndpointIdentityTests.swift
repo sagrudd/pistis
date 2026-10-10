@@ -40,6 +40,10 @@ import Testing
         "https://[fe80::1%25en0]:8443",
         "https://monas.example.test:443",
         "https://monas.example.test:8443/path",
+        "https://192.168.1.256:8443",
+        "https://[2001:db8:::1]:8443",
+        "https://[2001:db8::01]:8443",
+        "https://[::ffff:192.168.001.192]:8443",
     ] {
         #expect(throws: FirstDevicePresentationError.malformed) {
             try SiteTrustEndpointIdentityV1(

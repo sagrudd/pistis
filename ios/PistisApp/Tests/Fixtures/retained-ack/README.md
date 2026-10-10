@@ -13,6 +13,13 @@ rustc emit.rs --edition=2024 -L dependency=/private/tmp/proxenos-convergence-pri
 /private/tmp/pistis-ack-vector
 ```
 
+The unchanged emitter source now lives in the repository's permitted
+`tests/retained-ack/emit.rs` hierarchy so the architecture check can inspect
+it. The command above is the retained historical execution, not a claim
+that moving the source recreated that evidence. To repeat it now, supply
+`tests/retained-ack/emit.rs` from the repository root and the separately
+verified Proxenos source/library inputs.
+
 All inputs are synthetic. Swift tests use software P256 keys, verify the emitted
 COSE signature over the unchanged native assertion, and reject mismatched
 retained records before signing. A source-route assertion separately checks

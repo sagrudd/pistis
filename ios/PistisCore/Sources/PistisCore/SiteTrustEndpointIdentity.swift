@@ -1,5 +1,7 @@
 import Foundation
+#if canImport(Network)
 import Network
+#endif
 
 /// Versioned, authority-signed endpoint identity for local or DNS-addressed
 /// Site Trust. An IP address is never an unpinned compatibility path.

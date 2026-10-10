@@ -1,5 +1,15 @@
 # Changelog
 
+- Constrain the existing Thesaurophylax API dependency to its selected 0.68.0
+  version and permit its canonical Git repository under revision-only source
+  policy. Preserve the pinned revision, lock graphs and existing dependency
+  denial rules (AUTH-03 SOURCE).
+
+- Repair inherited strict-lint test fixtures without changing production
+  protocol behaviour. Add the required protocol API annotations and align
+  fuzz path-package versions with their actual declarations
+  (`pistis-protocol` 0.2.1; `pistis-monas` 0.11.3; AUTH-03 SOURCE).
+
 - Check enrolled-client ceremony compatibility with correctly signed unsupported
   version and action regressions. Keep retained Site Root leaf rotation tests
   deterministic with a fixed valid verification date; retain hostname, root

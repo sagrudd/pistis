@@ -305,7 +305,7 @@ final class PinnedServerTrustTests: XCTestCase {
     private func trust(
         for certificateName: String,
         issuer issuerName: String? = nil,
-        verifyDate: Date? = nil
+        verifyDate: Date = Date(timeIntervalSince1970: 1_791_072_000)
     ) throws -> SecTrust {
         let certificate = try XCTUnwrap(
             SecCertificateCreateWithData(
@@ -336,9 +336,9 @@ final class PinnedServerTrustTests: XCTestCase {
         )
         let trust = try XCTUnwrap(createdTrust)
         XCTAssertEqual(SecTrustSetNetworkFetchAllowed(trust, false), errSecSuccess)
-        if let verifyDate {
-            XCTAssertEqual(SecTrustSetVerifyDate(trust, verifyDate as CFDate), errSecSuccess)
-        }
+        // 2026-10-04 falls inside every synthetic fixture validity interval.
+        // Each rejection therefore isolates its intended trust predicate.
+        XCTAssertEqual(SecTrustSetVerifyDate(trust, verifyDate as CFDate), errSecSuccess)
         return trust
     }
 

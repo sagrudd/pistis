@@ -27,6 +27,24 @@ swift test --package-path ios/PistisCore
 The portable suite is deterministic and does not contact GitHub, Google,
 Keeper, Apple, or a Pistis server.
 
+PistisCore can also run these tests on Linux. Its canonical Site Trust IP
+validation uses `inet_pton`/`inet_ntop` only on Linux because Apple's
+`Network` module is unavailable there. The native iOS/macOS `Network`
+implementation is unchanged. Positive and noncanonical DNS/IPv4/IPv6
+fixtures run on the portable path; cross-platform parity, particularly for
+mapped IPv6 addresses, still needs reviewed native Xcode evidence under
+ADR 0029. A Linux source test is not an iPhone/security acceptance gate.
+
+The separate Synoptikon diagnostic tool is described in
+`synoptikon/tools/pistis-ios-harness/README.md` (MNE-1252). It decodes actual
+PNG QR images and exercises production PistisCore ordinary-login verification
+with **modelled** enrolment, biometric, signing and callback inputs. The
+`EnrolledMonasAuthenticationProxyTests` also exercise the real production
+coordinator via its existing Debug-only adapter seam: the negative matrix
+now checks that synthetic biometric failure does not call a signer, submit
+or finalise a modelled session. Those native tests require Xcode; they do
+not constitute genuine Face ID, Secure Enclave, Monas or App Attest evidence.
+
 The app directly links this local package. For production ceremony changes,
 also prove that link and the platform adapters compile:
 
@@ -48,21 +66,22 @@ the Secure Enclave signature. Governed approval and denial retain separate
 review controls and fresh local authentication; cancellation is not a denial.
 
 `EnrolledMonasAuthenticationProxyTests` is an offline development proxy for
-ordinary signed Monas login on an existing enrollment. It calls Pistis' actual
+ordinary signed Monas login on an existing enrolment. It calls Pistis' actual
 challenge verifier and response encoder, then uses an ephemeral software
 P-256 test signer, a synthetic Face ID result, and an in-memory Monas callback
-that permits one response and one fixed-audience finalization. Its v3 QR
+that permits one response and one fixed-audience finalisation. Its v3 QR
 fixture uses Monas' signed `/auth/pistis/v3/submit?challenge_id=…` hint and
 checks that the callback rejects a substituted v2 route. Monas is not started
 or contacted: the callback model checks documented state transitions, but does
 not prove the live HTTP adapter, durable replay store, browser cookie, or
 session issuance. Expiry, wrong installation/audience, and a valid COSE
-signature from the wrong device key are rejected in the local models. The test also checks that its in-memory enrollment fixture is unchanged and
+signature from the wrong device key are rejected in the local models. The test also checks that its in-memory enrolment fixture is unchanged and
 that the composed proxy makes no install or revoke call on its test store. It
-does not exercise the production coordinator or prove the live login path
-leaves device trust unchanged. A separate test-only branch confirms that a
-synthetic Face ID denial makes no callback submission attempt; it does not
-exercise the production coordinator's biometric-to-transport wiring. App Attest
+does not by itself exercise the production coordinator or prove the live login
+path leaves device trust unchanged. The separate coordinator-boundary cases
+call its existing Debug-only adapter seam and check synthetic biometric-to-
+transport wiring, including failures before a signer invocation or callback.
+They still use modelled hardware and an in-process authority. App Attest
 is outside the ordinary-login contract covered here. Run it with
 `xcodebuild` and `-only-testing:PistisTests/EnrolledMonasAuthenticationProxyTests`.
 Passing the suite is source-level evidence; it does not qualify camera
@@ -120,7 +139,7 @@ scripts/build-approved-iphone-archive.sh \
   /path/to/Pistis.xcarchive
 ```
 
-Export the verified archive as an Ad Hoc IPA, and repeat the same artifact
+Export the verified archive as an Ad Hoc IPA, and repeat the same artefact
 gate against the app extracted from the IPA:
 
 ```sh
@@ -130,14 +149,14 @@ scripts/export-approved-iphone-ipa.sh \
 ```
 
 If an archive has already been produced by the reviewed distribution process,
-run the artifact gate directly:
+run the artefact gate directly:
 
 ```sh
 scripts/verify-approved-iphone-build.sh \
   /path/to/Release-iphoneos/Pistis.app
 ```
 
-The gate rejects development-signed artifacts, `get-task-allow`, a non-production
+The gate rejects development-signed artefacts, `get-task-allow`, a non-production
 App Attest entitlement, an unexpected bundle identifier, or an unexpected Apple
 team. A build that fails this check must not be used for a Monas first-device
 QR; Monas deliberately accepts production App Attest evidence only.

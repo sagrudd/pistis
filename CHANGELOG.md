@@ -1,12 +1,24 @@
 # Changelog
 
-- Keep enrolled Monas TLS trust anchored to the retained Site Root generation
-  while extracting the existing trust evaluator into an internal test seam.
-  Simulator regressions prove same-root leaf-key rotation succeeds without a
-  leaf pin, while another root generation, a mismatched hostname, and an
-  expired leaf fail. This is X.509 path, hostname and time validation only;
-  it does not establish positive revocation checking or physical-iPhone
-  acceptance (iOS 0.25.10+70; test-only extension to #448).
+- Check enrolled-client ceremony compatibility with correctly signed unsupported
+  version and action regressions. Keep retained Site Root leaf rotation tests
+  deterministic with a fixed valid verification date; retain hostname, root
+  generation and expired-leaf denials (iOS 0.25.12+72, AUTH-03 SOURCE).
+
+- Prepare Pistis for iOS 0.25.11+71 as a source-only companion to
+  Synoptikon's local QR/biometric conformance tool (MNE-1252). Preserve the
+  native Apple `Network` Site Trust path while supplying a Linux-only
+  canonical IP parser for the portable core. Add Xcode-targeted coordinator
+  regressions for unavailable, not-enrolled, locked-out and cancelled
+  synthetic biometric outcomes: none may sign, submit or finalise a modelled
+  session. Linux portable tests run; native Xcode, device, Monas service and
+  release evidence remain unclaimed.
+- Repair local source gates without exceptions: move the unchanged native
+  ACK emitter into the permitted test hierarchy, preserve its historical
+  evidence note, and make `xtask` 0.0.1 skip generated Swift dependency
+  caches rather than treating vendor documentation as maintained prose.
+  Correct the existing British-English spelling findings without changing
+  protocol fields or ADR decisions.
 
 - Exercise the real `ProductionCeremonyCoordinator` through synthetic local
   approval and an in-memory Monas v3 submit adapter. The offline test
@@ -23,7 +35,7 @@
   signing material, synthetic Face ID, and a one-use in-memory Monas callback.
   The v3 fixture carries Monas' exact `/auth/pistis/v3/submit?challenge_id=…`
   hint and rejects v2 route substitution. Expired, wrong-installation and
-  wrong-audience challenges stop before local approval. Its composed proxy leaves its in-memory enrollment fixture unchanged and
+  wrong-audience challenges stop before local approval. Its composed proxy leaves its in-memory enrolment fixture unchanged and
   makes no install or revoke call on the test store;
   the callback model rejects a wrong browser capability after response
   acceptance, and a synthetic Face ID denial takes its no-submit branch. App
@@ -178,7 +190,7 @@
 
 - Bound the one-use Site Root bundle-receipt provision to its steady custody
   continuation by retrying only the short, explicit authority-unavailable
-  window while the NUC finalizes and exposes the attended unlock socket. The
+  window while the NUC finalises and exposes the attended unlock socket. The
   retry is bounded, preserves the same Face ID ceremony, and fails closed for
   permanent failures (0.22.16, iOS build 46).
 
@@ -331,7 +343,7 @@
   instead of allowing automatic signing to select a development profile
   (0.20.7, iOS build 22).
 
-- Add a hard gate for the approved physical iPhone artifact: a build used for
+- Add a hard gate for the approved physical iPhone artefact: a build used for
   Monas first-device registration must be Apple Distribution-signed, must have
   production App Attest enabled, and must not carry `get-task-allow`. This
   prevents a development-signed `Release` build from reaching a production

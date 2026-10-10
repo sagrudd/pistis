@@ -141,11 +141,15 @@ final class EnrolledMonasAuthenticationProxyTests: XCTestCase {
       coordinator.phase,
       .terminal(AuthoritativeCeremonyStatus(state: .completed, evidenceID: "test-evidence"))
     )
-    let session = try await proxy.finalize(browserCapability: "test-only-one-use-browser-capability")
+    let session = try await proxy.finalize(
+      browserCapability: "test-only-one-use-browser-capability"
+    )
     XCTAssertEqual(session, TestMonasSession(audience: "propylaion", successPath: "/home"))
     let observation = await proxy.observation()
     XCTAssertEqual(observation.events, ["custody", "face-id", "submit", "finalize"])
     XCTAssertEqual(observation.promptCount, 1)
+    XCTAssertEqual(observation.signingAttempts, 1)
+    XCTAssertEqual(observation.signatureCount, 1)
     XCTAssertEqual(observation.submitCount, 1)
     let after = await store.activeEnrollment()
     let installCount = await store.installCount
@@ -217,6 +221,8 @@ final class EnrolledMonasAuthenticationProxyTests: XCTestCase {
     let observation = await proxy.observation()
     XCTAssertEqual(observation.events, ["face-id"])
     XCTAssertEqual(observation.promptCount, 1)
+    XCTAssertEqual(observation.signingAttempts, 0)
+    XCTAssertEqual(observation.signatureCount, 0)
     XCTAssertEqual(observation.submitCount, 0)
     let after = await store.activeEnrollment()
     let installCount = await store.installCount
@@ -224,6 +230,72 @@ final class EnrolledMonasAuthenticationProxyTests: XCTestCase {
     XCTAssertEqual(after, fixture.enrollment)
     XCTAssertEqual(installCount, 0)
     XCTAssertEqual(revokeCount, 0)
+  }
+
+  @MainActor
+  func testProductionCoordinatorBiometricFailuresCannotSignSubmitOrFinalize() async throws {
+    let failures: [PlatformFailure] = [
+      .userVerificationCancelled, .userVerificationUnavailable,
+      .userVerificationNotEnrolled, .userVerificationLockedOut,
+    ]
+    for failure in failures {
+      let fixture = try SimulatorAuthenticationFixture(
+        installationID: installationID, audience: "propylaion",
+        authorisedAudiences: ["propylaion"]
+      )
+      let store = ProxyEnrollmentStore(fixture.enrollment)
+      let fixedNow = Date(timeIntervalSince1970: Double(nowMilliseconds) / 1_000)
+      let challenge = try await ProductionChallengeVerifier.verify(
+        qrText: fixture.qr, trustRepository: store,
+        expectedExternalIdentityID: fixture.externalIdentityID, now: fixedNow
+      )
+      let payload = try AuthenticationResponseEncoder.payload(
+        challenge: challenge, context: fixture.enrollment.responseContext,
+        decision: .approved, issuedAtMilliseconds: nowMilliseconds,
+        userVerifiedAtMilliseconds: nowMilliseconds
+      )
+      let signer = TestOnlySecureEnclave()
+      let proxy = CoordinatorMonasProxy(
+        challenge: challenge, expectedPayload: payload,
+        deviceKeyID: fixture.enrollment.responseContext.deviceKeyID,
+        devicePublicKey: signer.publicKey, nowMilliseconds: nowMilliseconds,
+        approved: false, biometricFailure: failure
+      )
+      let suiteName = "org.mnemosynebiosciences.pistis.tests.\(UUID().uuidString)"
+      let defaults = try XCTUnwrap(UserDefaults(suiteName: suiteName))
+      defer { defaults.removePersistentDomain(forName: suiteName) }
+      let coordinator = ProductionCeremonyCoordinator(
+        testingWith: store, history: LocalHistoryRepository(defaults: defaults),
+        now: { fixedNow },
+        makeEnvelopeProducer: { enrollment, _ in
+          CoordinatorTestEnvelope(
+            proxy: proxy, signer: signer, deviceKeyID: enrollment.responseContext.deviceKeyID
+          )
+        },
+        makeResponseTransport: { _ in proxy }
+      )
+      await coordinator.accept(qrText: fixture.qr)
+      await coordinator.approveVerifiedLoginIntent {}
+      XCTAssertEqual(coordinator.phase, .failed(failure))
+      XCTAssertEqual(coordinator.failureStage, .deviceSignature)
+      let observation = await proxy.observation()
+      XCTAssertEqual(observation.promptCount, 1)
+      XCTAssertEqual(observation.signingAttempts, 0)
+      XCTAssertEqual(observation.signatureCount, 0)
+      XCTAssertEqual(observation.submitCount, 0)
+      do {
+        _ = try await proxy.finalize(browserCapability: "test-only-one-use-browser-capability")
+        XCTFail("biometric failure must not establish a modelled session")
+      } catch {
+        XCTAssertEqual(error as? ProxyFailure, .callbackUnavailable)
+      }
+      let after = await store.activeEnrollment()
+      XCTAssertEqual(after, fixture.enrollment)
+      let installCount = await store.installCount
+      let revokeCount = await store.revokeCount
+      XCTAssertEqual(installCount, 0)
+      XCTAssertEqual(revokeCount, 0)
+    }
   }
 
   @MainActor
@@ -564,6 +636,8 @@ private struct CoordinatorProxyObservation: Sendable {
   let events: [String]
   let promptCount: Int
   let submitCount: Int
+  let signingAttempts: Int
+  let signatureCount: Int
 }
 
 /// Synthetic biometric producer and Monas callback authority used only by the
@@ -576,10 +650,13 @@ private actor CoordinatorMonasProxy: AuthenticationResponseDelivering {
   private let devicePublicKey: P256.Signing.PublicKey
   private let nowMilliseconds: UInt64
   private let approved: Bool
+  private let biometricFailure: PlatformFailure?
   private let submitEndpoint: URL
   private var events: [String] = []
   private var promptCount = 0
   private var submitCount = 0
+  private var signingAttempts = 0
+  private var signatureCount = 0
   private var state: TestMonasCeremonyState = .pending
   private var finalized = false
 
@@ -589,7 +666,8 @@ private actor CoordinatorMonasProxy: AuthenticationResponseDelivering {
     deviceKeyID: Data,
     devicePublicKey: P256.Signing.PublicKey,
     nowMilliseconds: UInt64,
-    approved: Bool
+    approved: Bool,
+    biometricFailure: PlatformFailure? = nil
   ) {
     self.challenge = challenge
     self.expectedPayload = expectedPayload
@@ -597,16 +675,21 @@ private actor CoordinatorMonasProxy: AuthenticationResponseDelivering {
     self.devicePublicKey = devicePublicKey
     self.nowMilliseconds = nowMilliseconds
     self.approved = approved
+    self.biometricFailure = biometricFailure
     submitEndpoint = challenge.endpointHints[0]
   }
 
   func prepareCustody() { events.append("custody") }
 
-  func evaluateFaceID() -> Bool {
+  func evaluateFaceID() throws -> Bool {
     promptCount += 1
     events.append("face-id")
+    if let biometricFailure { throw biometricFailure }
     return approved
   }
+
+  func recordSigningAttempt() { signingAttempts += 1 }
+  func recordSignature() { signatureCount += 1 }
 
   func submit(envelope: Data, to endpoint: URL) async throws
     -> AuthoritativeCeremonyStatus
@@ -654,7 +737,9 @@ private actor CoordinatorMonasProxy: AuthenticationResponseDelivering {
     CoordinatorProxyObservation(
       events: events,
       promptCount: promptCount,
-      submitCount: submitCount
+      submitCount: submitCount,
+      signingAttempts: signingAttempts,
+      signatureCount: signatureCount
     )
   }
 }
@@ -665,10 +750,13 @@ private struct CoordinatorTestEnvelope: ProductionEnvelopeProducing, @unchecked 
   let deviceKeyID: Data
 
   func produceEnvelope(canonicalPayload: Data) async throws -> Data {
-    guard await proxy.evaluateFaceID() else {
+    guard try await proxy.evaluateFaceID() else {
       throw PlatformFailure.userVerificationCancelled
     }
-    return try signer.sign(payload: canonicalPayload, deviceKeyID: deviceKeyID)
+    await proxy.recordSigningAttempt()
+    let envelope = try signer.sign(payload: canonicalPayload, deviceKeyID: deviceKeyID)
+    await proxy.recordSignature()
+    return envelope
   }
 }
 
@@ -843,7 +931,7 @@ private struct TestMonasLoginCallback {
   }
 }
 
-private enum ProxyFailure: Error {
+private enum ProxyFailure: Error, Equatable {
   case expiredOrConsumed
   case invalidResponse
   case callbackUnavailable

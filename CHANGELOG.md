@@ -355,6 +355,8 @@
   Interrupted first-device attempts can no longer reuse a one-use key and
   stop before sending registration to Monas (0.20.5, iOS build 20).
 
+## Retained iOS history
+
 ### Changed
 
 - Remove unused demonstration identities and fixed installation data from the
@@ -523,6 +525,8 @@
   `monas:site-trust:mtgs-recovery:v1` App Attest continuation. It reconstructs
   only an opaque process-local acceptance from an exact verified durable
   registration; it neither re-enrols a device nor serializes acceptance state.
+
+## Retained recovery and custody history
 
 ### Changed
 
@@ -842,7 +846,7 @@
 All notable changes to Pistis will be documented here. The format follows Keep
 a Changelog and releases follow Semantic Versioning.
 
-## [Unreleased]
+## Retained protocol and native iOS history
 
 ### Added
 
@@ -867,6 +871,8 @@ a Changelog and releases follow Semantic Versioning.
 - Bind the funding-review Monas web-QR fixture to the accepted `propylaion`
   product audience and prove that it remains distinct from, and authorised by,
   the signed first-device enrolment profile.
+
+## Retained initial implementation history
 
 ### Added
 

@@ -1,5 +1,16 @@
 # Changelog
 
+- Reconcile the INT-07 parent with the accepted AUTH-03 source baseline,
+  preserving iOS 0.25.12+72, protocol 0.2.1 and QR 0.1.1. Select the reviewed
+  Thesaurophylax 0.79.9 API at
+  `eb2f180ee7b8cb8673fa325a9235a5ba2709adb9` instead of the baseline 0.68.0
+  source. Its public PXFP v2 carrier accepts presentation expiry up to 900
+  seconds (previously 300); encoding and transcript are unchanged. Stacked
+  PR #528 retains the 900/901-second boundary regression and documentation.
+  Use `pistis-monas` 0.11.4 for this compatible dependency/contract source
+  group. Final compatibility qualification and coordinated Kanon preparation
+  remain required; no installed authority or terminal status is claimed.
+
 - Constrain the existing Thesaurophylax API dependency to its selected 0.68.0
   version and permit its canonical Git repository under revision-only source
   policy. Preserve the pinned revision, lock graphs and existing dependency

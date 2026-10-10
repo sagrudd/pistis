@@ -1,5 +1,20 @@
 # Changelog
 
+- Constrain the existing Thesaurophylax API dependency to its selected 0.68.0
+  version and permit its canonical Git repository under revision-only source
+  policy. Preserve the pinned revision, lock graphs and existing dependency
+  denial rules (AUTH-03 SOURCE).
+
+- Repair inherited strict-lint test fixtures without changing production
+  protocol behaviour. Add the required protocol API annotations and align
+  fuzz path-package versions with their actual declarations
+  (`pistis-protocol` 0.2.1; `pistis-monas` 0.11.3; AUTH-03 SOURCE).
+
+- Check enrolled-client ceremony compatibility with correctly signed unsupported
+  version and action regressions. Keep retained Site Root leaf rotation tests
+  deterministic with a fixed valid verification date; retain hostname, root
+  generation and expired-leaf denials (iOS 0.25.12+72, AUTH-03 SOURCE).
+
 - Prepare Pistis for iOS 0.25.11+71 as a source-only companion to
   Synoptikon's local QR/biometric conformance tool (MNE-1252). Preserve the
   native Apple `Network` Site Trust path while supplying a Linux-only
@@ -350,6 +365,8 @@
   Interrupted first-device attempts can no longer reuse a one-use key and
   stop before sending registration to Monas (0.20.5, iOS build 20).
 
+## Retained iOS history
+
 ### Changed
 
 - Remove unused demonstration identities and fixed installation data from the
@@ -518,6 +535,8 @@
   `monas:site-trust:mtgs-recovery:v1` App Attest continuation. It reconstructs
   only an opaque process-local acceptance from an exact verified durable
   registration; it neither re-enrols a device nor serializes acceptance state.
+
+## Retained recovery and custody history
 
 ### Changed
 
@@ -837,7 +856,7 @@
 All notable changes to Pistis will be documented here. The format follows Keep
 a Changelog and releases follow Semantic Versioning.
 
-## [Unreleased]
+## Retained protocol and native iOS history
 
 ### Added
 
@@ -862,6 +881,8 @@ a Changelog and releases follow Semantic Versioning.
 - Bind the funding-review Monas web-QR fixture to the accepted `propylaion`
   product audience and prove that it remains distinct from, and authorised by,
   the signed first-device enrolment profile.
+
+## Retained initial implementation history
 
 ### Added
 

@@ -22,3 +22,5 @@ allow = [
 [sources]
 unknown-git = "deny"
 unknown-registry = "deny"
+required-git-spec = "rev"
+allow-git = ["https://github.com/sagrudd/thesaurophylax.git"]

@@ -87,11 +87,19 @@ Architecture and operations
    adr/0033-iphone-site-root-delegation
    adr/0034-iphone-attested-site-trust-fact
    adr/0035-retained-iphone-custody-presentation-relay
+   adr/0036-first-authority-custody-rotation-v2
+   adr/0037-durable-mtgs-recovery-assertion
+   adr/0038-attended-site-root-x509-convergence
+   adr/0039-das-replacement-receipt-attended-ceremony
+   adr/0040-site-root-authority-key-replacement
    adr/0041-explicit-local-device-reset
+   adr/0042-basecamp-vault-migration-iphone-protocol
    protocol/README
    protocol/domain-model
    protocol/action-approval
    protocol/site-origin-relocation-approval-v1
+   protocol/app-attest-key-replacement-offline-v1
+   protocol/site-x509-first-provision-offline-v1
    protocol
    crypto
    encoding
@@ -110,6 +118,7 @@ Architecture and operations
    operations/android
    operations/synoptikon
    operations/monas
+   operations/monas-provider-package
    operations/discovery
    operations/device-lifecycle
    operations/security-hardening

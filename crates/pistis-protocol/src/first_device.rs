@@ -45,6 +45,9 @@ pub struct SiteTrustEndpointIdentityV1 {
 
 impl SiteTrustEndpointIdentityV1 {
     /// Parse the exact signed endpoint identity without network or CA fallback.
+    ///
+    /// # Errors
+    /// Returns an error for a zero SPKI commitment or a non-canonical HTTPS origin.
     pub fn parse(
         origin: &str,
         tls_spki_sha256: [u8; 32],
@@ -87,6 +90,7 @@ impl SiteTrustEndpointIdentityV1 {
     }
 
     /// Require the authority-side allowed-host value to name this exact host.
+    #[must_use]
     pub fn matches_allowed_host(&self, allowed_host: &str) -> bool {
         match &self.host {
             SiteTrustEndpointHostV1::DnsName(host) => allowed_host == host,

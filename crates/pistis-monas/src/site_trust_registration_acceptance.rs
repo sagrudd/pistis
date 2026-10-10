@@ -775,7 +775,7 @@ mod tests {
             .enumerate()
             .fold(Vec::new(), |mut output, (index, field)| {
                 output.push(u8::try_from(index + 1).unwrap());
-                output.extend_from_slice(&(field.len() as u32).to_be_bytes());
+                output.extend_from_slice(&u32::try_from(field.len()).unwrap().to_be_bytes());
                 output.extend_from_slice(field.as_bytes());
                 output
             });

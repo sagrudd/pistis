@@ -1262,7 +1262,7 @@ mod tests {
             .enumerate()
             .fold(Vec::new(), |mut output, (index, field)| {
                 output.push(u8::try_from(index + 1).unwrap());
-                output.extend_from_slice(&(field.len() as u32).to_be_bytes());
+                output.extend_from_slice(&u32::try_from(field.len()).unwrap().to_be_bytes());
                 output.extend_from_slice(field.as_bytes());
                 output
             })
@@ -1286,7 +1286,7 @@ mod tests {
         counter: u32,
     ) -> Vec<u8> {
         let auth_data = authenticator_data(request, counter);
-        assertion_for_authenticator_data(signing_key, request, auth_data)
+        assertion_for_authenticator_data(signing_key, request, &auth_data)
     }
 
     fn legacy_assertion(
@@ -1295,21 +1295,21 @@ mod tests {
         counter: u32,
     ) -> Vec<u8> {
         let auth_data = legacy_authenticator_data(counter);
-        assertion_for_authenticator_data(signing_key, request, auth_data)
+        assertion_for_authenticator_data(signing_key, request, &auth_data)
     }
 
     fn assertion_for_authenticator_data(
         signing_key: &SigningKey,
         request: &SiteTrustAttestationRequestV1,
-        auth_data: Vec<u8>,
+        auth_data: &[u8],
     ) -> Vec<u8> {
         let challenge = request.verification_request().challenge_digest;
         let client_data_hash = Sha256::digest(assertion_client_data_v1(challenge.as_bytes()));
-        let nonce = Sha256::digest([auth_data.as_slice(), &client_data_hash].concat());
+        let nonce = Sha256::digest([auth_data, &client_data_hash].concat());
         let signature: Signature = signing_key.sign(&nonce);
         cbor_map_bytes(&[
             ("signature", signature.to_der().as_bytes()),
-            ("authenticatorData", auth_data.as_slice()),
+            ("authenticatorData", auth_data),
         ])
     }
 
@@ -1354,19 +1354,14 @@ mod tests {
     fn custody_assertion(
         signing_key: &SigningKey,
         acceptance: &ServerHeldCustodyRotationAppAttestAcceptanceV1,
-        auth_data: Vec<u8>,
+        auth_data: &[u8],
     ) -> Vec<u8> {
-        let nonce = Sha256::digest(
-            [
-                auth_data.as_slice(),
-                acceptance.request.client_data_hash.as_slice(),
-            ]
-            .concat(),
-        );
+        let nonce =
+            Sha256::digest([auth_data, acceptance.request.client_data_hash.as_slice()].concat());
         let signature: Signature = signing_key.sign(&nonce);
         cbor_map_bytes(&[
             ("signature", signature.to_der().as_bytes()),
-            ("authenticatorData", auth_data.as_slice()),
+            ("authenticatorData", auth_data),
         ])
     }
 
@@ -1597,7 +1592,7 @@ mod tests {
     fn custody_rotation_accepts_exact_ios26_legacy_assertion() {
         let signing_key = SigningKey::from_bytes((&[3; 32]).into()).unwrap();
         let acceptance = custody_acceptance(&signing_key, 0);
-        let assertion = custody_assertion(&signing_key, &acceptance, legacy_authenticator_data(1));
+        let assertion = custody_assertion(&signing_key, &acceptance, &legacy_authenticator_data(1));
         let submission = mobile_submission(acceptance.request.ceremony_id, assertion);
 
         let outcome = verify_custody_rotation_app_attest_assertion_diagnostic_v1(
@@ -1732,7 +1727,7 @@ mod tests {
             if let Some(extensions) = extensions {
                 auth_data.extend_from_slice(&extensions);
             }
-            let assertion = custody_assertion(&signing_key, &acceptance, auth_data);
+            let assertion = custody_assertion(&signing_key, &acceptance, &auth_data);
             let submission = mobile_submission(acceptance.request.ceremony_id, assertion);
             assert!(
                 verify_custody_rotation_app_attest_assertion_diagnostic_v1(
@@ -1797,7 +1792,7 @@ mod tests {
                 CustodyRotationAppAttestFailureStageV1::AppleBundleVersion,
             ),
         ] {
-            let assertion = custody_assertion(&signing_key, &acceptance, auth_data);
+            let assertion = custody_assertion(&signing_key, &acceptance, &auth_data);
             let submission = mobile_submission(acceptance.request.ceremony_id, assertion);
             assert_eq!(
                 verify_custody_rotation_app_attest_assertion_diagnostic_v1(
@@ -1819,7 +1814,7 @@ mod tests {
         let mut wrong_rp = legacy_authenticator_data(2);
         wrong_rp[0] ^= 1;
         let assertion =
-            assertion_for_authenticator_data(&signing_key, &acceptance.request, wrong_rp);
+            assertion_for_authenticator_data(&signing_key, &acceptance.request, &wrong_rp);
         let submission = mobile_submission(acceptance.request.ceremony_id, assertion);
         assert!(
             issue_site_trust_human_authority_fact_from_server_held_app_attest_assertion_v1(
@@ -1896,7 +1891,7 @@ mod tests {
             extended_with_wrong_bundle,
         ] {
             let assertion =
-                assertion_for_authenticator_data(&signing_key, &acceptance.request, auth_data);
+                assertion_for_authenticator_data(&signing_key, &acceptance.request, &auth_data);
             let submission = mobile_submission(acceptance.request.ceremony_id, assertion);
             assert!(
                 issue_site_trust_human_authority_fact_from_server_held_app_attest_assertion_v1(

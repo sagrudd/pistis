@@ -156,7 +156,7 @@ fn collect_files(root: &Path, directory: &Path, output: &mut Vec<PathBuf>) -> Re
             if !matches!(first, Some(".git" | "target" | "fixtures"))
                 && !relative
                     .components()
-                    .any(|part| part.as_os_str() == "target")
+                    .any(|part| matches!(part.as_os_str().to_str(), Some("target" | ".build")))
             {
                 collect_files(root, &path, output)?;
             }
@@ -340,6 +340,31 @@ fn words(text: &str) -> impl Iterator<Item = (usize, &str)> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn generated_swift_dependencies_are_not_maintained_first_party_text() {
+        let root = std::env::temp_dir().join(format!(
+            "pistis-language-{}-{}",
+            std::process::id(),
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap()
+                .as_nanos()
+        ));
+        fs::create_dir(&root).unwrap();
+        let cache = root.join("ios/PistisCore/.build/checkouts/vendor");
+        fs::create_dir_all(&cache).unwrap();
+        fs::write(cache.join("README.md"), "License and behavior.").unwrap();
+        let docs = root.join("docs");
+        fs::create_dir(&docs).unwrap();
+        let first_party = docs.join("README.md");
+        fs::write(&first_party, "Authorization behavior.").unwrap();
+        let mut collected = Vec::new();
+        collect_files(&root, &root, &mut collected).unwrap();
+        assert_eq!(collected, [first_party]);
+        assert_eq!(inspect_document("Authorization behavior.").len(), 2);
+        fs::remove_dir_all(root).unwrap();
+    }
 
     #[test]
     fn rejects_american_document_prose_but_skips_inline_and_fenced_code() {

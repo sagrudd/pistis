@@ -199,7 +199,14 @@ mod tests {
 
     #[test]
     fn local_removal_uses_a_native_confirmation_without_a_persistent_slider() {
-        assert!(IOS_DESTRUCTIVE_CONFIRMATION.contains(".confirmationDialog("));
+        assert!(
+            IOS_DESTRUCTIVE_CONFIRMATION
+                .contains(".alert(confirmationTitle, isPresented: $isConfirming)")
+        );
+        assert!(
+            IOS_DESTRUCTIVE_CONFIRMATION.contains("Button(confirmationLabel, role: .destructive)")
+        );
+        assert!(IOS_DESTRUCTIVE_CONFIRMATION.contains("Button(\"Cancel\", role: .cancel)"));
         assert!(IOS_DESTRUCTIVE_CONFIRMATION.contains("role: .destructive"));
         assert!(IOS_DESTRUCTIVE_CONFIRMATION.contains(".alert("));
         assert!(!IOS_DESTRUCTIVE_CONFIRMATION.contains("Slider("));

@@ -14,9 +14,9 @@ pistis-canonical = { version = "0.1.0", path = "../crates/pistis-canonical" }
 pistis-authentication = { version = "0.1.0", path = "../crates/pistis-authentication" }
 pistis-crypto = { version = "0.1.0", path = "../crates/pistis-crypto" }
 pistis-domain = { version = "0.1.0", path = "../crates/pistis-domain" }
-pistis-protocol = { version = "0.1.0", path = "../crates/pistis-protocol" }
+pistis-protocol = { version = "0.2.1", path = "../crates/pistis-protocol" }
 pistis-google = { version = "0.1.0", path = "../crates/pistis-google" }
-pistis-qr = { version = "0.1.0", path = "../crates/pistis-qr" }
+pistis-qr = { version = "0.1.1", path = "../crates/pistis-qr" }
 pistis-verifier = { version = "0.1.0", path = "../crates/pistis-verifier" }
 
 [[bin]]

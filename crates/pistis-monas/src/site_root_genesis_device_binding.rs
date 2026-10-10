@@ -499,11 +499,11 @@ mod tests {
             .build()
             .to_vec()
             .unwrap();
-        let signed = BindingWireV1 {
+        let encoded_binding = BindingWireV1 {
             cose_sign1_base64url: URL_SAFE_NO_PAD.encode(cose),
             ..unsigned
         };
-        canonical_wire(&signed).into_bytes()
+        canonical_wire(&encoded_binding).into_bytes()
     }
 
     #[test]

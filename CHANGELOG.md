@@ -1,5 +1,32 @@
 # Changelog
 
+- Declare the selected Thesaurophylax 0.79.9 API version alongside its
+  unchanged exact source pin. Admit only its canonical Git repository for
+  dependency checks and require pinned revisions; retain wildcard and unknown
+  Git source denials.
+
+- Complete the Site Trust endpoint API annotations required by strict source
+  lint checks, with no parsing or host-matching behaviour change. Release this
+  compatible maintenance change as `pistis-protocol` 0.2.1. Refresh the fuzz
+  manifest and lock witnesses for the protocol and already maintained QR package
+  versions. Refactor test helpers to preserve their exact fixture bytes while
+  meeting the existing strict lint checks.
+
+- Prepare Pistis for iOS 0.25.11+71 as a source-only companion to
+  Synoptikon's local QR/biometric conformance tool (MNE-1252). Preserve the
+  native Apple `Network` Site Trust path while supplying a Linux-only
+  canonical IP parser for the portable core. Add Xcode-targeted coordinator
+  regressions for unavailable, not-enrolled, locked-out and cancelled
+  synthetic biometric outcomes: none may sign, submit or finalise a modelled
+  session. Linux portable tests run; native Xcode, device, Monas service and
+  release evidence remain unclaimed.
+- Repair local source gates without exceptions: move the unchanged native
+  ACK emitter into the permitted test hierarchy, preserve its historical
+  evidence note, and make `xtask` 0.0.1 skip generated Swift dependency
+  caches rather than treating vendor documentation as maintained prose.
+  Correct the existing British-English spelling findings without changing
+  protocol fields or ADR decisions.
+
 - Pin Pistis Monas' offline Site X.509 carrier to Thesaurophylax 0.79.9 at exact source revision `eb2f180ee7b8cb8673fa325a9235a5ba2709adb9`. The public PXFP v2 carrier now accepts presentation expiry up to 900 seconds (previously 300 seconds); its wire encoding and transcript remain unchanged. Stacked PR #528 adds the 900/901-second boundary regression and protocol documentation. Bump `pistis-monas` to 0.11.1 for this dependency and contract update.
 
 - Exercise the real `ProductionCeremonyCoordinator` through synthetic local
@@ -17,7 +44,7 @@
   signing material, synthetic Face ID, and a one-use in-memory Monas callback.
   The v3 fixture carries Monas' exact `/auth/pistis/v3/submit?challenge_id=…`
   hint and rejects v2 route substitution. Expired, wrong-installation and
-  wrong-audience challenges stop before local approval. Its composed proxy leaves its in-memory enrollment fixture unchanged and
+  wrong-audience challenges stop before local approval. Its composed proxy leaves its in-memory enrolment fixture unchanged and
   makes no install or revoke call on the test store;
   the callback model rejects a wrong browser capability after response
   acceptance, and a synthetic Face ID denial takes its no-submit branch. App
@@ -172,7 +199,7 @@
 
 - Bound the one-use Site Root bundle-receipt provision to its steady custody
   continuation by retrying only the short, explicit authority-unavailable
-  window while the NUC finalizes and exposes the attended unlock socket. The
+  window while the NUC finalises and exposes the attended unlock socket. The
   retry is bounded, preserves the same Face ID ceremony, and fails closed for
   permanent failures (0.22.16, iOS build 46).
 
@@ -325,7 +352,7 @@
   instead of allowing automatic signing to select a development profile
   (0.20.7, iOS build 22).
 
-- Add a hard gate for the approved physical iPhone artifact: a build used for
+- Add a hard gate for the approved physical iPhone artefact: a build used for
   Monas first-device registration must be Apple Distribution-signed, must have
   production App Attest enabled, and must not carry `get-task-allow`. This
   prevents a development-signed `Release` build from reaching a production
@@ -336,6 +363,8 @@
   registration and retain its identifier only after attestation succeeds.
   Interrupted first-device attempts can no longer reuse a one-use key and
   stop before sending registration to Monas (0.20.5, iOS build 20).
+
+## Retained iOS history
 
 ### Changed
 
@@ -505,6 +534,8 @@
   `monas:site-trust:mtgs-recovery:v1` App Attest continuation. It reconstructs
   only an opaque process-local acceptance from an exact verified durable
   registration; it neither re-enrols a device nor serializes acceptance state.
+
+## Retained recovery and custody history
 
 ### Changed
 
@@ -824,7 +855,7 @@
 All notable changes to Pistis will be documented here. The format follows Keep
 a Changelog and releases follow Semantic Versioning.
 
-## [Unreleased]
+## Retained protocol and native iOS history
 
 ### Added
 
@@ -849,6 +880,8 @@ a Changelog and releases follow Semantic Versioning.
 - Bind the funding-review Monas web-QR fixture to the accepted `propylaion`
   product audience and prove that it remains distinct from, and authorised by,
   the signed first-device enrolment profile.
+
+## Retained initial implementation history
 
 ### Added
 

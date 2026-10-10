@@ -9,9 +9,16 @@ reimplementation. Source revision `60ec3ae9657c0ea92b72e330cdfc399d678465a8`
 The retained emitter was executed with the existing compiled library:
 
 ```text
-rustc tests/fixtures/retained-ack/emit.rs --edition=2024 -L dependency=/private/tmp/proxenos-convergence-primary-group/target/debug/deps --extern proxenos=/private/tmp/proxenos-convergence-primary-group/target/debug/deps/libproxenos-a2723802b1365d7a.rlib -o /private/tmp/pistis-ack-vector
+rustc emit.rs --edition=2024 -L dependency=/private/tmp/proxenos-convergence-primary-group/target/debug/deps --extern proxenos=/private/tmp/proxenos-convergence-primary-group/target/debug/deps/libproxenos-a2723802b1365d7a.rlib -o /private/tmp/pistis-ack-vector
 /private/tmp/pistis-ack-vector
 ```
+
+The unchanged emitter source now lives in the repository's permitted
+`tests/retained-ack/emit.rs` hierarchy so the architecture check can inspect
+it. The command above is the retained historical execution, not a claim
+that moving the source recreated that evidence. To repeat it now, supply
+`tests/retained-ack/emit.rs` from the repository root and the separately
+verified Proxenos source/library inputs.
 
 All inputs are synthetic. Swift tests use software P256 keys, verify the emitted
 COSE signature over the unchanged native assertion, and reject mismatched

@@ -1,5 +1,13 @@
 # Changelog
 
+- Retain the stacked INT-07 900/901-second public API regression and accepted
+  PXFP first-provision expiry documentation on the current parent. Use
+  `pistis-monas` 0.11.5 for the compatible child source group.
+- Correct the Jenkins CI guide to describe protected exact-source qualification
+  and terminal commit-status publication. Preserve the removal of the
+  test-only checkout helper production claim and webhook status claim; the
+  trusted manifest and CI behaviour are unchanged (#529).
+
 - Reconcile the INT-07 parent with the accepted AUTH-03 source baseline,
   preserving iOS 0.25.12+72, protocol 0.2.1 and QR 0.1.1. Select the reviewed
   Thesaurophylax 0.79.9 API at

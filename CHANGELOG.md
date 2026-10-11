@@ -1,5 +1,26 @@
 # Changelog
 
+- Use compatible `pistis-canonical` and `pistis-identity` 0.1.1 fixes for strict
+  lint qualification. Preserve canonical CBOR bytes and lazy borrowed parent
+  path fallback; protocol, schema and authentication semantics are unchanged.
+
+- Align `pistis-monas` 0.12.0 public Thesaurophylax API re-exports with the
+  coordinated 0.86.0 source at `e72598aae824f2bdafc20803adca73c6a6c8dcd2`.
+  The selected PXFP carrier and transcript implementations are byte-identical
+  to the previous 0.79.9 source. The minor source coordinate separates the
+  new Rust dependency identity; consumers must select this coordinated graph.
+  Preserve the 900/901-second checks and mobile, ceremony and schema bytes.
+  Genuine lock resolution, caller qualification and final Kanon binding
+  remain required.
+
+- Align the existing SQLite runtime with the accepted exact-source worker
+  transaction through the coordinated Kanon binding. `pistis-agent` 0.1.1 retains its public
+  interface; `pistis-device-registry` 0.2.0 declares the pre-1.0 compatibility
+  transition for its exported SQLite error type to rusqlite 0.39.0. Legacy
+  0.1 consumers with rusqlite 0.37 are not declared compatible. Preserve all
+  ceremony, protocol and database schema code. Native checks and the actual
+  resolved lock graph remain required; this source grants no authority.
+
 - Retain the stacked INT-07 900/901-second public API regression and accepted
   PXFP first-provision expiry documentation on the current parent. Use
   `pistis-monas` 0.11.5 for the compatible child source group.

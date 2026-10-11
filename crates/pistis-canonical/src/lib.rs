@@ -197,18 +197,18 @@ fn encode_head(major: u8, value: u64, output: &mut Vec<u8>) {
     match value {
         0..=23 => output.push(prefix | u8::try_from(value).expect("range checked")),
         24..=0xff => {
-            output.extend_from_slice(&[prefix | 24, u8::try_from(value).expect("range checked")]);
+            output.extend_from_slice(&[prefix | 0x18, u8::try_from(value).expect("range checked")]);
         }
         0x100..=0xffff => {
-            output.push(prefix | 25);
+            output.push(prefix | 0x19);
             output.extend_from_slice(&u16::try_from(value).expect("range checked").to_be_bytes());
         }
         0x1_0000..=0xffff_ffff => {
-            output.push(prefix | 26);
+            output.push(prefix | 0x1a);
             output.extend_from_slice(&u32::try_from(value).expect("range checked").to_be_bytes());
         }
         _ => {
-            output.push(prefix | 27);
+            output.push(prefix | 0x1b);
             output.extend_from_slice(&value.to_be_bytes());
         }
     }

@@ -229,10 +229,8 @@ mod tests {
             .unwrap()
             .as_nanos();
         let sequence = NEXT_DIRECTORY.fetch_add(1, Ordering::Relaxed);
-        let path = std::env::temp_dir().join(format!(
-            "pistis-socket-{}-{suffix}-{sequence}",
-            std::process::id()
-        ));
+        let path =
+            std::env::temp_dir().join(format!("s{:x}-{suffix:x}-{sequence:x}", std::process::id()));
         fs::create_dir(&path).unwrap();
         fs::set_permissions(&path, fs::Permissions::from_mode(0o700)).unwrap();
         path
@@ -242,6 +240,7 @@ mod tests {
     fn socket_is_owner_only_and_carries_local_bytes() {
         let directory = directory();
         let path = directory.join("agent.sock");
+        assert!(path.as_os_str().as_encoded_bytes().len() < 104);
         let socket = AgentSocket::bind(&path).unwrap();
         assert_eq!(
             fs::symlink_metadata(&path).unwrap().permissions().mode() & 0o777,
@@ -272,6 +271,7 @@ mod tests {
         ));
         fs::set_permissions(&directory, fs::Permissions::from_mode(0o700)).unwrap();
         let path = directory.join("agent.sock");
+        assert!(path.as_os_str().as_encoded_bytes().len() < 104);
         fs::write(&path, b"do not replace").unwrap();
         assert!(matches!(
             AgentSocket::bind(&path),
@@ -295,6 +295,7 @@ mod tests {
     fn wrong_socket_owner_policy_is_rejected_before_connecting() {
         let directory = directory();
         let path = directory.join("agent.sock");
+        assert!(path.as_os_str().as_encoded_bytes().len() < 104);
         let socket = AgentSocket::bind(&path).unwrap();
         let wrong_uid = effective_uid().wrapping_add(1);
         assert!(matches!(

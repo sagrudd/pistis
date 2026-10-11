@@ -588,7 +588,7 @@ dependencies = [
 
 [[package]]
 name = "pistis-canonical"
-version = "0.1.0"
+version = "0.1.1"
 
 [[package]]
 name = "pistis-cose"
@@ -650,7 +650,7 @@ dependencies = [
 
 [[package]]
 name = "pistis-identity"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "serde",
  "serde_json",

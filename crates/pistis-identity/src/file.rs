@@ -152,9 +152,7 @@ fn write_and_rename(temporary: &Path, target: &Path, bytes: &[u8]) -> io::Result
 
 #[cfg(unix)]
 fn sync_parent(target: &Path) -> io::Result<()> {
-    let parent = target
-        .parent()
-        .map_or_else(|| Path::new("."), |parent| parent);
+    let parent = target.parent().unwrap_or_else(|| Path::new("."));
     File::open(parent)?.sync_all()
 }
 

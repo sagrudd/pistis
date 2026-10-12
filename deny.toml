@@ -6,9 +6,11 @@ yanked = "deny"
 
 [bans]
 multiple-versions = "warn"
+multiple-versions-include-dev = true
 wildcards = "deny"
 
 [licenses]
+include-dev = true
 confidence-threshold = 0.93
 allow = [
   "Apache-2.0",

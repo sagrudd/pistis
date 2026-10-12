@@ -17,7 +17,7 @@ does not cover this harness. The runner prints the actual candidate commit,
 tree, lock blob/SHA-256 and new recipe SHA-256. Its checks use Rust 1.94,
 Swift 6 on Linux, Node 24 with markdownlint-cli2 0.18.1 and a **separate**
 Rust 1.90 check for the affected QR package. It runs workspace tests, strict
-lint, rustdoc, audit and the unmodified deny policy on the final lockfile.
+lint, rustdoc, audit and the approved deny policy on the final lockfile.
 For development before commit, run the individual commands in the script;
 the runner intentionally rejects dirty source as a qualification input.
 
@@ -42,16 +42,21 @@ The selected source input is Pistis #526 at
 `ef00ff34efbb9cfeac9298c9c77f1dc9694162cd`, tree
 `13857903766fc230de7b6f87f6f38122cd6945d6`, lock blob
 `ca9e7b9adcb9e6640a0c63c9ce39f2bc111fd432`. Review the **new** commit,
-tree and lock independently. The exact existing `deny.toml` governs the
-updated graph; no licence allowance, advisory ignore or Git source exception
-is added. Kanon #750 remains pending, and REG-09 retains the registry writer
+tree and lock independently. The selected parent's `deny.toml` governs the
+updated graph with only the owner-approved `[licenses] include-dev = true`
+and `[bans] multiple-versions-include-dev = true` insertions. The earlier
+unchanged-policy exit zero did **not** qualify dev-only decoder licences:
+cargo-deny 0.20.2 excludes them by default. The preflight now fails closed if
+any other policy byte changes or either coverage field is missing/false.
+No licence allowance, advisory ignore or Git source exception is added.
+Kanon #750 remains pending, and REG-09 retains the registry writer
 lease. No shared registry or `.mnemosyne/expedition.json` update occurs here.
 
 The updated lock keeps all original crate revisions, checksums and resolved
 dependency edges; it adds only `pistis-qr` 0.1.2 and its test/image route.
 `hashlink` and `rsqlite-vfs` now spell out their existing `hashbrown 0.16.1`
 dependency because the new test-only `lru 0.18.5` adds `hashbrown 0.17.1`.
-The unchanged deny policy allows duplicate-version warnings, so a policy
+The approved deny policy still allows duplicate-version warnings, so a policy
 result with those warnings is not an all-warnings-denied result. Strict
 `cargo audit --deny warnings` remains a separate required command.
 

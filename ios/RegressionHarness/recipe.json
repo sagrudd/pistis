@@ -18,7 +18,13 @@
     "affected_existing_package": "pistis-qr 0.1.2",
     "ios_release_manifest": "0.25.12+72 (unchanged)",
     "separate_harness_identity": false,
-    "dependency_policy": "deny.toml (unchanged from selected parent)",
+    "dependency_policy": "deny.toml (selected-parent policy plus owner-approved dev-dependency coverage only)",
+    "dependency_policy_amendment": {
+      "licenses.include-dev": true,
+      "bans.multiple-versions-include-dev": true,
+      "other_policy_bytes_unchanged": true,
+      "guard": "preflight.py compares the full policy bytes with the selected parent's policy plus precisely these two insertions"
+    },
     "provenance": "Run at the final committed head; record its commit, tree, Cargo.lock blob and SHA-256, and this recipe's SHA-256. The parent coordinates are not the patched coordinates."
   },
   "not_admitted": [

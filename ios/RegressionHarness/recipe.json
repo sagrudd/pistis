@@ -1,0 +1,31 @@
+{
+  "schema": "mnemosyne.pistis.internal-ios-regression-source-recipe.v1",
+  "scope": "developer-run source regression only; not an Expedition task or approval receipt",
+  "selected_parent": {
+    "revision": "ef00ff34efbb9cfeac9298c9c77f1dc9694162cd",
+    "tree": "13857903766fc230de7b6f87f6f38122cd6945d6",
+    "cargo_lock_blob": "ca9e7b9adcb9e6640a0c63c9ce39f2bc111fd432"
+  },
+  "owner_supplied_existing_recipe_reference_only": {
+    "manifest_sha256": "52f7c6058992fb4032dd77e96d73f42b0ae9dec4b02a115f85f9882ff5c887f3",
+    "task_catalog_sha256": "17a2a7bf68fe52d9cefbe569539ebea76c5c82a3d46f840413050652e1297f5c",
+    "locally_verified": false,
+    "covers_new_harness": false
+  },
+  "source_profile": {
+    "runner": "ios/RegressionHarness/run-source-regressions.sh",
+    "toolchains": ["Rust 1.94", "Rust 1.90 minimum support", "Swift 6 on Linux", "Node 24 with markdownlint-cli2 0.18.1"],
+    "affected_existing_package": "pistis-qr 0.1.2",
+    "ios_release_manifest": "0.25.12+72 (unchanged)",
+    "separate_harness_identity": false,
+    "dependency_policy": "deny.toml (unchanged from selected parent)",
+    "provenance": "Run at the final committed head; record its commit, tree, Cargo.lock blob and SHA-256, and this recipe's SHA-256. The parent coordinates are not the patched coordinates."
+  },
+  "not_admitted": [
+    "native CODEOWNER review",
+    "approved Jenkins task/Expedition status",
+    "genuine service receipt or live custody",
+    "Secure Enclave, Face ID or App Attest on a device",
+    "Kanon/REG-09 final binding, package, installation, runtime or release"
+  ]
+}

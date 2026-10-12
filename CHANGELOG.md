@@ -1,5 +1,14 @@
 # Changelog
 
+- Add an internal first-device and ordinary-login iOS regression harness using
+  real PNG decoding and the existing PistisCore verifier, with simulated
+  biometric failures and source-only diagnostics. Advance the affected
+  `pistis-qr` package from 0.1.1 to 0.1.2 for its dev-only maintained decoder
+  and tests. Pin the selected parent, updated lockfile and independent source
+  recipe; preserve the iOS release manifest, protected Expedition manifest,
+  product protocol and authority behaviour. Native/device, service and
+  INT-07 acceptance remain separate.
+
 - Use compatible `pistis-canonical` and `pistis-identity` 0.1.1 fixes for strict
   lint qualification. Preserve canonical CBOR bytes and lazy borrowed parent
   path fallback; protocol, schema and authentication semantics are unchanged.

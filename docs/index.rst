@@ -30,6 +30,7 @@ Development
    development/fuzzing
    development/provider-conformance
    development/ios
+   development/internal-ios-regression
    development/android
    development/synoptikon
    development/monas

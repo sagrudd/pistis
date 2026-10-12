@@ -12,6 +12,29 @@ from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
 REPOSITORY = HERE.parents[1]
+POLICY_PARENT = "ef00ff34efbb9cfeac9298c9c77f1dc9694162cd"
+
+
+def approved_dependency_policy(baseline):
+    return baseline.replace(
+        b'[bans]\nmultiple-versions = "warn"\n',
+        b'[bans]\nmultiple-versions = "warn"\nmultiple-versions-include-dev = true\n',
+    ).replace(b"[licenses]\n", b"[licenses]\ninclude-dev = true\n")
+
+
+def dependency_policy(pistis):
+    try:
+        baseline = subprocess.run(
+            ["git", "-C", str(pistis), "show", f"{POLICY_PARENT}:deny.toml"],
+            capture_output=True, check=True, timeout=5,
+        ).stdout
+        actual = (pistis / "deny.toml").read_bytes()
+        return {
+            "matches_approved_coverage_only_policy": actual == approved_dependency_policy(baseline),
+            "sha256": hashlib.sha256(actual).hexdigest(),
+        }
+    except (OSError, subprocess.SubprocessError):
+        return {"matches_approved_coverage_only_policy": False, "sha256": None}
 
 
 def swift_toolchain():
@@ -73,6 +96,7 @@ def observation():
             "kanon": git_observation(REPOSITORY.parent / "kanon"),
         },
         "ios_manifest": release_witness(REPOSITORY),
+        "dependency_policy": dependency_policy(REPOSITORY),
         "local_toolchain": {
             "os": platform.system().lower(),
             "swift": swift_toolchain(),

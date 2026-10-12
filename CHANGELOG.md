@@ -1,5 +1,12 @@
 # Changelog
 
+- Enable owner-approved licence and duplicate-version coverage for dev-only
+  dependencies without changing the allow-list, advisory or source rules.
+  Correct the earlier dev-decoder licence coverage claim and add fail-closed
+  source-recipe guards for the exact two-field policy amendment. Package
+  versions, lock graph, product code and all authority/acceptance gates remain
+  unchanged.
+
 - Add an internal first-device and ordinary-login iOS regression harness using
   real PNG decoding and the existing PistisCore verifier, with simulated
   biometric failures and source-only diagnostics. Advance the affected

@@ -7,7 +7,7 @@ parent=ef00ff34efbb9cfeac9298c9c77f1dc9694162cd
 test "$(git rev-parse "$parent^{tree}")" = 13857903766fc230de7b6f87f6f38122cd6945d6
 test "$(git rev-parse "$parent:Cargo.lock")" = ca9e7b9adcb9e6640a0c63c9ce39f2bc111fd432
 git merge-base --is-ancestor "$parent" HEAD
-git diff --quiet "$parent" -- ios/PistisApp ios/PistisCore deny.toml .mnemosyne/expedition.json
+git diff --quiet "$parent" -- ios/PistisApp ios/PistisCore .mnemosyne/expedition.json
 if [[ -n "$(git status --porcelain)" ]]; then
   echo 'Refusing source qualification from an uncommitted checkout' >&2
   exit 1
@@ -21,7 +21,16 @@ export TMPDIR="$private_tmp"
 echo "source_commit=$(git rev-parse HEAD) source_tree=$(git rev-parse 'HEAD^{tree}')"
 echo "cargo_lock_blob=$(git rev-parse HEAD:Cargo.lock) cargo_lock_sha256=$(sha256sum Cargo.lock | cut -d' ' -f1)"
 echo "simulator_recipe_sha256=$(sha256sum ios/RegressionHarness/recipe.json | cut -d' ' -f1)"
-python3 ios/RegressionHarness/preflight.py | python3 -c 'import json,sys; v=json.load(sys.stdin); assert v["ios_manifest"]["local_witness_matches"]; assert not v["qualifies_release"]; print("iOS release witness matches; no release qualification")'
+python3 ios/RegressionHarness/preflight.py | python3 -c '
+import json,sys
+v=json.load(sys.stdin)
+if not v["ios_manifest"]["local_witness_matches"] or v["qualifies_release"]:
+    sys.exit("Invalid iOS release witness or source-only boundary")
+if not v["dependency_policy"]["matches_approved_coverage_only_policy"]:
+    sys.exit("Policy must match the approved dev-coverage-only amendment")
+print("iOS witness and approved dependency policy match; no release qualification", v["dependency_policy"]["sha256"])
+'
+python3 -m unittest discover -s ios/RegressionHarness -p 'test_preflight.py'
 
 cargo +1.94.0 test --locked -p pistis-qr
 cargo +1.94.0 clippy --locked -p pistis-qr --all-targets -- -D warnings

@@ -1,5 +1,10 @@
 # Changelog
 
+- Fix the standalone fuzz lockfile to use the current `pistis-qr` 0.1.2
+  package, and patch the affected private `pistis-fuzz` harness to 0.0.1.
+  Preserve external dependency versions, production package versions and
+  authentication/QR behaviour. Locked fuzz checks verify the repair.
+
 - Enable owner-approved licence and duplicate-version coverage for dev-only
   dependencies without changing the allow-list, advisory or source rules.
   Correct the earlier dev-decoder licence coverage claim and add fail-closed

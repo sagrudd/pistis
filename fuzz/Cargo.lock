@@ -620,7 +620,7 @@ dependencies = [
 
 [[package]]
 name = "pistis-fuzz"
-version = "0.0.0"
+version = "0.0.1"
 dependencies = [
  "libfuzzer-sys",
  "pistis-authentication",
@@ -671,7 +671,7 @@ dependencies = [
 
 [[package]]
 name = "pistis-qr"
-version = "0.1.1"
+version = "0.1.2"
 dependencies = [
  "base64",
  "pistis-canonical",

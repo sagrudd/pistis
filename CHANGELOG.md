@@ -1,5 +1,11 @@
 # Changelog
 
+- Clean up and observe termination of the owned image-regression child on every
+  post-launch exit, including pipe failures and timeout escalation. Preserve
+  the 30-second execution bound with finite termination waits. This completes
+  the still-unmerged QR/image-regression task group at `pistis-qr` 0.1.2;
+  retain the iOS 0.25.12+72 version and all production/protocol behaviour.
+
 - Fix the standalone fuzz lockfile to use the current `pistis-qr` 0.1.2
   package, and patch the affected private `pistis-fuzz` harness to 0.0.1.
   Preserve external dependency versions, production package versions and

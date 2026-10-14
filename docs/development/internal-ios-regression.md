@@ -31,6 +31,14 @@ checkpoint, expiry and retry are checked. Reports label Face ID, provider,
 authority, keychain and trust effects as modelled; they do not claim actual
 Secure Enclave, App Attest, sessions, service receipts or physical-device proof.
 
+The image fixture child retains its 30-second execution bound. Every exit
+following launch, including a pipe write/close/read failure, closes stdin and
+observes termination of that owned child. Cleanup allows two seconds after
+termination request and, if necessary, two seconds after `SIGKILL`; failure
+to observe termination is reported as cleanup failure rather than child
+absence. Closed-stdin and ignored-termination regression fixtures verify
+that no owned child remains after the error is returned.
+
 Canonical checkpoint encoding does **not** protect history: removal of a valid
 receipt can restore pending state and repeat a modelled submission. Native
 pending retry reuses its envelope; this model requests a simulated biometric

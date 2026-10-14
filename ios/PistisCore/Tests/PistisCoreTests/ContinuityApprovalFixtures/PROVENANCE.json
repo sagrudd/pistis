@@ -1,0 +1,5 @@
+{
+  "source": "/Users/stephen/Projects/.codex-source-staging/int07-thes-continuity-producer-20261014/tests/fixtures/continuity-authority-v1/public-extension.json",
+  "sha256": "a66b32786278015f472552ba8cf62eaf342b4e6477eec5850aea50369bc5a3ab",
+  "scope": "Original R3 signed public TEST vectors only; no production credential or generation attestation"
+}

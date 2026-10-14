@@ -31,6 +31,7 @@ Development
    development/provider-conformance
    development/ios
    development/internal-ios-regression
+   development/continuity-approval-source
    development/android
    development/synoptikon
    development/monas

@@ -22,6 +22,7 @@ let package = Package(
             ],
             resources: [.process("Resources")]
         ),
-        .testTarget(name: "PistisCoreTests", dependencies: ["PistisCore"]),
+        .testTarget(name: "PistisCoreTests", dependencies: ["PistisCore"],
+            resources: [.copy("ContinuityApprovalFixtures")]),
     ]
 )

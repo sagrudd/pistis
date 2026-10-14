@@ -1,5 +1,12 @@
 # Changelog
 
+- Allocate iOS 0.26.0+73 for additive continuity approval source: strict R3
+  PCIA/PCCB/PCMS/PCII facts, signature joins and closed ordered operations.
+  Preserve legacy flows and key namespaces. Current Site credential enrolment,
+  generation provenance, revocation/ingress and protected ledger adapters remain
+  unavailable; default approval denies and the review view is read-only. No
+  signing, installation, transport recovery or runtime support is asserted.
+
 - Clean up and observe termination of the owned image-regression child on every
   post-launch exit, including pipe failures and timeout escalation. Preserve
   the 30-second execution bound with finite termination waits. This completes

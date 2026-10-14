@@ -56,8 +56,8 @@
       "id": "swift-core-ci-amd64",
       "target": "linux_amd64",
       "container": {
-        "image": "docker.io/library/swift",
-        "digest": "sha256:976e1f9747d050142343d6ca90400cf11e08cef7e204af06a8d23a342831eb60"
+        "image": "127.0.0.1:5000/jenkins-pistis-source",
+        "digest": "sha256:8d2d8019589e8e5839f84f9b7294e1f08b92187c19979ad6547f50bbe2f821ea"
       },
       "task": {
         "kind": "approved_task",

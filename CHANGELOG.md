@@ -1,5 +1,11 @@
 # Changelog
 
+- Pin the Swift CI stage to the published combined Rust 1.94.0 and Swift 6.2.3
+  image for the QR, Core and harness source checks. Document the required
+  catalogue binding, sole-NUC topology check and full-run disk admission.
+  Product code, dependencies and package versions are unchanged; final source
+  admission and genuine Jenkins evidence remain required.
+
 - Clean up and observe termination of the owned image-regression child on every
   post-launch exit, including pipe failures and timeout escalation. Preserve
   the 30-second execution bound with finite termination waits. This completes

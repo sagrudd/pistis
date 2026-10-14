@@ -35,12 +35,27 @@ log, Cargo metadata, and dependency tree as dossier evidence. The centrally
 controlled task installs pinned cargo-audit, cargo-deny, and markdownlint-cli2
 tooling before running the gates.
 
-The separate `swift-core-ci-amd64` stage runs `ios/PistisCore` in a
-digest-pinned official Swift Linux image and retains its test log. It does not
+The separate `swift-core-ci-amd64` stage uses the digest-pinned combined
+Rust 1.94.0 and Swift 6.2.3 image at
+`127.0.0.1:5000/jenkins-pistis-source`. Its OCI manifest digest is
+`sha256:8d2d8019589e8e5839f84f9b7294e1f08b92187c19979ad6547f50bbe2f821ea`.
+The approved task catalogue must bind the QR example builds, PistisCore and
+RegressionHarness tests, both source simulations, and retained result logs.
+Changing the image alone does not establish that catalogue binding or a
+successful Expedition. These source checks do not
 prove native SwiftUI, iOS SDK, Secure Enclave, LocalAuthentication, camera,
 signing, archive, or TestFlight behaviour. Those gates require a separately
 reviewed macOS Jenkins worker with full Xcode and owner-controlled Apple
 resources.
+
+The image is published in the NUC's local registry. The existing adapter label
+`expedition && linux && amd64 && docker` currently selects the sole configured
+agent, `das-basecamp-amd64`; the controller has no executors. Before dispatch,
+recheck that this topology still selects only the NUC at `192.168.0.193`, and
+retain the actual job node and Docker daemon identity. Another eligible host
+must not silently resolve its own loopback registry. The source manifest adds
+no node-selector field and makes no other-host support claim. Dispatch also
+requires a measured disk budget for all four stages and the existing reserve.
 
 The task requires `network` to fetch those pinned tools and advisory data.
 The manifest requests `trusted_revision`. The GitHub webhook path is

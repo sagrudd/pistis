@@ -29,16 +29,17 @@ This policy reduces redundant queue work. It does not weaken review,
 deterministic-test, branch, or security requirements, and it does not permit a
 stale or different revision to stand as milestone evidence.
 
-The reviewed Expedition contract is `.mnemosyne/expedition.json`. Its
-repository stage runs in the digest-pinned Rust 1.90.0 image and retains the CI
-log, Cargo metadata, and dependency tree as dossier evidence. The centrally
-controlled task installs pinned cargo-audit, cargo-deny, and markdownlint-cli2
-tooling before running the gates.
+The reviewed Expedition contract is `.mnemosyne/expedition.json`. Its repository
+and Synoptikon stages use the published offline-input Rust image at
+`127.0.0.1:5000/jenkins-pistis-source`, pinned to OCI manifest
+`sha256:766b565a12fbee3b58d9a24b2764dc235a01da993345f301a5e83b21d613c82a`.
+The centrally controlled task catalogue owns the commands and retained logs,
+Cargo metadata and dependency evidence.
 
 The separate `swift-core-ci-amd64` stage uses the digest-pinned combined
 Rust 1.94.0 and Swift 6.2.3 image at
 `127.0.0.1:5000/jenkins-pistis-source`. Its OCI manifest digest is
-`sha256:8d2d8019589e8e5839f84f9b7294e1f08b92187c19979ad6547f50bbe2f821ea`.
+`sha256:3d00ad8b87256ddbbecf8fe6bc1efae815bb92478f993622dc22542b8d43c58a`.
 The approved task catalogue must bind the QR example builds, PistisCore and
 RegressionHarness tests, both source simulations, and retained result logs.
 Changing the image alone does not establish that catalogue binding or a
@@ -47,6 +48,19 @@ prove native SwiftUI, iOS SDK, Secure Enclave, LocalAuthentication, camera,
 signing, archive, or TestFlight behaviour. Those gates require a separately
 reviewed macOS Jenkins worker with full Xcode and owner-controlled Apple
 resources.
+
+The prepared central catalogue has SHA-256
+`4dca8789eda4447b4bcdc974c03a9ac80ecad0b70d8b4ebfed2538a6ee055922`;
+its offline-input bootstrap has SHA-256
+`e488025fa5476905643483816a7227620497fe4615ca58ded4af01d3602d7ffa`.
+The images retain verified immutable input archives. The bootstrap extracts
+inputs into ephemeral homes, forces Cargo offline and uses local bare Swift
+repositories. Main and fuzz metadata each matched their own unchanged lockfile.
+The selected Thes revision and source tree are verified, but its retained Git
+history is explicitly partial; complete-history validation failed and remains
+recorded. Offline resolution does not establish complete historical closure.
+Image publication and bootstrap smoke tests do not qualify the full four-stage
+run or establish that the prepared catalogue is installed and admitted.
 
 The image is published in the NUC's local registry. The existing adapter label
 `expedition && linux && amd64 && docker` currently selects the sole configured

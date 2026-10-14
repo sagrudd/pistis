@@ -1,5 +1,11 @@
 # Changelog
 
+- Bind the two Rust CI stages and Swift stage to the published immutable
+  offline-input images and document the central bootstrap and catalogue.
+  Preserve product and dependency bytes, all package versions and the Android
+  stage. Retain the partial Thes history limitation; genuine four-stage CI,
+  exact source approval and protected merge remain required.
+
 - Pin the Swift CI stage to the published combined Rust 1.94.0 and Swift 6.2.3
   image for the QR, Core and harness source checks. Document the required
   catalogue binding, sole-NUC topology check and full-run disk admission.

@@ -571,6 +571,15 @@ and a SHA-256 digest of an opaque reference. It contains no endpoint, host, QR,
 canonical payload, signature, private key, biometric, provider code/token,
 cookie or session capability.
 
+## Internal iOS source regressions
+
+The [internal source regression harness](internal-ios-regression.md)
+uses bounded real PNG decoding and the unmodified portable PistisCore to
+check first-device and ordinary-login failures on Linux without attended test
+QR scanning. It is not a native iPhone, service or authority qualification.
+Its source recipe is separate from
+the repository's protected Expedition manifest and does not mint status.
+
 ## Design maintenance
 
 Changes to tokens or product presentation must be reconciled with

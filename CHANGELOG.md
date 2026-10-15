@@ -1,5 +1,7 @@
 # Changelog
 
+- Add the reviewed iOS 0.27.0+74 existing-key issuer approval and native session transport source. The unsigned simulator app builds; all 12 affected platform tests pass, alongside the earlier 59 portable Core tests. Preserve exact native profile/credential binding, closed JSON, original deadlines and no-cookie transport. The request-capture regression reads actual bounded URLProtocol body streams; production behaviour is unchanged by that test correction. Genuine prepared-owner delivery, phone-held approval, runtime authority and Jenkins acceptance remain separate gates.
+
 - Constrain the existing Thesaurophylax API dependency to its selected 0.68.0
   version and permit its canonical Git repository under revision-only source
   policy. Preserve the pinned revision, lock graphs and existing dependency

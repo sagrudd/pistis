@@ -1,0 +1,153 @@
+{
+  "status": "PROPOSED_PHONE_WIRE_AND_PRIVATE_HANDOFF_CONTRACT_NOT_ADOPTED_NOT_IMPLEMENTED",
+  "name": "Phone-held Site Root issuer ceremony; ADR number UNALLOCATED",
+  "ADR_inventory": "Exactef00 and retainedP539stage docs/adr highest0042 observed; neither proves current canonical slot availability. ROOT must reserve actual slot; do not call this acceptedADR43.",
+  "basis": {
+    "source_trace": "ISSUER1493_PHONE_SITE_ROOT_SOURCE_TRACE.json",
+    "source_trace_sha256": "f69bf82294313a87d03e295966374399cc617b734e53070cbd834b46e1176f43",
+    "existing_key": "Before FaceID use hasExistingKey() noninteractive DATA only; never call existingRegistration() or publicKey() in this flow because publicKey() constructs another LAContext. After fresh authenticate(), load publicKey(using: SAME ceremony), compare compressed SEC1 and SHA256 key ID with independently admitted Site identity, then sign(message:using: SAME ceremony). No register/create/export/fallback. Missing key denies without creation.",
+    "existing_ceremony": "FaceIDCeremonyContext.authenticate(reason:) already creates/evaluates fresh FaceID LAContext; sign(message:using:) already loads existingkey under samecontext and usesSecKey MessageX962SHA256; rawSignature strictlydecodesDER and normalizeslowS. No appcache. Existingcontextdocumentation doesNOTbyitself approve this newtwoIRCS use.",
+    "selected_scope": "1491grant16/control7/candidate2b7/reviewb602, actualMonas/Pros currentactor/session/device/permission/nativeRoot joins; sourcecomparisonRootConsentData is not factory"
+  },
+  "clock_and_phase_decision": {
+    "actual_J_boundary": "ROOT source trace: expedition-basecamp/src/exact_source/continuation.rs ClosedContinueRequest3(schema,admission_id,intent_sha256), line75 establishes originalInstant+2s afterdecode/shapechecks and beforeOPERATIONS.try_acquire/spawn_blocking. SameInstant flowsload/authenticate/now/continuation. No existingpreparedphonehandoff port.",
+    "attended_prephase": "All presentation, fulloriginalDATAacquisition and freshFaceID must finish BEFORE invoking that handler. Proposedmax30s entireimmediateceremony inclbiometric; cancellation/expiry/contextloss =>destroycontext/cancelprepareddata, no nativeoperation. AfterFace success scheduleonearm/handlerhandoff within250ms orcancel; this is a proposedbound, notmeasuredplatformguarantee.",
+    "native_phase": "Serverline75 originalInstant remainsunaltered. No serialization/reset/extension; localphoneContinuousClock max2s begins atarmSend (earlierbound), while servernativeInstant max2s startsline75. Bothmusthold throughpostresponse/signatureverification. Mroleexpiry min(existing,now+2) and childCLOCK_MONOTONIC bounds unchanged.",
+    "one_context": "IADM mode allows exactlyONEIADMsignature; IRCS_PAIR allows exactlyTWO signatures pre/post, sameexistingkey/sameboundedimmediatecontext. NoIADM+IRCS mixture, no third/genericdomain. Context local to oneawaitedoperation, neverstored/reused/readinesscache; explicitlyinvalidateonterminal/error/background/restart. Requires exactspecialistreview/adoption, nativebiometric2sfeasibilityUNRUN.",
+    "gap": "ActualJ boundary makes pre-handlerattendedphase possible WITHOUT resettingalready-startedoperation, but NEW privateoneusepreparedhandoff+phonewire+twoIRCScontext use are unimplemented and require acceptedADR beforeproductcode. If originalnativeoperation alreadybegan, FaceIDprephase cannot be retrofitted; deny, neverrenew itsbudget."
+  },
+  "private_prepared_handoff_NOT_EXISTING_API": {
+    "owner": "Monas/Pros existing currentauthority/controller ownsoneuse server record; Expedition consumesopaquehandle throughnewprivate middleware/controller port. No request-selectedtrustedconstructor.",
+    "binding": [
+      "actualauthenticatedPrincipal",
+      "actualcurrentSession/device",
+      "AdmissionUUID",
+      "intentSHA256",
+      "installationUUID/SiteUUID+ADR21label",
+      "actualcurrent1491scope16/grant+fulloriginal4/currentpolicy/revocation",
+      "sameindependentlyadmittedSiteP25633/SHA256id",
+      "MODE SPECIFIC: IADM binds proposed authority UUID/epoch, W generation1/key and exact initial checkpoint/state as DATA, independently verified separate ProvisionIssuerCheckpointRoot original4/control13-zero provenance, current existing Site owner/purpose/native placement; NO existing complete IADM/current issuer prerequisite. IRCS_PAIR requires exact complete already admitted IADM, current authority/epoch/W generation/key/state and current1491 grant16/control7/original4.",
+      "ownercreatedceremonyUUID/freshservernonce/readinessdigest/expiry"
+    ],
+    "integration": "KeepClosedContinueRequest3 unchanged. Newprivateport resolvesandconsumes serverownedrecord bound to authenticatedcaller+theexisting3fields AFTERshapevalidationBEFOREline75; no publicfield/token grantsauthority. It must not block onbiometrics. FreshcurrentRole/nativeRoot/permission/expiry checks re-run AFTERline75 under originalInstant, andpre/post read signatures joinactualprotectedread.",
+    "states": "DATA_PREPARED -> FACE_READY -> NATIVE_CONSUMED -> PRE_SIGNED -> ACTUAL_PROTECTED_READ -> POST_SIGNED -> TERMINAL. IADM usesDATA_PREPARED/FACE_READY/oneIADM/TERMINAL under separateauthorizedrootprovisioncontrol. Anyuncertainty/restart =>LOCKED; exactretainedreply onlywithinoriginalbounds; changedretry/body/session denied. No newquery/sign invocation underconsumedAdmission/intent; exacttombstones retainfailure.",
+    "durability": "BeforeeachSecKeyinvocation phone privateattemptledger fences exactceremony/ordinal/bodydigest; ambiguousinvocation orlostcontext neverresigns. Retainexactenvelopeforboundedexactretry only; noLAContext persisted. Actualprotectedledger and serverlatestoneusejournal integration required; notprovidedbyphonecontext.",
+    "actual_missing_dependency": "JIOQactualproducer1490 capability stillunimplemented; preparedfulloriginalDATAdoesnotreplace it. No currentauthority positive untilthisandgenuineownerports exist.",
+    "mode_rules": "IADM is acyclic initial provisioning only: no IADM-backed ongoing grant or IRCS may authorize its first IADM. Existing independent Site/root-provision owner, native parent, originals and selected root provision permission must be verified independently; proposed root bytes never confer that authority. IRCS_PAIR fails if complete current IADM or ongoing1491 permission missing. Both modes deny if independent current Site owner unavailable. No initial IADM digest is inserted into its own provenance; preserve adopted control13-zero rule."
+  },
+  "fixed_new_endpoints_PROPOSED_ONLY": {
+    "origin": "ExistingconfiguredpinnedHTTPSMonasorigin/sameMonasServerTrustPolicy; no QR-suppliedorigin/redirect/cookie/cache/discovery/fallback. CurrentAppAttest/enrolleddevice/sessionprofile required; HTTPSpin alone is notSiteapprovalenrollment.",
+    "readiness": "POST /auth/pistis/v1/issuer-site-root/readiness",
+    "exchange": "POST /auth/pistis/v1/issuer-site-root/exchange",
+    "not_reuse": "DoNOTsend IADM/IRCS to existingdelegationsubmit/PXRB/PXPC routes. Newroutesnotimplemented."
+  },
+  "wire_PROPOSED_closed_definite_CBOR": {
+    "common": "Unsignedu64/bytes/definitearrays only; canonicalminimalencoding; no text/maps/null/duplicates/trailing/indefinite; depth<=12/nodes<=16384; records<=262144bytes; decodeboundspreallocation. EndpointContentType application/cbor, no contentcompression/chunkaggregateescape; errorscoarse fixedu8 withHTTP4xx/503, no field reflection.",
+    "readiness_request_array6": [
+      "1",
+      "mode:u8=1IADM|2IRCS_PAIR",
+      "AdmissionUUID:bstr16nonnil",
+      "intentSHA:bstr32nonzero",
+      "existingSiteKeyID:bstr32",
+      "phonefreshnonce:bstr32nonzero"
+    ],
+    "readiness_response_array14": [
+      "1",
+      "ceremonyUUID:bstr16",
+      "mode:u8",
+      "installationUUID:ASCIIbstr36",
+      "SiteUUID:bstr16",
+      "ADR21label:ASCIIbstr1..128",
+      "expectedSiteKeyID:bstr32",
+      "authorityUUID:bstr16",
+      "authorityEpoch:u64nonzero",
+      "Wgeneration:u64nonzero",
+      "WkeyID:bstr32",
+      "serverExpiry:u64",
+      "fullownerEvidence:bstr1..245760",
+      "serverChallengeNonce:bstr32nonzero"
+    ],
+    "readiness_evidence": "Mode1 includes existing independent Site-root provision evidence, exact proposed IADM21 DATA and original4/control13-zero relation, native parent/placement and current provision permission; it MUST NOT require complete signed IADM or ongoing issuer status/grant. Mode2 includes complete independently admitted IADM and actual current1491 scope/control/originals/current owner facts. Both contain actual Site/phone/native bindings. Before clock DATA only; fresh owner checks after J line75 are required; phone key match or readiness is not admission.",
+    "exchange_arm_array5": [
+      "1",
+      "stage:u8=1",
+      "ceremonyUUID:bstr16",
+      "readinessSHA:bstr32",
+      "mode:u8"
+    ],
+    "exchange_signature_array6": [
+      "1",
+      "stage:u8=2",
+      "ceremonyUUID:bstr16",
+      "ordinal:u8=1|2",
+      "taskSHA:bstr32",
+      "exactSignedEnvelope:bstr1..16384"
+    ],
+    "exchange_cancel_array4": [
+      "1",
+      "stage:u8=3",
+      "ceremonyUUID:bstr16",
+      "readinessSHA:bstr32"
+    ],
+    "task_response_array7": [
+      "1",
+      "ceremonyUUID:bstr16",
+      "kind:u8=1IADM|2IRCS_PRE|3IRCS_POST",
+      "ordinal:u8=1|2",
+      "exactUnsignedBody:bstr1..8192",
+      "preEnvelopeReference:bstr0|32",
+      "readinessSHA:bstr32"
+    ],
+    "task_rules": "Exact IADM21 or IRCS11 accepted schema/order/caps/domains. IADM task ordinal1/preEnvelopeReference empty. IRCS PRE ordinal1/reference empty; POST ordinal2/reference equals accepted root-current-status envelope reference of complete signed PRE IRCS (defined below), NOT unsigned body. This is phone orchestration correlation only: IRCS11 has no reference field. Server must separately produce and verify adopted IRSP14 POST.pre_response_envelope_digest using complete signed PRE IRSP; no substitution of PRE IRCS reference for that field. IRCS root digest/authority/epoch/generation/key/revocation/state must match authenticated mode2 context, nonces distinct/nonzero, same actual boot, POST serial strictly greater. Fresh current checks and actual protected read remain independently required.",
+    "terminal_response_array3": [
+      "1",
+      "ceremonyUUID:bstr16",
+      "result:u8=0accepted|1denied|2unavailable; no authority token"
+    ],
+    "unknowns": "Anynewstage/mode/task/field/kind/ordinal, interleavedceremony orchangedreadinessdenies"
+  },
+  "signature_rules": {
+    "preimage": "FixedASCII domain +NUL+EXACTcanonicalunsignedbody; pass preimage (NOTdigest) to existingSecureEnclaveSigner.sign(message:using:). MessageX962SHA256 computes exactlyONE SHA256. NeverCOSESig_structure/olddelegationJSON/doublehash.",
+    "domains": [
+      "Mnemosyne/Issuer1482/root-admission/v1",
+      "Mnemosyne/Issuer1482/root-current-status/v1"
+    ],
+    "envelope": "Existingcanonicalarray3 [unsignedbody, bstr SHA256(compressedSiteSEC1), bstr rawlowS64]. PreservestrictDERconversion/normalizeLowS; receiver independentlyverifiesunderalreadyadmittedSitekey. Displaylegacy site-root-hex isnotencodedkidstring.",
+    "admission": "hasExistingKey() is coarse noninteractive DATA only; after fresh FaceID use publicKey(using: SAME ceremony) to compare exact independently admitted Site key. Do not use existingRegistration()/publicKey() (new LAContext) or register(). Existing Site/root provision owner independently authorizes initial IADM; current1491 owner authorizes ongoing IRCS. Neither possession nor biometric creates authority."
+  },
+  "human_action": {
+    "IRCS": "Show exactSite/installation, issuerauthority/epoch, Wgeneration/keyfragment, actor/session/purpose/expiry andAdmission+intent; state: \u201cApprove one current issuer check: two signatures, before and after the protected read.\u201d Canceldenies.",
+    "IADM": "Separate exact ProvisionIssuerCheckpointRoot control/currentSiteownerpurpose; showrootadmission/ownerkeyfingerprints/nativeplacement/recoveryterms. Neverreuse ongoingIRCSgrant asprovisionconsent.",
+    "descriptor": "Use selected1491 urn:mnemosyne:issuer-control:ProvisionIssuerRootCurrentStatusPermission foritsattendedgrantcontrol only; phoneIADM/rootprovision usesitsEXISTINGexactauthorizedcontrol. Newceremonytransportdoesnotinventadditionalglobalpurposeinteger orrelabelolddelegationconsent."
+  },
+  "source_ownership": {
+    "Pistis": "Proposed closed parser/presentation/producer/transport/ledger. Noninteractive hasExistingKey then publicKey(using: SAME fresh ceremony) and fixed-domain sign(using:SAME); no existingRegistration/publicKey()/register flow reuse. No product code yet.",
+    "Monas_Pros": "1491grant/control/currentSiteprovisionfactory, serverpreparedoneusejournal/readiness/exchange endpoints andcurrentIRCSowner facts; realcurrentstate revalidation andoriginal2s childbudget.",
+    "Expedition": "Newprivatepreparedhandoffport aroundexistingline75 boundary, immutableClosedContinueRequest3 remainsunchanged.",
+    "Thes": "ExistingstrictIADM/IRCSverificationandcustodyfences; NOserverSitekeyexport/wrap/newownerappointment.",
+    "authority": "SOURCEproposal only; interfacesabovenotclaimedactualimplementedRust/SwiftAPI"
+  },
+  "threats_and_hostile_cases": [
+    "cachedFaceID/contextreuse/thirdsignature orIADM+IRCSmix",
+    "already-startednativebudgetreset; postexpiry/equality/delayedqueue/bootchange",
+    "sameNonce/postbeforeactualread/wrongpreRef/serialrollback",
+    "rootkeysubstitution/selfappointedRootConsentDATA/receiptAdminPWkeyfallback",
+    "wrongprincipal/session/device/Admission/intent/Site/installation/IADM/epoch/Wgeneration/grant/revocation/ancestor",
+    "genericdomain/bodyinjection/COSEpreimagereuse/doublehash/highS/DERambiguity/invalidcurve",
+    "redirect/originpinmismatch/pathsubstitution/overboundcontent/unknownCBORfields",
+    "lostreply/invocationambiguity/concurrentphoneinstances/restart/serverrestore/tombstoneomission",
+    "missingexistingkey/biometricsetchanged/background/FaceIDunavailable/simulator/softwarefallback",
+    "readinesslivenessmistakenforcurrentauthority"
+  ],
+  "qualification": "R2 proposed spec only; separate hostile reference tests are logical assertions, not crypto/native/authority/TLS/biometric/durability qualification. All actual platform operations UNRUN. Accepted ADR and specialist review required before implementation; serverwrap remains HOLD.",
+  "revision": "R2 successor; R1 immutable; proposed/not adopted/not implemented",
+  "exact_hash_preimages_R2": {
+    "canonical_records": "All hashes below use complete exact canonical CBOR records with the frozen field order, byte representations and no network framing. Decode strictly then demand byte-for-byte equality with canonical encoding before hashing. No JSON, concatenated selected fields, omitted metadata or body-only aliases.",
+    "readinessSHA": "SHA256(exact complete canonical readiness_response_array14 bytes). Commits mode, ceremony, installation, Site, label, key ID, authority/epoch/W facts, expiry, complete evidence and challenge. No new signature domain is introduced: this is a transport correlation digest only, authenticated by existing pinned current session and private owner journal.",
+    "taskSHA": "SHA256(exact complete canonical task_response_array7 bytes). Commits ceremony, kind, ordinal, exact canonical unsigned body bytes, preEnvelopeReference and readinessSHA; no self-reference field exists.",
+    "preEnvelopeReference": "For IRCS POST only: SHA256(ASCII(\"Mnemosyne/Issuer1482/root-current-status/v1/envelope\") || 0x00 || exact complete signed PRE IRCS envelope bytes). Empty for IADM/PRE. Existing accepted reference(k,raw) convention. Not an adopted IRSP pre-response reference.",
+    "IADM_reference": "SHA256(ASCII(\"Mnemosyne/Issuer1482/root-admission/v1/envelope\") || 0x00 || exact complete signed IADM envelope). IRCS[1] must match this independent complete original.",
+    "IRSP_reference": "Existing POST IRSP.pre_response_envelope_digest is SHA256(ASCII(\"Mnemosyne/Issuer1482/current-response/v1/envelope\") || 0x00 || complete signed PRE IRSP). Only actual server proof producer may satisfy this; phone correlation alone does not.",
+    "signature": "Unchanged SHA256 once over fixed adopted ASCII signature domain || 0x00 || exact canonical unsigned IADM21/IRCS11 body; existing message signing primitive receives preimage, not digest."
+  }
+}

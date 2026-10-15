@@ -1,0 +1,51 @@
+{
+  "status": "FINDINGS_SPEC_ONLY_NOT_READY_FOR_ADOPTION",
+  "freeze_sha256": "b4edb33e8b99a6952a119c56287ede38863035e2924f05b17f0f6ec8d822fc9a",
+  "candidate_sha256": "28c22f9942b0f02e6303c1be04eadc85f98090d96793ad22fb79caeb50ea3ef4",
+  "findings": [
+    {
+      "id": "PHONE-01",
+      "severity": "blocking_spec",
+      "location": "private_prepared_handoff.binding; readiness_evidence; mode=IADM",
+      "finding": "The common readiness predicates require current complete IADM and current issuer/W state for both modes. Initial IADM is the object being created; requiring its already authenticated original closes the bootstrap cycle despite task_rules saying cycle avoidance unchanged.",
+      "required_fix": "Define separate closed IADM and IRCS readiness predicates. IADM must join genuine independently admitted Site/native provision control and the accepted acyclic initial checkpoint/state inputs without requiring the not-yet-issued IADM or current issuer status. IRCS must require the already admitted complete IADM/current state. Provide separate negative/positive spec cases; no substitute authority."
+    },
+    {
+      "id": "PHONE-02",
+      "severity": "blocking_spec",
+      "location": "exchange_arm.readinessSHA; exchange_signature.taskSHA; task_response.preEnvelopeReference",
+      "finding": "These new security bindings have lengths but no exact canonical preimages/hash algorithms or checked equality rules. A field called SHA does not define whether it covers unsigned body, full response, envelope or context; the reference model compares pre body bytes rather than a 32-byte envelope reference.",
+      "required_fix": "Freeze exact byte-level digest definitions and contextual equality checks for readiness/task references. Explicitly bind immutable ceremony/mode/ordinal and exact task body. Define preEnvelopeReference against the exact retained PRE envelope, using the existing IRCS domain/envelope-NUL reference when intended, and test wrong envelope with identical body and changed task context. Preserve adopted signed body arrays/domains."
+    },
+    {
+      "id": "PHONE-03",
+      "severity": "blocking_source_recipe",
+      "location": "basis.existing_key/existing_ceremony; actual SiteRootDelegationProof.swift existingRegistration",
+      "finding": "The actual existingRegistration() calls signer.publicKey(), which creates another LAContext and performs private-key lookup with interaction permitted. Calling it during pre-Face DATA acquisition does not establish a single evaluated ceremony and can trigger a separate key-access prompt. The current source recipe does not select how this is avoided.",
+      "required_fix": "Specify noninteractive existence/enrollment DATA before FaceID, then load/compare the existing public key through publicKey(using: sameFreshCeremony) and sign through that same context; never create/register. Explicitly deny extra authentication/background/context loss and require native one-prompt evidence. An API name existingRegistration is not proof of no additional authentication."
+    }
+  ],
+  "confirmed": [
+    "Existing Secure Enclave signer enforces Enclave-only lookup, no private export/software fallback, MessageX962SHA256 once, strict DER and low-S conversion",
+    "Existing verifier has exact IADM21 and IRCS11, matching proposed signing domains, array3 envelope and compressed-key SHA256 ID; preserve body as CBOR value, not a bstr-wrapped replacement",
+    "Retained J continuation source establishes original Instant+2s before bounded native action authentication; proposed prephase cannot renew that clock",
+    "No new purpose/key allocation or operational authority inferred; actual owner/provenance/1490/1491 joins remain required",
+    "Pistis AGENTS lines88-102 requires specialist review and accepted ADR before protocol/encoding/crypto implementation; candidate correctly unallocated and unaccepted"
+  ],
+  "evidence_limits": [
+    "Reference19 sequencing receipt is not independently executed here and is not native/crypto/FaceID/TLS evidence",
+    "No source edits, native operations, keys or live effects performed; ADR0026 remains HOLD"
+  ],
+  "source_references": [
+    "int07-pistis-sqlite-alignment-20261010/pistis/ios/PistisApp/Sources/Platform/SiteRootDelegationProof.swift:272",
+    "int07-pistis-current-source-20261014/genuine-source/ios/PistisApp/Sources/Platform/SecureEnclaveSigner.swift",
+    "int07-thes-root-integration-20261014/source/crates/thesaurophylax-api/src/issuer_checkpoint_v1/verify.rs:81",
+    "int07-authority-producers-20261011/jenkins-exact-action-client-adoption/candidate/crates/expedition-basecamp/src/exact_source/continuation.rs:59"
+  ],
+  "exact_current_J": {
+    "path": "/Users/stephen/Projects/.codex-source-staging/int07-jenkins-precursor-static-appraisal-20261011/final161-candidate/crates/expedition-basecamp/src/exact_source/continuation.rs",
+    "sha256": "e897bb9d7599306420b6bf9150ee8bf6b1e111628b450ab5e9d60f828903c9f8",
+    "boundary": "Line75 Instant+2s after three-field shape checks, before OPERATIONS.try_acquire/spawn_blocking; same deadline reaches load_before/authenticate_action/now_before/VerifiedContinuation."
+  },
+  "prior_receipt_sha256": "c1adb62c52f04830932747263a93b707acd61752944985788ac577af1540033f"
+}

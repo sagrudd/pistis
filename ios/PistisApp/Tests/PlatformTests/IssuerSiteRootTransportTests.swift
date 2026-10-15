@@ -51,8 +51,15 @@ final class IssuerSiteRootTransportTests: XCTestCase {
         }
     }
     @MainActor
-    func testMissingGenuinePreparedOwnerRemainsClosedWithoutKeyInvocation() throws {
-        XCTAssertThrowsError(try IssuerSiteRootPreparedHandoff.current())
+    func testMissingGenuinePreparedOwnerRemainsClosedWithoutKeyInvocation() async {
+        do {
+            let prepared = try await IssuerSiteRootPreparedHandoff.current()
+            prepared.cancel()
+            XCTFail("unprovisioned simulator admitted a prepared owner")
+        } catch {
+            // The unprovisioned test app has no native enrollment or ACK owner.
+            // This checks rejection only; it grants no live custody evidence.
+        }
     }
 }
 

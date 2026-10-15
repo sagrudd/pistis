@@ -5,6 +5,7 @@ import PistisCore
 /// One configured origin, the existing exact Monas trust policy, no discovery,
 /// redirect, alternate-origin retry, cookie store, cache or new authentication.
 final class IssuerSiteRootTransport: @unchecked Sendable {
+    static let currentPreparationPath = "/auth/pistis/v1/issuer-site-root/current"
     private let origin: URL
     private let session: URLSession
     #if canImport(LocalAuthentication) && canImport(UIKit)
@@ -52,6 +53,11 @@ final class IssuerSiteRootTransport: @unchecked Sendable {
         return (try IssuerSiteRootTransport(current: current), current.enrollment)
     }
     @MainActor
+    static func authenticatedRootNative() async throws -> (IssuerSiteRootTransport, IssuerNativeCurrentSession) {
+        let current = try await IssuerNativeCurrentSession.authenticateCurrent()
+        return (try IssuerSiteRootTransport(current: current), current)
+    }
+    @MainActor
     private init(current: IssuerNativeCurrentSession) throws {
         let enrollment = current.enrollment
         guard let enrolledOrigin = URL(string: enrollment.httpsOrigin),
@@ -66,6 +72,9 @@ final class IssuerSiteRootTransport: @unchecked Sendable {
     }
     #endif
 
+    func prepareSiteCurrent(_ body: Data, deadline: ContinuousClock.Instant) async throws -> Data {
+        try await post(body, path: Self.currentPreparationPath, deadline: deadline)
+    }
     func readiness(_ body: Data, deadline: ContinuousClock.Instant) async throws -> Data {
         try await post(body, path: IssuerPhoneWire.readinessPath, deadline: deadline)
     }

@@ -62,4 +62,30 @@ final class ExactSourceACKBodyTests: XCTestCase {
         XCTAssertThrowsError(try ExactSourceACKWire.task(task(action),challenge:Data(repeating:1,count:32),kind:.technicalReview,now:150))
     }
 
+    func testPendingReviewReceiptIsCorrelatedPublicDataAndCannotBecomeTask() throws {
+        let nonce = Data(repeating: 3, count: 32)
+        func packet(_ challenge: Data, _ end: UInt64) throws -> Data {
+            try IssuerCBOR.array([.unsigned(1), .bytes(Data("exact-source-ack-review-witnesses-pending-v1".utf8)),
+                .bytes(Data(repeating: 1, count: 16)), .bytes(challenge),
+                .bytes(Data(repeating: 2, count: 32)), .unsigned(end)]).encoded()
+        }
+        let raw = try packet(nonce, 120)
+        XCTAssertEqual(try ExactSourceACKWire.pendingReview(raw, challenge: nonce, now: 100)?.expiresAt, 120)
+        XCTAssertThrowsError(try ExactSourceACKWire.pendingReview(raw, challenge: Data(repeating: 4, count: 32), now: 100))
+        XCTAssertThrowsError(try ExactSourceACKWire.pendingReview(packet(nonce, 120), challenge: nonce, now: 120))
+        XCTAssertThrowsError(try ExactSourceACKWire.pendingReview(packet(nonce, 131), challenge: nonce, now: 100))
+        XCTAssertThrowsError(try ExactSourceACKWire.task(raw, challenge: nonce, kind: .technicalReview, now: 100))
+    }
+
+    func testPendingSubjectDigestIncludesIdentityAndExcludesOnlyThreeLateDigests() throws {
+        var fields = review()
+        let first = try ExactSourceACKWire.reviewSubjectDigest(ExactSourceACKBody.parse(encode(fields), now: 150))
+        fields["reviewer_role_decision_sha256"] = String(repeating: "d", count: 64)
+        fields["governance_witness_sha256"] = String(repeating: "e", count: 64)
+        fields["owner_approval_merge_witness_sha256"] = String(repeating: "f", count: 64)
+        XCTAssertEqual(first, try ExactSourceACKWire.reviewSubjectDigest(ExactSourceACKBody.parse(encode(fields), now: 150)))
+        fields["nonce"] = String(repeating: "b", count: 64)
+        XCTAssertNotEqual(first, try ExactSourceACKWire.reviewSubjectDigest(ExactSourceACKBody.parse(encode(fields), now: 150)))
+    }
+
 }

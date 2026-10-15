@@ -10,6 +10,8 @@ import UIKit
 final class IssuerNativeCurrentSession {
     let sessionID: UUID
     let enrollment: AuthenticatedEnrollmentOutput
+    let policyGeneration: UInt64
+    let revocationGeneration: UInt64
     private let expiresAt: Date
     private var secret: Data
     private var terminal = false
@@ -18,6 +20,7 @@ final class IssuerNativeCurrentSession {
     private init(enrollment: AuthenticatedEnrollmentOutput,
                  finalized: IssuerNativeSessionWire.Finalized, secret: Data) {
         self.enrollment = enrollment; sessionID = finalized.sessionID
+        policyGeneration = finalized.policyGeneration; revocationGeneration = finalized.revocationGeneration
         expiresAt = min(finalized.expiresAt, enrollment.trust.expiresAt)
         self.secret = secret
         lastWall = Date()
@@ -113,7 +116,7 @@ final class IssuerNativeCurrentSession {
             let before = Date()
             guard !terminal, ContinuousClock().now < deadline, before >= lastWall, before < expiresAt,
                   let url = request.url, CanonicalHTTPSOrigin.from(url) == enrollment.httpsOrigin,
-                  [IssuerPhoneWire.readinessPath, IssuerPhoneWire.exchangePath, ExactSourceACKWire.preparePath, ExactSourceACKWire.submitPath].contains(url.path),
+                  [IssuerPhoneWire.readinessPath, IssuerPhoneWire.exchangePath, ExactSourceACKWire.preparePath, ExactSourceACKWire.submitPath, IssuerSiteRootTransport.currentPreparationPath, "/v1/pistis/issuer-site-root/joint/prepare"].contains(url.path),
                   url.query == nil, url.fragment == nil, request.httpMethod == "POST",
                   request.value(forHTTPHeaderField: "Content-Type") == "application/cbor",
                   request.value(forHTTPHeaderField: "Cookie") == nil,

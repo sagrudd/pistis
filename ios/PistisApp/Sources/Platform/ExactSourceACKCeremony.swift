@@ -5,6 +5,26 @@ import CryptoKit
 import Security
 import UIKit
 
+enum ExactSourceACKPreparationError: Error { case witnessesPending(ExactSourceACKPendingReview) }
+/// Keeps the actual existing native authentication session, never a server
+/// generation/ACK lease. Every retry obtains fresh owners under the old end.
+@MainActor
+final class ExactSourceACKPendingReview {
+    fileprivate let transport: IssuerSiteRootTransport
+    fileprivate let enrollment: AuthenticatedEnrollmentOutput
+    fileprivate let record: SiteRootConvergenceAckRecordV2
+    fileprivate let lifecycle: ExactSourceACKLifecycle
+    fileprivate let end: ContinuousClock.Instant
+    fileprivate let receipt: ExactSourceACKWire.PendingReviewData
+    fileprivate init(transport: IssuerSiteRootTransport, enrollment: AuthenticatedEnrollmentOutput,
+                     record: SiteRootConvergenceAckRecordV2, lifecycle: ExactSourceACKLifecycle,
+                     end: ContinuousClock.Instant, receipt: ExactSourceACKWire.PendingReviewData) {
+        self.transport = transport; self.enrollment = enrollment; self.record = record
+        self.lifecycle = lifecycle; self.end = end; self.receipt = receipt
+    }
+    func cancel() { lifecycle.invalidate() }
+}
+
 /// One explicit, existing ACK-key operation. No raw body/token constructor,
 /// registration, new key, generic signing callback or portable role owner.
 @MainActor
@@ -36,16 +56,39 @@ final class ExactSourceACKCeremony {
         let lifecycle = ExactSourceACKLifecycle()
         return try await withTaskCancellationHandler {
             do { return try await prepareCurrent(kind: kind, lifecycle: lifecycle) }
+            catch let pending as ExactSourceACKPreparationError { throw pending }
             catch { lifecycle.invalidate(); throw error }
         } onCancel: { lifecycle.invalidate() }
     }
-    private static func prepareCurrent(kind: ExactSourceACKBody.Kind, lifecycle: ExactSourceACKLifecycle) async throws -> ExactSourceACKCeremony {
+    static func resumeCurrent(_ pending: ExactSourceACKPendingReview) async throws -> ExactSourceACKCeremony {
+        let lifecycle = pending.lifecycle
+        return try await withTaskCancellationHandler {
+            do { return try await prepareCurrent(kind: .technicalReview, lifecycle: lifecycle, pending: pending) }
+            catch let pending as ExactSourceACKPreparationError { throw pending }
+            catch { lifecycle.invalidate(); throw error }
+        } onCancel: { lifecycle.invalidate() }
+    }
+    private static func prepareCurrent(kind: ExactSourceACKBody.Kind, lifecycle: ExactSourceACKLifecycle,
+                                       pending: ExactSourceACKPendingReview? = nil) async throws -> ExactSourceACKCeremony {
         try lifecycle.observe()
         guard UIApplication.shared.applicationState == .active else { throw IssuerPhoneError.uncertain }
-        let (transport, enrollment) = try await IssuerSiteRootTransport.authenticatedACKNative()
+        let transport: IssuerSiteRootTransport
+        let enrollment: AuthenticatedEnrollmentOutput
+        if let pending {
+            transport = pending.transport; enrollment = pending.enrollment
+        } else {
+            let authenticated = try await IssuerSiteRootTransport.authenticatedACKNative()
+            transport = authenticated.0; enrollment = authenticated.1
+        }
         try lifecycle.observe()
-        let original = ContinuousClock().now.advanced(by: .seconds(30))
+        let original = pending?.end ?? ContinuousClock().now.advanced(by: .seconds(30))
+        guard ContinuousClock().now < original else { throw IssuerPhoneError.expired }
         let record = try SiteRootConvergenceAckStoreV2().current()
+        if let pending {
+            guard record == pending.record,
+                  try await InstallationTrustKeychain.shared.activeEnrollment() == pending.enrollment else { throw IssuerPhoneError.binding }
+            try lifecycle.observe()
+        }
         guard let target = SiteRootConvergenceEncoding.base64URL(record.targetIDB64URL), target.count == 32,
               let ack = SiteRootConvergenceEncoding.base64URL(record.ackPublicKeyB64URL), ack.count == 33,
               record.siteUUID == UUID(uuidString: record.siteUUID)?.uuidString.lowercased() else { throw IssuerPhoneError.binding }
@@ -56,7 +99,25 @@ final class ExactSourceACKCeremony {
         try lifecycle.observe()
         let raw = try await transport.prepareACK(request, deadline: original)
         try lifecycle.observe()
+        if let receipt = try ExactSourceACKWire.pendingReview(raw, challenge: challenge, now: unix()) {
+            guard kind == .technicalReview else { throw IssuerPhoneError.binding }
+            if let pending {
+                guard receipt.draftID == pending.receipt.draftID,
+                      receipt.subjectDigest == pending.receipt.subjectDigest,
+                      receipt.expiresAt <= pending.receipt.expiresAt else { throw IssuerPhoneError.binding }
+            }
+            try lifecycle.observe()
+            let sampled = ContinuousClock().now
+            let remaining = Date(timeIntervalSince1970: Double(receipt.expiresAt)).timeIntervalSinceNow
+            guard remaining > 0 else { throw IssuerPhoneError.expired }
+            let end = min(original, sampled.advanced(by: .seconds(remaining)))
+            throw ExactSourceACKPreparationError.witnessesPending(ExactSourceACKPendingReview(
+                transport: transport, enrollment: enrollment, record: record, lifecycle: lifecycle, end: end, receipt: receipt))
+        }
         let task = try ExactSourceACKWire.task(raw, challenge: challenge, kind: kind, now: unix())
+        if let pending {
+            guard try ExactSourceACKWire.reviewSubjectDigest(task.body) == pending.receipt.subjectDigest else { throw IssuerPhoneError.binding }
+        }
         let install = try IssuerNativeSessionWire.uuid(enrollment.trust.installationID).uuidString.lowercased()
         let targetField = kind == .enrollment ? "device_target" : "reviewer_device_target"
         let generationField = kind == .enrollment ? "device_generation" : "reviewer_device_generation"

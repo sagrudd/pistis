@@ -15,6 +15,34 @@ public enum ExactSourceACKWire {
         public let actionExpiresAt: UInt64
         public let digest: Data
     }
+    /// Public subject-plan receipt only. It never reaches a signing task.
+    public struct PendingReviewData: Equatable, Sendable {
+        public let draftID: Data
+        public let subjectDigest: Data
+        public let expiresAt: UInt64
+    }
+    public static func pendingReview(_ raw: Data, challenge: Data, now: UInt64) throws -> PendingReviewData? {
+        let value = try IssuerCBOR.decode(raw)
+        guard case .array(let fields) = value else { throw IssuerPhoneError.malformed }
+        guard fields.count == 6 else { return nil }
+        guard try fields[0].uint() == 1,
+              try fields[1].bytes(range: 1...128) == Data("exact-source-ack-review-witnesses-pending-v1".utf8),
+              try fields[3].bytes(32, nonzero: true) == challenge else { throw IssuerPhoneError.binding }
+        let draft = try fields[2].bytes(16, nonzero: true)
+        let digest = try fields[4].bytes(32, nonzero: true)
+        let expires = try fields[5].uint()
+        guard expires > now, expires - now <= 30 else { throw IssuerPhoneError.expired }
+        return PendingReviewData(draftID: draft, subjectDigest: digest, expiresAt: expires)
+    }
+    public static func reviewSubjectDigest(_ body: ExactSourceACKBody) throws -> Data {
+        guard body.kind == .technicalReview else { throw IssuerPhoneError.binding }
+        var subject = body.fields
+        for key in ["reviewer_role_decision_sha256", "governance_witness_sha256", "owner_approval_merge_witness_sha256"] {
+            guard subject.removeValue(forKey: key) != nil else { throw IssuerPhoneError.binding }
+        }
+        let original = try JSONSerialization.data(withJSONObject: subject, options: [.sortedKeys, .withoutEscapingSlashes])
+        return IssuerPhoneWire.sha256(original)
+    }
     public static func prepare(challenge: Data, kind: ExactSourceACKBody.Kind,
                                target: Data, generation: UInt64) throws -> Data {
         guard challenge.count == 32, !challenge.allSatisfy({ $0 == 0 }),

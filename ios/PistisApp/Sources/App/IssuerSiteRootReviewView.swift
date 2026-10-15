@@ -33,10 +33,10 @@ struct IssuerSiteRootReviewView: View {
                 }
                 .buttonStyle(.borderedProminent)
                 .disabled(operation != nil)
-                Button("Cancel", role: .cancel) { operation?.cancel(); dismiss() }
+                Button("Cancel", role: .cancel) { prepared.cancel(); operation?.cancel(); dismiss() }
             }.padding()
         }
-        .onDisappear { operation?.cancel() }
+        .onDisappear { prepared.cancel(); operation?.cancel() }
     }
 }
 #endif

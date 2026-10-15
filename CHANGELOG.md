@@ -1,5 +1,13 @@
 # Changelog
 
+- Complete the reviewed joint Root phone handoff within iOS 0.27.0+74: retain
+  the actual native session through ACK, verify the complete joint descriptor,
+  obtain the prepared owner and cancel it after every terminal confirmation.
+  The unsigned simulator app and 16 selected platform tests pass, with 13
+  applicable portable cases retained across two reviewed compile repairs.
+  These 29 distinct cases do not establish live authority or genuine Jenkins CI.
+  See `docs/protocol/issuer-joint-root-component-evidence.md`.
+
 - Add the reviewed existing-key exact-source ACK preparation and confirmation
   flow within the reserved iOS 0.27.0+74 batch. Keep enrollment and first-review
   originals distinct, bind the complete action graph, retain the selected ACK

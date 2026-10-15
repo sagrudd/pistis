@@ -83,6 +83,15 @@ public enum IssuerPhoneWire {
               phoneNonce.count == 32, phoneNonce.contains(where: { $0 != 0 }) else { throw IssuerPhoneError.binding }
         return try IssuerCBOR.array([.unsigned(1), .unsigned(mode.rawValue), .bytes(admissionID), .bytes(intent), .bytes(siteKeyID), .bytes(phoneNonce)]).encoded()
     }
+    /// Encode the existing closed current-Site preparation request. This is
+    /// comparison DATA; it neither authenticates a caller nor grants permission.
+    public static func currentSitePreparationRequest(nonce: Data, currentACKTarget: Data) throws -> Data {
+        guard nonce.count == 32, nonce.contains(where: { $0 != 0 }), currentACKTarget.count == 32 else {
+            throw IssuerPhoneError.binding
+        }
+        return try IssuerCBOR.array([.unsigned(1),
+            .bytes(Data("issuer-site-current-prepare-v1".utf8)), .bytes(nonce), .bytes(currentACKTarget)]).encoded()
+    }
     public static func arm(_ readiness: IssuerPhoneReadiness) throws -> Data {
         try IssuerCBOR.array([.unsigned(1), .unsigned(1), .bytes(readiness.ceremonyID), .bytes(readiness.digest), .unsigned(readiness.mode.rawValue)]).encoded()
     }

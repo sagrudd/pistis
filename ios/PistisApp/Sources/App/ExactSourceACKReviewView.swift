@@ -4,6 +4,7 @@ import PistisCore
 struct ExactSourceACKReviewView: View {
     let kind: ExactSourceACKBody.Kind
     @State private var prepared: ExactSourceACKCeremony?
+    @State private var pending: ExactSourceACKPendingReview?
     @State private var operation: Task<Void, Never>?
     @State private var message: String?
     @State private var terminal = false
@@ -27,7 +28,15 @@ struct ExactSourceACKReviewView: View {
                     Button("Load current request") {
                         guard operation == nil, !terminal else { return }
                         operation = Task { @MainActor in
-                            do { prepared = try await ExactSourceACKCeremony.prepareCurrent(kind: kind) }
+                            do {
+                                if let pending { prepared = try await ExactSourceACKCeremony.resumeCurrent(pending) }
+                                else { prepared = try await ExactSourceACKCeremony.prepareCurrent(kind: kind) }
+                                pending = nil
+                            }
+                            catch ExactSourceACKPreparationError.witnessesPending(let current) {
+                                pending = current
+                                message = "The review subject is ready. Complete the required owner records, then load it again before it expires."
+                            }
                             catch { message = "No current request is available for this enrolled device."; terminal = true }
                             operation = nil
                         }
@@ -36,7 +45,7 @@ struct ExactSourceACKReviewView: View {
                 if operation != nil { ProgressView() }
                 if let message { Text(message).accessibilityAddTraits(.updatesFrequently) }
             }.padding()
-        }.onDisappear { prepared?.cancel(); operation?.cancel(); terminal = true }
+        }.onDisappear { prepared?.cancel(); pending?.cancel(); pending = nil; operation?.cancel(); terminal = true }
     }
 }
 #endif

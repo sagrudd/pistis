@@ -47,6 +47,11 @@ final class IssuerSiteRootTransport: @unchecked Sendable {
         return try IssuerSiteRootTransport(current: current)
     }
     @MainActor
+    static func authenticatedACKNative() async throws -> (IssuerSiteRootTransport, AuthenticatedEnrollmentOutput) {
+        let current = try await IssuerNativeCurrentSession.authenticateCurrent()
+        return (try IssuerSiteRootTransport(current: current), current.enrollment)
+    }
+    @MainActor
     private init(current: IssuerNativeCurrentSession) throws {
         let enrollment = current.enrollment
         guard let enrolledOrigin = URL(string: enrollment.httpsOrigin),
@@ -66,6 +71,12 @@ final class IssuerSiteRootTransport: @unchecked Sendable {
     }
     func exchange(_ body: Data, deadline: ContinuousClock.Instant) async throws -> Data {
         try await post(body, path: IssuerPhoneWire.exchangePath, deadline: deadline)
+    }
+    func prepareACK(_ body: Data, deadline: ContinuousClock.Instant) async throws -> Data {
+        try await post(body, path: ExactSourceACKWire.preparePath, deadline: deadline)
+    }
+    func submitACK(_ body: Data, deadline: ContinuousClock.Instant) async throws -> Data {
+        try await post(body, path: ExactSourceACKWire.submitPath, deadline: deadline)
     }
     private func post(_ body: Data, path: String, deadline: ContinuousClock.Instant) async throws -> Data {
         let clock = ContinuousClock()

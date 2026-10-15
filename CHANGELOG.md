@@ -1,5 +1,14 @@
 # Changelog
 
+- Add the reviewed existing-key exact-source ACK preparation and confirmation
+  flow within the reserved iOS 0.27.0+74 batch. Keep enrollment and first-review
+  originals distinct, bind the complete action graph, retain the selected ACK
+  verifier and terminalize backgrounding, cancellation and wall-clock rollback.
+  Four new portable protocol tests and four new simulator header/lifecycle tests
+  pass; the unsigned simulator app compiles. Genuine native ingress, fresh Jenkins
+  rejoin, the joint permission transition and integrated authority acceptance
+  remain separate. See `docs/protocol/exact-source-ack-component-evidence.md`.
+
 - Add the reviewed iOS 0.27.0+74 existing-key issuer approval and native session transport source. The unsigned simulator app builds; all 12 affected platform tests pass, alongside the earlier 59 portable Core tests. Preserve exact native profile/credential binding, closed JSON, original deadlines and no-cookie transport. The request-capture regression reads actual bounded URLProtocol body streams; production behaviour is unchanged by that test correction. Genuine prepared-owner delivery, phone-held approval, runtime authority and Jenkins acceptance remain separate gates.
 
 - Constrain the existing Thesaurophylax API dependency to its selected 0.68.0

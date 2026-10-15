@@ -1,6 +1,6 @@
 # ADR 0045: Phone-held Site Root issuer ceremony
 
-- Status: Proposed; human adoption pending
+- Status: Accepted source design; implementation and runtime gates remain
 - Date: 2026-10-15
 - Scope: Pistis phone protocol and private server handoff contract only
 
@@ -18,15 +18,15 @@ allocations 0043 and 0044. The [allocation receipt](0045-phone-held-site-root-is
 records that the five inspected phone source blobs equal canonical main. This
 allocation does not constitute acceptance.
 
-## Proposed decision and normative contract
+## Accepted decision and normative contract
 
-The normative proposal is the exact reviewed
+The normative contract is the exact reviewed
 [R2 contract](0045-phone-held-site-root-issuer/PHONE_SITE_ROOT_ISSUER_PROTOCOL_CANDIDATE_R2.json),
 SHA-256 `2bec1a675f5994928b083ab2dfc2f3c5225beeef8a7f28544bc8e0b056bd86f6`.
 Its closed field orders, caps, hash preimages, domains, mode-specific authority
 requirements, deadlines, endpoints and failure rules are unchanged. The original
 unallocated working name inside that immutable artefact is historical; this
-proposed ADR supplies its allocated review identity without rewriting its bytes.
+accepted ADR supplies its allocated review identity without rewriting its bytes.
 This prose does not introduce additional wire fields or signing purposes.
 
 Use only the existing Site Root key: a noninteractive existence check supplies
@@ -68,9 +68,17 @@ introduced.
 
 Pistis policy requires an accepted ADR and specialist review before protocol
 implementation. The [independent R2 review](0045-phone-held-site-root-issuer/PHONE_PROTOCOL_INDEPENDENT_REVIEW_R2.json)
-is a bounded specialist specification PASS, subject to allocation and owner
-acceptance; it is not acceptance itself. No product implementation, signing,
-key creation, phone effects, installation or release is authorised by this file.
+is a bounded specialist specification PASS. On 15 October 2026, the Project Owner
+adopted this exact source design at commit
+`b12f0259fc2c15026d3cabe170cdf16d241e3a0b`, together with the independently
+reviewed Prosopikon ADR0009 design. That recorded decision permits source
+implementation of this contract. It grants no live keys, signing, provisioning,
+OS delegation, installation, activation or merge waiver; implementation review
+and genuine runtime tests remain required.
+
+The recorded owner response was “Adopt both exact reviewed source designs” to
+decision `call_bd3a019b324d4651bed6839ed4c9bd2a`, selecting consolidated packet
+SHA-256 `3d501293b6e2000a61f24f11ad4894a68bbf17ed33fab2d8f1331cc9720bdba3`.
 
 ## Conformance evidence and limits
 

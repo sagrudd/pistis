@@ -36,4 +36,25 @@ final class IssuerSignatureInvocationBoundaryTests: XCTestCase {
         )) { XCTAssertEqual($0 as? IssuerPhoneError, .expired) }
         XCTAssertEqual(invocations, 1, "overdue invocation must not return a retained success")
     }
+    func testReplacedLookupKeyCannotReachInvocationAndValidationCannotExtendEnd() throws {
+        let start = ContinuousClock().now
+        let deadline = start.advanced(by: .seconds(2))
+        let selected = Data([1]), replacement = Data([2])
+        var invocations = 0
+        XCTAssertThrowsError(try IssuerSignatureInvocationBoundary.perform(
+            originalDeadline: deadline, now: { start }, checkCancellation: {},
+            lookup: { replacement },
+            validate: { actual in guard actual == selected else { throw IssuerPhoneError.binding } },
+            invoke: { _ in invocations += 1; return Data([3]) }
+        )) { XCTAssertEqual($0 as? IssuerPhoneError, .binding) }
+        XCTAssertEqual(invocations, 0)
+        var now = start
+        XCTAssertThrowsError(try IssuerSignatureInvocationBoundary.perform(
+            originalDeadline: deadline, now: { now }, checkCancellation: {},
+            lookup: { selected }, validate: { _ in now = deadline },
+            invoke: { _ in invocations += 1; return Data([3]) }
+        )) { XCTAssertEqual($0 as? IssuerPhoneError, .expired) }
+        XCTAssertEqual(invocations, 0)
+    }
+
 }

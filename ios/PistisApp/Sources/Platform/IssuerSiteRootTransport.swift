@@ -81,6 +81,12 @@ final class IssuerSiteRootTransport: @unchecked Sendable {
     func exchange(_ body: Data, deadline: ContinuousClock.Instant) async throws -> Data {
         try await post(body, path: IssuerPhoneWire.exchangePath, deadline: deadline)
     }
+    func prepareNativePurpose(_ body: Data, deadline: ContinuousClock.Instant) async throws -> Data {
+        try await post(body, path: NativeInstallApprovalWire.preparePath, deadline: deadline)
+    }
+    func submitNativePurpose(_ body: Data, deadline: ContinuousClock.Instant) async throws -> Data {
+        try await post(body, path: NativeInstallApprovalWire.submitPath, deadline: deadline)
+    }
     func prepareACK(_ body: Data, deadline: ContinuousClock.Instant) async throws -> Data {
         try await post(body, path: ExactSourceACKWire.preparePath, deadline: deadline)
     }

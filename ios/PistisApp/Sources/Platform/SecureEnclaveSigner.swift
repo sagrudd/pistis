@@ -1,4 +1,5 @@
 import Foundation
+import PistisCore
 
 enum IncompleteEnrolmentKeyOutcome: Sendable {
     case beginFailure
@@ -403,7 +404,8 @@ final class SecureEnclaveSigner: @unchecked Sendable {
     /// budget. Recheck after it, at the actual signature invocation boundary.
     func sign(message: Data, using ceremony: FaceIDCeremonyContext,
               originalDeadline: ContinuousClock.Instant,
-              cancellation: IssuerCeremonyLifecycle) throws -> Data {
+              cancellation: IssuerCeremonyLifecycle,
+              expectedPublicKey: Data? = nil) throws -> Data {
         guard SecureEnclaveSigner.secureEnclaveIsAvailable else {
             throw PlatformFailure.secureHardwareUnavailable
         }
@@ -418,7 +420,14 @@ final class SecureEnclaveSigner: @unchecked Sendable {
                 }
                 return key
             },
-            invoke: { key in
+            validate: { (key: SecKey) in
+                if let expectedPublicKey {
+                    guard try self.devicePublicKey(from: key).compressedSEC1 == expectedPublicKey else {
+                        throw IssuerPhoneError.binding
+                    }
+                }
+            },
+            invoke: { (key: SecKey) in
                 guard let bytes = SecKeyCreateSignature(
                     key, .ecdsaSignatureMessageX962SHA256, messageBytes, &signingError
                 ) as Data? else { throw self.mapSecurityError(signingError?.takeRetainedValue()) }

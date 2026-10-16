@@ -116,7 +116,7 @@ final class IssuerNativeCurrentSession {
             let before = Date()
             guard !terminal, ContinuousClock().now < deadline, before >= lastWall, before < expiresAt,
                   let url = request.url, CanonicalHTTPSOrigin.from(url) == enrollment.httpsOrigin,
-                  [IssuerPhoneWire.readinessPath, IssuerPhoneWire.exchangePath, ExactSourceACKWire.preparePath, ExactSourceACKWire.submitPath, IssuerSiteRootTransport.currentPreparationPath, "/v1/pistis/issuer-site-root/joint/prepare"].contains(url.path),
+                  [IssuerPhoneWire.readinessPath, IssuerPhoneWire.exchangePath, ExactSourceACKWire.preparePath, ExactSourceACKWire.submitPath, NativeInstallApprovalWire.preparePath, NativeInstallApprovalWire.submitPath, IssuerSiteRootTransport.currentPreparationPath, "/v1/pistis/issuer-site-root/joint/prepare"].contains(url.path),
                   url.query == nil, url.fragment == nil, request.httpMethod == "POST",
                   request.value(forHTTPHeaderField: "Content-Type") == "application/cbor",
                   request.value(forHTTPHeaderField: "Cookie") == nil,

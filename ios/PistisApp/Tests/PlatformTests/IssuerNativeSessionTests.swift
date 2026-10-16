@@ -90,7 +90,7 @@ final class IssuerNativeSessionTests: XCTestCase {
     func testActualIssuerRequestBuilderBindsNativeProfileAndCredentialTogether() throws {
         let session = UUID(uuidString: "11111111-1111-4111-8111-111111111111")!
         let secret = Data(repeating: 8, count: 32)
-        for path in [IssuerPhoneWire.readinessPath, IssuerPhoneWire.exchangePath] {
+        for path in [IssuerPhoneWire.readinessPath, IssuerPhoneWire.exchangePath, NativeInstallApprovalWire.preparePath, NativeInstallApprovalWire.submitPath, IssuerSiteRootTransport.currentPreparationPath, "/v1/pistis/issuer-site-root/joint/prepare"] {
             var request = URLRequest(url: URL(string: "https://monas.example.test" + path)!)
             request.httpMethod = "POST"
             request.setValue("application/cbor", forHTTPHeaderField: "Content-Type")
@@ -116,6 +116,24 @@ final class IssuerNativeSessionTests: XCTestCase {
             XCTAssertThrowsError(try IssuerNativeSessionWire.completedStatus(Data(value.utf8)))
         }
     }
+    func testNativePurposeCredentialPathGateRejectsAdjacentRoutesAndQueries() throws {
+        let session = UUID(uuidString: "11111111-1111-4111-8111-111111111111")!
+        let secret = Data(repeating: 8, count: 32)
+        for path in [NativeInstallApprovalWire.preparePath + "/extra", NativeInstallApprovalWire.submitPath + "-other",
+                     NativeInstallApprovalWire.preparePath + "?redirect=1", NativeInstallApprovalWire.submitPath + "#fragment",
+                     "/auth/pistis/v2/issuer/native-purpose"] {
+            var request = URLRequest(url: URL(string: "https://monas.example.test" + path)!)
+            request.httpMethod = "POST"
+            request.setValue("application/cbor", forHTTPHeaderField: "Content-Type")
+            XCTAssertThrowsError(try IssuerNativeSessionWire.issuerRequestData(request, sessionID: session,
+                secret: secret, enrolledOrigin: "https://monas.example.test"))
+        }
+        var get = URLRequest(url: URL(string: "https://monas.example.test" + NativeInstallApprovalWire.preparePath)!)
+        get.httpMethod = "GET"; get.setValue("application/cbor", forHTTPHeaderField: "Content-Type")
+        XCTAssertThrowsError(try IssuerNativeSessionWire.issuerRequestData(get, sessionID: session,
+            secret: secret, enrolledOrigin: "https://monas.example.test"))
+    }
+
 }
 
 /// Public DATA fixture only; never installed in Keychain or made a session owner.

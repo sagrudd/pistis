@@ -1,5 +1,14 @@
 # Changelog
 
+- Add the reviewed native-purpose plan review, existing-key approval and fixed
+  native-session transport within reserved iOS 0.27.0+74. Ten portable tests,
+  fourteen affected platform tests and one Settings-to-review UI test pass
+  across the reviewed PH1–7 and PH8 snapshots; the unsigned simulator app builds.
+  Preserve the two-error compiler repair and controller failure history. Live
+  server acceptance remains unavailable (HTTP 503); no physical approval,
+  device installation or genuine CI is claimed. See
+  `docs/development/issuer-native-purpose.md`.
+
 - Complete the reviewed joint Root phone handoff within iOS 0.27.0+74: retain
   the actual native session through ACK, verify the complete joint descriptor,
   obtain the prepared owner and cancel it after every terminal confirmation.

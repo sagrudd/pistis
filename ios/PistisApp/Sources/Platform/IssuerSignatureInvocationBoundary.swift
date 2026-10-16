@@ -10,6 +10,7 @@ enum IssuerSignatureInvocationBoundary {
         now: () -> ContinuousClock.Instant = { ContinuousClock().now },
         checkCancellation: () throws -> Void,
         lookup: () throws -> Key,
+        validate: (Key) throws -> Void = { _ in },
         invoke: (Key) throws -> Output
     ) throws -> Output {
         func check() throws {
@@ -18,6 +19,7 @@ enum IssuerSignatureInvocationBoundary {
         }
         try check()
         let existingKey = try lookup()
+        try validate(existingKey)
         // Last operation before invoking the signature closure. A delayed or
         // cancelled lookup cannot reach the concrete SecKeyCreateSignature.
         try check()

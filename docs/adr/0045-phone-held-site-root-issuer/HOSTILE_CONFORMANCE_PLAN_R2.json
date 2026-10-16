@@ -1,0 +1,60 @@
+{
+  "status": "SPEC_ONLY_NOT_ADOPTED_NOT_PRODUCT_QUALIFICATION",
+  "candidate": "PHONE_SITE_ROOT_ISSUER_PROTOCOL_CANDIDATE_R2.json",
+  "immutable_predecessor": {
+    "path": "/Users/stephen/Projects/.codex-source-staging/int07-pistis-phone-site-root-issuer-contract-20261015/PHONE_SITE_ROOT_ISSUER_PROTOCOL_CANDIDATE.json",
+    "bytes": 12346,
+    "sha256": "28c22f9942b0f02e6303c1be04eadc85f98090d96793ad22fb79caeb50ea3ef4"
+  },
+  "review_batch": {
+    "path": "/Users/stephen/Projects/.codex-source-staging/int07-pistis-phone-site-root-issuer-contract-20261015/PHONE_PROTOCOL_INDEPENDENT_REVIEW.json",
+    "bytes": 5274,
+    "sha256": "ec49c97b5d87a248d6e215b0d8e89fdec8386b284202af248dcf39175b45c6af"
+  },
+  "repairs": [
+    "Initial IADM requires independent existing Site provision owner/originals, not prior IADM/current issuer; IRCS requires current complete IADM/1491",
+    "Exact complete canonical readiness/task digest preimages; accepted domain-separated complete PRE IRCS envelope reference is phone correlation, distinct from adopted PRE IRSP link",
+    "Noninteractive existence only then publicKey(using: SAME fresh evaluated ceremony) and sign(using:SAME); no existingRegistration/publicKey()/register"
+  ],
+  "accepted_source_inspection": [
+    {
+      "path": "/Users/stephen/Projects/.codex-source-staging/int07-thes-root-integration-20261014/source/crates/thesaurophylax-api/src/issuer_checkpoint_v1/verify.rs",
+      "bytes": 37869,
+      "sha256": "f31243bbe2d1eab2432fb4f83f324a42aa023e724da4de1aa69fd94b452b9ece"
+    },
+    {
+      "path": "/Users/stephen/Projects/.codex-source-staging/int07-jenkins-precursor-static-appraisal-20261011/final161-candidate/crates/expedition-basecamp/src/exact_source/continuation.rs",
+      "bytes": 4845,
+      "sha256": "e897bb9d7599306420b6bf9150ee8bf6b1e111628b450ab5e9d60f828903c9f8"
+    },
+    {
+      "path": "/Users/stephen/Projects/.codex-source-staging/int07-pistis-sqlite-alignment-20261010/pistis/ios/PistisApp/Sources/Platform/SecureEnclaveSigner.swift",
+      "bytes": 30538,
+      "sha256": "bf0ee046a3190d8b94b0d56cef93d72dcf4f1a6230eae00e2e6a4d63b38b69bd"
+    }
+  ],
+  "coverage": [
+    "principal/session/device/admission/intent/scope/key swaps at handoff and signing",
+    "all readiness metadata bytes committed; task kind/ordinal/ceremony/reference/readiness swaps",
+    "replay/ambiguity/restart/current-owner loss/no-existing-key/no creation",
+    "prephase must precede existing J original deadline; local and native independent strict expiry; no renewal",
+    "two IRCS maximum, exact complete-envelope reference/domain, fresh nonce/later serial/actual read",
+    "initial IADM acyclic independent authorization MODEL ONLY"
+  ],
+  "not_covered": [
+    "Real biometric or same LAContext lifetime enforcement",
+    "Actual native clocks/network budget/platform 2s feasibility",
+    "Cryptographic verification/lowS/SEC1/DER",
+    "Actual Site owner/current permission provenance",
+    "Protected ledger CAS/crash durability/restore exclusion",
+    "Canonical parser hostile raw byte tests for newly proposed phone records: no product parser exists"
+  ],
+  "next_gate": "Independent specialist R2 source/spec review and accepted allocated ADR before any product implementation. No human adoption implied.",
+  "parser_findings": {
+    "IADM21": "Independent Site key is not embedded as a new IADM field. Field13 adopted provenance cycle avoidance preserved. No first-IADM digest prerequisite.",
+    "IRCS11": "No pre-reference or timestamp/read-phase fields. Existing root digest/authority/epoch/key/revocation/state/nonce/boot/ordered serial comparisons retained.",
+    "IRSP14": "POST pre_response_envelope_digest references PRE IRSP signed envelope, not PRE IRCS. Actual protected read and fresh current checks remain server obligations.",
+    "reference": "verify.rs reference(k,raw) SHA256(domain(k)+ASCII /envelope+NUL+complete signed raw).",
+    "clock": "Accepted clock checks original boot, elapsed<deadline<=2000, post completed, running since admission, monotonic local now and strict original/lease expiry. J deadline after Closed3 shape decode before semaphore/spawn. No prephase reset."
+  }
+}

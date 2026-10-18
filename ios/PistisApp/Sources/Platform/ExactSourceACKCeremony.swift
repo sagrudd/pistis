@@ -37,18 +37,26 @@ final class ExactSourceACKCeremony {
     private let end: ContinuousClock.Instant
     private let lifecycle: ExactSourceACKLifecycle
     private var consumed = false
+    private let parentReview: ExactSourceACKPendingReview?
+    var isGovernance: Bool { task.body.kind == .governance }
 
     private init(task: ExactSourceACKWire.TaskData, enrollment: AuthenticatedEnrollmentOutput,
                  record: SiteRootConvergenceAckRecordV2, transport: IssuerSiteRootTransport,
-                 end: ContinuousClock.Instant, lifecycle: ExactSourceACKLifecycle) {
+                 end: ContinuousClock.Instant, lifecycle: ExactSourceACKLifecycle,
+                 parentReview: ExactSourceACKPendingReview? = nil) {
         self.task = task; self.enrollment = enrollment; self.record = record
         self.transport = transport; self.end = end; self.lifecycle = lifecycle
+        self.parentReview = parentReview
         // Show every signed field, including the exact target, review/action,
         // installed measurement and issuer originals' digests; no hash-only title.
+        let displays: [(String, Int)]
+        switch task.body.kind {
+        case .enrollment: displays = [("Current role", 0), ("Exact action", 1), ("Source admission", 2), ("Technical review", 3), ("Installed measurement", 4)]
+        case .technicalReview: displays = [("Current reviewer role", 0), ("Exact reviewer action", 1), ("Admission intent", 2), ("Independent original review", 3), ("Governance witness", 4), ("Owner source witness", 5)]
+        case .governance: displays = [("Current release owner role", 0), ("Exact governance action", 1), ("Admission intent", 2), ("Exact review subject", 3), ("Owner source disposition", 4), ("Independent original review", 5)]
+        }
         summary = task.body.fields.keys.sorted().map { "\($0): \(task.body.fields[$0]!)" }.joined(separator: "\n")
-            + (task.body.kind == .enrollment
-               ? [("Current role", 0), ("Exact action", 1), ("Source admission", 2), ("Technical review", 3), ("Installed measurement", 4)]
-               : [("Current reviewer role", 0), ("Exact reviewer action", 1), ("Admission intent", 2), ("Independent original review", 3), ("Governance witness", 4), ("Owner approval and merge witness", 5)]).map {
+            + displays.map {
                 "\n\n\($0.0)\n" + (String(data: task.originals[$0.1], encoding: .utf8) ?? "Bound binary original")
             }.joined()
     }
@@ -67,6 +75,21 @@ final class ExactSourceACKCeremony {
             catch let pending as ExactSourceACKPreparationError { throw pending }
             catch { lifecycle.invalidate(); throw error }
         } onCancel: { lifecycle.invalidate() }
+    }
+    /// Preserve the original pending review's authenticated phone context and
+    /// deadline. Governance has its own signing lifecycle; success does not
+    /// cancel the still-required review, or create another session.
+    static func prepareOwnerExceptionCurrent(_ pending: ExactSourceACKPendingReview) async throws -> ExactSourceACKCeremony {
+        let lifecycle = ExactSourceACKLifecycle()
+        let parentLifecycle = pending.lifecycle
+        return try await withTaskCancellationHandler {
+            do {
+                try parentLifecycle.observe()
+                let operation = try await prepareCurrent(kind: .governance, lifecycle: lifecycle, pending: pending)
+                try pending.lifecycle.observe()
+                return operation
+            } catch { lifecycle.invalidate(); pending.cancel(); throw error }
+        } onCancel: { lifecycle.invalidate(); parentLifecycle.invalidate() }
     }
     private static func prepareCurrent(kind: ExactSourceACKBody.Kind, lifecycle: ExactSourceACKLifecycle,
                                        pending: ExactSourceACKPendingReview? = nil) async throws -> ExactSourceACKCeremony {
@@ -116,11 +139,15 @@ final class ExactSourceACKCeremony {
         }
         let task = try ExactSourceACKWire.task(raw, challenge: challenge, kind: kind, now: unix())
         if let pending {
-            guard try ExactSourceACKWire.reviewSubjectDigest(task.body) == pending.receipt.subjectDigest else { throw IssuerPhoneError.binding }
+            if kind == .governance {
+                guard task.body.fields["review_subject_sha256"] == hex(pending.receipt.subjectDigest) else { throw IssuerPhoneError.binding }
+            } else {
+                guard try ExactSourceACKWire.reviewSubjectDigest(task.body) == pending.receipt.subjectDigest else { throw IssuerPhoneError.binding }
+            }
         }
         let install = try IssuerNativeSessionWire.uuid(enrollment.trust.installationID).uuidString.lowercased()
-        let targetField = kind == .enrollment ? "device_target" : "reviewer_device_target"
-        let generationField = kind == .enrollment ? "device_generation" : "reviewer_device_generation"
+        let targetField = kind == .enrollment ? "device_target" : (kind == .technicalReview ? "reviewer_device_target" : "owner_device_target")
+        let generationField = kind == .enrollment ? "device_generation" : (kind == .technicalReview ? "reviewer_device_generation" : "owner_device_generation")
         guard task.body.fields["installation_id"] == install,
               task.body.fields["site_uuid"] == record.siteUUID,
               task.body.fields[targetField] == hex(target),
@@ -134,7 +161,8 @@ final class ExactSourceACKCeremony {
         try lifecycle.observe()
         let end = min(original, sampled.advanced(by: .seconds(remaining)))
         return ExactSourceACKCeremony(task: task, enrollment: enrollment, record: record,
-                                      transport: transport, end: end, lifecycle: lifecycle)
+                                      transport: transport, end: end, lifecycle: lifecycle,
+                                      parentReview: kind == .governance ? pending : nil)
     }
     /// The caller presents summary first; this separate action always requires
     /// a fresh Face ID context and consumes the operation even on ambiguity.
@@ -151,7 +179,7 @@ final class ExactSourceACKCeremony {
     func cancel() { consumed = true; lifecycle.invalidate() }
     private func performConfirmation() async throws {
         try await check()
-        let reason = task.body.kind == .enrollment ? "Approve this exact source issuer enrollment" : "Sign this exact source technical review"
+        let reason = task.body.kind == .enrollment ? "Approve this exact source issuer enrollment" : (task.body.kind == .technicalReview ? "Sign this exact source technical review" : "Approve this exact internal owner exception")
         let signer = try SecureEnclaveSigner(namespace: "site-root-convergence-ack-v2", authenticationReason: reason)
         let root = try SecureEnclaveSigner(namespace: "site-root-delegation-v1", authenticationReason: reason)
         guard try signer.hasExistingKey(), try root.hasExistingKey() else { throw PlatformFailure.keyNotFound }
@@ -181,6 +209,7 @@ final class ExactSourceACKCeremony {
     }
     private func check() async throws {
         try Task.checkCancellation()
+        try parentReview?.lifecycle.observe()
         guard let issued = UInt64(task.body.fields["issued_at"] ?? ""),
               let bodyExpiry = UInt64(task.body.fields["expires_at"] ?? "") else { throw IssuerPhoneError.expired }
         try lifecycle.validate(issuedAt: issued, expiresAt: bodyExpiry, actionIssuedAt: task.actionIssuedAt,
@@ -190,6 +219,7 @@ final class ExactSourceACKCeremony {
               try await InstallationTrustKeychain.shared.activeEnrollment() == enrollment else { throw IssuerPhoneError.expired }
         try lifecycle.validate(issuedAt: issued, expiresAt: bodyExpiry, actionIssuedAt: task.actionIssuedAt,
             actionExpiresAt: task.actionExpiresAt, taskExpiresAt: task.expiresAt)
+        try parentReview?.lifecycle.observe()
         guard UIApplication.shared.applicationState == .active, ContinuousClock().now < end else { throw IssuerPhoneError.expired }
     }
     private func retainInvocation() throws {

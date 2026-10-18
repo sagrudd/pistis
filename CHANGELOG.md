@@ -1,5 +1,13 @@
 # Changelog
 
+- Complete the pending iOS0.27 source-approval flow with a separate existing-ACK
+  governance ceremony inside the original retained review session and deadline.
+  The closed existing governance body binds all six originals and exact owner
+  source disposition. Cancellation, original expiry and uncertain signing stay
+  terminal. No new key, generic signer, installation, physical approval or
+  genuine Jenkins acceptance is inferred from source/conformance checks.
+
+
 - Add the reviewed native-purpose plan review, existing-key approval and fixed
   native-session transport within reserved iOS 0.27.0+74. Ten portable tests,
   fourteen affected platform tests and one Settings-to-review UI test pass

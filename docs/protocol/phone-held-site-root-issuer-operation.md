@@ -51,7 +51,6 @@ Secure Enclave, TLS, durable crash, current-owner or receiving-factory positive.
 The genuine handoff producer, its current authentication transport, actual
 server endpoints and private pre-handler integration remain required.
 
-
 ## Private native AuthenticateSession ingress
 
 The compatible native HTTP profile `issuer-site-root-native-v1` obtains the

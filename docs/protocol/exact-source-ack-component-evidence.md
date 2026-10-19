@@ -1,7 +1,7 @@
 # Existing-key exact-source ACK component evidence
 
 The reviewed S5/S6/S7 component adds preparation and confirmation of existing
-ACK-key approvals. The closed wire distinguishes the thirteen enrollment
+ACK-key approvals. The closed wire distinguishes the thirteen enrolment
 originals from the six genuine originals available for first technical review.
 The full acyclic action graph, current selected key/target/generation and task
 correlation are checked before signing. A retained lifecycle fence starts before

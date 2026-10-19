@@ -21,6 +21,9 @@ struct Migration {
 pub const CURRENT_SCHEMA_VERSION: i64 = 1;
 
 /// Failure to establish or validate the device-registry schema.
+///
+/// Version 0.2 exposes `rusqlite` 0.39 errors. Consumers of the historical
+/// 0.1 API with `rusqlite` 0.37 must explicitly adopt this compatibility window.
 #[derive(Debug)]
 pub enum MigrationError {
     /// `SQLite` rejected an operation or reported corrupt storage.

@@ -1486,7 +1486,7 @@ mod tests {
         if length < 24 {
             output.push((major << 5) | u8::try_from(length).unwrap());
         } else {
-            output.push((major << 5) | 24);
+            output.push((major << 5) | 0x18);
             output.push(u8::try_from(length).unwrap());
         }
     }

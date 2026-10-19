@@ -12,7 +12,7 @@ struct ExactSourceACKReviewView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 20) {
-                Text(kind == .enrollment ? "Review source issuer enrollment" : (kind == .technicalReview ? "Review source qualification" : "Review internal owner exception")).font(.title2)
+                Text(kind == .enrollment ? "Review source issuer enrolment" : (kind == .technicalReview ? "Review source qualification" : "Review internal owner exception")).font(.title2)
                 if let prepared {
                     Text(prepared.summary).textSelection(.enabled)
                     Button("Approve these exact details with Face ID") {

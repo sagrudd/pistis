@@ -11,7 +11,7 @@ struct IssuerSiteRootCurrentView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 20) {
             Text("Current issuer check").font(.title2.bold())
-            Text("Prepare one check using this phone's current enrollment and existing Site Root key.")
+            Text("Prepare one check using this phone's current enrolment and existing Site Root key.")
             if let message { Text(message).accessibilityAddTraits(.updatesFrequently) }
             if let prepared, let ceremony {
                 IssuerSiteRootReviewView(prepared: prepared, ceremony: ceremony)

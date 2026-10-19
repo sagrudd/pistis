@@ -1,12 +1,97 @@
 # Changelog
 
+- Reconcile the exact-source CI candidate with current main, preserving both
+  reviewed histories and iOS 0.27.0+74. Use British English in review copy while
+  retaining the literal HTTP `Authorization` header. Exact-head Expedition and
+  protected source acceptance remain required.
+  Include the integrated source/protocol pages in Sphinx navigation and correct
+  their heading markup for warnings-denied documentation builds.
+
+- Bind the two Rust CI stages and Swift stage to the published immutable
+  offline-input images and document the central bootstrap and catalogue.
+  Preserve product and dependency bytes, all package versions and the Android
+  stage. Retain the partial Thes history limitation; genuine four-stage CI,
+  exact source approval and protected merge remain required.
+
+- Pin the Swift CI stage to the published combined Rust 1.94.0 and Swift 6.2.3
+  image for the QR, Core and harness source checks. Document the required
+  catalogue binding, sole-NUC topology check and full-run disk admission.
+  Product code, dependencies and package versions are unchanged; final source
+  admission and genuine Jenkins evidence remain required.
+
+- Clean up and observe termination of the owned image-regression child on every
+  post-launch exit, including pipe failures and timeout escalation. Preserve
+  the 30-second execution bound with finite termination waits. This completes
+  the still-unmerged QR/image-regression task group at `pistis-qr` 0.1.2;
+  retain the iOS 0.25.12+72 version and all production/protocol behaviour.
+
+- Fix the standalone fuzz lockfile to use the current `pistis-qr` 0.1.2
+  package, and patch the affected private `pistis-fuzz` harness to 0.0.1.
+  Preserve external dependency versions, production package versions and
+  authentication/QR behaviour. Locked fuzz checks verify the repair.
+
+- Enable owner-approved licence and duplicate-version coverage for dev-only
+  dependencies without changing the allow-list, advisory or source rules.
+  Correct the earlier dev-decoder licence coverage claim and add fail-closed
+  source-recipe guards for the exact two-field policy amendment. Package
+  versions, lock graph, product code and all authority/acceptance gates remain
+  unchanged.
+
+- Add an internal first-device and ordinary-login iOS regression harness using
+  real PNG decoding and the existing PistisCore verifier, with simulated
+  biometric failures and source-only diagnostics. Advance the affected
+  `pistis-qr` package from 0.1.1 to 0.1.2 for its dev-only maintained decoder
+  and tests. Pin the selected parent, updated lockfile and independent source
+  recipe; preserve the iOS release manifest, protected Expedition manifest,
+  product protocol and authority behaviour. Native/device, service and
+  INT-07 acceptance remain separate.
+
+- Use compatible `pistis-canonical` and `pistis-identity` 0.1.1 fixes for strict
+  lint qualification. Preserve canonical CBOR bytes and lazy borrowed parent
+  path fallback; protocol, schema and authentication semantics are unchanged.
+
+- Align `pistis-monas` 0.12.0 public Thesaurophylax API re-exports with the
+  coordinated 0.86.0 source at `e72598aae824f2bdafc20803adca73c6a6c8dcd2`.
+  The selected PXFP carrier and transcript implementations are byte-identical
+  to the previous 0.79.9 source. The minor source coordinate separates the
+  new Rust dependency identity; consumers must select this coordinated graph.
+  Preserve the 900/901-second checks and mobile, ceremony and schema bytes.
+  Genuine lock resolution, caller qualification and final Kanon binding
+  remain required.
+
+- Align the existing SQLite runtime with the accepted exact-source worker
+  transaction through the coordinated Kanon binding. `pistis-agent` 0.1.1 retains its public
+  interface; `pistis-device-registry` 0.2.0 declares the pre-1.0 compatibility
+  transition for its exported SQLite error type to rusqlite 0.39.0. Legacy
+  0.1 consumers with rusqlite 0.37 are not declared compatible. Preserve all
+  ceremony, protocol and database schema code. Native checks and the actual
+  resolved lock graph remain required; this source grants no authority.
+
+- Retain the stacked INT-07 900/901-second public API regression and accepted
+  PXFP first-provision expiry documentation on the current parent. Use
+  `pistis-monas` 0.11.5 for the compatible child source group.
+- Correct the Jenkins CI guide to describe protected exact-source qualification
+  and terminal commit-status publication. Preserve the removal of the
+  test-only checkout helper production claim and webhook status claim; the
+  trusted manifest and CI behaviour are unchanged (#529).
+
+- Reconcile the INT-07 parent with the accepted AUTH-03 source baseline,
+  preserving iOS 0.25.12+72, protocol 0.2.1 and QR 0.1.1. Select the reviewed
+  Thesaurophylax 0.79.9 API at
+  `eb2f180ee7b8cb8673fa325a9235a5ba2709adb9` instead of the baseline 0.68.0
+  source. Its public PXFP v2 carrier accepts presentation expiry up to 900
+  seconds (previously 300); encoding and transcript are unchanged. Stacked
+  PR #528 retains the 900/901-second boundary regression and documentation.
+  Use `pistis-monas` 0.11.4 for this compatible dependency/contract source
+  group. Final compatibility qualification and coordinated Kanon preparation
+  remain required; no installed authority or terminal status is claimed.
+
 - Complete the pending iOS0.27 source-approval flow with a separate existing-ACK
   governance ceremony inside the original retained review session and deadline.
   The closed existing governance body binds all six originals and exact owner
   source disposition. Cancellation, original expiry and uncertain signing stay
   terminal. No new key, generic signer, installation, physical approval or
   genuine Jenkins acceptance is inferred from source/conformance checks.
-
 
 - Add the reviewed native-purpose plan review, existing-key approval and fixed
   native-session transport within reserved iOS 0.27.0+74. Ten portable tests,
@@ -26,7 +111,7 @@
   See `docs/protocol/issuer-joint-root-component-evidence.md`.
 
 - Add the reviewed existing-key exact-source ACK preparation and confirmation
-  flow within the reserved iOS 0.27.0+74 batch. Keep enrollment and first-review
+  flow within the reserved iOS 0.27.0+74 batch. Keep enrolment and first-review
   originals distinct, bind the complete action graph, retain the selected ACK
   verifier and terminalize backgrounding, cancellation and wall-clock rollback.
   Four new portable protocol tests and four new simulator header/lifecycle tests

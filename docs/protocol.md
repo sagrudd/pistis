@@ -291,9 +291,9 @@ session identity and expiry ceilings stay byte-exact. AUTHN device identity is
 separate from the independently retained SiteRoot/ACK identity and generation.
 
 The Installations screen has an explicit file review entry. The sticky lifecycle
-fence begins before asynchronous retained enrollment reads and remains active
+fence begins before asynchronous retained enrolment reads and remains active
 through display, Face ID and delivery. Background, cancellation, expiry, wall
-rollback or changed enrollment/ACK record is terminal. The same fresh context
+rollback or changed enrolment/ACK record is terminal. The same fresh context
 checks both existing AUTHN and SiteRoot public keys; only AUTHN signs the
 existing v2 response. A durable create-only attempt claim precedes the single
 signature. There is no new key, key registration, fallback, automatic signing
@@ -329,5 +329,5 @@ whose SHA256 is the complete control original. The image digest must be
 nonzero. Additional executable, argument, environment or resource intent is
 rejected before biometric access. The existing installation-signed challenge
 local username is nonempty text at most 128 UTF-8 bytes, and the status grant
-UUID in Scope16 is nonnil. This carriage does not authorize certificate
+UUID in Scope16 is nonnil. This carriage does not authorise certificate
 maintenance or bootstrap an expired HTTPS connection.

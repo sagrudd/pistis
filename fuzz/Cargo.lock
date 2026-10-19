@@ -588,7 +588,7 @@ dependencies = [
 
 [[package]]
 name = "pistis-canonical"
-version = "0.1.0"
+version = "0.1.1"
 
 [[package]]
 name = "pistis-cose"
@@ -620,7 +620,7 @@ dependencies = [
 
 [[package]]
 name = "pistis-fuzz"
-version = "0.0.0"
+version = "0.0.1"
 dependencies = [
  "libfuzzer-sys",
  "pistis-authentication",
@@ -650,7 +650,7 @@ dependencies = [
 
 [[package]]
 name = "pistis-identity"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "serde",
  "serde_json",
@@ -671,7 +671,7 @@ dependencies = [
 
 [[package]]
 name = "pistis-qr"
-version = "0.1.1"
+version = "0.1.2"
 dependencies = [
  "base64",
  "pistis-canonical",

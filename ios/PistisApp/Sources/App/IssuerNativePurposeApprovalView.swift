@@ -25,7 +25,7 @@ struct IssuerNativePurposeApprovalView: View {
                     LabeledContent("Site", value: prepared.task.siteLabel)
                     LabeledContent("Source", value: prepared.task.sourceRepository)
                     Text("Create the requested status witness, native Target and issuance purposes with the exact new public keys shown below. This is a separate installation approval.")
-                    Text("Recovery is not authorized. If signing or delivery becomes uncertain, this installation stays locked and needs reconciliation.")
+                    Text("Recovery is not authorised. If signing or delivery becomes uncertain, this installation stays locked and needs reconciliation.")
                     DisclosureGroup("Review exact keys, purposes and installed source") {
                         Text(prepared.summary).font(.caption.monospaced()).textSelection(.enabled)
                     }

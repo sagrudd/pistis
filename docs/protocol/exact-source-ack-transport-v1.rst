@@ -1,5 +1,5 @@
 Exact-source ACK attended transport v1
-=====================================
+======================================
 
 This source adapter implements the enrolled-device proof in accepted central
 ADR0022 (contract original SHA256
@@ -10,7 +10,7 @@ IADM/IRCS signing operation. It allocates no key or new signing purpose.
 The two fixed HTTPS POST paths are
 ``/pistis/v1/exact-source-purpose/prepare`` and
 ``/pistis/v1/exact-source-purpose/submit``. They use the existing pinned
-installation origin, native AuthenticateSession profile and Authorization
+installation origin, native AuthenticateSession profile and :code:`Authorization`
 credential. Browser cookies, redirects, cache delivery and alternate origins
 are forbidden. The server authenticates the actual native session/device and
 its current role; a TLS response or closed body is not an owner capability.
@@ -18,16 +18,16 @@ its current role; a TLS response or closed body is not an owner capability.
 All bodies are closed canonical CBOR with no trailing bytes, at most 262144
 bytes. Prepare is array6 ``[1, "exact-source-ack-prepare-v1" as bstr,
 phoneNonce32, kind, enrolledTarget32, enrolledACKGeneration]``, where kind is 1
-for enrollment or 2 for technical review. Target and generation are comparison
+for enrolment or 2 for technical review. Target and generation are comparison
 DATA; the server must freshly select them from the genuine Prox convergence
 owner. It never accepts the requested tuple as key authority.
 
 Task is array8 ``[1, "exact-source-ack-task-v1" as bstr, serverTaskUUID16,
 echoPhoneNonce32, kind, fullJCSBody, kindOriginals, exclusiveExpiryUnix]``.
-The body is the exact accepted ADR0022 closed enrollment or technical-review
+The body is the exact accepted ADR0022 closed enrolment or technical-review
 body. Its nonce is the independently prepared server task nonce, distinct from
 the echoed transport nonce. The task expiry is at most thirty seconds and no
-later than any signed-body/role/source ancestor. For enrollment, all thirteen originals are
+later than any signed-body/role/source ancestor. For enrolment, all thirteen originals are
 nonempty, in this order: role decision, exact action, complete source admission,
 complete technical-review body, complete installed measurement, old Ed25519
 public key32, selected ciphertext SHA25632, successful-load audit, canonical
@@ -37,15 +37,15 @@ governance witness, owner approval/merge witness. Bounds are respectively
 For technical review, the exact six originals are current reviewer role, exact
 reviewer action, full admission INTENT, independent original verdict, governance
 witness, owner approval/merge witness. Their bounds are 8192,8192,16384,65536,
-8192,8192 bytes. No enrollment-only original or filler is required before first
-review. The phone recomputes the exact review/enrollment INTENT action graph,
+8192,8192 bytes. No enrolment-only original or filler is required before first
+review. The phone recomputes the exact review/enrolment INTENT action graph,
 including removal only of the allocated final role/action digest fields.
 
 Review proof and review role originals are separately retained on the server
 for the subsequent complete business14; they are not replaced by display
 witness digests.
 
-The phone compares the task to its current installation enrollment and current
+The phone compares the task to its current installation enrolment and current
 ACK registration, presents every signed field and the bound public originals,
 and uses a fresh Face ID context with the existing
 ``site-root-convergence-ack-v2`` key. Before and after signing it checks that
@@ -74,7 +74,7 @@ not an issuer/native/current-owner capability or an external source proof.
 
 The server retains no live J query or credentials through Face ID. The
 separate authenticated J preparation operation can retain the full public
-originals for presentation. Before forwarding complete enrollment business to
+originals for presentation. Before forwarding complete enrolment business to
 Prox, a fresh genuine J query must rejoin the exact full originals, request and
 expectation, and current role, ACK, native, loaded-custody and lifecycle state.
 The independent technical reviewer uses its own current native session and

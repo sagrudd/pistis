@@ -22,8 +22,8 @@
       "id": "repository-ci-amd64",
       "target": "linux_amd64",
       "container": {
-        "image": "docker.io/library/rust",
-        "digest": "sha256:3914072ca0c3b8aad871db9169a651ccfce30cf58303e5d6f2db16d1d8a7e58f"
+        "image": "127.0.0.1:5000/jenkins-pistis-source",
+        "digest": "sha256:766b565a12fbee3b58d9a24b2764dc235a01da993345f301a5e83b21d613c82a"
       },
       "task": {
         "kind": "approved_task",
@@ -39,8 +39,8 @@
       "id": "synoptikon-contract-ci-amd64",
       "target": "linux_amd64",
       "container": {
-        "image": "docker.io/library/rust",
-        "digest": "sha256:3914072ca0c3b8aad871db9169a651ccfce30cf58303e5d6f2db16d1d8a7e58f"
+        "image": "127.0.0.1:5000/jenkins-pistis-source",
+        "digest": "sha256:766b565a12fbee3b58d9a24b2764dc235a01da993345f301a5e83b21d613c82a"
       },
       "task": {
         "kind": "approved_task",
@@ -56,8 +56,8 @@
       "id": "swift-core-ci-amd64",
       "target": "linux_amd64",
       "container": {
-        "image": "docker.io/library/swift",
-        "digest": "sha256:976e1f9747d050142343d6ca90400cf11e08cef7e204af06a8d23a342831eb60"
+        "image": "127.0.0.1:5000/jenkins-pistis-source",
+        "digest": "sha256:3d00ad8b87256ddbbecf8fe6bc1efae815bb92478f993622dc22542b8d43c58a"
       },
       "task": {
         "kind": "approved_task",

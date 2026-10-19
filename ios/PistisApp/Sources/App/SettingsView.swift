@@ -40,7 +40,7 @@ struct SettingsView: View {
                 NavigationLink("Review source qualification") {
                     ExactSourceACKReviewView(kind: .technicalReview)
                 }
-                NavigationLink("Review source issuer enrollment") {
+                NavigationLink("Review source issuer enrolment") {
                     ExactSourceACKReviewView(kind: .enrollment)
                 }
             }

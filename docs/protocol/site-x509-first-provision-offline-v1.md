@@ -1,9 +1,13 @@
 # Site X.509 first-provision offline response v2
 
 This additive Pistis capability implements accepted Proxenos ADR-0014 using
-the canonical V2 carrier owned by Thesaurophylax 0.68.0 at exact merge revision
-`e357078731d3fd9fad914bc0acb859cc20097fd4`. Pistis does not define a parallel
-wire format.
+the canonical V2 carrier owned by Thesaurophylax 0.79.9 at exact source revision
+`eb2f180ee7b8cb8673fa325a9235a5ba2709adb9`. Its contract sets a maximum
+900-second (15-minute) lifetime from the trusted preparation time to the
+exclusive challenge expiry. This bound was introduced in Thesaurophylax
+0.68.9 and retained by the current source contract; see the [provider contract
+at the pinned revision](https://github.com/sagrudd/thesaurophylax/blob/eb2f180ee7b8cb8673fa325a9235a5ba2709adb9/docs/SITE_X509_FIRST_PROVISION_OFFLINE_V2.md).
+Pistis does not define a parallel wire format or extend the challenge lifetime.
 
 The Scan view admits only the strict `PXFP2:P:` unpadded-Base64url text form;
 the file entry point accepts the byte-identical raw presentation. Both reach

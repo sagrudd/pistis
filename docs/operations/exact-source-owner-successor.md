@@ -1,7 +1,7 @@
 # Review an internal owner exception
 
 This flow requires the matching qualified Monas, Jenkins and Proxenos source
-and the phone's existing current enrollment and ACK registration. Readiness or
+and the phone's existing current enrolment and ACK registration. Readiness or
 source publication alone does not establish those prerequisites. Use the
 existing enrolled HTTPS origin with its normal pinned transport.
 

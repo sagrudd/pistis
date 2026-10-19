@@ -114,8 +114,7 @@ mod tests {
             .duration_since(UNIX_EPOCH)
             .unwrap()
             .as_nanos();
-        let path =
-            std::env::temp_dir().join(format!("pistis-daemon-{}-{suffix}", std::process::id()));
+        let path = std::env::temp_dir().join(format!("d{:x}-{suffix:x}", std::process::id()));
         fs::create_dir(&path).unwrap();
         fs::set_permissions(&path, fs::Permissions::from_mode(0o700)).unwrap();
         path
@@ -125,6 +124,7 @@ mod tests {
     fn same_user_is_authorized_and_loop_stops_cleanly() {
         let directory = directory();
         let path = directory.join("agent.sock");
+        assert!(path.as_os_str().as_encoded_bytes().len() < 104);
         let socket = AgentSocket::bind(&path).unwrap();
         let mut client = connect(&path).unwrap();
         write_frame(

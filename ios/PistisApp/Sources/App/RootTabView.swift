@@ -125,6 +125,12 @@ struct RootTabView: View {
                     continueAuthorityCustody: continueAuthorityCustody,
                     selectInstallation: selectInstallation
                 )
+                .toolbar {
+                    ToolbarItem(placement: .topBarTrailing) {
+                        NavigationLink("Review permission") { IssuerJointRootApprovalView() }
+                        NavigationLink("Current issuer check") { IssuerSiteRootCurrentView() }
+                    }
+                }
             }
             .tabItem {
                 Label("Installations", systemImage: "building.2")

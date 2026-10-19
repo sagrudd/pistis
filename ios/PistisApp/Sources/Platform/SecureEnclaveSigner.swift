@@ -1,4 +1,5 @@
 import Foundation
+import PistisCore
 
 enum IncompleteEnrolmentKeyOutcome: Sendable {
     case beginFailure
@@ -52,12 +53,18 @@ enum KeyAssurance: String, Equatable, Sendable {
 /// without presenting a sequence of indistinguishable prompts.
 final class FaceIDCeremonyContext: @unchecked Sendable {
     fileprivate let value: LAContext
+    let authenticatedAt: ContinuousClock.Instant
 
-    private init(_ value: LAContext) { self.value = value }
+    private init(_ value: LAContext, authenticatedAt: ContinuousClock.Instant) {
+        self.value = value
+        self.authenticatedAt = authenticatedAt
+    }
 
     static func authenticate(reason: String) async throws -> FaceIDCeremonyContext {
         guard !reason.isEmpty else { throw PlatformFailure.invalidConfiguration }
         let context = LAContext()
+        var authenticated = false
+        defer { if !authenticated { context.invalidate() } }
         context.localizedCancelTitle = "Deny"
         context.localizedReason = reason
         context.interactionNotAllowed = false
@@ -68,13 +75,28 @@ final class FaceIDCeremonyContext: @unchecked Sendable {
             throw map(error)
         }
         do {
-            guard try await context.evaluatePolicy(
-                .deviceOwnerAuthenticationWithBiometrics,
-                localizedReason: reason
-            ), context.biometryType == .faceID else {
-                throw PlatformFailure.userVerificationCancelled
+            let repliedAt = try await withCheckedThrowingContinuation {
+                (continuation: CheckedContinuation<ContinuousClock.Instant, any Error>) in
+                context.evaluatePolicy(
+                    .deviceOwnerAuthenticationWithBiometrics,
+                    localizedReason: reason
+                ) { success, error in
+                    // Capture the observable biometric success in its callback,
+                    // before executor/continuation scheduling can consume time.
+                    let completedAt = ContinuousClock().now
+                    if success {
+                        continuation.resume(returning: completedAt)
+                    } else {
+                        continuation.resume(throwing: map(error as NSError?))
+                    }
+                }
             }
-            return FaceIDCeremonyContext(context)
+            guard context.biometryType == .faceID else {
+                throw PlatformFailure.userVerificationUnavailable
+            }
+            let ceremony = FaceIDCeremonyContext(context, authenticatedAt: repliedAt)
+            authenticated = true
+            return ceremony
         } catch let failure as PlatformFailure {
             throw failure
         } catch let error as LAError {
@@ -83,6 +105,9 @@ final class FaceIDCeremonyContext: @unchecked Sendable {
             throw PlatformFailure.userVerificationUnavailable
         }
     }
+
+    /// Explicitly destroy the immediate ceremony on completion, cancellation or backgrounding.
+    func invalidate() { value.invalidate() }
 
     private static func map(_ error: NSError?) -> PlatformFailure {
         guard let error, let code = LAError.Code(rawValue: error.code) else {
@@ -371,6 +396,44 @@ final class SecureEnclaveSigner: @unchecked Sendable {
         ) as Data? else {
             throw mapSecurityError(signingError?.takeRetainedValue())
         }
+        return try P256Format.rawSignature(fromStrictDER: der)
+    }
+
+    /// Issuer-only bounded use of the same existing key and fresh context.
+    /// SecItemCopyMatching is synchronous and may consume the entire remaining
+    /// budget. Recheck after it, at the actual signature invocation boundary.
+    func sign(message: Data, using ceremony: FaceIDCeremonyContext,
+              originalDeadline: ContinuousClock.Instant,
+              cancellation: IssuerCeremonyLifecycle,
+              expectedPublicKey: Data? = nil) throws -> Data {
+        guard SecureEnclaveSigner.secureEnclaveIsAvailable else {
+            throw PlatformFailure.secureHardwareUnavailable
+        }
+        let messageBytes = message as CFData
+        var signingError: Unmanaged<CFError>?
+        let der: Data = try IssuerSignatureInvocationBoundary.perform(
+            originalDeadline: originalDeadline,
+            checkCancellation: { try cancellation.check(); try Task.checkCancellation() },
+            lookup: {
+                guard let key = try self.findPrivateKey(authenticationContext: ceremony.value) else {
+                    throw PlatformFailure.keyNotFound
+                }
+                return key
+            },
+            validate: { (key: SecKey) in
+                if let expectedPublicKey {
+                    guard try self.devicePublicKey(from: key).compressedSEC1 == expectedPublicKey else {
+                        throw IssuerPhoneError.binding
+                    }
+                }
+            },
+            invoke: { (key: SecKey) in
+                guard let bytes = SecKeyCreateSignature(
+                    key, .ecdsaSignatureMessageX962SHA256, messageBytes, &signingError
+                ) as Data? else { throw self.mapSecurityError(signingError?.takeRetainedValue()) }
+                return bytes
+            }
+        )
         return try P256Format.rawSignature(fromStrictDER: der)
     }
 

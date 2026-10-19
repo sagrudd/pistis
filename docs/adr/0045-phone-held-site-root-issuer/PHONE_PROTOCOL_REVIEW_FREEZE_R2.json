@@ -1,0 +1,33 @@
+{
+  "status": "FROZEN_R2_SPEC_REVIEW_CANDIDATE_ONLY",
+  "files": [
+    {
+      "path": "/Users/stephen/Projects/.codex-source-staging/int07-pistis-phone-site-root-issuer-contract-20261015/PHONE_SITE_ROOT_ISSUER_PROTOCOL_CANDIDATE_R2.json",
+      "bytes": 16446,
+      "sha256": "2bec1a675f5994928b083ab2dfc2f3c5225beeef8a7f28544bc8e0b056bd86f6"
+    },
+    {
+      "path": "/Users/stephen/Projects/.codex-source-staging/int07-pistis-phone-site-root-issuer-contract-20261015/hostile_reference_r2.py",
+      "bytes": 7749,
+      "sha256": "8c2f2c75550b92ea330cf86d2bf8fe7bc5515f078d5689cdea2aa3158458645a"
+    },
+    {
+      "path": "/Users/stephen/Projects/.codex-source-staging/int07-pistis-phone-site-root-issuer-contract-20261015/HOSTILE_REFERENCE_R2_RECEIPT.json",
+      "bytes": 2573,
+      "sha256": "c34f88ee202e2083025cf948479b39fedf083a3687aeb7aa5a57d95fcc898d5a"
+    },
+    {
+      "path": "/Users/stephen/Projects/.codex-source-staging/int07-pistis-phone-site-root-issuer-contract-20261015/HOSTILE_CONFORMANCE_PLAN_R2.json",
+      "bytes": 4186,
+      "sha256": "e556463fa1154ed862c9db96779cd098618398b63edb2c65c08283e3e2b65acf"
+    }
+  ],
+  "predecessor_freeze_unchanged": {
+    "path": "/Users/stephen/Projects/.codex-source-staging/int07-pistis-phone-site-root-issuer-contract-20261015/PHONE_PROTOCOL_REVIEW_FREEZE.json",
+    "bytes": 1104,
+    "sha256": "b4edb33e8b99a6952a119c56287ede38863035e2924f05b17f0f6ec8d822fc9a"
+  },
+  "no_product_edits": true,
+  "no_native_jobs": true,
+  "no_keys_or_effects": true
+}

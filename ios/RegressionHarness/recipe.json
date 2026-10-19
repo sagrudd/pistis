@@ -6,6 +6,17 @@
     "tree": "13857903766fc230de7b6f87f6f38122cd6945d6",
     "cargo_lock_blob": "ca9e7b9adcb9e6640a0c63c9ce39f2bc111fd432"
   },
+  "integrated_source_baseline": {
+    "revision": "0ec105f726fe984550c16b0c7ef609d365f8528c",
+    "tree": "92e49d99604b0c2830d15959b83d246bb716a23b",
+    "source_blobs": {
+      ".mnemosyne/expedition.json": "e15631930e762720c56f27a87b7540843fbf2648",
+      "ios/PistisApp/Sources/App/ExactSourceACKReviewView.swift": "c6eaf379ce3e82fb3edd05142016e7f594bdc4bb",
+      "ios/PistisApp/Sources/App/IssuerNativePurposeApprovalView.swift": "0e4e91f84b7d288140f86e97023342463b0e4098",
+      "ios/PistisApp/Sources/App/IssuerSiteRootCurrentView.swift": "fc7e1534bd855466b6068ce3e58f9b1f0f8421d7",
+      "ios/PistisApp/Sources/App/SettingsView.swift": "38c1ce6474480e51e53860ce2cfaca7a8ef283f9"
+    }
+  },
   "owner_supplied_existing_recipe_reference_only": {
     "manifest_sha256": "52f7c6058992fb4032dd77e96d73f42b0ae9dec4b02a115f85f9882ff5c887f3",
     "task_catalog_sha256": "17a2a7bf68fe52d9cefbe569539ebea76c5c82a3d46f840413050652e1297f5c",
@@ -16,7 +27,7 @@
     "runner": "ios/RegressionHarness/run-source-regressions.sh",
     "toolchains": ["Rust 1.94", "Rust 1.90 minimum support", "Swift 6 on Linux", "Node 24 with markdownlint-cli2 0.18.1"],
     "affected_existing_package": "pistis-qr 0.1.2",
-    "ios_release_manifest": "0.25.12+72 (unchanged)",
+    "ios_release_manifest": "0.27.0+74 (unchanged from the integrated main baseline)",
     "separate_harness_identity": false,
     "dependency_policy": "deny.toml (selected-parent policy plus owner-approved dev-dependency coverage only)",
     "dependency_policy_amendment": {

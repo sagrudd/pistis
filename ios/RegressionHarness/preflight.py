@@ -37,6 +37,45 @@ def dependency_policy(pistis):
         return {"matches_approved_coverage_only_policy": False, "sha256": None}
 
 
+def integrated_source_inputs(pistis):
+    """Pin integration deltas without treating this developer recipe as authority."""
+    denied = {"matches_pinned_integrated_source": False}
+
+    def git(*args):
+        return subprocess.run(
+            ["git", "-C", str(pistis), *args],
+            capture_output=True, check=True, timeout=5,
+        ).stdout
+
+    try:
+        recipe = json.loads((HERE / "recipe.json").read_text(encoding="utf-8"))
+        baseline = recipe["integrated_source_baseline"]
+        revision = baseline["revision"]
+        expected = baseline["source_blobs"]
+        if git("rev-parse", f"{revision}^{{tree}}").decode().strip() != baseline["tree"]:
+            return denied
+        git("merge-base", "--is-ancestor", revision, "HEAD")
+        changed = git(
+            "diff", "--no-ext-diff", "--no-renames", "--name-only", "-z", revision,
+            "--", "ios/PistisApp", "ios/PistisCore", ".mnemosyne/expedition.json",
+        ).decode().rstrip("\0").split("\0")
+        if set(changed) != set(expected):
+            return denied
+        for path, blob in expected.items():
+            entry = git("ls-tree", "HEAD", "--", path).decode()
+            local = pistis / path
+            if (
+                entry != f"100644 blob {blob}\t{path}\n"
+                or local.is_symlink()
+                or local.stat().st_mode & 0o111
+                or git("hash-object", "--no-filters", "--", path).decode().strip() != blob
+            ):
+                return denied
+        return {"matches_pinned_integrated_source": True}
+    except (OSError, ValueError, KeyError, TypeError, subprocess.SubprocessError):
+        return denied
+
+
 def swift_toolchain():
     if shutil.which("swift"):
         return {"available": True, "on_path": True}
@@ -97,6 +136,7 @@ def observation():
         },
         "ios_manifest": release_witness(REPOSITORY),
         "dependency_policy": dependency_policy(REPOSITORY),
+        "source_inputs": integrated_source_inputs(REPOSITORY),
         "local_toolchain": {
             "os": platform.system().lower(),
             "swift": swift_toolchain(),

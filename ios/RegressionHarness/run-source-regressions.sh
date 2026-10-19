@@ -7,7 +7,6 @@ parent=ef00ff34efbb9cfeac9298c9c77f1dc9694162cd
 test "$(git rev-parse "$parent^{tree}")" = 13857903766fc230de7b6f87f6f38122cd6945d6
 test "$(git rev-parse "$parent:Cargo.lock")" = ca9e7b9adcb9e6640a0c63c9ce39f2bc111fd432
 git merge-base --is-ancestor "$parent" HEAD
-git diff --quiet "$parent" -- ios/PistisApp ios/PistisCore .mnemosyne/expedition.json
 if [[ -n "$(git status --porcelain)" ]]; then
   echo 'Refusing source qualification from an uncommitted checkout' >&2
   exit 1
@@ -26,6 +25,8 @@ import json,sys
 v=json.load(sys.stdin)
 if not v["ios_manifest"]["local_witness_matches"] or v["qualifies_release"]:
     sys.exit("Invalid iOS release witness or source-only boundary")
+if not v["source_inputs"]["matches_pinned_integrated_source"]:
+    sys.exit("Source inputs differ from the pinned integrated baseline and exact delta blobs")
 if not v["dependency_policy"]["matches_approved_coverage_only_policy"]:
     sys.exit("Policy must match the approved dev-coverage-only amendment")
 print("iOS witness and approved dependency policy match; no release qualification", v["dependency_policy"]["sha256"])

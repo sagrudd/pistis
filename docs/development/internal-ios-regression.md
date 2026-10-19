@@ -21,6 +21,15 @@ lint, rustdoc, audit and the approved deny policy on the final lockfile.
 For development before commit, run the individual commands in the script;
 the runner intentionally rejects dirty source as a qualification input.
 
+The integrated candidate additionally pins main commit
+`0ec105f726fe984550c16b0c7ef609d365f8528c` and its exact tree in the recipe.
+All iOS app/Core and Expedition source must match that baseline except the
+five exact regular-file blobs named there: the three immutable CI image pins
+and four British-English display-copy changes. Unknown paths, substitutions,
+symlinks, executable modes and working-byte drift deny. iOS remains
+`0.27.0+74`, unchanged from that integrated main. These local pins do not approve
+an Expedition task or substitute for review of the actual candidate and recipe.
+
 The image example scans real PNG pixels and rejects corrupt, empty, multiple,
 oversized and non-UTF-8 QR data. It emits only redacted metadata by default;
 `--emit-payload` requires a pipe and must be used only with disposable test QR
@@ -46,7 +55,7 @@ again. Neither this model nor its passing results prove protected storage,
 issuer-side idempotence, genuine first-install authority, certificate renewal,
 live custody, protected merge, installation or INT-07 acceptance.
 
-The selected source input is Pistis #526 at
+The historical harness/policy foundation was Pistis #526 at
 `ef00ff34efbb9cfeac9298c9c77f1dc9694162cd`, tree
 `13857903766fc230de7b6f87f6f38122cd6945d6`, lock blob
 `ca9e7b9adcb9e6640a0c63c9ce39f2bc111fd432`. Review the **new** commit,
@@ -57,10 +66,11 @@ unchanged-policy exit zero did **not** qualify dev-only decoder licences:
 cargo-deny 0.20.2 excludes them by default. The preflight now fails closed if
 any other policy byte changes or either coverage field is missing/false.
 No licence allowance, advisory ignore or Git source exception is added.
-Kanon #750 remains pending, and REG-09 retains the registry writer
-lease. No shared registry or `.mnemosyne/expedition.json` update occurs here.
+That foundation did not change the shared registry or Expedition manifest;
+the integrated candidate separately pins the later CI-image delta above.
+Historical Kanon #750/REG-09 records are not current acceptance evidence.
 
-The updated lock keeps all original crate revisions, checksums and resolved
+The historical harness lock kept all original crate revisions, checksums and resolved
 dependency edges; it adds only `pistis-qr` 0.1.2 and its test/image route.
 `hashlink` and `rsqlite-vfs` now spell out their existing `hashbrown 0.16.1`
 dependency because the new test-only `lru 0.18.5` adds `hashbrown 0.17.1`.

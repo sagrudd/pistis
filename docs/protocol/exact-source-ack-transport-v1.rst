@@ -1,5 +1,5 @@
 Exact-source ACK attended transport v1
-=====================================
+======================================
 
 This source adapter implements the enrolled-device proof in accepted central
 ADR0022 (contract original SHA256

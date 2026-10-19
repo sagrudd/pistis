@@ -1,5 +1,5 @@
 ADR0022 owner-successor witness supplement
-=========================================
+==========================================
 
 Status: candidate for the existing independent specialist review stream. No
 phone protocol implementation is authorised by this candidate alone. It
@@ -16,7 +16,7 @@ the existing governance signed body remains unchanged. It does not change the ex
 owner-approval-merge alternatives.
 
 Authority owners and source selection
-------------------------------------
+-------------------------------------
 
 The authenticated original phone Propylaion ReleaseOwner supplies the existing
 Core ``governance-exception`` action. The actual current enrolled ACK key
@@ -70,7 +70,7 @@ This closed JCS original is at most8192 bytes. It contains no canonical merge
 revision, merge-parent assertion or claim that source acceptance is CI.
 
 Governance phone task and complete witness
------------------------------------------
+------------------------------------------
 
 The existing prepare/task transport admits kind3 for governance only. Kinds1
 and2 retain their existing exact definitions. Kind3 uses the existing closed
@@ -118,7 +118,7 @@ independent path still requires actual distinct subjects and both exact
 not-used witnesses. No general removal of the independence check is allowed.
 
 Failure, transaction and qualification
--------------------------------------
+--------------------------------------
 
 Only public task bytes and settled audit DATA cross display waits. No native
 credential, source-read owner, Root permission or unfinished writer crosses

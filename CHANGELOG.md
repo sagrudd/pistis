@@ -4,6 +4,8 @@
   reviewed histories and iOS 0.27.0+74. Use British English in review copy while
   retaining the literal HTTP `Authorization` header. Exact-head Expedition and
   protected source acceptance remain required.
+  Include the integrated source/protocol pages in Sphinx navigation and correct
+  their heading markup for warnings-denied documentation builds.
 
 - Bind the two Rust CI stages and Swift stage to the published immutable
   offline-input images and document the central bootstrap and catalogue.

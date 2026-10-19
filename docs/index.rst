@@ -96,12 +96,19 @@ Architecture and operations
    adr/0040-site-root-authority-key-replacement
    adr/0041-explicit-local-device-reset
    adr/0042-basecamp-vault-migration-iphone-protocol
+   adr/0045-phone-held-site-root-issuer-ceremony
    protocol/README
    protocol/domain-model
    protocol/action-approval
    protocol/site-origin-relocation-approval-v1
    protocol/app-attest-key-replacement-offline-v1
    protocol/site-x509-first-provision-offline-v1
+   protocol/exact-source-ack-component-evidence
+   protocol/exact-source-ack-transport-v1
+   protocol/exact-source-owner-successor-witness-v1
+   protocol/issuer-joint-root-component-evidence
+   protocol/issuer-site-current-preparation-v1
+   protocol/phone-held-site-root-issuer-operation
    protocol
    crypto
    encoding
@@ -115,6 +122,7 @@ Architecture and operations
    operations/monas-first-web-login-runbook
    operations/qr-authentication
    operations/formal-site-root-qr-scanner
+   operations/exact-source-owner-successor
    operations/ios
    operations/app-attest-assertion-ingress
    operations/android

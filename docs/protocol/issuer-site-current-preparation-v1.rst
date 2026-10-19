@@ -1,5 +1,5 @@
 Current SiteRoot phone preparation v1
-====================================
+=====================================
 
 The fixed ``/auth/pistis/v1/issuer-site-root/current`` POST uses the existing
 own native AuthenticateSession profile, exact enrolled HTTPS origin/pin and

@@ -1,0 +1,29 @@
+{
+  "status": "PROPOSED_WIRE_ADR_REVIEW_PACKET_SPEC_ONLY_NOT_ADOPTED",
+  "files": [
+    {
+      "path": "PHONE_SITE_ROOT_ISSUER_PROTOCOL_CANDIDATE.json",
+      "bytes": 12346,
+      "sha256": "28c22f9942b0f02e6303c1be04eadc85f98090d96793ad22fb79caeb50ea3ef4"
+    },
+    {
+      "path": "PROPOSED_ADR_UNALLOCATED_PHONE_SITE_ROOT_ISSUER.md",
+      "bytes": 1648,
+      "sha256": "6a9a1c0efebd0ec6dad429f7390122530a0fe4ee6ba09d45549742ef69d58b81"
+    },
+    {
+      "path": "REFERENCE_MODEL_RECEIPT.json",
+      "bytes": 783,
+      "sha256": "fc7c03312c7eeb88e660ce7cdcb4ea1596145e098795ac029df5148fcbbea0c6"
+    },
+    {
+      "path": "reference_model.py",
+      "bytes": 3927,
+      "sha256": "3bd600a58e4fe087dac87aafc3fabe14ff4a7b3c665473e09fc3b1eb3b0ed3a6"
+    }
+  ],
+  "key_source": "existingef00 SecureEnclaveSigner FaceID+signusing APIs inspected; no productedits",
+  "phase": "ActualJline75pre-handlerboundary, privatehandoffnew; no already-started2srenewal",
+  "reference": "19SPECsequencingPASS, allnativecrypto/FaceIDtimingUNRUN",
+  "old_ADR0026": "immutableHOLD, no serverwrapimplementation"
+}

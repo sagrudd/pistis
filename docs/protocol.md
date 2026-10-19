@@ -270,3 +270,64 @@ Randomness, clock, synchronisation, parsing and state-store failures fail
 closed. Logs and user-facing errors must not expose nonce values. Challenge
 identifiers are also treated as security-sensitive correlation data even
 though they are not authentication secrets.
+
+## Joint Site status and unchanged Root attendance carriage
+
+The approved joint transition uses the existing installation-signed
+ActionApprovalChallenge v2 and the existing enrolled AUTHN device response v2.
+The closed offline file is canonical CBOR array4:
+`[1, b"pistis-issuer-joint-root-attendance.v1", fullUnsignedJointControl13,
+fullInstallationSignedChallengeV2]`. Both originals are byte strings; the full
+file is at most 24576 bytes. It carries public attendance data, not a current
+Root, Site, session, credential, custody or TLS-maintenance capability.
+
+The app accepts this file only against the already retained authenticated
+installation pin, permitted Propylaion audience and own enrolled device context.
+It checks the complete existing v2 COSE signature, closed descriptor resource
+`urn:mnemosyne:issuer-control:ProvisionIssuerSiteStatusAndContinueRootV1`, exact
+control digest, JR1 predecessor/successor tuple37 and status scope16. Only tuple
+slots 3/15/16/17 advance exactly once. Root grant, original approval, keys,
+session identity and expiry ceilings stay byte-exact. AUTHN device identity is
+separate from the independently retained SiteRoot/ACK identity and generation.
+
+The Installations screen has an explicit file review entry. The sticky lifecycle
+fence begins before asynchronous retained enrolment reads and remains active
+through display, Face ID and delivery. Background, cancellation, expiry, wall
+rollback or changed enrolment/ACK record is terminal. The same fresh context
+checks both existing AUTHN and SiteRoot public keys; only AUTHN signs the
+existing v2 response. A durable create-only attempt claim precedes the single
+signature. There is no new key, key registration, fallback, automatic signing
+retry or deletion/reset. Exact output size is checked before that effect. The
+post-Face-ID key operation retains a two-second bound within the original
+presentation end.
+
+The saved response is exactly the existing canonical Original4:
+`[1, fullUnsignedJointControl13, fullSignedChallengeV2, fullSignedResponseV2]`,
+at most 16384 bytes. Saving/importing this public result does not apply the
+transition. The actual maintained parent must prepare the control from a genuine
+current predecessor Core owner, sign its existing installation challenge, then
+on import reauthenticate the same session and verify all protected originals,
+current Site/IADM/W and the atomic successor. The old status-only approval is
+never accepted as joint approval.
+
+This carrier needs no HTTPS request and does not relax certificate expiry or
+learn a pin from a file. It is a prerequisite attendance adapter, not the missing
+certificate renewal/activation operation. The existing issuer Root readiness,
+IADM and IRCS current-permission ingress still requires its genuine parent
+producer; the legacy unavailable handoff is not promoted by parsing this file.
+Source-only tests do not establish a live phone, native owner or completed
+factory. The normal stable phone version/Kanon delivery transaction remains
+owned by the integrator.
+
+### Joint attendance closed descriptor correction
+
+The joint-only file carrier requires the existing deployed executable
+`/usr/libexec/mnemosyne-monas/monas-server`, argv containing only that exact
+path, working directory `/`, an empty environment, and exactly one Input
+resource `urn:mnemosyne:issuer-control:ProvisionIssuerSiteStatusAndContinueRootV1`
+whose SHA256 is the complete control original. The image digest must be
+nonzero. Additional executable, argument, environment or resource intent is
+rejected before biometric access. The existing installation-signed challenge
+local username is nonempty text at most 128 UTF-8 bytes, and the status grant
+UUID in Scope16 is nonnil. This carriage does not authorise certificate
+maintenance or bootstrap an expired HTTPS connection.

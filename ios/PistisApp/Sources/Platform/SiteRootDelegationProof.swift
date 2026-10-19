@@ -310,6 +310,18 @@ final class SecureEnclaveSiteRootProofProducer: @unchecked Sendable {
 
 /// Closed encoding helper for Thesaurophylax's detached ES256 profile.
 enum DetachedES256Cose {
+    /// ADR0022 enrolled ACK proof: ONLY alg ES256 and the exact generation
+    /// encoded as eight network-order bytes. Existing UTF-8/content-type
+    /// overloads belong to different protocols and are intentionally unchanged.
+    static func protectedHeaders(ackGeneration: UInt64) throws -> Data {
+        guard ackGeneration > 0 else { throw PlatformFailure.invalidConfiguration }
+        var kid = Data()
+        for shift in stride(from: 56, through: 0, by: -8) {
+            kid.append(UInt8(truncatingIfNeeded: ackGeneration >> shift))
+        }
+        return Data([0xa2, 0x01, 0x26, 0x04, 0x48]) + kid
+    }
+
     static func protectedHeaders(kid: String) throws -> Data {
         let bytes = Data(kid.utf8)
         guard !bytes.isEmpty, bytes.count <= 128 else {

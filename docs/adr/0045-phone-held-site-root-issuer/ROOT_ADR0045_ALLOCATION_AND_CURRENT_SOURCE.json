@@ -1,0 +1,20 @@
+{
+  "status": "ROOT_SOURCE_ALLOCATION_ADR0045_PROPOSED_NOT_ADOPTED_OR_PUBLISHED",
+  "canonical_main": "53d6517f0931f2243a05f552e86378bd50a52f29",
+  "canonical_main_highest": 42,
+  "pending_allocations": {
+    "43": {
+      "pr": 527,
+      "head": "375e17ae7ee06cfca34ed0fcbde2e02425edcf1a"
+    },
+    "44": {
+      "pr": 533,
+      "head": "16f02ad4413e807cb73d05e37a2830b62000d586"
+    }
+  },
+  "chosen_next": 45,
+  "phone_source_applicability": "All five inspected phone source Git blobs exactly equal canonical current main; no changed key/signing/transport source assumption.",
+  "r2_freeze_sha256": "a6fe3d21a821ae66b9fff5666ad2f27adb769470cf632490ecce401c4d676d64",
+  "independent_review_sha256": "6eeacac9e9985fc3dc49d45aab825da733dd5198d6a15298efd21a3a611b477d",
+  "rule": "docs/adr/README.md: assign next four-digit number and open for review before implementation. No source architecture adoption inferred."
+}

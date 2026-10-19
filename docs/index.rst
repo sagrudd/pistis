@@ -34,6 +34,7 @@ Development
    development/android
    development/synoptikon
    development/monas
+   development/issuer-native-purpose
    development/cli-authentication
    development/local-agent
    development/discovery

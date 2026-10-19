@@ -31,6 +31,21 @@ struct SettingsView: View {
                 )
             }
 
+            #if canImport(LocalAuthentication) && canImport(Security) && canImport(UIKit)
+            Section("Source approvals") {
+                NavigationLink("Review native issuer installation") {
+                    IssuerNativePurposeEntryView()
+                }
+                .accessibilityIdentifier("settings-native-issuer-installation")
+                NavigationLink("Review source qualification") {
+                    ExactSourceACKReviewView(kind: .technicalReview)
+                }
+                NavigationLink("Review source issuer enrolment") {
+                    ExactSourceACKReviewView(kind: .enrollment)
+                }
+            }
+            #endif
+
             Section("Application") {
                 NavigationLink {
                     DiagnosticsView()

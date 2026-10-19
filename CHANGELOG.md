@@ -1,5 +1,7 @@
 # Changelog
 
+- Preserve the Pistis iOS INT-07 Mac authority implementation for Devin continuation; see `docs/INT07_DEVIN_HANDOFF.md`. This source checkpoint grants no installed or live authority.
+
 - Complete the pending iOS0.27 source-approval flow with a separate existing-ACK
   governance ceremony inside the original retained review session and deadline.
   The closed existing governance body binds all six originals and exact owner

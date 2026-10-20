@@ -6,6 +6,9 @@
   protected source acceptance remain required.
   Include the integrated source/protocol pages in Sphinx navigation and correct
   their heading markup for warnings-denied documentation builds.
+  Rebind the developer regression runner to the integrated main tree and five
+  exact source-delta blobs; retain the historical policy pins and deny unknown
+  source, mode or working-byte drift. This is not protected source approval.
 
 - Bind the two Rust CI stages and Swift stage to the published immutable
   offline-input images and document the central bootstrap and catalogue.

@@ -1,5 +1,7 @@
-"""Fail-closed regression checks for the owner-approved policy coverage delta."""
+"""Fail-closed regression checks for source inputs and approved policy coverage."""
 
+import copy
+import json
 import subprocess
 import tempfile
 import unittest
@@ -7,6 +9,63 @@ from pathlib import Path
 from unittest.mock import patch
 
 import preflight
+
+
+class IntegratedSourceInputTests(unittest.TestCase):
+    def setUp(self):
+        self.recipe = json.loads((preflight.HERE / "recipe.json").read_text())
+        self.run = subprocess.run
+
+    def observe(self, recipe=None, tamper=None):
+        def run(command, **kwargs):
+            result = self.run(command, **kwargs)
+            if tamper:
+                result.stdout = tamper(command, result.stdout)
+            return result
+
+        with patch("preflight.json.loads", return_value=recipe or self.recipe), \
+                patch("preflight.subprocess.run", side_effect=run):
+            return preflight.integrated_source_inputs(preflight.REPOSITORY)[
+                "matches_pinned_integrated_source"]
+
+    def test_exact_integrated_inputs_match(self):
+        self.assertTrue(self.observe())
+
+    def test_substituted_baseline_or_blob_fails(self):
+        baseline = self.recipe["integrated_source_baseline"]
+        for field in ("revision", "tree"):
+            recipe = copy.deepcopy(self.recipe)
+            recipe["integrated_source_baseline"][field] = "0" * 40
+            with self.subTest(field=field):
+                self.assertFalse(self.observe(recipe))
+        for path in baseline["source_blobs"]:
+            recipe = copy.deepcopy(self.recipe)
+            recipe["integrated_source_baseline"]["source_blobs"][path] = "0" * 40
+            with self.subTest(path=path):
+                self.assertFalse(self.observe(recipe))
+
+    def test_missing_extra_or_unknown_source_paths_fail(self):
+        for changed in (b"", b"ios/PistisCore/Unexpected.swift\0"):
+            with self.subTest(changed=changed):
+                self.assertFalse(self.observe(tamper=lambda command, raw:
+                    changed if "--name-only" in command else raw))
+        recipe = copy.deepcopy(self.recipe)
+        recipe["integrated_source_baseline"]["source_blobs"].pop(".mnemosyne/expedition.json")
+        self.assertFalse(self.observe(recipe))
+
+    def test_changed_working_bytes_or_non_regular_committed_source_fails(self):
+        for marker, replacement in (("hash-object", b"0" * 40), ("ls-tree", b"120000 blob forged")):
+            with self.subTest(marker=marker):
+                self.assertFalse(self.observe(tamper=lambda command, raw:
+                    replacement if marker in command else raw))
+
+    def test_unreadable_recipe_or_git_source_fails(self):
+        with patch("preflight.json.loads", return_value={}):
+            self.assertFalse(preflight.integrated_source_inputs(preflight.REPOSITORY)[
+                "matches_pinned_integrated_source"])
+        with patch("preflight.subprocess.run", side_effect=OSError):
+            self.assertFalse(preflight.integrated_source_inputs(preflight.REPOSITORY)[
+                "matches_pinned_integrated_source"])
 
 
 class DependencyPolicyTests(unittest.TestCase):

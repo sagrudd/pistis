@@ -220,6 +220,12 @@ private struct InstallationDetailView: View {
                     }
                 }
                 if installation.status == "Trusted" {
+                    #if canImport(LocalAuthentication) && canImport(Security) && canImport(UIKit)
+                    NavigationLink("Approve a pending Mac connection") {
+                        IssuerMacSessionApprovalView(expectedInstallation: installation.id)
+                    }
+                    .accessibilityIdentifier("installation-mac-session")
+                    #endif
                     MnPrimaryButton("Use this installation", systemImage: "checkmark.circle") {
                         Task { try? await selectInstallation(installation.id) }
                     }

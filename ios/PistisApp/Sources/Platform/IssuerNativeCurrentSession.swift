@@ -27,7 +27,7 @@ final class IssuerNativeCurrentSession {
     }
     /// Sole ingress: actual retained enrolment, pinned native begin, existing
     /// signed AuthenticateSession and enrolled device key, then one-use finalize.
-    static func authenticateCurrent() async throws -> IssuerNativeCurrentSession {
+    static func authenticateCurrent(before ancestorEnd: ContinuousClock.Instant? = nil) async throws -> IssuerNativeCurrentSession {
         let clock = ContinuousClock()
         let attempt = IssuerNativeAttemptGuard()
         let observer = NotificationCenter.default.addObserver(
@@ -35,8 +35,10 @@ final class IssuerNativeCurrentSession {
         ) { _ in attempt.invalidate() }
         defer { NotificationCenter.default.removeObserver(observer); attempt.invalidate() }
         let started = Date()
-        let originalEnd = clock.now.advanced(by: .seconds(30))
+        let localEnd = clock.now.advanced(by: .seconds(30))
+        let originalEnd = min(localEnd, ancestorEnd ?? localEnd)
         try Task.checkCancellation()
+        guard clock.now < originalEnd else { throw IssuerPhoneError.expired }
         guard UIApplication.shared.applicationState == .active,
               let enrollment = try await InstallationTrustKeychain.shared.activeEnrollment(),
               enrollment.trust.active, started < enrollment.trust.expiresAt,
@@ -118,7 +120,7 @@ final class IssuerNativeCurrentSession {
                   let url = request.url, CanonicalHTTPSOrigin.from(url) == enrollment.httpsOrigin,
                   [IssuerPhoneWire.readinessPath, IssuerPhoneWire.exchangePath, ExactSourceACKWire.preparePath, ExactSourceACKWire.submitPath, NativeInstallApprovalWire.preparePath, NativeInstallApprovalWire.submitPath, IssuerSiteRootTransport.currentPreparationPath, "/v1/pistis/issuer-site-root/joint/prepare"].contains(url.path),
                   url.query == nil, url.fragment == nil, request.httpMethod == "POST",
-                  request.value(forHTTPHeaderField: "Content-Type") == "application/cbor",
+                  try IssuerNativeSessionWire.permitsIssuerBody(request),
                   request.value(forHTTPHeaderField: "Cookie") == nil,
                   request.value(forHTTPHeaderField: "Authorization") == nil,
                   request.value(forHTTPHeaderField: "Origin") == nil,

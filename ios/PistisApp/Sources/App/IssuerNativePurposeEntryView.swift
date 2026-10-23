@@ -12,10 +12,12 @@ struct IssuerNativePurposeEntryView: View {
                 Text("You will need your existing installation identity and acknowledgement key. Approval requires a separate Face ID confirmation after reviewing the complete request.")
             }
             Section {
-                Label("Setup unavailable", systemImage: "exclamationmark.circle")
-                Text("The installation cannot complete this setup yet. Submitting an approval currently reports that setup is unavailable. A prepared plan is not a completed installation.")
+                Label("Installation plan setup unavailable", systemImage: "exclamationmark.circle")
+                Text("Installation-plan approval remains unavailable. Approving a pending Mac connection is a separate authentication action and does not complete installation.")
             }
             Section {
+                NavigationLink("Approve a pending Mac connection") { IssuerMacSessionApprovalView() }
+                    .accessibilityIdentifier("native-issuer-mac-session")
                 NavigationLink("Review an installation plan") {
                     IssuerNativePurposeApprovalView()
                 }

@@ -9,9 +9,11 @@ with full enrolment, ACK, stream, digest and original-deadline comparisons. No
 new wire schema, signing key purpose or custody authority is introduced.
 
 Historical b3aa801 source now has an actual unsigned arm64 simulator build and
-five selected Mac-session platform tests passing. This coherent versioned
-current source still requires its own affected platform and release-identity
-checks. No physical device, Face ID, deployment or full-flow success is claimed.
+five selected Mac-session platform tests passing. The coherent versioned
+current source also compiled successfully and passed all 22 selected platform
+cases: five Mac-session, three release-identity and fourteen affected native
+session, transport and signature-boundary cases. These used synthetic inputs
+on the unsigned arm64 simulator. No physical device, Face ID, deployment or full-flow success is claimed.
 Main's paired one-use same-Root/Mac bind endpoint is delivered in merged 51568634;
 actual installed matching services and genuine current authority remain required.
 

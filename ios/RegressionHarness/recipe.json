@@ -11,10 +11,22 @@
     "tree": "92e49d99604b0c2830d15959b83d246bb716a23b",
     "source_blobs": {
       ".mnemosyne/expedition.json": "e15631930e762720c56f27a87b7540843fbf2648",
+      "ios/PistisApp/Pistis.xcodeproj/project.pbxproj": "e150f37a73e12e79e3def4f04c21d55b54cdddf7",
       "ios/PistisApp/Sources/App/ExactSourceACKReviewView.swift": "c6eaf379ce3e82fb3edd05142016e7f594bdc4bb",
+      "ios/PistisApp/Sources/App/InstallationsView.swift": "491353a4d7742b53dbc2eaf1bc1e316b2c29bb2b",
+      "ios/PistisApp/Sources/App/IssuerMacSessionApprovalView.swift": "b746c7319fe13e35b928e004c94c91d4d059214e",
       "ios/PistisApp/Sources/App/IssuerNativePurposeApprovalView.swift": "0e4e91f84b7d288140f86e97023342463b0e4098",
+      "ios/PistisApp/Sources/App/IssuerNativePurposeEntryView.swift": "ddd51c84bcf8087a13cd806c161b2038145143e7",
       "ios/PistisApp/Sources/App/IssuerSiteRootCurrentView.swift": "fc7e1534bd855466b6068ce3e58f9b1f0f8421d7",
-      "ios/PistisApp/Sources/App/SettingsView.swift": "38c1ce6474480e51e53860ce2cfaca7a8ef283f9"
+      "ios/PistisApp/Sources/App/SettingsView.swift": "38c1ce6474480e51e53860ce2cfaca7a8ef283f9",
+      "ios/PistisApp/Sources/Platform/IssuerMacSessionApproval.swift": "1e3084c8e3087e9ec5c31b3f3eeac7576a7d9014",
+      "ios/PistisApp/Sources/Platform/IssuerMacSessionWire.swift": "13edbf2190f59c9135a1e39e97c73f86adb97aab",
+      "ios/PistisApp/Sources/Platform/IssuerNativeCurrentSession.swift": "1ef453087ebdd0102c55e0f2c6f5af87d0ac2095",
+      "ios/PistisApp/Sources/Platform/IssuerNativeSessionWire.swift": "94bdecff70f58ba138e113a260c4684cf44e21d1",
+      "ios/PistisApp/Sources/Platform/IssuerSiteRootTransport.swift": "40f8cfc8dbb6543d07c9b30338d3d578899f0193",
+      "ios/PistisApp/Tests/PlatformTests/IOSReleaseManifestTests.swift": "c5d5d1b148f8d51ed839bb1208e3d7f174b6e2b0",
+      "ios/PistisApp/Tests/PlatformTests/IssuerMacSessionTests.swift": "2f7adcf37cf3dc6eac5210b12c34f842df898e09",
+      "ios/PistisApp/pistis-ios-release.json": "e54dd87b405761d7b6053204d5649567f1abfc32"
     }
   },
   "owner_supplied_existing_recipe_reference_only": {
@@ -25,9 +37,14 @@
   },
   "source_profile": {
     "runner": "ios/RegressionHarness/run-source-regressions.sh",
-    "toolchains": ["Rust 1.94", "Rust 1.90 minimum support", "Swift 6 on Linux", "Node 24 with markdownlint-cli2 0.18.1"],
+    "toolchains": [
+      "Rust 1.94",
+      "Rust 1.90 minimum support",
+      "Swift 6 on Linux",
+      "Node 24 with markdownlint-cli2 0.18.1"
+    ],
     "affected_existing_package": "pistis-qr 0.1.2",
-    "ios_release_manifest": "0.27.0+74 (unchanged from the integrated main baseline)",
+    "ios_release_manifest": "0.28.0+75 (Mac Pending approval; Kanon PR801; no device/release qualification)",
     "separate_harness_identity": false,
     "dependency_policy": "deny.toml (selected-parent policy plus owner-approved dev-dependency coverage only)",
     "dependency_policy_amendment": {

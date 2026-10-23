@@ -57,6 +57,14 @@ final class IssuerSiteRootTransport: @unchecked Sendable {
         let current = try await IssuerNativeCurrentSession.authenticateCurrent()
         return (try IssuerSiteRootTransport(current: current), current)
     }
+    /// Consumes no DTO as authority: the caller supplies its actual privately
+    /// constructed phone session, retained through this one pinned bind request.
+    @MainActor
+    static func bindMacSession(_ body: Data, current: IssuerNativeCurrentSession, deadline: ContinuousClock.Instant) async throws -> Data {
+        try IssuerMacSessionWire.validateRequest(body)
+        let transport = try IssuerSiteRootTransport(current: current)
+        return try await transport.post(body, path: IssuerPhoneWire.exchangePath, deadline: deadline, media: "application/json", maximum: 4096)
+    }
     @MainActor
     private init(current: IssuerNativeCurrentSession) throws {
         let enrollment = current.enrollment
@@ -93,9 +101,9 @@ final class IssuerSiteRootTransport: @unchecked Sendable {
     func submitACK(_ body: Data, deadline: ContinuousClock.Instant) async throws -> Data {
         try await post(body, path: ExactSourceACKWire.submitPath, deadline: deadline)
     }
-    private func post(_ body: Data, path: String, deadline: ContinuousClock.Instant) async throws -> Data {
+    private func post(_ body: Data, path: String, deadline: ContinuousClock.Instant, media: String = "application/cbor", maximum: Int = 262_144) async throws -> Data {
         let clock = ContinuousClock()
-        guard !body.isEmpty, body.count <= 262_144, clock.now < deadline,
+        guard !body.isEmpty, body.count <= maximum, clock.now < deadline,
               let endpoint = URL(string: path, relativeTo: origin)?.absoluteURL,
               MonasSiteRootDelegationTransport.matchesAuthority(endpoint, origin: origin, expectedPath: path)
         else { throw IssuerPhoneError.expired }
@@ -105,8 +113,8 @@ final class IssuerSiteRootTransport: @unchecked Sendable {
         request.httpShouldHandleCookies = false
         let remaining = clock.now.duration(to: deadline).components
         request.timeoutInterval = Double(remaining.seconds) + Double(remaining.attoseconds) / 1e18
-        request.setValue("application/cbor", forHTTPHeaderField: "Content-Type")
-        request.setValue("application/cbor", forHTTPHeaderField: "Accept")
+        request.setValue(media, forHTTPHeaderField: "Content-Type")
+        request.setValue(media, forHTTPHeaderField: "Accept")
         request.setValue("identity", forHTTPHeaderField: "Accept-Encoding")
         request.setValue("no-store", forHTTPHeaderField: "Cache-Control")
         var fixedRequest = request
@@ -120,15 +128,15 @@ final class IssuerSiteRootTransport: @unchecked Sendable {
                     let (bytes, raw) = try await session.bytes(for: authorizedRequest)
                     guard let response = raw as? HTTPURLResponse, response.url == endpoint,
                           response.statusCode == 200,
-                          response.value(forHTTPHeaderField: "Content-Type")?.lowercased() == "application/cbor",
+                          response.value(forHTTPHeaderField: "Content-Type")?.lowercased() == media,
                           response.value(forHTTPHeaderField: "Content-Encoding") == nil,
                           response.value(forHTTPHeaderField: "Set-Cookie") == nil,
                           response.value(forHTTPHeaderField: "Cache-Control")?.lowercased().split(separator: ",").contains(where: { $0.trimmingCharacters(in: .whitespaces) == "no-store" }) == true,
-                          response.expectedContentLength <= 262_144
+                          response.expectedContentLength <= maximum
                     else { throw IssuerPhoneError.unavailable }
                     var data = Data()
                     for try await byte in bytes {
-                        guard clock.now < deadline, data.count < 262_144 else { throw IssuerPhoneError.bound }
+                        guard clock.now < deadline, data.count < maximum else { throw IssuerPhoneError.bound }
                         data.append(byte)
                     }
                     guard !data.isEmpty, clock.now < deadline else { throw IssuerPhoneError.expired }

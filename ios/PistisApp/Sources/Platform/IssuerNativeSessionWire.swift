@@ -107,7 +107,7 @@ enum IssuerNativeSessionWire {
         guard let url = request.url, CanonicalHTTPSOrigin.from(url) == enrolledOrigin,
               [IssuerPhoneWire.readinessPath, IssuerPhoneWire.exchangePath, ExactSourceACKWire.preparePath, ExactSourceACKWire.submitPath, NativeInstallApprovalWire.preparePath, NativeInstallApprovalWire.submitPath, IssuerSiteRootTransport.currentPreparationPath, "/v1/pistis/issuer-site-root/joint/prepare"].contains(url.path),
               url.query == nil, url.fragment == nil, request.httpMethod == "POST",
-              request.value(forHTTPHeaderField: "Content-Type") == "application/cbor",
+              try permitsIssuerBody(request),
               request.value(forHTTPHeaderField: "Cookie") == nil,
               request.value(forHTTPHeaderField: "Origin") == nil,
               request.value(forHTTPHeaderField: "Authorization") == nil,
@@ -117,6 +117,16 @@ enum IssuerNativeSessionWire {
         result.setValue(profile, forHTTPHeaderField: "Pistis-Session-Profile")
         result.setValue("Pistis \(sessionID.uuidString.lowercased()).\(encode(secret))", forHTTPHeaderField: "Authorization")
         return result
+    }
+    /// The additive JSON grammar is admitted only at the existing exchange.
+    /// Existing CBOR purpose exchanges keep their exact original routing.
+    static func permitsIssuerBody(_ request: URLRequest) throws -> Bool {
+        if request.value(forHTTPHeaderField: "Content-Type") == "application/cbor" { return true }
+        guard request.url?.path == IssuerPhoneWire.exchangePath,
+              request.value(forHTTPHeaderField: "Content-Type") == "application/json",
+              let body = request.httpBody else { return false }
+        try IssuerMacSessionWire.validateRequest(body)
+        return true
     }
     static func uuid(_ text: String) throws -> UUID {
         guard let value = UUID(uuidString: text), value.uuidString.lowercased() == text,

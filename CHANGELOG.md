@@ -1,3 +1,8 @@
+## Pistis iOS 0.28.0+75 — Mac Pending approval
+
+- Add deliberate approval of the existing Mac Pending record through the enrolled SiteRoot native session, retaining complete record, stream, installation and deadline comparisons. No new protocol or key purpose is introduced.
+- Align both app configurations, release manifest and identity regression tests with the existing Pistis iOS allocation in [Kanon PR801](https://github.com/sagrudd/kanon/pull/801). Device signing, installation and live attendance remain separate gates.
+
 # Changelog
 
 - Reconcile the exact-source CI candidate with current main, preserving both

@@ -123,7 +123,7 @@ purpose-separated iPhone validators, producers, pinned Monas routes and
 governed application presentation for Base Camp migration and every later
 unused successor generation.
 
-[ADR 0043](0043-maintained-sdk-p256-verification.md) proposes a compatible
+[ADR 0043](0043-maintained-sdk-p256-verification.md) accepts a compatible
 maintained-cryptography correction behind the existing byte-facing SDK verifier.
-It preserves strict signature and key encodings; implementation awaits technical
-acceptance and actual qualification.
+It preserves strict signature and key encodings; actual qualification remains
+required.

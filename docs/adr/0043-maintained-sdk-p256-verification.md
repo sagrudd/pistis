@@ -1,6 +1,6 @@
 # ADR 0043: Maintain the byte-facing SDK P-256 verifier
 
-- Status: Proposed; technical acceptance required before implementation
+- Status: Accepted for bounded source implementation; qualification pending
 - Date: 2026-10-25
 - Affected owners: Pistis SDK, Prosopikon Core, Proxenos, Thesaurophylax and the
   existing INT-07 integration owner
@@ -21,7 +21,7 @@ curve type. This permits a compatible internal supplier correction. The human
 Thesaurophylax1.0 implementation approval does not authorise additional public
 breaks, live signing, phone installation, key replacement or data migration.
 
-## Decision proposed for technical acceptance
+## Accepted decision
 
 Use the reviewed maintained P2560.14 supplier through the existing workspace
 curve declaration. Preserve the public opaque key and byte-facing API. Replace
@@ -75,3 +75,14 @@ store. This change does not weaken their currentness/deadline/secret boundaries.
 Future continuity Core0.45/Prox0.71 and phone/private effects are separate.
 Technical acceptance permits source implementation only. Final independent
 implementation review and actual source/package/installed gates remain required.
+
+## Acceptance record
+
+The existing INT-07 integration owner read exact proposal67778305 and accepted
+this bounded source plan on25October2026 under Kanon030bc7f4. Independent
+specialist review by recovery_review recommended acceptance with no blocking
+finding: opaque keys and byte APIs remain compatible, high-S rejection and
+wire/key-ID semantics are preserved, and the authority/secret boundaries do
+not change. This is technical implementation acceptance, not a new human
+major-version, live-operation or security exception approval. Neither review
+ran code or claimed qualification; exact implementation review is still needed.

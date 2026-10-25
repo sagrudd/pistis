@@ -122,3 +122,7 @@ as a fresh first installation.
 purpose-separated iPhone validators, producers, pinned Monas routes and
 governed application presentation for Base Camp migration and every later
 unused successor generation.
+
+[ADR 0046](0046-protected-phone-attempt-store.md) proposes the selected private
+phone attempt schema, immutable identities and typed prepared cancellation.
+It is not adopted and grants no phone, key, provisioning or deployment effect.

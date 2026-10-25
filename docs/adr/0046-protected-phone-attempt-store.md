@@ -84,6 +84,120 @@ construct that maximum-width structural instance. The native exact-family
 decoder must still enforce the closed role, exact fields and every adopted bound
 before reservation; a structural size bound grants no authority.
 
+### Typed steps for the actual owner-enrolment consumer
+
+The proposed Core ADR 0010 consumer uses fresh dual-key consent because current
+ACK point/digest records do not retain a portable AUTHN-to-ACK enrolment original.
+This amendment proposes one explicit kind allowlist in the SAME selected store:
+`PCAP`, `PCUR`, `CPEI_AUTHN`, `CPEI_ACK`, `CPEC_AUTHN`, `PCPG_ACK`. It adds no
+state, second ledger, signature retry or current-authority factory. The kind is
+immutable alongside the existing operation/body/challenge identity, and an
+operation UUID remains globally unique across all kinds. A different kind cannot
+recycle a prior attempt or make a second private invocation under one row.
+
+CPEI28 field 27 is the ordered pair `[AUTHN challenge/attempt UUID16,
+ACK proof attempt UUID16]`; both are distinct from the initializer operation and
+from each other. CPEC6 contains its distinct commit operation UUID. These are
+explicit proposed consumer identities, not reinterpretations of a PCAP/PCUR
+operation, a hash-only authority record or one attempt containing two invocations.
+The native family decoder/controller verifies the complete exact consumer object
+and chooses the sole fixed kind. No caller chooses a generic kind or signer.
+
+For CPEI, each row retains the COMPLETE same canonical control7 as its immutable
+body. The exact equality is `CPEI6 == control7[4] nonce32 == action-v2 c7/r7`
+for BOTH CPEI_AUTHN and CPEI_ACK. The AUTHN challenge/response
+bind that control/session/nonce through the actual action-v2 descriptor and
+challenge joins; the ACK detached proof binds the SAME complete control7. The
+row UUIDs are respectively CPEI27[0] and CPEI27[1]. The private ACK controller
+requires the actual originating retained AUTHN handle AND complete verified
+challenge/response, exact CPEI pair, control bytes, Site/actor/device bindings,
+nonce, currentness and original expiry. Reading `signed-retained` from SQLite
+or accepting a caller result/Boolean is insufficient. Keep cross-step exclusion
+while verifying the predecessor and admitting/fencing the ACK attempt.
+
+The literal schema permits a shared nonce ONLY for the exact CPEI_AUTHN and
+CPEI_ACK kind pair with byte-identical control body and body digest. The private
+controller must additionally verify the exact CPEI27 operation pair. Every other
+challenge collision denies, including CPEI_AUTHN/CPEC_AUTHN, PCPG_ACK/CPEI_ACK
+and legacy/new-kind pairs. UNIQUE(challenge, attempt_kind) also rejects duplicates
+within a kind, and a partial unique index retains the original PCAP/PCUR
+cross-kind constraint. Duplicate operation UUID remains rejected across ALL
+kinds, including INSERT OR REPLACE. Unknown kinds deny. This narrowly explicit
+CPEI-pair exception is part of the reviewed joint profile amendment,
+not a silent operational migration. Schema digest/anchor matching remains exact;
+no existing database is silently changed.
+
+The four legacy authority slots (`bootstrap`, `permission_revision`,
+`delegation_serial`, `captured_revocation`) remain required with their ORIGINAL
+meanings for PCAP/PCUR. For the four new consent kinds they MUST be SQL NULL:
+there is no existing PCPG grant/permission serial during owner initialisation.
+The family CHECK rejects missing legacy values and rejects relabelled values in
+new-kind rows. NULL is explicit absence, not a verified zero, sentinel serial,
+future grant, Site revision alias or a fabricated permission. Immutable complete
+control bytes retain the new family's actual bindings; the consumer independently
+verifies all complete native originals/current state. The store cannot infer
+permission from these absence slots.
+
+Per-family native request/handle mapping is closed:
+
+| Kind | Operation UUID | Immutable body and challenge | Native origin and required predecessor |
+|---|---|---|---|
+| PCAP / PCUR | Existing exact operation UUID | Existing canonical payload and challenge | Existing verified live continuity request/immediate permission, unchanged |
+| CPEI_AUTHN | CPEI27[0], equal to action-v2 challenge/response UUID | COMPLETE prepare control7; its nonce32 | Private verified native owner-consent request from actual installation challenge and current AUTHN credential; no prior PCPG permission required |
+| CPEI_ACK | CPEI27[1], distinct from initializer and AUTHN attempt | IDENTICAL prepare control7 and nonce32 | Actual retained CPEI_AUTHN originating handle and complete verified challenge/response under exclusion, plus current ACK identity proof for the same control |
+| CPEC_AUTHN | CPEC6[4], equal to actual action-v2 c6/r6 and distinct from both prepare attempts | COMPLETE commit control7; CPEC6[5] == its nonce32 == action-v2 c7/r7 | Private verified native commit-consent request from the actual action-v2 challenge; complete admitted CPEI Original5 and actual matching generation records |
+| PCPG_ACK | PCPG30[5] registration operation UUID | COMPLETE canonical PCPG30 body; PCPG30[6] challenge32 | Private verified native permission-registration request with the complete existing owner-enrolment/registration originals; not a PCAP/PCUR permission handle |
+
+For new controls, row `issued_at`/`expires_at` are the exact control interval,
+constrained by original action challenge and ancestor bounds; PCPG uses its exact
+registration-request interval PCPG30[26]/[27]. Revalidation never refreshes them. The body and
+its digest must match the complete source object, not a copied hash or database
+reconstruction. The ordinary `VerifiedLiveContinuityRequest` and
+`VerifiedImmediatePermission` types remain PCAP/PCUR-only. New kinds require
+separate private native consent/commit/registration request and revalidation
+handles with no public, Codable or generic callback constructor. They share the
+existing prepared/fenced/retained store mechanics; they do not alias authority.
+The shared private controller dispatches only the exact family's fixed primitive
+once. The exact new-family mapping follows proposed Core ADR 0010 CPEI28/CPEC6 and
+PCPG R2 payload digest
+`82248d07c1dd9c672ee34fa34ee8866fb4e8997271485c7356c1b602fb5ba3d0`;
+its body/operation/challenge/interval fields are not renamed to legacy authority.
+All mappings remain proposed joint-contract decisions before source code.
+
+The partial order is:
+
+1. Persist/fence/retain `CPEI_AUTHN` once, through its existing state machine.
+2. Verify that actual retained result under the original control deadline;
+   only then may the distinct `CPEI_ACK` row fence and retain its one ACK proof.
+3. Assemble complete CPEI Original5 from the retained matching partial results.
+   This is pure assembly/retrieval and never signs either result again.
+4. Only after the consumer proves actual generation results against the admitted
+   prepare may `CPEC_AUTHN` fence its own distinct commit operation and exact
+   commit control. It never uses either CPEI row as a second signing allowance.
+5. `PCPG_ACK` is its own exact registration operation and retained ACK result;
+   it is not an AUTHN substitute or a prerequisite for owner initialisation.
+   Actual owner-enrolment/purpose/currentness checks remain with the consumer.
+   Retain this phone result FIRST; only then may the separate SiteApproval owner
+   fence its own independent second signature. Failure of that second operation
+   never permits another phone signature. A phone-only result is not permission;
+   the Prox transaction requires both proofs and actual current complete origins.
+   No distributed atomicity or single global exactly-once claim is made.
+
+If AUTHN succeeds and ACK is still prepared, local prepared-cancellation proof
+can cancel ONLY the ACK row. The AUTHN result remains retained; no assertion that
+all workflow steps were unsigned is produced. If either step is fenced without a
+result, that step remains unresolved and cannot be replaced by another UUID,
+challenge or kind. Exact retry reads the original results; it cannot refresh
+expiry, replace consent or repeat a private primitive. A later commit remains
+unavailable where its actual predecessor/generation proof is missing. Existing
+prepared cancellation, fencing, result settlement and history limits apply to
+EACH row; each typed attempt consumes its own quota and settlement credit.
+
+This amendment is proposed under the full joint implementation gate above.
+It supplies no new PCAP/PCUR purpose permission, authentication, enrolment,
+provisioning or private key operation. The source-only MNE-1481 defect and this
+consumer contract review remain separate from live current-origin acceptance.
+
 ### Private cancellation and dispatch contract
 
 All store handles and proofs are module-private, non-Codable and non-cloneable;
@@ -126,8 +240,8 @@ new signing or ECDH is inferred from local absence.
 
 ### Replacement and settlement invariants
 
-BEFORE INSERT guards reject an existing metadata singleton, operation or
-challenge and history key even with `recursive_triggers=0` and
+BEFORE INSERT guards reject an existing metadata singleton, operation,
+kind-scoped challenge (plus legacy PCAP/PCUR cross-kind challenge) or history key even with `recursive_triggers=0` and
 `INSERT OR REPLACE`. UPDATE/DELETE guards retain immutable identities and history.
 The native owner, not SQL alone, verifies sequence contiguity from 1, legal
 transitions, exact result digest/signature/ciphertext and current permission.
@@ -149,7 +263,10 @@ is claimed. Any post-fence storage failure preserves denial/unresolved state.
 The [proposal checks](0046-protected-phone-attempt-store/check_selected_schema.py)
 exercise literal replacement rejection, the direct prepared-cancellation edge,
 transaction rollback, a competing fence and retained states against the exact
-SQL. They are structural reference evidence only. Native qualification must
+SQL. Changed-consumer cases cover immutable kinds, shared CPEI nonce scoping,
+wrong-kind/body/nonce predecessors, retained AUTHN-before-ACK ordering and the
+unchanged legacy PCAP/PCUR challenge constraint. The executable ordering projection
+is a contract reference, not a native proof factory or verified-handle producer. They are structural reference evidence only. Native qualification must
 exercise private proof construction, wrong-instance/stale/body rejection,
 actual exclusion races and zero private invocations on every cancellation,
 cross-instance reopen, changed-file/anchor, lock/protection loss, crash after

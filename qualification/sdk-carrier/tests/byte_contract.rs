@@ -19,7 +19,7 @@ fn actual_imported_sdk_preserves_retained_bytes_and_denials() {
         "../../../fixtures/protocol-v1/crypto/signature-cose.hex"
     ));
     let public = PublicKey::from_sec1_bytes(&key).unwrap();
-    assert_eq!(public.canonical_bytes().as_slice(), key);
+    assert_eq!(public.canonical_bytes().as_slice(), key.as_slice());
     verify(SignatureSuite::Es256, &public, &challenge, &signature).unwrap();
     assert!(verify(SignatureSuite::Es256, &public, b"substitution", &signature).is_err());
     assert!(verify(SignatureSuite::Es256, &public, &challenge, &signature[..63]).is_err());
@@ -27,8 +27,8 @@ fn actual_imported_sdk_preserves_retained_bytes_and_denials() {
     assert_eq!(pistis_canonical::to_vec(&value).unwrap(), challenge);
     let envelope = pistis_cose::encode(&challenge, derive_key_id(&public), &signature).unwrap();
     let decoded = pistis_cose::decode(&envelope).unwrap();
-    assert_eq!(decoded.payload(), challenge);
-    assert_eq!(decoded.signature(), signature);
+    assert_eq!(decoded.payload(), challenge.as_slice());
+    assert_eq!(decoded.signature().as_slice(), signature.as_slice());
     // This exact fixture signs the plain canonical challenge, not Sig_structure.
     assert!(pistis_cose::verify_sign1(&envelope, &public).is_err());
     let first = pistis_protocol::derive_host_trust_words(

@@ -47,7 +47,7 @@ pub fn verify(
         SignatureSuite::Es256 => {
             let signature =
                 Signature::from_slice(signature).map_err(|_| SignatureError::InvalidEncoding)?;
-            if signature.normalize_s().is_some() {
+            if signature.normalize_s() != signature {
                 return Err(SignatureError::NonCanonical);
             }
             key.verifying_key()
@@ -69,8 +69,8 @@ mod tests {
     ];
 
     fn fixture() -> (PublicKey, SigningKey) {
-        let signing = SigningKey::from_bytes((&SECRET).into()).unwrap();
-        let encoded = signing.verifying_key().to_encoded_point(false);
+        let signing = SigningKey::from_slice(&SECRET).unwrap();
+        let encoded = signing.verifying_key().to_sec1_point(false);
         (
             PublicKey::from_sec1_bytes(encoded.as_bytes()).unwrap(),
             signing,
@@ -106,7 +106,7 @@ mod tests {
     fn verifies_fixed_width_low_s_signature() {
         let (key, signing) = fixture();
         let signature: Signature = signing.sign(b"canonical message");
-        let signature = signature.normalize_s().unwrap_or(signature);
+        let signature = signature.normalize_s();
         let signature_bytes = signature.to_bytes();
         assert_eq!(
             verify(
@@ -123,7 +123,7 @@ mod tests {
     fn rejects_wrong_message_der_and_wrong_width() {
         let (key, signing) = fixture();
         let signature: Signature = signing.sign(b"canonical message");
-        let signature = signature.normalize_s().unwrap_or(signature);
+        let signature = signature.normalize_s();
         let signature_bytes = signature.to_bytes();
         assert_eq!(
             verify(
@@ -153,7 +153,7 @@ mod tests {
     fn rejects_high_s_malleable_twin() {
         let (key, signing) = fixture();
         let signature: Signature = signing.sign(b"canonical message");
-        let low = signature.normalize_s().unwrap_or(signature);
+        let low = signature.normalize_s();
         let high = Signature::from_scalars(low.r().to_bytes(), (-low.s()).to_bytes()).unwrap();
         let high_bytes = high.to_bytes();
         assert_eq!(

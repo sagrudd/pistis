@@ -10,8 +10,8 @@ const SECRET: [u8; 32] = [
 ];
 
 fn fixture() -> (SigningKey, PublicKey) {
-    let signing = SigningKey::from_bytes((&SECRET).into()).unwrap();
-    let encoded = signing.verifying_key().to_encoded_point(false);
+    let signing = SigningKey::from_slice(&SECRET).unwrap();
+    let encoded = signing.verifying_key().to_sec1_point(false);
     let public = PublicKey::from_sec1_bytes(encoded.as_bytes()).unwrap();
     (signing, public)
 }
@@ -27,7 +27,7 @@ fn signed_envelope() -> (Vec<u8>, PublicKey) {
     let key_id = derive_key_id(&public);
     let input = signing_input(&payload(), key_id).unwrap();
     let signature: Signature = signing.sign(&input);
-    let signature = signature.normalize_s().unwrap_or(signature);
+    let signature = signature.normalize_s();
     (
         encode(&payload(), key_id, &signature.to_bytes()).unwrap(),
         public,
@@ -147,8 +147,8 @@ fn schema_payload_fixtures_are_exact_closed_canonical_maps() {
 fn rejects_key_payload_and_signature_substitution() {
     let (bytes, public) = signed_envelope();
     let (_, wrong_public) = {
-        let signing = SigningKey::from_bytes((&[2_u8; 32]).into()).unwrap();
-        let encoded = signing.verifying_key().to_encoded_point(false);
+        let signing = SigningKey::from_slice(&[2_u8; 32]).unwrap();
+        let encoded = signing.verifying_key().to_sec1_point(false);
         (
             signing,
             PublicKey::from_sec1_bytes(encoded.as_bytes()).unwrap(),
@@ -182,7 +182,7 @@ fn rejects_high_s_signature() {
     let key_id = derive_key_id(&public);
     let input = signing_input(&payload(), key_id).unwrap();
     let signature: Signature = signing.sign(&input);
-    let low = signature.normalize_s().unwrap_or(signature);
+    let low = signature.normalize_s();
     let high = Signature::from_scalars(low.r().to_bytes(), (-low.s()).to_bytes()).unwrap();
     let bytes = encode(&payload(), key_id, &high.to_bytes()).unwrap();
     assert_eq!(

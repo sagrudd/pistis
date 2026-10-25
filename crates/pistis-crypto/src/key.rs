@@ -49,7 +49,7 @@ impl PublicKey {
     /// Return the unique compressed SEC1 encoding used by Pistis identifiers.
     #[must_use]
     pub fn canonical_bytes(&self) -> [u8; 33] {
-        let encoded = self.0.to_encoded_point(true);
+        let encoded = self.0.to_sec1_point(true);
         let mut bytes = [0_u8; 33];
         bytes.copy_from_slice(encoded.as_bytes());
         bytes

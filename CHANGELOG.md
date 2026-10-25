@@ -1,3 +1,15 @@
+## Pending maintained SDK cryptography patches — source candidate
+
+- Reserve crypto0.1.1/cose0.1.1/protocol0.2.2 for the compatible internal P2560.14
+  supplier correction under accepted ADR0043; canonical0.1.1 stays byte identical.
+- Preserve strict high-S/DER/wrong-width rejection, SEC1 canonical bytes, key IDs
+  and existing interoperability/negative tests. Preserve the Pistis Monas public
+  Thes0.86 reexport identity; the four SDK crates do not depend on that edge.
+  No phone, key, data, admission or authority feature changes.
+- Resolver output is pending: inherited Cargo.lock is deliberately unchanged
+  and stale for this source. No compile/test/MSRV/security result is claimed.
+  The shared local capacity stop requires the maintained Alma qualification lane.
+
 # Changelog
 
 - Use compatible `pistis-canonical` and `pistis-identity` 0.1.1 fixes for strict

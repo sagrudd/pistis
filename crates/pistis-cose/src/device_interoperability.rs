@@ -326,8 +326,8 @@ mod tests {
 
     #[test]
     fn rejects_wrong_key_changed_input_high_s_and_der() {
-        let alternate_signing = SigningKey::from_bytes((&[2_u8; 32]).into()).unwrap();
-        let alternate_public = alternate_signing.verifying_key().to_encoded_point(true);
+        let alternate_signing = SigningKey::from_slice(&[2_u8; 32]).unwrap();
+        let alternate_public = alternate_signing.verifying_key().to_sec1_point(true);
         let wrong_key = replace_field(
             POSITIVE,
             "publicKeyCompressedSEC1Hex",

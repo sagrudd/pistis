@@ -43,9 +43,12 @@ reserved. The latter two retain their existing interoperability tests against
 the maintained private curve implementation. Canonical0.1.1 source stays byte
 identical. All four eventual immutable source pins move coherently; the Core
 Linux same-source adapters must be checked for consistency without unrelated
-phone features. Select the actual API carrier above for the existing workspace
-Thesaurophylax edge; do not claim that its isolated carrier audit clears the
-whole Pistis workspace or subsequent Core/Prox/Thes root graph.
+phone features. The direct Core/Prox SDK consumers select the actual API carrier
+above independently. Preserve Pistis Monas' existing workspace API0.86 edge:
+its public reexports create an additional nominal Rust type boundary, while the
+four selected SDK crates do not depend on that edge. Do not silently migrate
+that public interface or claim that a selected carrier audit clears the whole
+Pistis workspace or subsequent Core/Prox/Thes root graph.
 
 ## Qualification and failure behaviour
 
@@ -86,3 +89,18 @@ wire/key-ID semantics are preserved, and the authority/secret boundaries do
 not change. This is technical implementation acceptance, not a new human
 major-version, live-operation or security exception approval. Neither review
 ran code or claimed qualification; exact implementation review is still needed.
+
+### Implementation review scope correction
+
+Specialist implementation review found Pistis Monas0.12 publicly reexports
+Thesaurophylax API0.86 types. The proposed workspace-wide API1.0 repin was
+therefore removed before any source implementation commit. This preserves the
+existing public identity and narrows this source to the four selected SDKs.
+Its selected-package qualification must use the actual component carrier;
+the whole workspace retains the old Monas supplier edge and is not cleared.
+Any later Monas public-interface transition needs its own version disposition.
+
+The integration owner explicitly accepted this narrower preservation on
+25October2026 after the specialist finding, before implementation publication.
+The four-crate consumer carrier must use the full actual source, with no copied
+module or stub; whole-workspace qualification remains separate and uncleared.

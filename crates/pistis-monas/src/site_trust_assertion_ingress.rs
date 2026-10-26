@@ -1327,7 +1327,7 @@ mod tests {
     ) -> ServerHeldCustodyRotationAppAttestAcceptanceV1 {
         let public_key: [u8; 65] = signing_key
             .verifying_key()
-            .to_encoded_point(false)
+            .to_sec1_point(false)
             .as_bytes()
             .try_into()
             .unwrap();
@@ -1403,7 +1403,7 @@ mod tests {
     ) -> crate::SiteOriginRelocationAppAttestAcceptanceV1 {
         let public_key: [u8; 65] = signing_key
             .verifying_key()
-            .to_encoded_point(false)
+            .to_sec1_point(false)
             .as_bytes()
             .try_into()
             .unwrap();
@@ -1495,7 +1495,7 @@ mod tests {
         signing_key: &SigningKey,
         prior_counter: u32,
     ) -> ServerHeldMonasAppAttestAcceptanceV1 {
-        let encoded = signing_key.verifying_key().to_encoded_point(false);
+        let encoded = signing_key.verifying_key().to_sec1_point(false);
         let public_key: [u8; 65] = encoded.as_bytes().try_into().unwrap();
         let key_id = KeyId::from_bytes(Sha256::digest(public_key).into());
         ServerHeldMonasAppAttestAcceptanceV1::test_acceptance(

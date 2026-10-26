@@ -25,7 +25,7 @@ impl InstallationSigner for Provider {
     fn sign(&self, message: &[u8]) -> Result<InstallationSignature, SignerError> {
         *self.captured.lock().unwrap() = message.to_vec();
         let signature: Signature = self.signing.sign(message);
-        let signature = signature.normalize_s().unwrap_or(signature);
+        let signature = signature.normalize_s();
         let mut signature = signature.to_bytes().to_vec();
         if self.corrupt_signature {
             signature[0] ^= 1;
@@ -44,8 +44,7 @@ impl InstallationSigner for Provider {
 fn fixture() -> (ChallengeDocument, PublicKey, SigningKey) {
     let signing = SigningKey::from_bytes((&SECRET).into()).unwrap();
     let public =
-        PublicKey::from_sec1_bytes(signing.verifying_key().to_encoded_point(true).as_bytes())
-            .unwrap();
+        PublicKey::from_sec1_bytes(signing.verifying_key().to_sec1_point(true).as_bytes()).unwrap();
     let challenge = ChallengeDocument {
         issued_at: UnixTimeMillis(1_000),
         expires_at: UnixTimeMillis(61_000),

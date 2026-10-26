@@ -90,7 +90,7 @@ fn fixture() -> Vec<u8> {
     .unwrap();
     let input = signing_input(&payload, key_id).unwrap();
     let signature: Signature = signing.sign(&input);
-    let signature = signature.normalize_s().unwrap_or(signature);
+    let signature = signature.normalize_s();
     let cose = encode(&payload, key_id, &signature.to_bytes()).unwrap();
     to_vec(&Value::Map(BTreeMap::from([
         (0, Value::Unsigned(4)),
@@ -104,11 +104,11 @@ fn fixture() -> Vec<u8> {
 fn signing_key(scalar: u8) -> SigningKey {
     let mut secret = [0; 32];
     secret[31] = scalar;
-    SigningKey::from_bytes((&secret).into()).unwrap()
+    SigningKey::from_slice(&secret).unwrap()
 }
 
 fn descriptor(signing: &SigningKey) -> (Vec<u8>, KeyId) {
-    let compressed = signing.verifying_key().to_encoded_point(true);
+    let compressed = signing.verifying_key().to_sec1_point(true);
     let public = PublicKey::from_sec1_bytes(compressed.as_bytes()).unwrap();
     let key_id = derive_key_id(&public);
     let bytes = to_vec(&Value::Map(BTreeMap::from([

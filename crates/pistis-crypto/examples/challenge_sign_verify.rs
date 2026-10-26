@@ -35,13 +35,9 @@ fn main() -> Result<(), String> {
         .verifying_key()
         .verify(&CANONICAL_CHALLENGE, &signature)
         .map_err(|_| "dependency rejected generated signature")?;
-    let public_key = PublicKey::from_sec1_bytes(
-        signing_key
-            .verifying_key()
-            .to_sec1_point(true)
-            .as_bytes(),
-    )
-    .map_err(|error| error.to_string())?;
+    let public_key =
+        PublicKey::from_sec1_bytes(signing_key.verifying_key().to_sec1_point(true).as_bytes())
+            .map_err(|error| error.to_string())?;
     let signature_bytes = signature.to_bytes();
     verify(
         SignatureSuite::Es256,

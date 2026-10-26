@@ -235,3 +235,32 @@ normalised dependency edges and the carrier lock. Changed authentication and
 Monas tests, the keep-going whole-workspace compile and Rust API documentation
 remain pending. SDK, QR and agent successes are not rerun for wrapper status;
 the full legacy-provider graph and authoritative Sphinx remain uncleared.
+
+## Pending maintained API 0.86.1 dependency adoption
+
+The preceding qualified stages retained API 0.86.0 at e72598aa. The next
+isolated maintenance candidate uses the existing API 0.86.1 coordinate at
+ad40c6d2cf1f9fbb9507c4ee687132c783e92889; no new major version or Thes source
+change is introduced. Its immutable API manifest directly pins p256 0.14.0,
+although the unused root application's workspace p256 remains 0.13.2.
+Selected API/Core/Policy/Store dependency identity must be determined from
+the actual generated consumer graph, not that root application manifest.
+
+Monas directly imports and publicly reexports the offline_v2 types, constants,
+service and byte helpers. That used production module prefix is byte-identical
+to e72598aa, and the used wire_v1 module is entirely identical. Core, Policy
+and Store source subtrees are also unchanged. Nevertheless the new Git revision
+and package version change the nominal Rust origin of those public reexports.
+Do not claim type identity or absence of externally visible changes merely
+from equal bytes. Existing Monas byte bridges and canonical fixture parity
+remain the intended compatibility route, subject to actual importer tests,
+downstream compile, independent review and supported-promotion checks.
+
+Keep the unreleased Monas 0.12.1 task-group allocation already coordinated
+with Kanon. Generate the actual root lock from accepted 6a04789b; unify all
+four selected Thes Git packages to the exact ad40/0.86.1 family and require
+that old e725 and crypto-bigint 0.5.5 are absent. Do not copy a private carrier
+lock, remove a dependency to hide the advisory, or suppress policy. Current
+strict/MSRV evidence remains frozen against bda2d2b8; this new dependency
+candidate is a separate unqualified input. Authoritative Sphinx, dependency
+security and final supported delivery remain required.

@@ -64,7 +64,7 @@ serde = "1.0.228"
 serde_json = "1.0.145"
 security-framework = "=3.7.0"
 sha2 = "0.10.9"
-thesaurophylax-api = { version = "=0.86.0", git = "https://github.com/sagrudd/thesaurophylax.git", rev = "e72598aae824f2bdafc20803adca73c6a6c8dcd2" }
+thesaurophylax-api = { version = "=0.86.1", git = "https://github.com/sagrudd/thesaurophylax.git", rev = "ad40c6d2cf1f9fbb9507c4ee687132c783e92889" }
 subtle = "2.6.1"
 url = "2.5.7"
 x509-parser = { version = "0.18", features = ["verify"] }

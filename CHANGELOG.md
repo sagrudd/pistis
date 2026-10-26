@@ -1,5 +1,10 @@
 ## Pending maintained SDK cryptography patches — source candidate
 
+- Adopt the existing Thesaurophylax API 0.86.1 maintenance coordinate for Monas.
+  Its public Rust reexports change nominal Git origin; unchanged wire bytes do
+  not replace downstream compatibility and dependency-security validation.
+
+
 - Reserve authentication 0.1.1 and Monas 0.12.1 for compiler-proven p256 0.14
   call adaptations, preserving SEC1 bytes and strict high-S rejection.
 
@@ -19,8 +24,8 @@
 - Reserve crypto0.1.1/cose0.1.1/protocol0.2.2 for the compatible internal P2560.14
   supplier correction under accepted ADR0043; canonical0.1.1 stays byte identical.
 - Preserve strict high-S/DER/wrong-width rejection, SEC1 canonical bytes, key IDs
-  and existing interoperability/negative tests. Preserve the Pistis Monas public
-  Thes0.86 reexport identity; the four SDK crates do not depend on that edge.
+  and existing interoperability/negative tests. The four SDK crates do not depend on the Monas public Thes API edge;
+  its separately reviewed maintenance adoption changes the Rust Git origin.
   No phone, key, data, admission or authority feature changes.
 - Preserve the MNE-1550 private two-crate qualification at bbd9fb29: 23 real
   provider/COSE tests passed on Rust 1.94 and 1.90, with strict Clippy, formatting,

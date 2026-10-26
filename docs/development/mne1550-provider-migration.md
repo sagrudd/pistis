@@ -159,3 +159,22 @@ The version/dependency coordinates remain linked to the coordinated
 the programme coordinator and designated Kanon writer own the final integration
 registration. No release lockset, installed support or release authority is
 asserted by this source merge.
+
+## Carrier hierarchy correction
+
+The first canonical Rust 1.94 checks compiled all four SDK crates and passed
+45 tests, with only the existing ignored fixture exporter. Both formatting
+checks passed. The remaining operation passed the importing carrier test,
+both all-target strict Clippy checks and the challenge example run, then the
+architecture gate rejected the original qualification/sdk-carrier placement.
+Both failed wrappers and every successful command remain retained separately.
+
+Move the independent development carrier to tests/sdk-carrier. The existing
+valid_rust_location rule in xtask/src/main.rs permits tests/**; this follows
+the documented integration hierarchy without an exception or guard change.
+The directory depth is unchanged, so all carrier source, manifests, fixture
+imports and both generated lock files retain exactly the accepted bytes.
+No additional package version is allocated for this layout-only correction;
+the compatible provider task group retains the coordinated 0.1.1/0.2.2
+versions. Architecture, language and Rust 1.90 checks on the final source
+remain pending; earlier results keep their original source scope.

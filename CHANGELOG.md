@@ -1,5 +1,9 @@
 ## Pending maintained SDK cryptography patches — source candidate
 
+- Place the maintained SDK qualification carrier under the existing integration
+  test hierarchy without changing its source, manifest or generated lock bytes.
+
+
 - Reserve crypto0.1.1/cose0.1.1/protocol0.2.2 for the compatible internal P2560.14
   supplier correction under accepted ADR0043; canonical0.1.1 stays byte identical.
 - Preserve strict high-S/DER/wrong-width rejection, SEC1 canonical bytes, key IDs

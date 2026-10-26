@@ -1302,7 +1302,7 @@ version = "0.1.0"
 
 [[package]]
 name = "pistis-authentication"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "p256 0.14.0",
  "pistis-canonical",
@@ -1418,7 +1418,7 @@ dependencies = [
 
 [[package]]
 name = "pistis-monas"
-version = "0.12.0"
+version = "0.12.1"
 dependencies = [
  "base64",
  "ciborium",

@@ -230,7 +230,7 @@ mod tests {
         let signing_key = SigningKey::from_bytes((&[0x31; 32]).into()).expect("test key");
         let public_key: [u8; 65] = signing_key
             .verifying_key()
-            .to_encoded_point(false)
+            .to_sec1_point(false)
             .as_bytes()
             .try_into()
             .expect("uncompressed P-256 key");

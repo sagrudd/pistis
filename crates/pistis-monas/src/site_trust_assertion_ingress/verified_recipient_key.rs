@@ -4,7 +4,7 @@
 //! registration verifier. The projection is public, canonical P-256 SEC1
 //! material; it is neither a secret nor a separate authority source.
 
-use p256::{PublicKey, elliptic_curve::sec1::ToEncodedPoint as _};
+use p256::{PublicKey, elliptic_curve::sec1::ToSec1Point as _};
 
 use super::{ServerHeldMonasAppAttestAcceptanceV1, SiteTrustAppAttestAssertionIngressErrorV1};
 
@@ -27,7 +27,7 @@ impl ServerHeldMonasAppAttestAcceptanceV1 {
         self.validate()?;
         PublicKey::from_sec1_bytes(&self.registered_public_key_sec1)
             .map_err(|_| SiteTrustAppAttestAssertionIngressErrorV1::Unavailable)?
-            .to_encoded_point(true)
+            .to_sec1_point(true)
             .as_bytes()
             .try_into()
             .map_err(|_| SiteTrustAppAttestAssertionIngressErrorV1::Unavailable)
@@ -46,7 +46,7 @@ mod tests {
         let acceptance = acceptance(&key, 0);
         let expected: [u8; 33] = key
             .verifying_key()
-            .to_encoded_point(true)
+            .to_sec1_point(true)
             .as_bytes()
             .try_into()
             .unwrap();

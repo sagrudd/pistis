@@ -1,5 +1,9 @@
 ## Pending maintained SDK cryptography patches — source candidate
 
+- Reserve authentication 0.1.1 and Monas 0.12.1 for compiler-proven p256 0.14
+  call adaptations, preserving SEC1 bytes and strict high-S rejection.
+
+
 - Reserve agent 0.1.2 for the two compiler-proven p256 0.14 challenge-signing
   test calls; production agent and platform adapters remain unchanged.
 

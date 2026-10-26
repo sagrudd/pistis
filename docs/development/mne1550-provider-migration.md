@@ -209,3 +209,29 @@ input, retain the unchanged carrier lock, run the changed agent tests and
 collect remaining actual workspace diagnostics using --keep-going. Do not
 repeat the accepted SDK or QR tests. Rust API documentation remains unrun
 until the workspace compiles; authoritative Sphinx remains a Jenkins gate.
+
+## Batched authentication and Monas consumer adaptation
+
+The independently accepted agent-only root lock bacc0166, formatting and all
+34 agent tests retain their exact staged-source evidence. Its keep-going
+workspace compile collected the remaining authentication test and Monas
+workspace-p256 0.14 call failures together. Adapt only the reported SEC1 point
+and signature normalisation calls; use ToSec1Point for the typed p256 PublicKey
+projection. Compression choices, canonical SEC1 lengths and key identifiers
+remain unchanged. Do not alter the separate Thesaurophylax API 0.86 reexport,
+its old provider types, Apple source, public schemas or authority boundaries.
+
+The Monas verifier must reject when s.normalize_s() != s, exactly matching
+the already qualified SDK check. Verify the original signature; never
+normalise an incoming signature into acceptance. The new focused regression
+first accepts the valid low-S binding, then constructs its high-S twin using
+the qualified SDK test pattern and requires the same coarse Denied error.
+All existing exact-byte and hostile-path tests remain required.
+
+Coordinate authentication 0.1.1 and Monas 0.12.1 as compatible patches with the
+designated Kanon writer. Genuinely resolve only these two workspace version
+changes from bacc0166, preserving all other identities, checksums and
+normalised dependency edges and the carrier lock. Changed authentication and
+Monas tests, the keep-going whole-workspace compile and Rust API documentation
+remain pending. SDK, QR and agent successes are not rerun for wrapper status;
+the full legacy-provider graph and authoritative Sphinx remain uncleared.

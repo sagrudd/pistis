@@ -1,0 +1,15 @@
+[package]
+name = "pistis-sdk-maintained-qualification"
+version = "0.0.0"
+edition = "2024"
+rust-version = "1.90"
+publish = false
+
+# Development-only actual importing consumer. No copied source modules.
+[workspace]
+
+[dependencies]
+pistis-canonical = { path = "../../crates/pistis-canonical", version = "=0.1.1" }
+pistis-crypto = { path = "../../crates/pistis-crypto", version = "=0.1.1" }
+pistis-cose = { path = "../../crates/pistis-cose", version = "=0.1.1" }
+pistis-protocol = { path = "../../crates/pistis-protocol", version = "=0.2.2" }

@@ -1,3 +1,17 @@
+## Pending maintained SDK cryptography patches — source candidate
+
+- Reserve crypto0.1.1/cose0.1.1/protocol0.2.2 for the compatible internal P2560.14
+  supplier correction under accepted ADR0043; canonical0.1.1 stays byte identical.
+- Preserve strict high-S/DER/wrong-width rejection, SEC1 canonical bytes, key IDs
+  and existing interoperability/negative tests. Preserve the Pistis Monas public
+  Thes0.86 reexport identity; the four SDK crates do not depend on that edge.
+  No phone, key, data, admission or authority feature changes.
+- Preserve the MNE-1550 private two-crate qualification at bbd9fb29: 23 real
+  provider/COSE tests passed on Rust 1.94 and 1.90, with strict Clippy, formatting,
+  architecture and language gates. The canonical current-main join, four-crate
+  SDK/importing-consumer locks and full security qualification remain pending;
+  private component evidence is not whole-workspace acceptance.
+
 ## Pistis iOS 0.28.0+75 — Mac Pending approval
 
 - Add deliberate approval of the existing Mac Pending record through the enrolled SiteRoot native session, retaining complete record, stream, installation and deadline comparisons. No new protocol or key purpose is introduced.

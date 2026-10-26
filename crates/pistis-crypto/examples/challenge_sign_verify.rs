@@ -38,7 +38,7 @@ fn main() -> Result<(), String> {
     let public_key = PublicKey::from_sec1_bytes(
         signing_key
             .verifying_key()
-            .to_encoded_point(true)
+            .to_sec1_point(true)
             .as_bytes(),
     )
     .map_err(|error| error.to_string())?;

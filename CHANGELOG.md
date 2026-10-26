@@ -1,5 +1,13 @@
 # Changelog
 
+- Prepare the compatible `pistis-crypto` and `pistis-cose` 0.1.1 update to
+  maintained RustCrypto P-256 0.14. Preserve ES256, SEC1 canonical key bytes,
+  key identifiers and low-S signature rejection under accepted ADR 0002.
+  Extend malformed point and scalar rejection coverage. Adopt the independently
+  accepted minimal lock while retaining all original external package identities
+  and dependency edges. Native qualification remains pending; see the MNE-1550
+  migration record.
+
 - Use compatible `pistis-canonical` and `pistis-identity` 0.1.1 fixes for strict
   lint qualification. Preserve canonical CBOR bytes and lazy borrowed parent
   path fallback; protocol, schema and authentication semantics are unchanged.

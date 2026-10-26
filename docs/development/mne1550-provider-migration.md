@@ -1,7 +1,9 @@
 # MNE-1550: maintained P-256 provider migration proposal
 
-Status: proposed; specialist applicability review pending. No implementation
-or qualification is claimed by this document.
+Status: specialist ADR applicability cleared by MNE-1534 through MNE-1525 on
+26 October 2026. The minimal generated lock was independently accepted by MNE-1534 through
+MNE-1525. Compilation, MSRV, dependency security and final acceptance remain
+unrun.
 
 ## Source and decision
 
@@ -29,9 +31,9 @@ patched version. No advisory suppression or cryptographic backport is proposed.
 Accepted ADR 0002 selects ES256, validated SEC1 points, fixed-width signatures
 and domain-separated key identifiers. It permits reviewed P-256 libraries
 without pinning an implementation version. This proposal interprets a compatible
-RustCrypto update as implementation of that existing decision. The specialist
-must confirm that interpretation before source implementation, or require a
-separate accepted migration ADR. Author interpretation alone is insufficient.
+RustCrypto update as implementation of that existing decision. MNE-1534 confirmed that interpretation for the unchanged invariants below,
+which MNE-1525 relayed before implementation. This verdict grants no
+implementation, MSRV or security acceptance.
 
 Preserve the public `pistis-crypto` interface: its `PublicKey` contains a private
 upstream verifying key; public parsing, canonical bytes, key identifiers and
@@ -79,3 +81,24 @@ and multiple pinned Prosopikon/Thesaurophylax revisions remain in its graph.
 Further source scopes and the final actual consumer qualification require
 explicit coordinated handoffs. Source acceptance grants no binary, release,
 installation or whole Main-flow acceptance.
+
+## Accepted lock candidate
+
+The genuine AlmaLinux Cargo 1.94.0 selective resolution retained every original
+external package identity, checksum and dependency edge. It adds 26 maintained
+RustCrypto-family packages and patches only `pistis-crypto` and `pistis-cose` to
+0.1.1. The exact adopted lock SHA-256 is
+`2dbe74de816b6b6d025a1d7e85bd346a9b57a3f4f15372d43e5559dd131c44b4`.
+Independent acceptance covers this lock's minimality, not source compilation or
+security qualification. Earlier unsuccessful attempts and broad candidate locks
+remain retained in MNE-1550's evidence.
+
+The original offline cache lacked old locked archives, which caused Cargo to
+prefer unrelated downloaded alternatives even with a conservative package
+selection. Restoring exactly the 21 original missing archives whose versions
+moved allowed the same selective command to preserve the old graph. No lock
+entries, checksums or advisory policy were fabricated or suppressed.
+
+The complete workspace still includes `crypto-bigint` 0.5.5 through unchanged
+Thesaurophylax and P-256 0.13 dependencies. This first provider candidate does
+not clear that path or the incoming Expedition promotion blocker.

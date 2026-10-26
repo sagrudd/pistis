@@ -49,7 +49,7 @@ impl PublicKey {
     /// Return the unique compressed SEC1 encoding used by Pistis identifiers.
     #[must_use]
     pub fn canonical_bytes(&self) -> [u8; 33] {
-        let encoded = self.0.to_encoded_point(true);
+        let encoded = self.0.to_sec1_point(true);
         let mut bytes = [0_u8; 33];
         bytes.copy_from_slice(encoded.as_bytes());
         bytes
@@ -120,6 +120,18 @@ mod tests {
         trailing.push(0);
         assert_eq!(
             PublicKey::from_sec1_bytes(&trailing).unwrap_err(),
+            PublicKeyError
+        );
+        let mut out_of_range = [0xff; 33];
+        out_of_range[0] = 0x02;
+        assert_eq!(
+            PublicKey::from_sec1_bytes(&out_of_range).unwrap_err(),
+            PublicKeyError
+        );
+        let mut off_curve = [0; 65];
+        off_curve[0] = 0x04;
+        assert_eq!(
+            PublicKey::from_sec1_bytes(&off_curve).unwrap_err(),
             PublicKeyError
         );
     }

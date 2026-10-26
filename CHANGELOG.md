@@ -1,5 +1,9 @@
 ## Pending maintained SDK cryptography patches — source candidate
 
+- Reserve QR 0.1.3 for the two compiler-proven p256 0.14 test fixture calls;
+  QR production framing, schemas and iOS remain unchanged.
+
+
 - Place the maintained SDK qualification carrier under the existing integration
   test hierarchy without changing its source, manifest or generated lock bytes.
 

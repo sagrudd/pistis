@@ -178,3 +178,17 @@ No additional package version is allocated for this layout-only correction;
 the compatible provider task group retains the coordinated 0.1.1/0.2.2
 versions. Architecture, language and Rust 1.90 checks on the final source
 remain pending; earlier results keep their original source scope.
+
+## Whole-workspace QR test adaptation
+
+The actual all-target workspace check on source 8807b6a7 reached the QR
+production_v2 test and reported two p256 0.14 API changes in its signing
+fixture helper: to_encoded_point(false) becomes to_sec1_point(false), and
+normalize_s returns the signature directly, so unwrap_or is removed from
+the existing normalize_s call. Change only those two test calls. QR production
+code, fixed fixture bytes, schemas, iOS and the qualified SDK sources remain
+unchanged. Coordinate QR 0.1.3 with the designated Kanon writer; this is a
+compatible test-only patch. The root lock must be genuinely regenerated from
+52bc2a69, with only the workspace QR version changing; do not hand-edit it.
+The actual failed workspace command and unrun Rust API documentation gate
+remain recorded. QR tests and the corrected workspace/docs gates are pending.

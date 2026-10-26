@@ -1,5 +1,9 @@
 ## Pending maintained SDK cryptography patches — source candidate
 
+- Reserve agent 0.1.2 for the two compiler-proven p256 0.14 challenge-signing
+  test calls; production agent and platform adapters remain unchanged.
+
+
 - Reserve QR 0.1.3 for the two compiler-proven p256 0.14 test fixture calls;
   QR production framing, schemas and iOS remain unchanged.
 

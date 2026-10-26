@@ -192,3 +192,20 @@ compatible test-only patch. The root lock must be genuinely regenerated from
 52bc2a69, with only the workspace QR version changing; do not hand-edit it.
 The actual failed workspace command and unrun Rust API documentation gate
 remain recorded. QR tests and the corrected workspace/docs gates are pending.
+
+## Agent test consumer adaptation
+
+The genuine QR 0.1.3 root lock 23096ca4 and all 31 QR tests were independently
+accepted. The subsequent workspace check reported the same two p256 0.14 API
+changes in crates/pistis-agent/tests/challenge_signing.rs. Change only those
+test fixture calls: use to_sec1_point(true) and the direct normalize_s result.
+Coordinate the compatible agent 0.1.2 patch with the designated Kanon writer.
+Agent production and platform adapters, SDK Rust bytes, QR production, schemas
+and iOS remain unchanged. Apple-specific source is not qualified by the
+AlmaLinux checks.
+
+Generate the agent-own-version-only root lock from the accepted 23096ca4
+input, retain the unchanged carrier lock, run the changed agent tests and
+collect remaining actual workspace diagnostics using --keep-going. Do not
+repeat the accepted SDK or QR tests. Rust API documentation remains unrun
+until the workspace compiles; authoritative Sphinx remains a Jenkins gate.

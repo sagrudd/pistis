@@ -1,5 +1,9 @@
 # Changelog
 
+- Correct the offline first-provision protocol's provider reference to the
+  Thesaurophylax revision already pinned by this source. Patch `pistis-monas`
+  to 0.12.1; protocol behaviour and the dependency pin are unchanged.
+
 - Reconcile the exact-source CI candidate with current main, preserving both
   reviewed histories and iOS 0.27.0+74. Use British English in review copy while
   retaining the literal HTTP `Authorization` header. Exact-head Expedition and

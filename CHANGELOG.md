@@ -1,3 +1,44 @@
+## Pending maintained SDK cryptography patches — source candidate
+
+- Use the merged Thesaurophylax API 0.94.5 source revision already selected by
+  the maintained Monas candidate. This removes the unmerged API 0.86.1 source
+  edge; full dependency-security and downstream package qualification remain
+  required.
+
+- Allocate pistis-monas 0.13.0 as a pre-1.0 minor version for the public Rust
+  type-origin migration. Consumers mixing the prior Thesaurophylax source must
+  migrate to the shared 0.94.5 API before they can exchange those types.
+
+
+- Reserve authentication 0.1.1 and Monas 0.13.0 for compiler-proven p256 0.14
+  call adaptations, preserving SEC1 bytes and strict high-S rejection.
+
+
+- Reserve agent 0.1.2 for the p256 0.14 challenge-signing fixture adaptations
+  and the native macOS adapter API correction. The Keychain signing flow,
+  signature bytes, key purpose and verification policy remain unchanged.
+
+
+- Reserve QR 0.1.3 for the two compiler-proven p256 0.14 test fixture calls;
+  QR production framing, schemas and iOS remain unchanged.
+
+
+- Place the maintained SDK qualification carrier under the existing integration
+  test hierarchy without changing its source, manifest or generated lock bytes.
+
+
+- Reserve crypto0.1.1/cose0.1.1/protocol0.2.2 for the compatible internal P2560.14
+  supplier correction under accepted ADR0043; canonical0.1.1 stays byte identical.
+- Preserve strict high-S/DER/wrong-width rejection, SEC1 canonical bytes, key IDs
+  and existing interoperability/negative tests. The four SDK crates do not depend on the Monas public Thes API edge;
+  its separately reviewed maintenance adoption changes the Rust Git origin.
+  No phone, key, data, admission or authority feature changes.
+- Preserve the MNE-1550 private two-crate qualification at bbd9fb29: 23 real
+  provider/COSE tests passed on Rust 1.94 and 1.90, with strict Clippy, formatting,
+  architecture and language gates. The canonical current-main join, four-crate
+  SDK/importing-consumer locks and full security qualification remain pending;
+  private component evidence is not whole-workspace acceptance.
+
 ## Pistis iOS 0.28.0+75 — Mac Pending approval
 
 - Add deliberate approval of the existing Mac Pending record through the enrolled SiteRoot native session, retaining complete record, stream, installation and deadline comparisons. No new protocol or key purpose is introduced.

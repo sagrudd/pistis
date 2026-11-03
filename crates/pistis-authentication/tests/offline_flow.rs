@@ -51,7 +51,7 @@ struct Fixture {
 
 fn fixture() -> Fixture {
     let signer = SigningKey::from_bytes((&SYNTHETIC_PRIVATE_KEY).into()).unwrap();
-    let encoded = signer.verifying_key().to_encoded_point(true);
+    let encoded = signer.verifying_key().to_sec1_point(true);
     let public_key = PublicKey::from_sec1_bytes(encoded.as_bytes()).unwrap();
     let device = DeviceId::from_bytes([4; 16]);
     let directory = Arc::new(Directory {
@@ -93,7 +93,7 @@ fn signed(
     )
     .unwrap();
     let signature: Signature = fixture.signer.sign(&canonical);
-    let signature = signature.normalize_s().unwrap_or(signature);
+    let signature = signature.normalize_s();
     ResponseEnvelope::new(canonical, signature.to_bytes().to_vec()).unwrap()
 }
 

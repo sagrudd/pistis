@@ -564,7 +564,7 @@ mod tests {
     }
 
     fn public_key(key: &SigningKey) -> PublicKey {
-        PublicKey::from_sec1_bytes(key.verifying_key().to_encoded_point(true).as_bytes()).unwrap()
+        PublicKey::from_sec1_bytes(key.verifying_key().to_sec1_point(true).as_bytes()).unwrap()
     }
 
     fn sign(payload: &[u8], key: &SigningKey) -> Vec<u8> {
@@ -572,7 +572,7 @@ mod tests {
         let key_id = derive_key_id(&public);
         let input = pistis_cose::signing_input(payload, key_id).unwrap();
         let signature: Signature = key.sign(&input);
-        let signature = signature.normalize_s().unwrap_or(signature);
+        let signature = signature.normalize_s();
         pistis_cose::encode(payload, key_id, &signature.to_bytes()).unwrap()
     }
 

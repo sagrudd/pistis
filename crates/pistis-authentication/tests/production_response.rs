@@ -23,7 +23,7 @@ struct Fixture {
 impl Fixture {
     fn new() -> Self {
         let signing = SigningKey::from_bytes((&SECRET).into()).unwrap();
-        let encoded = signing.verifying_key().to_encoded_point(false);
+        let encoded = signing.verifying_key().to_sec1_point(false);
         let public_key = PublicKey::from_sec1_bytes(encoded.as_bytes()).unwrap();
         let key_id = derive_key_id(&public_key);
         let challenge = ChallengeDocument {
@@ -90,7 +90,7 @@ impl Fixture {
     fn sign_payload(&self, payload: &[u8]) -> Vec<u8> {
         let input = signing_input(payload, self.credential.key_id).unwrap();
         let signature: Signature = self.signing.sign(&input);
-        let signature = signature.normalize_s().unwrap_or(signature);
+        let signature = signature.normalize_s();
         encode(payload, self.credential.key_id, &signature.to_bytes()).unwrap()
     }
 }
@@ -169,7 +169,7 @@ fn rejects_replay_expiry_inactive_and_key_substitution() {
     );
 
     let signing = SigningKey::from_bytes((&[2_u8; 32]).into()).unwrap();
-    let encoded = signing.verifying_key().to_encoded_point(false);
+    let encoded = signing.verifying_key().to_sec1_point(false);
     let public_key = PublicKey::from_sec1_bytes(encoded.as_bytes()).unwrap();
     let substituted = AuthenticationResponseCredential {
         key_id: derive_key_id(&public_key),

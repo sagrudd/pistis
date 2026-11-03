@@ -30,12 +30,12 @@ fn fixture_challenge_cose() -> Vec<u8> {
         "../../../fixtures/protocol-v1/cose/authentication-challenge-payload.hex"
     ));
     let signing = SigningKey::from_bytes((&FIXTURE_SECRET).into()).expect("fixture key");
-    let encoded = signing.verifying_key().to_encoded_point(false);
+    let encoded = signing.verifying_key().to_sec1_point(false);
     let public = PublicKey::from_sec1_bytes(encoded.as_bytes()).expect("fixture public key");
     let key_id = derive_key_id(&public);
     let input = signing_input(&payload, key_id).expect("fixture signing input");
     let signature: Signature = signing.sign(&input);
-    let signature = signature.normalize_s().unwrap_or(signature);
+    let signature = signature.normalize_s();
     encode(&payload, key_id, &signature.to_bytes()).expect("fixture challenge envelope")
 }
 

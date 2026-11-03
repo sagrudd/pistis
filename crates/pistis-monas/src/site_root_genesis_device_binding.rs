@@ -362,7 +362,7 @@ fn verify_detached(
     sign1.verify_detached_signature(payload, &[], |signature, tbs| {
         let s = Signature::from_slice(signature)
             .map_err(|_| SiteRootGenesisDeviceBindingErrorV1::Denied)?;
-        if s.normalize_s().is_some() {
+        if s.normalize_s() != s {
             return Err(SiteRootGenesisDeviceBindingErrorV1::Denied);
         }
         key.verify(tbs, &s)
@@ -426,7 +426,7 @@ mod tests {
 
     fn expected() -> ExpectedSiteRootGenesisDeviceBindingV1 {
         let signer = SigningKey::from_bytes((&[7; 32]).into()).unwrap();
-        let public = signer.verifying_key().to_encoded_point(true);
+        let public = signer.verifying_key().to_sec1_point(true);
         let public_b64 = URL_SAFE_NO_PAD.encode(public.as_bytes());
         let key_id = format!("site-root-{}", hex_digest(public.as_bytes()));
         ExpectedSiteRootGenesisDeviceBindingV1::from_verified_receipt(
@@ -490,11 +490,7 @@ mod tests {
             .protected(protected)
             .create_detached_signature(payload.as_bytes(), &[], |tbs| {
                 let signature: Signature = signer.sign(tbs);
-                signature
-                    .normalize_s()
-                    .unwrap_or(signature)
-                    .to_bytes()
-                    .to_vec()
+                signature.normalize_s().to_bytes().to_vec()
             })
             .build()
             .to_vec()
@@ -532,5 +528,30 @@ mod tests {
             decode_and_verify_site_root_genesis_device_binding_v1(&substituted, expected, 1_500,)
                 .is_err()
         );
+    }
+    #[test]
+    fn rejects_high_s_twin_of_the_valid_low_s_binding() {
+        let expected = expected();
+        let wire = signed_wire(&expected);
+        assert!(
+            decode_and_verify_site_root_genesis_device_binding_v1(&wire, expected.clone(), 1_500,)
+                .is_ok()
+        );
+        let mut binding: BindingWireV1 = serde_json::from_slice(&wire).unwrap();
+        let bytes = URL_SAFE_NO_PAD
+            .decode(&binding.cose_sign1_base64url)
+            .unwrap();
+        let mut cose = CoseSign1::from_slice(&bytes).unwrap();
+        let low = Signature::from_slice(&cose.signature).unwrap();
+        assert_eq!(low.normalize_s(), low);
+        let high = Signature::from_scalars(low.r().to_bytes(), (-low.s()).to_bytes()).unwrap();
+        assert_ne!(high.normalize_s(), high);
+        cose.signature = high.to_bytes().to_vec();
+        binding.cose_sign1_base64url = URL_SAFE_NO_PAD.encode(cose.to_vec().unwrap());
+        let hostile = canonical_wire(&binding).into_bytes();
+        assert!(matches!(
+            decode_and_verify_site_root_genesis_device_binding_v1(&hostile, expected, 1_500),
+            Err(SiteRootGenesisDeviceBindingErrorV1::Denied)
+        ));
     }
 }

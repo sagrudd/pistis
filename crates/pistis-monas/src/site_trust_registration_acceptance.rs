@@ -746,7 +746,7 @@ mod tests {
 
     fn durable_key() -> ([u8; 65], KeyId) {
         let signing_key = SigningKey::from_bytes((&[7; 32]).into()).unwrap();
-        let encoded = signing_key.verifying_key().to_encoded_point(false);
+        let encoded = signing_key.verifying_key().to_sec1_point(false);
         let public_key: [u8; 65] = encoded.as_bytes().try_into().unwrap();
         (
             public_key,

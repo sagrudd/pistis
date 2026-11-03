@@ -1,24 +1,23 @@
 # Selected SDK importing consumer
 
-This independent development manifest imports all four actual package sources;
-it does not copy their modules or provide an authority context. Its fixture
-check uses retained public canonical/signature bytes and the real verifier,
-COSE framing and protocol API. It is not a native producer or a replacement
-for the existing component unit/integration/negative tests and example.
+This independent development manifest imports five actual package sources;
+it does not copy their modules or provide an authority context. The fixture
+check uses retained public canonical/signature bytes, the real verifier, COSE
+framing and protocol API. A second test proves the public Pistis Monas
+presentation type unifies with the same type from the current
+Thesaurophylax API source.
 
-The genuine native Cargo-generated lock is tracked. Its accepted SHA-256 is
-add65165f00db9a80e723056e85fd2bcde957cea39629387414c7b90bae4ef64.
-All external identities and checksums match the accepted root lock; its
-normalised dependency edges are a subset because this consumer selects fewer
-features. Only crypto-bigint 0.7.10 is present in this carrier.
+Cargo generated and tracks this carrier's separate lock. Its SHA-256 is
+`ddbdfa148053bb2d318e6c1e41fd947aed851bbe6eee26519602a76f66abba54`. The
+selected dependency graph resolves independently from the root workspace;
+the exact Thesaurophylax API/Core/Policy source is 0.94.5 at merged revision
+`b6be9ef5645fd356d10e206a9d98a298f8a9a535`. Do not interpret this smaller
+consumer lock as root-lock or whole-workspace acceptance.
 
-The root workspace now uses the merged Thesaurophylax API 0.94.5 source and its
-lock contains only crypto-bigint 0.7.10. Compilation and execution of this
-selected carrier remain pending. The maintained Alma route must compile/run
-the importing consumer and the original component tests and example, then
-retain MSRV, strict and current security results for their exact graphs. Do not
-hand-edit resolver output. A selected carrier lock cannot establish
-whole-workspace, Core, Prox or Thes acceptance, or compatibility with external
-consumers still pinned to an older Thesaurophylax API.
-Use a complete tracked checkout with the existing fixtures when qualifying;
-sparse source authoring is not the qualification input.
+On Apple Silicon macOS with Rust 1.94, the locked carrier check and tests pass:
+two tests, zero failures. The maintained Alma route must still compile and run
+the importing consumer and original component tests/example, then retain MSRV,
+strict and current security results for their exact graphs. This carrier does
+not qualify compatibility for external consumers still pinned to an older
+Thesaurophylax API. Use a complete tracked checkout with the existing fixtures
+when qualifying; sparse source authoring is not the qualification input.

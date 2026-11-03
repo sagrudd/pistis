@@ -1,4 +1,13 @@
 use pistis_crypto::{PublicKey, SignatureSuite, derive_key_id, verify};
+
+#[test]
+fn pistis_monas_types_unify_with_the_current_thesaurophylax_api() {
+    let _same_type: fn(
+        pistis_monas::SiteX509FirstProvisionOfflinePresentationV2,
+    ) -> thesaurophylax_api::site_x509_first_provision_offline_v2::SiteX509FirstProvisionOfflinePresentationV2 =
+        |value| value;
+}
+
 fn hex(raw: &str) -> Vec<u8> {
     let raw = raw.trim();
     assert!(raw.len().is_multiple_of(2));

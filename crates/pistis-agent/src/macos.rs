@@ -44,7 +44,7 @@ impl KeychainBackend for MacOsKeychainBackend {
             .create_signature(Algorithm::ECDSASignatureMessageX962SHA256, canonical)
             .map_err(|_| SignerError::Denied)?;
         let signature = Signature::from_der(&der).map_err(|_| SignerError::InvalidSignature)?;
-        let signature = signature.normalize_s().unwrap_or(signature);
+        let signature = signature.normalize_s();
         let signature = signature.to_bytes().to_vec();
         verify(SignatureSuite::Es256, &public_key, canonical, &signature)
             .map_err(|_| SignerError::InvalidSignature)?;

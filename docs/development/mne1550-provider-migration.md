@@ -184,8 +184,8 @@ remain pending; earlier results keep their original source scope.
 The actual all-target workspace check on source 8807b6a7 reached the QR
 production_v2 test and reported two p256 0.14 API changes in its signing
 fixture helper: to_encoded_point(false) becomes to_sec1_point(false), and
-normalize_s returns the signature directly, so unwrap_or is removed from
-the existing normalize_s call. Change only those two test calls. QR production
+`normalize_s` returns the signature directly, so unwrap_or is removed from
+the existing `normalize_s` call. Change only those two test calls. QR production
 code, fixed fixture bytes, schemas, iOS and the qualified SDK sources remain
 unchanged. Coordinate QR 0.1.3 with the designated Kanon writer; this is a
 compatible test-only patch. The root lock must be genuinely regenerated from
@@ -198,11 +198,13 @@ remain recorded. QR tests and the corrected workspace/docs gates are pending.
 The genuine QR 0.1.3 root lock 23096ca4 and all 31 QR tests were independently
 accepted. The subsequent workspace check reported the same two p256 0.14 API
 changes in crates/pistis-agent/tests/challenge_signing.rs. Change only those
-test fixture calls: use to_sec1_point(true) and the direct normalize_s result.
+test fixture calls: use to_sec1_point(true) and the direct normalisation result.
 Coordinate the compatible agent 0.1.2 patch with the designated Kanon writer.
-Agent production and platform adapters, SDK Rust bytes, QR production, schemas
-and iOS remain unchanged. Apple-specific source is not qualified by the
-AlmaLinux checks.
+The macOS adapter needed one source-level p256 0.14 API correction:
+`normalize_s()` returns the normalised signature directly. This does not change
+the Keychain signing flow, signature bytes, key purpose or verification policy.
+SDK Rust bytes, QR production, schemas and iOS remain unchanged. AlmaLinux
+checks do not qualify the Apple-specific source.
 
 Generate the agent-own-version-only root lock from the accepted 23096ca4
 input, retain the unchanged carrier lock, run the changed agent tests and
@@ -221,7 +223,7 @@ projection. Compression choices, canonical SEC1 lengths and key identifiers
 remain unchanged. Do not alter the separate Thesaurophylax API 0.86 reexport,
 its old provider types, Apple source, public schemas or authority boundaries.
 
-The Monas verifier must reject when s.normalize_s() != s, exactly matching
+The Monas verifier must reject when `s.normalize_s() != s`, exactly matching
 the already qualified SDK check. Verify the original signature; never
 normalise an incoming signature into acceptance. The new focused regression
 first accepts the valid low-S binding, then constructs its high-S twin using

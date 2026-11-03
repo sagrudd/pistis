@@ -9,8 +9,9 @@
   call adaptations, preserving SEC1 bytes and strict high-S rejection.
 
 
-- Reserve agent 0.1.2 for the two compiler-proven p256 0.14 challenge-signing
-  test calls; production agent and platform adapters remain unchanged.
+- Reserve agent 0.1.2 for the p256 0.14 challenge-signing fixture adaptations
+  and the native macOS adapter API correction. The Keychain signing flow,
+  signature bytes, key purpose and verification policy remain unchanged.
 
 
 - Reserve QR 0.1.3 for the two compiler-proven p256 0.14 test fixture calls;

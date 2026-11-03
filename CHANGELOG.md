@@ -1,8 +1,9 @@
 ## Pending maintained SDK cryptography patches — source candidate
 
-- Adopt the existing Thesaurophylax API 0.86.1 maintenance coordinate for Monas.
-  Its public Rust reexports change nominal Git origin; unchanged wire bytes do
-  not replace downstream compatibility and dependency-security validation.
+- Use the merged Thesaurophylax API 0.94.5 source revision already selected by
+  the maintained Monas candidate. This removes the unmerged API 0.86.1 source
+  edge; full dependency-security and downstream package qualification remain
+  required.
 
 
 - Reserve authentication 0.1.1 and Monas 0.12.1 for compiler-proven p256 0.14

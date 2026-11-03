@@ -230,7 +230,8 @@ first accepts the valid low-S binding, then constructs its high-S twin using
 the qualified SDK test pattern and requires the same coarse Denied error.
 All existing exact-byte and hostile-path tests remain required.
 
-Coordinate authentication 0.1.1 and Monas 0.12.1 as compatible patches with the
+Coordinate authentication 0.1.1 as a compatible patch and Monas 0.13.0 as the
+pre-1.0 minor version for its public Thes type-origin migration with the
 designated Kanon writer. Genuinely resolve only these two workspace version
 changes from bacc0166, preserving all other identities, checksums and
 normalised dependency edges and the carrier lock. Changed authentication and

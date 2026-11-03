@@ -13,5 +13,5 @@ pistis-canonical = { path = "../../crates/pistis-canonical", version = "=0.1.1" 
 pistis-crypto = { path = "../../crates/pistis-crypto", version = "=0.1.1" }
 pistis-cose = { path = "../../crates/pistis-cose", version = "=0.1.1" }
 pistis-protocol = { path = "../../crates/pistis-protocol", version = "=0.2.2" }
-pistis-monas = { path = "../../crates/pistis-monas", version = "=0.12.1" }
+pistis-monas = { path = "../../crates/pistis-monas", version = "=0.13.0" }
 thesaurophylax-api = { version = "=0.94.5", git = "https://github.com/sagrudd/thesaurophylax.git", rev = "b6be9ef5645fd356d10e206a9d98a298f8a9a535" }

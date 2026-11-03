@@ -5,8 +5,12 @@
   edge; full dependency-security and downstream package qualification remain
   required.
 
+- Allocate pistis-monas 0.13.0 as a pre-1.0 minor version for the public Rust
+  type-origin migration. Consumers mixing the prior Thesaurophylax source must
+  migrate to the shared 0.94.5 API before they can exchange those types.
 
-- Reserve authentication 0.1.1 and Monas 0.12.1 for compiler-proven p256 0.14
+
+- Reserve authentication 0.1.1 and Monas 0.13.0 for compiler-proven p256 0.14
   call adaptations, preserving SEC1 bytes and strict high-S rejection.
 
 

@@ -12,11 +12,13 @@ All external identities and checksums match the accepted root lock; its
 normalised dependency edges are a subset because this consumer selects fewer
 features. Only crypto-bigint 0.7.10 is present in this carrier.
 
-Compilation and execution of this carrier remain pending. The maintained Alma
-route must compile/run the importing consumer and the original component tests
-and example, then retain MSRV, strict and current security results for their
-exact graphs. Do not hand-edit resolver output. Whole-Pistis Monas/API 0.86
-remains an uncleared graph with crypto-bigint 0.5.5. A selected carrier lock
-cannot establish whole-workspace, Core, Prox or Thes acceptance.
+The root workspace now uses the merged Thesaurophylax API 0.94.5 source and its
+lock contains only crypto-bigint 0.7.10. Compilation and execution of this
+selected carrier remain pending. The maintained Alma route must compile/run
+the importing consumer and the original component tests and example, then
+retain MSRV, strict and current security results for their exact graphs. Do not
+hand-edit resolver output. A selected carrier lock cannot establish
+whole-workspace, Core, Prox or Thes acceptance, or compatibility with external
+consumers still pinned to an older Thesaurophylax API.
 Use a complete tracked checkout with the existing fixtures when qualifying;
 sparse source authoring is not the qualification input.

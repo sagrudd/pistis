@@ -5,6 +5,38 @@ import XCTest
 @testable import Pistis
 
 final class SiteRootBrokerV2PreparerTests: XCTestCase {
+    @MainActor
+    func testNormalCoordinatorRunsBrokerV2WithControlledPeers() async throws {
+        GenesisBrokerURLProtocol.reset()
+        let configuration = URLSessionConfiguration.ephemeral
+        configuration.protocolClasses = [GenesisBrokerURLProtocol.self]
+        let broker = try MonasSiteRootGenesisBrokerTransport(session: URLSession(configuration: configuration),
+            maximumPollAttempts: 1, pollDelayNanoseconds: 0)
+        let presentation = try fixture(), registration = root()
+        let canonical = "{\"device_key_id\":\"\(registration.deviceKeyID)\",\"proof_profile\":\"pistis-secure-enclave-es256-cose-v1\",\"schema\":\"monas.site-root-delegation.v1\",\"secure_enclave_attestation\":\"not-asserted\",\"site_trust_domain\":\"\(presentation.site)\"}"
+        GenesisBrokerURLProtocol.delegationOverride = "{\"schema\":\"monas.site-root-genesis-registration-result.v1\",\"canonical_delegation_base64url\":\"\(SiteRootBrokerPresentationV2.encode(Data(canonical.utf8)))\",\"device_key_id\":\"\(registration.deviceKeyID)\",\"site_trust_domain\":\"\(presentation.site)\",\"submit_url\":\"https://customer.example.test/auth/pistis/site-root-delegations/v1/submit\",\"reference\":\"\(presentation.reference)\"}"
+        let storage = ScopedAppAttestStore(persistence: ScopedMemoryPersistence())
+        let legacy = PreparationTestLegacyStore(), service = PreparationTestAppleService()
+        let coordinator = SiteRootDelegationCoordinator(testBroker: broker,
+            appAttestClient: AppleAppAttestClient(service: service, keyIDStore: legacy),
+            producer: ControlledBrokerRoot(registration: registration), storage: storage,
+            eventRecorder: ControlledBrokerEventSink(), nowMillis: { 1_900_000_000_000 })
+        let url = URL(fileURLWithPath: #filePath).deletingLastPathComponent()
+            .deletingLastPathComponent().appendingPathComponent("Fixtures/broker-v2-qr.json")
+        coordinator.accept(qrText: try String(contentsOf: url, encoding: .utf8))
+        guard case .review = coordinator.phase else { return XCTFail("normal scan did not reach review") }
+        await coordinator.approve()
+        XCTAssertEqual(coordinator.phase, .submitted(.proofQueued))
+        XCTAssertEqual(GenesisBrokerURLProtocol.requests().map { $0.url?.path }, [
+            MonasSiteRootGenesisBrokerEndpointV1.registrationPath,
+            MonasSiteRootGenesisBrokerEndpointV1.delegationPollPath,
+            MonasSiteRootGenesisBrokerEndpointV1.proofPath])
+        XCTAssertEqual(service.generated, 1); XCTAssertEqual(legacy.reads, 0); XCTAssertEqual(legacy.writes, 0)
+        await coordinator.approve()
+        guard case .failed = coordinator.phase else { return XCTFail("completed proof was replayed") }
+        XCTAssertEqual(GenesisBrokerURLProtocol.requests().filter { $0.url?.path == MonasSiteRootGenesisBrokerEndpointV1.proofPath }.count, 1)
+        XCTAssertEqual(service.generated, 1)
+    }
     func testRecoverExternallyIssuedSyntheticV4Profile() throws {
         let url = URL(fileURLWithPath: "/tmp/pistis-swift-bridge-20261109/enrollment-b.json")
         guard FileManager.default.fileExists(atPath: url.path) else { throw XCTSkip("synthetic authority fixture unavailable") }
@@ -226,6 +258,20 @@ final class SiteRootBrokerV2PreparerTests: XCTestCase {
         XCTAssertEqual(delegation.siteTrustDomain, presentation.site)
         XCTAssertEqual(try storage.pending(attemptID: attempt), pending)
     }
+}
+
+private struct ControlledBrokerRoot: BrokerV2SiteRootProducing {
+    let registration: SiteRootKeyRegistrationV1
+    func register() throws -> SiteRootKeyRegistrationV1 { registration }
+    func prove(_ presentation: SiteRootDelegationPresentationV1) throws -> SiteRootDelegationSubmissionV1 {
+        SiteRootDelegationSubmissionV1(schema: SiteRootDelegationSubmissionV1.schema,
+            reference: presentation.reference, canonicalDelegationJSON: presentation.canonicalDelegationJSON,
+            coseSign1: Data([1, 2, 3]), correlation: presentation.correlation)
+    }
+}
+
+@MainActor private final class ControlledBrokerEventSink: OnboardingEventRecording {
+    func append(_: OnboardingEvent) throws {}
 }
 
 private final class PreparationTestLegacyStore: AppleAppAttestKeyIDStoring, @unchecked Sendable {

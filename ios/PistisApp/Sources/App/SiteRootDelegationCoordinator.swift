@@ -1,5 +1,12 @@
 import Foundation
 
+protocol BrokerV2SiteRootProducing: Sendable {
+    func register() throws -> SiteRootKeyRegistrationV1
+    func prove(_ presentation: SiteRootDelegationPresentationV1) throws -> SiteRootDelegationSubmissionV1
+}
+
+extension SecureEnclaveSiteRootProofProducer: BrokerV2SiteRootProducing {}
+
 /// UI state for the distinct, attended iPhone Site Root ceremony.
 ///
 /// This coordinator is intentionally separate from `ProductionCeremonyCoordinator`:
@@ -104,6 +111,10 @@ final class SiteRootDelegationCoordinator: ObservableObject {
     private let authorityCustodyMode: FirstAuthorityCustodyModeV2
     private let eventRecorder: any OnboardingEventRecording
     private let nowMillis: () throws -> UInt64
+#if DEBUG
+    private let testV2Producer: (any BrokerV2SiteRootProducing)?
+    private let testV2Storage: ScopedAppAttestStore?
+#endif
     private var pending: PendingPresentation?
     private var eventAttemptID = UUID()
     private var eventFlow: OnboardingEventFlow = .siteRootDelegation
@@ -133,7 +144,26 @@ final class SiteRootDelegationCoordinator: ObservableObject {
         self.authorityCustodyMode = authorityCustodyMode
         self.eventRecorder = eventRecorder
         self.nowMillis = nowMillis
+#if DEBUG
+        testV2Producer = nil
+        testV2Storage = nil
+#endif
     }
+
+#if DEBUG
+    init(testBroker: MonasSiteRootGenesisBrokerTransport, appAttestClient: AppleAppAttestClient,
+         producer: any BrokerV2SiteRootProducing, storage: ScopedAppAttestStore,
+         eventRecorder: any OnboardingEventRecording, nowMillis: @escaping () throws -> UInt64) {
+        transport = UnavailableMonasSiteRootDelegationTransport()
+        brokerTransport = testBroker
+        self.appAttestClient = appAttestClient
+        authorityCustodyMode = .rotation
+        self.eventRecorder = eventRecorder
+        self.nowMillis = nowMillis
+        testV2Producer = producer
+        testV2Storage = storage
+    }
+#endif
 
     func accept(qrText: String) {
         pending = nil
@@ -232,7 +262,7 @@ final class SiteRootDelegationCoordinator: ObservableObject {
                     registerAppAttest: true
                 )
             case let .firstDeviceV2(presentation):
-                guard BrokerV2Feature.enabled,
+                guard brokerV2Enabled,
                       let broker = brokerTransport as? MonasSiteRootGenesisBrokerTransport
                 else { throw PlatformFailure.siteRootBindingUnavailable }
                 try await completeProvisionalBrokerV2(presentation, broker: broker)
@@ -296,18 +326,33 @@ final class SiteRootDelegationCoordinator: ObservableObject {
         }
     }
 
+    private var brokerV2Enabled: Bool {
+#if DEBUG
+        BrokerV2Feature.enabled || testV2Producer != nil
+#else
+        BrokerV2Feature.enabled
+#endif
+    }
+
     /// The queue and proof results advance setup only. They do not establish
     /// the final B installation identity or select it.
     private func completeProvisionalBrokerV2(
         _ presentation: SiteRootBrokerPresentationV2,
         broker: MonasSiteRootGenesisBrokerTransport
     ) async throws {
-        let storage = ScopedAppAttestStore()
+        let storage: ScopedAppAttestStore
+        let producer: any BrokerV2SiteRootProducing
+#if DEBUG
+        storage = testV2Storage ?? ScopedAppAttestStore()
+        if let testV2Producer { producer = testV2Producer }
+        else { producer = try SecureEnclaveSiteRootProofProducer(authenticationReason: "Sign this exact Monas Site Root delegation") }
+#else
+        storage = ScopedAppAttestStore()
+        producer = try SecureEnclaveSiteRootProofProducer(authenticationReason: "Sign this exact Monas Site Root delegation")
+#endif
         let attempt = try storage.reserveBrokerAttempt(presentation)
         phase = .registeringFirstDevice
         setFirstDeviceStage(.creatingSiteRootKey)
-        let producer = try SecureEnclaveSiteRootProofProducer(
-            authenticationReason: "Sign this exact Monas Site Root delegation")
         let root = try producer.register()
         setFirstDeviceStage(.preparingAppAttest)
         let clock: @Sendable () -> UInt64 = {

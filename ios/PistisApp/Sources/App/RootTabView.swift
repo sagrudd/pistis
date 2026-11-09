@@ -295,9 +295,9 @@ struct RootTabView: View {
     /// ordinary-login request reaches the signing boundary. A ready authority
     /// adds no prompt. A required rotation or recovery remains attended by its
     /// own exact Face ID reason, then the original login continues.
-    private func prepareOrdinaryLogin() async throws {
-        guard let activeEnrollment = try await InstallationTrustKeychain.shared.activeEnrollment(),
-              let authorityHost = URL(string: activeEnrollment.httpsOrigin)?.host,
+    private func prepareOrdinaryLogin(expected: AuthenticatedEnrollmentOutput) async throws {
+        guard try await InstallationTrustKeychain.shared.activeEnrollment() == expected,
+              let authorityHost = URL(string: expected.httpsOrigin)?.host,
               let transport = siteRootTransport as? MonasSiteRootDelegationTransport,
               transport.isConfiguredAuthorityHost(authorityHost)
         else { throw PlatformFailure.siteRootAuthorityUnavailable }

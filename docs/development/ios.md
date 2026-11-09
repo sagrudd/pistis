@@ -436,6 +436,18 @@ actual task cancellation and late response without clearing the pending attempt.
 It does not test a real host, authenticated
 acceptance, activation, signed Keychain access or an A → B → A login.
 
+## Selected installation and ordinary sign-in
+
+The scanned authentication challenge must name the selected installation,
+even when another retained installation has the same external identity. The
+coordinator rechecks the retained selection around custody preparation and
+before response delivery; a failed scan clears its prior challenge. Custody
+preparation receives the exact retained enrolment instead of choosing another
+installation from a later UI selection. A synthetic two-host proxy regression
+verifies signed challenges and signed responses in A → B → A order with two
+software keys. It does not establish live host enrolment, Keychain durability,
+physical Face ID or production A → B → A qualification.
+
 ## QR acquisition boundary
 
 The native scanner uses AVFoundation metadata capture and accepts at most one

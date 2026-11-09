@@ -127,7 +127,7 @@ struct ScanView: View {
     private let appAttestReplacementTransport: MonasAppAttestTransport?
     private let expectedSiteRootAuthorityHost: String?
     private let showInstallations: () -> Void
-    private let prepareOrdinaryLogin: () async throws -> Void
+    private let prepareOrdinaryLogin: (AuthenticatedEnrollmentOutput) async throws -> Void
     private let ordinaryLoginCompleted: () -> Void
     @State private var scanning = true
     @State private var importingOfflinePresentation = false
@@ -142,7 +142,7 @@ struct ScanView: View {
         expectedSiteRootAuthorityHost: String? = nil,
         authorityCustodyMode: FirstAuthorityCustodyModeV2 = .rotation,
         showInstallations: @escaping () -> Void = {},
-        prepareOrdinaryLogin: @escaping () async throws -> Void = {},
+        prepareOrdinaryLogin: @escaping (AuthenticatedEnrollmentOutput) async throws -> Void = { _ in },
         ordinaryLoginCompleted: @escaping () -> Void = {}
     ) {
         self.siteRootTransport = siteRootTransport

@@ -75,6 +75,151 @@ final class EnrolledMonasAuthenticationProxyTests: XCTestCase {
   }
 
   @MainActor
+  func testSelectedInstallationMustMatchSignedChallengeAcrossTwoHosts() async throws {
+    let first = try SimulatorAuthenticationFixture(
+      installationID: Data(repeating: 0x21, count: 16), audience: "propylaion",
+      authorisedAudiences: ["propylaion"], installationKeyID: Data(repeating: 0x11, count: 32),
+      deviceKeyID: Data(repeating: 0xa1, count: 32), origin: "https://host-a.example.test",
+      submitEndpoint: "https://host-a.example.test/auth/pistis/v2/submit")
+    let second = try SimulatorAuthenticationFixture(
+      installationID: Data(repeating: 0x22, count: 16), audience: "propylaion",
+      authorisedAudiences: ["propylaion"], installationKeyID: Data(repeating: 0x12, count: 32),
+      deviceKeyID: Data(repeating: 0xb2, count: 32), origin: "https://host-b.example.test",
+      submitEndpoint: "https://host-b.example.test/auth/pistis/v2/submit")
+    let store = MultiHostTestStore(first.enrollment, second.enrollment)
+    let now = Date(timeIntervalSince1970: Double(nowMilliseconds) / 1_000)
+    let suite = "pistis-two-host-" + UUID().uuidString
+    let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
+    defer { defaults.removePersistentDomain(forName: suite) }
+    let coordinator = ProductionCeremonyCoordinator(
+      testingWith: store, history: LocalHistoryRepository(defaults: defaults), now: { now },
+      makeEnvelopeProducer: { _, _ in throw PlatformFailure.invalidConfiguration },
+      makeResponseTransport: { _ in throw PlatformFailure.invalidConfiguration }
+    )
+    await coordinator.accept(qrText: second.qr)
+    XCTAssertEqual(coordinator.phase, .failed(.authenticationRequestInvalid))
+    XCTAssertEqual(coordinator.failureStage, .challengeVerification)
+    XCTAssertNil(coordinator.presentedRequest)
+    await store.select(second.enrollment.trust.installationID)
+    await coordinator.accept(qrText: first.qr)
+    XCTAssertEqual(coordinator.phase, .failed(.authenticationRequestInvalid))
+    await coordinator.accept(qrText: second.qr)
+    guard case .review = coordinator.phase else { return XCTFail("selected B did not verify") }
+    await store.select(first.enrollment.trust.installationID)
+    await coordinator.accept(qrText: first.qr)
+    guard case .review = coordinator.phase else { return XCTFail("original A did not verify") }
+    await coordinator.accept(qrText: second.qr)
+    XCTAssertEqual(coordinator.phase, .failed(.authenticationRequestInvalid))
+    await coordinator.decide(.approved)
+    XCTAssertEqual(coordinator.phase, .failed(.invalidConfiguration))
+    await coordinator.accept(qrText: first.qr)
+    guard case .review = coordinator.phase else { return XCTFail("A did not recover after rejection") }
+    await store.select(second.enrollment.trust.installationID)
+    var custodyInvoked = false
+    await coordinator.approveVerifiedLoginIntent { _ in custodyInvoked = true }
+    XCTAssertFalse(custodyInvoked)
+    XCTAssertEqual(coordinator.phase, .failed(.siteRootBindingUnavailable))
+    await store.select(first.enrollment.trust.installationID)
+    await coordinator.accept(qrText: first.qr)
+    await coordinator.approveVerifiedLoginIntent { _ in
+      await store.select(second.enrollment.trust.installationID)
+    }
+    XCTAssertEqual(coordinator.phase, .failed(.siteRootBindingUnavailable))
+    let count = await store.recordCount()
+    XCTAssertEqual(count, 2)
+  }
+
+  @MainActor
+  func testSelectionChangeDuringSigningStopsBeforeSubmission() async throws {
+    let first = try SimulatorAuthenticationFixture(
+      installationID: Data(repeating: 0x21, count: 16), audience: "propylaion", authorisedAudiences: ["propylaion"])
+    let second = try SimulatorAuthenticationFixture(
+      installationID: Data(repeating: 0x22, count: 16), audience: "propylaion", authorisedAudiences: ["propylaion"])
+    let store = MultiHostTestStore(first.enrollment, second.enrollment)
+    let now = Date(timeIntervalSince1970: Double(nowMilliseconds) / 1_000)
+    let challenge = try await ProductionChallengeVerifier.verify(
+      qrText: first.qr, trustRepository: store, expectedExternalIdentityID: first.externalIdentityID, now: now)
+    let payload = try AuthenticationResponseEncoder.payload(
+      challenge: challenge, context: first.enrollment.responseContext, decision: .approved,
+      issuedAtMilliseconds: nowMilliseconds, userVerifiedAtMilliseconds: nowMilliseconds)
+    let signer = TestOnlySecureEnclave()
+    let proxy = CoordinatorMonasProxy(
+      challenge: challenge, expectedPayload: payload, deviceKeyID: first.enrollment.responseContext.deviceKeyID,
+      devicePublicKey: signer.publicKey, nowMilliseconds: nowMilliseconds, approved: true)
+    let suite = "pistis-selection-change-" + UUID().uuidString
+    let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
+    defer { defaults.removePersistentDomain(forName: suite) }
+    let coordinator = ProductionCeremonyCoordinator(
+      testingWith: store, history: LocalHistoryRepository(defaults: defaults), now: { now },
+      makeEnvelopeProducer: { enrollment, _ in
+        SelectionSwitchingEnvelope(
+          inner: CoordinatorTestEnvelope(proxy: proxy, signer: signer, deviceKeyID: enrollment.responseContext.deviceKeyID),
+          store: store, next: second.enrollment.trust.installationID)
+      }, makeResponseTransport: { _ in proxy })
+    await coordinator.accept(qrText: first.qr)
+    await coordinator.approveVerifiedLoginIntent { _ in await proxy.prepareCustody() }
+    XCTAssertEqual(coordinator.phase, .failed(.siteRootBindingUnavailable))
+    let observed = await proxy.observation()
+    XCTAssertEqual(observed.signatureCount, 1)
+    XCTAssertEqual(observed.submitCount, 0)
+  }
+
+  /// Two independently signed host challenges and two software device keys.
+  /// Enrolment records and the authority transport are synthetic test inputs.
+  @MainActor
+  func testSyntheticTwoHostSelectionAndSignedLoginReturnsToOriginalA() async throws {
+    let a = try SimulatorAuthenticationFixture(
+      installationID: Data(repeating: 0x21, count: 16), audience: "propylaion",
+      authorisedAudiences: ["propylaion"], installationKeyID: Data(repeating: 0x11, count: 32),
+      deviceKeyID: Data(repeating: 0xa1, count: 32), origin: "https://host-a.example.test",
+      submitEndpoint: "https://host-a.example.test/auth/pistis/v2/submit")
+    let b = try SimulatorAuthenticationFixture(
+      installationID: Data(repeating: 0x22, count: 16), audience: "propylaion",
+      authorisedAudiences: ["propylaion"], installationKeyID: Data(repeating: 0x12, count: 32),
+      deviceKeyID: Data(repeating: 0xb2, count: 32), origin: "https://host-b.example.test",
+      submitEndpoint: "https://host-b.example.test/auth/pistis/v2/submit")
+    let store = MultiHostTestStore(a.enrollment, b.enrollment)
+    let signerA = TestOnlySecureEnclave(), signerB = TestOnlySecureEnclave()
+    let originalAPublicKey = signerA.publicKey.compressedRepresentation
+    XCTAssertNotEqual(originalAPublicKey, signerB.publicKey.compressedRepresentation)
+    let now = Date(timeIntervalSince1970: Double(nowMilliseconds) / 1_000)
+    let suite = "pistis-two-host-signatures-" + UUID().uuidString
+    let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
+    defer { defaults.removePersistentDomain(forName: suite) }
+    for (fixture, signer) in [(a, signerA), (b, signerB), (a, signerA)] {
+      await store.select(fixture.enrollment.trust.installationID)
+      let challenge = try await ProductionChallengeVerifier.verify(
+        qrText: fixture.qr, trustRepository: store,
+        expectedExternalIdentityID: fixture.externalIdentityID, now: now)
+      let payload = try AuthenticationResponseEncoder.payload(
+        challenge: challenge, context: fixture.enrollment.responseContext, decision: .approved,
+        issuedAtMilliseconds: nowMilliseconds, userVerifiedAtMilliseconds: nowMilliseconds)
+      let proxy = CoordinatorMonasProxy(
+        challenge: challenge, expectedPayload: payload,
+        deviceKeyID: fixture.enrollment.responseContext.deviceKeyID,
+        devicePublicKey: signer.publicKey, nowMilliseconds: nowMilliseconds, approved: true)
+      let coordinator = ProductionCeremonyCoordinator(
+        testingWith: store, history: LocalHistoryRepository(defaults: defaults), now: { now },
+        makeEnvelopeProducer: { enrollment, _ in
+          CoordinatorTestEnvelope(proxy: proxy, signer: signer, deviceKeyID: enrollment.responseContext.deviceKeyID)
+        }, makeResponseTransport: { _ in proxy })
+      await coordinator.accept(qrText: fixture.qr)
+      guard case .review = coordinator.phase else { return XCTFail("selected host did not verify") }
+      await coordinator.approveVerifiedLoginIntent { _ in await proxy.prepareCustody() }
+      XCTAssertEqual(coordinator.phase,
+        .terminal(AuthoritativeCeremonyStatus(state: .completed, evidenceID: "test-evidence")))
+      let observed = await proxy.observation()
+      XCTAssertEqual(observed.signatureCount, 1)
+      XCTAssertEqual(observed.submitCount, 1)
+    }
+    let finalA = await store.activeEnrollment()
+    let count = await store.recordCount()
+    XCTAssertEqual(finalA, a.enrollment)
+    XCTAssertEqual(signerA.publicKey.compressedRepresentation, originalAPublicKey)
+    XCTAssertEqual(count, 2)
+  }
+
+  @MainActor
   func testProductionCoordinatorConnectsLocalApprovalToMonasTransport() async throws {
     let submitURL = try XCTUnwrap(
       URL(
@@ -133,7 +278,7 @@ final class EnrolledMonasAuthenticationProxyTests: XCTestCase {
     guard case .review = coordinator.phase else {
       return XCTFail("production coordinator did not retain the verified review")
     }
-    await coordinator.approveVerifiedLoginIntent {
+    await coordinator.approveVerifiedLoginIntent { _ in
       await proxy.prepareCustody()
     }
 
@@ -215,7 +360,7 @@ final class EnrolledMonasAuthenticationProxyTests: XCTestCase {
     defer { defaults.removePersistentDomain(forName: suiteName) }
 
     await coordinator.accept(qrText: fixture.qr)
-    await coordinator.approveVerifiedLoginIntent {}
+    await coordinator.approveVerifiedLoginIntent { _ in }
 
     XCTAssertEqual(coordinator.phase, .failed(.userVerificationCancelled))
     let observation = await proxy.observation()
@@ -275,7 +420,7 @@ final class EnrolledMonasAuthenticationProxyTests: XCTestCase {
         makeResponseTransport: { _ in proxy }
       )
       await coordinator.accept(qrText: fixture.qr)
-      await coordinator.approveVerifiedLoginIntent {}
+      await coordinator.approveVerifiedLoginIntent { _ in }
       XCTAssertEqual(coordinator.phase, .failed(failure))
       XCTAssertEqual(coordinator.failureStage, .deviceSignature)
       let observation = await proxy.observation()
@@ -758,6 +903,32 @@ private struct CoordinatorTestEnvelope: ProductionEnvelopeProducing, @unchecked 
     await proxy.recordSignature()
     return envelope
   }
+}
+
+private struct SelectionSwitchingEnvelope: ProductionEnvelopeProducing, Sendable {
+  let inner: CoordinatorTestEnvelope
+  let store: MultiHostTestStore
+  let next: Data
+  func produceEnvelope(canonicalPayload: Data) async throws -> Data {
+    let result = try await inner.produceEnvelope(canonicalPayload: canonicalPayload)
+    await store.select(next)
+    return result
+  }
+}
+
+private actor MultiHostTestStore: InstallationTrustStoring {
+  private var selected: Data
+  private var entries: [Data: AuthenticatedEnrollmentOutput]
+  init(_ first: AuthenticatedEnrollmentOutput, _ second: AuthenticatedEnrollmentOutput) {
+    selected = first.trust.installationID
+    entries = [first.trust.installationID: first, second.trust.installationID: second]
+  }
+  func select(_ id: Data) { selected = id }
+  func recordCount() -> Int { entries.count }
+  func activeEnrollment() -> AuthenticatedEnrollmentOutput? { entries[selected] }
+  func record(installationID: Data) -> InstallationTrustRecord? { entries[installationID]?.trust }
+  func installAuthenticated(_ output: AuthenticatedEnrollmentOutput) { entries[output.trust.installationID] = output }
+  func revoke(installationID: Data) { entries.removeValue(forKey: installationID) }
 }
 
 private actor ProxyEnrollmentStore: InstallationTrustStoring {

@@ -21,6 +21,11 @@
   encoder and scoped pending storage with a synthetic authority. It does not
   establish host acceptance, production activation or multi-host login.
 
+- Reject ordinary sign-in challenges for a retained but unselected host,
+  clear stale challenges on failure, and bind custody preparation and response
+  delivery to the selected enrolment. A synthetic two-host signature test
+  covers selection and return to the original A key.
+
 - Recognise the closed fixed-origin broker V2 QR in the Scan tab and add a
   canonical request encoder with strict field, transcript and Site Root key
   checks. Review is available; approval, transport and activation remain

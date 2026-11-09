@@ -9,6 +9,8 @@ final class SiteX509LeafApprovalV1Tests: XCTestCase {
         let value = try fixture.decode()
         XCTAssertEqual(value.deviceKeyGeneration, 2)
         XCTAssertEqual(value.transactionID, fixture.transaction)
+        XCTAssertEqual(value.monasLeafSPKISHA256, fixture.payloadFields[18])
+        XCTAssertEqual(value.monasIPSetSHA256, fixture.payloadFields[19])
         XCTAssertNoThrow(try value.validateCurrentSigner(SiteRootConvergenceAckRecordV2(
             siteUUID: "00112233-4455-6677-8899-aabbccddeeff",
             targetIDB64URL: "public",

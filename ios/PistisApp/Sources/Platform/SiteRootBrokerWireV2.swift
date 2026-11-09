@@ -13,11 +13,11 @@ struct SiteRootBrokerPresentationV2: Sendable {
 
     init(qrText: String, nowMillis: UInt64) throws {
         let bytes = Data(qrText.utf8)
-        guard bytes.count <= 8_192, bytes.allSatisfy({ $0 < 128 && $0 != 0x5c }) else {
+        guard bytes.count <= 4_096, bytes.allSatisfy({ $0 < 128 && $0 != 0x5c }) else {
             throw PlatformFailure.qrPayloadUnsupported
         }
         let values: [String: StrictJSONObject.Value]
-        do { values = try StrictJSONObject(data: bytes, maximumBytes: 8_192).values }
+        do { values = try StrictJSONObject(data: bytes, maximumBytes: 4_096).values }
         catch { throw PlatformFailure.qrPayloadUnsupported }
         guard Set(values.keys) == ["schema", "reference", "correlation_b64url", "site_trust_domain",
               "registration_url", "app_attest_ceremony_id_b64url", "app_attest_challenge_digest_b64url",
@@ -37,6 +37,14 @@ struct SiteRootBrokerPresentationV2: Sendable {
               !expiryText.isEmpty, expiryText.utf8.allSatisfy({ (48...57).contains($0) }),
               (expiryText == "0" || expiryText.first != "0"), let expiry = UInt64(expiryText)
         else { throw PlatformFailure.qrPayloadUnsupported }
+        // Match the host's exact compact ASCII-sorted QR representation.
+        let canonical = "{\"app_attest_ceremony_id_b64url\":\"\(ceremony)\"," +
+            "\"app_attest_challenge_digest_b64url\":\"\(challengeText)\"," +
+            "\"correlation_b64url\":\"\(correlationText)\"," +
+            "\"expires_at_unix_millis\":\(expiryText)," +
+            "\"reference\":\"\(ref)\",\"registration_url\":\"\(url)\"," +
+            "\"schema\":\"\(schema)\",\"site_trust_domain\":\"\(site)\"}"
+        guard qrText == canonical else { throw PlatformFailure.qrPayloadUnsupported }
         guard expiry > nowMillis else { throw PlatformFailure.siteRootGenesisPresentationExpired }
         guard expiry - nowMillis <= SiteRootGenesisRegistrationPresentationV1.maximumLifetimeMillis else {
             throw PlatformFailure.invalidFirstDevicePresentation

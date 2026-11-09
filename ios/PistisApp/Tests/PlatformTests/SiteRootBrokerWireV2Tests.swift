@@ -61,7 +61,12 @@ final class SiteRootBrokerWireV2Tests: XCTestCase {
     }
     func testRejectsMalformedQRAndNoncanonicalRequest() throws {
         let qr = try XCTUnwrap(String(data: fixture("qr"), encoding: .utf8))
+        let schemaField = "\"schema\":\"monas.site-root-genesis-registration-presentation.v2\","
+        let reordered = qr.replacingOccurrences(of: schemaField, with: "")
+            .replacingOccurrences(of: "{", with: "{" + schemaField)
         for changed in [
+            " " + qr, qr + String(repeating: " ", count: 4_096), reordered,
+            qr.replacingOccurrences(of: "\"reference\":", with: "\"reference\": "),
             qr.replacingOccurrences(of: "https://install.mnemosyne.co.uk", with: "https://other.example"),
             qr.replacingOccurrences(of: "\"schema\":", with: "\"schema\":\"duplicate\",\"schema\":"),
             qr.replacingOccurrences(of: "\"reference\":", with: "\"extra\":\"x\",\"reference\":"),

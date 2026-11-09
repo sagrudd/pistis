@@ -26,8 +26,8 @@ ceremonies refer to the same installed authority.
   Site Trust identity; require exact binding for registration, replacement,
   assertion, recovery, and every custody or X.509 continuation. A scanned QR,
   display name or selected host alone is not evidence of that binding.
-- Treat a new broker ceremony as pending, non-authorising state keyed by its
-  validated opaque correlation and Site Trust identity. Never move all records
+- Treat a new broker ceremony as pending, non-authorising state identified by
+  its validated opaque correlation and provisional Site Trust claim. Never move all records
   by broker hostname. Promote or associate a single pending ceremony only when
   authenticated authority evidence establishes the same installation and site;
   ambiguity, interruption or substitution fails closed without changing A.
@@ -76,27 +76,32 @@ ambiguous or interrupted B attempt must not mark B enrolled or alter A's
 working references or assertions. Concurrent operations must fail closed or be
 serialised per installation and pending ceremony.
 
-## Evidence required before acceptance or implementation
+## Review and qualification sequence
 
-The mobile-security, Monas and Thesaurophylax owners must review the exact
-identity evidence, custody boundary, atomicity, interruption recovery and
-negative cases. Demonstrate isolated A → B → A enrolment and authentication,
+Before accepting this proposed design, the decision owners and mobile-security,
+Monas and Thesaurophylax reviewers must establish feasibility and the exact
+authoritative same-ceremony provenance, custody boundary, atomicity and
+interruption recovery. Monas must affirm that the operation and correlation
+are durably bound in authoritative records; a client echo is insufficient.
+After acceptance, implementation and independent review must demonstrate
+isolated A → B → A enrolment and authentication,
 wrong-site assertion rejection, same-ID conflicts, retries, restart and lost
 responses at each commit boundary, concurrent A/B, legacy ambiguity, swapped
 authority, key, environment, generations and correlation, and partial reset
 failure with synthetic fixtures.
-The actual existing iPhone and its data must not be reset or overwritten. An
-accepted decision and specialist implementation review remain prerequisites;
-this proposal does not establish that the current source supports multi-host
-operation or that any release is qualified.
+These tests and specialist implementation review gate implementation approval
+and any live use. The actual existing iPhone and its data must not be reset or
+overwritten. This proposal does not establish that the current source supports
+multi-host operation or that any release is qualified.
 
 ## Concrete bounded decision for owner review
 
 Preserve A's existing `primary` and legacy path. B's pending Keychain item is
 create-once under an opaque local operation ID, with its Apple key reference,
-validated broker correlation, registration reference, site domain, app ID and
-Apple environment. It is not an active installation and the correlation does
-not select an authority. Persist the item before the first registration POST;
+validated broker correlation, registration reference, and provisional site,
+app and environment claims. These claims are untrusted until authenticated
+against the authority record. It is not an active installation and the
+correlation does not select an authority. Persist the item before the first registration POST;
 a retry reuses its exact key and operation, never regenerates a key or changes
 A. Competing attempts for the same operation must serialize.
 

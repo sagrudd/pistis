@@ -38,6 +38,9 @@ struct MonasAppAttestCeremonyBootstrap: Sendable {
 
 struct CustodyRotationAppAttestChallengeV2: Sendable {
     static let schema = "monas.first-authority-custody-app-attest-challenge.v2"
+    let installationID: Data
+    let siteTrustDomain: String
+    let appIdentifier: String
     let ceremonyID: Data
     let clientDataHash: Data
     let keyID: Data
@@ -57,7 +60,7 @@ struct CustodyRotationAppAttestChallengeV2: Sendable {
         guard wire.schema == Self.schema,
               wire.appIdentifier == AppleAppAttestRegistrationEnvelope.reviewedAppIdentifier,
               !wire.siteTrustDomain.isEmpty, wire.siteTrustDomain.utf8.count <= 255,
-              Self.decode(wire.installationIDB64URL, count: 16) != nil,
+              let installationID = Self.decode(wire.installationIDB64URL, count: 16),
               let ceremony = Self.decode(wire.ceremonyIDB64URL, count: 16),
               let hash = Self.decode(wire.clientDataHashB64URL, count: 32),
               let key = Self.decode(wire.keyIDB64URL, count: 32),
@@ -65,10 +68,22 @@ struct CustodyRotationAppAttestChallengeV2: Sendable {
               nowUnixSeconds < wire.expiresAtUnixSeconds,
               wire.expiresAtUnixSeconds - wire.issuedAtUnixSeconds <= 900
         else { throw PlatformFailure.productionEnvelopeUnavailable }
+        self.installationID = installationID
+        siteTrustDomain = wire.siteTrustDomain
+        appIdentifier = wire.appIdentifier
         ceremonyID = ceremony
         clientDataHash = hash
         keyID = key
         expiresAtUnixSeconds = wire.expiresAtUnixSeconds
+    }
+
+    /// Compare all challenge fields that identify the intended installation
+    /// and registered Apple key. A successful match is not authority acceptance.
+    func matchesBinding(
+        installationID: Data, siteTrustDomain: String, appIdentifier: String, keyID: Data
+    ) -> Bool {
+        self.installationID == installationID && self.siteTrustDomain == siteTrustDomain
+            && self.appIdentifier == appIdentifier && self.keyID == keyID
     }
 
     private struct Wire: Decodable {

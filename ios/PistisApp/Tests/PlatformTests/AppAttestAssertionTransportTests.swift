@@ -259,6 +259,34 @@ final class AppAttestAssertionTransportTests: XCTestCase {
         XCTAssertEqual(store.keyID, unacceptedRetryKeyID)
     }
 
+    func testRotationChallengeRetainsAuthorityBindingFields() throws {
+        let challenge = try CustodyRotationAppAttestChallengeV2(
+            data: AssertionURLProtocol.challengeData(expires: 200), nowUnixSeconds: 150
+        )
+        XCTAssertEqual(challenge.installationID, Data(repeating: 1, count: 16))
+        XCTAssertEqual(challenge.siteTrustDomain, "site-demo")
+        let app = AppleAppAttestRegistrationEnvelope.reviewedAppIdentifier
+        let installation = Data(repeating: 1, count: 16)
+        let key = Data(repeating: 0x11, count: 32)
+        XCTAssertEqual(challenge.appIdentifier, app)
+        XCTAssertTrue(challenge.matchesBinding(
+            installationID: installation, siteTrustDomain: "site-demo", appIdentifier: app, keyID: key
+        ))
+        XCTAssertFalse(challenge.matchesBinding(
+            installationID: Data(repeating: 2, count: 16), siteTrustDomain: "site-demo", appIdentifier: app, keyID: key
+        ))
+        XCTAssertFalse(challenge.matchesBinding(
+            installationID: installation, siteTrustDomain: "other-site", appIdentifier: app, keyID: key
+        ))
+        XCTAssertFalse(challenge.matchesBinding(
+            installationID: installation, siteTrustDomain: "site-demo", appIdentifier: "other.app", keyID: key
+        ))
+        XCTAssertFalse(challenge.matchesBinding(
+            installationID: installation, siteTrustDomain: "site-demo", appIdentifier: app,
+            keyID: Data(repeating: 0x12, count: 32)
+        ))
+    }
+
     func testRotationChallengeRejectsReplayWindowMismatchAndUnknownFields() throws {
         XCTAssertThrowsError(try CustodyRotationAppAttestChallengeV2(
             data: AssertionURLProtocol.challengeData(expires: 150), nowUnixSeconds: 150

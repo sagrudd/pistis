@@ -8,6 +8,10 @@
   blocked until installation-scoped App Attest and setup binding are reviewed
   and implemented; this candidate does not enable a second installation.
 
+- Preserve the installation and Site Trust fields in the existing App Attest
+  custody challenge and provide an exact binding comparison for future scoped
+  handling. This does not yet enable multi-installation assertions.
+
 - Show scan failures and their safe recovery guidance at the top of the scan
   screen, move accessibility focus to the failure, and offer Scan again while
   retaining readiness diagnostics and camera permission Settings access.

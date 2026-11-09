@@ -291,6 +291,74 @@ final class AppAttestAssertionTransportTests: XCTestCase {
         XCTAssertEqual(legacy.writeCount, 0)
     }
 
+    func testPendingStatusAssertionIsPurposeBoundAndNeverTouchesLegacy() async throws {
+        let bKey = Data(repeating: 0x11, count: 32).base64EncodedString()
+        let legacy = MutableKeyIDStore(keyID: Data(repeating: 0x22, count: 32).base64EncodedString())
+        let service = RecordingAppAttestService(keyID: bKey)
+        let client = AppleAppAttestClient(service: service, keyIDStore: legacy)
+        let storage = ScopedAppAttestStore(persistence: ScopedMemoryPersistence())
+        let id = try XCTUnwrap(UUID(uuidString: "01020304-0506-0708-090A-0B0C0D0E0F10"))
+        let pending = ScopedAppAttestPending(attemptID: id, correlation: Data(32...63),
+            registrationReference: "genesis-reference-1", siteClaim: "site-6073349b-e7f6-420f-ba7c-586b6d9ad78e",
+            appClaim: AppleAppAttestRegistrationEnvelope.reviewedAppIdentifier,
+            environmentClaim: "Production", keyID: bKey, preparedRegistration: Data([1]))
+        try storage.stage(pending); try storage.markSubmitted(attemptID: id)
+        let status = FirstDeviceStatusTranscriptV2(
+            nonce: Data(96...127), operationID: Data(1...16),
+            correlationDigest: Data([0xf8,0x46,0xc9,0x78,0xde,0xdf,0x75,0xc3,0x07,0x9b,0x33,0x6f,0x7b,0xae,0xc0,0xce,0x62,0xed,0xb2,0x94,0x00,0x27,0xcc,0x25,0x1c,0xd0,0x63,0x28,0x50,0xee,0x23,0xcd]),
+            reference: pending.registrationReference, installationID: Data(160...175), site: pending.siteClaim,
+            presentationDigest: Data(176...207), receiptDigest: Data(208...239),
+            tlsSPKIDigest: Data(repeating: 0x10, count: 32), appAttestKeyID: Data(repeating: 0x11, count: 32),
+            siteRootKeyDigest: Data(repeating: 0x12, count: 32), deviceKeyDigest: Data(repeating: 0x13, count: 32),
+            expiry: 1_900_000_060)
+        do {
+            _ = try await client.preparePendingFirstDeviceStatusAssertion(
+                transcript: status, storage: storage, attemptID: id,
+                verifiedInstallationID: Data(repeating: 9, count: 16), issuedAt: 1_900_000_000, now: 1_900_000_001)
+            XCTFail("cross-installation status unexpectedly signed")
+        } catch { XCTAssertEqual(error as? PlatformFailure, .appAttestInvalidInput) }
+        do {
+            _ = try await client.preparePendingFirstDeviceStatusAssertion(
+                transcript: status, storage: storage, attemptID: id,
+                verifiedInstallationID: status.installationID, issuedAt: 1_900_000_000, now: status.expiry)
+            XCTFail("expired status unexpectedly signed")
+        } catch { XCTAssertEqual(error as? PlatformFailure, .appAttestInvalidInput) }
+        XCTAssertNil(service.assertedKeyID)
+        let swappedCorrelation = FirstDeviceStatusTranscriptV2(
+            nonce: status.nonce, operationID: status.operationID,
+            correlationDigest: Data(repeating: 0x55, count: 32), reference: status.reference,
+            installationID: status.installationID, site: status.site,
+            presentationDigest: status.presentationDigest, receiptDigest: status.receiptDigest,
+            tlsSPKIDigest: status.tlsSPKIDigest, appAttestKeyID: status.appAttestKeyID,
+            siteRootKeyDigest: status.siteRootKeyDigest, deviceKeyDigest: status.deviceKeyDigest, expiry: status.expiry)
+        do {
+            _ = try await client.preparePendingFirstDeviceStatusAssertion(
+                transcript: swappedCorrelation, storage: storage, attemptID: id,
+                verifiedInstallationID: status.installationID, issuedAt: 1_900_000_000, now: 1_900_000_001)
+            XCTFail("cross-operation correlation unexpectedly signed")
+        } catch { XCTAssertEqual(error as? PlatformFailure, .appAttestInvalidInput) }
+        XCTAssertNil(service.assertedKeyID)
+        let developmentStore = ScopedAppAttestStore(persistence: ScopedMemoryPersistence())
+        let development = ScopedAppAttestPending(attemptID: id, correlation: pending.correlation,
+            registrationReference: pending.registrationReference, siteClaim: pending.siteClaim,
+            appClaim: pending.appClaim, environmentClaim: "Development", keyID: bKey,
+            preparedRegistration: Data([1]))
+        try developmentStore.stage(development); try developmentStore.markSubmitted(attemptID: id)
+        do {
+            _ = try await client.preparePendingFirstDeviceStatusAssertion(
+                transcript: status, storage: developmentStore, attemptID: id,
+                verifiedInstallationID: status.installationID, issuedAt: 1_900_000_000, now: 1_900_000_001)
+            XCTFail("development App Attest key unexpectedly used for production status")
+        } catch { XCTAssertEqual(error as? PlatformFailure, .appAttestInvalidInput) }
+        XCTAssertNil(service.assertedKeyID)
+        _ = try await client.preparePendingFirstDeviceStatusAssertion(
+            transcript: status, storage: storage, attemptID: id,
+            verifiedInstallationID: status.installationID, issuedAt: 1_900_000_000, now: 1_900_000_001)
+        XCTAssertEqual(service.assertedKeyID, bKey)
+        XCTAssertEqual(service.assertionHash, try status.clientDataHash())
+        XCTAssertEqual(legacy.readCount, 0); XCTAssertEqual(legacy.writeCount, 0)
+    }
+
     func testCustodyAssertionRestoresOnlyTheAppleProvenServerKeyReference() async throws {
         AssertionURLProtocol.reset()
         let serverKeyID = Data(repeating: 0x11, count: 32).base64EncodedString()

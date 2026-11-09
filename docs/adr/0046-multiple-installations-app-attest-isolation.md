@@ -148,3 +148,35 @@ status response and crash/replay ordering; if any value is unavailable the
 operation remains blocked until Monas can supply it from an authoritative
 record. The owner’s design decision does not waive cross-authority review, implementation
 qualification, signing or the separate physical-device action gate.
+
+## Inactive status-verifier source candidate
+
+The candidate status assertion uses SHA-256 over the following 399-byte
+preimage, in order: UTF-8 `mnemosyne.monas.first-device.status.v2` followed by
+one zero byte, nonce (32 bytes), operation ID (16), server-derived correlation
+digest (32), SHA-256 of the ASCII registration reference (32), installation ID
+(16), SHA-256 of the ASCII Site Trust domain (32), V4 presentation digest
+(32), SHA-256 of the exact signed mobile receipt (32), native TLS SPKI digest
+(32), Apple-registered App Attest key ID (32), SHA-256 of the compressed Site
+Root public key (32), SHA-256 of the compressed enrolled-device public key
+(32), and the nonce expiry as an unsigned 64-bit big-endian Unix timestamp.
+All fixed-width fields are nonzero. A separate server-owned 16-byte ceremony
+ID must match the submitted envelope. The lifetime is at most 60 seconds and
+expiry is exclusive. The issuance time and ceremony ID are authority-state
+checks; they are not appended to this transcript.
+
+The Rust candidate reuses the maintained production App Attest parser,
+application binding, registered public-key verification and monotonic counter
+checks. It returns only the next counter and assertion digest. The owner must
+atomically consume the nonce and advance an authority-designated counter
+serialized across all consumers, verify all other required proofs, and reject
+ambiguous concurrent consumers. Existing custody and relocation counter stores
+are not proven to share one transaction; replacement also has separate
+generation authority. Until a reviewed cross-consumer serialization boundary
+exists, no caller may treat the custody counter alone as globally authoritative. This
+primitive is inactive and does not provide a route, source of current facts,
+nonce persistence, session or promotion authority. The exact status wire,
+other proof encodings, shared-counter transaction and this source require
+independent specialist and affected-authority review before integration or
+live use. The earlier owner acceptance of this ADR's design does not by itself
+claim those reviews or qualify an artefact.

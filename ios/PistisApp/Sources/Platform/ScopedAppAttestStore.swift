@@ -1,4 +1,5 @@
 import Foundation
+import CryptoKit
 import Security
 
 /// Local staging only. A committed record is not authority evidence and must
@@ -135,6 +136,13 @@ struct ScopedSubmittedAttempt: Sendable {
     var keyID: String { pending.keyID }
     var siteClaim: String { pending.siteClaim }
     var appClaim: String { pending.appClaim }
+    var environmentClaim: String { pending.environmentClaim }
+    func matchesStatus(_ transcript: FirstDeviceStatusTranscriptV2) -> Bool {
+        let digest = Data(SHA256.hash(
+            data: Data("mnemosyne.monas.first-device.correlation.v2\0".utf8) + pending.correlation
+        ))
+        return transcript.reference == pending.registrationReference && transcript.correlationDigest == digest
+    }
     fileprivate init(_ pending: ScopedAppAttestPending) { self.pending = pending }
 }
 

@@ -265,6 +265,10 @@ impl SiteTrustAppAttestMobileSubmissionV1 {
     pub const fn ceremony_id(&self) -> SiteTrustFactCeremonyIdV1 {
         self.ceremony_id
     }
+
+    pub(crate) fn assertion_bytes(&self) -> &[u8] {
+        self.assertion.transient_bytes()
+    }
 }
 
 /// Decode one strict, bounded mobile assertion envelope.

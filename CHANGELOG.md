@@ -1,3 +1,12 @@
+## Pending Pistis Monas 0.14.0 — status assertion source candidate
+
+- Add an inactive first-device status purpose with a server-owned typed binding
+  and shared iOS/Rust transcript vector. Reuse the maintained Apple verifier
+  and expose only the verified counter and assertion digest. Nonce consumption,
+  cross-consumer counter atomicity, other proofs and authority review remain required.
+- Reserve the compatible minor in [Kanon PR900](https://github.com/sagrudd/kanon/pull/900);
+  source preparation and a new resolved lockset remain pending.
+
 ## Pistis iOS 0.28.1+76 — scanner feedback source candidate
 
 - Reserve the compatible patch in [Kanon PR900](https://github.com/sagrudd/kanon/pull/900); source preparation, lockset, review and release gates remain pending.

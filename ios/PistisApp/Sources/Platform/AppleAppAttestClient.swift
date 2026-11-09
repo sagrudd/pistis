@@ -624,6 +624,7 @@ final class AppleAppAttestClient: @unchecked Sendable {
     ) async throws -> AppleAppAttestAssertionEnvelope {
         guard service.isSupported,
               let attempt = try storage.submittedAttempt(attemptID: attemptID),
+              attempt.environmentClaim == "Production",
               let key = PendingAppAttestReplacementKeyV1.canonicalKeyID(attempt.keyID),
               challenge.matchesBinding(
                   installationID: verifiedInstallationID, siteTrustDomain: attempt.siteClaim,
@@ -633,6 +634,36 @@ final class AppleAppAttestClient: @unchecked Sendable {
             keyID: attempt.keyID, clientDataHash: challenge.clientDataHash
         )
         return try AppleAppAttestAssertionEnvelope(ceremonyID: challenge.ceremonyID, assertion: assertion)
+    }
+
+    /// Produces only the status-purpose assertion for a submitted B attempt.
+    /// The caller must authenticate the pinned status challenge and bind all
+    /// joined facts to the same attempt. This primitive neither accepts status
+    /// nor advances the server's shared counter, and is not a production route.
+    func preparePendingFirstDeviceStatusAssertion(
+        transcript: FirstDeviceStatusTranscriptV2,
+        storage: ScopedAppAttestStore,
+        attemptID: UUID,
+        verifiedInstallationID: Data,
+        issuedAt: UInt64,
+        now: UInt64
+    ) async throws -> Data {
+        var operation = attemptID.uuid
+        let operationBytes = withUnsafeBytes(of: &operation) { Data($0) }
+        guard service.isSupported,
+              let attempt = try storage.submittedAttempt(attemptID: attemptID),
+              let key = PendingAppAttestReplacementKeyV1.canonicalKeyID(attempt.keyID),
+              transcript.operationID == operationBytes,
+              attempt.matchesStatus(transcript),
+              transcript.installationID == verifiedInstallationID,
+              transcript.site == attempt.siteClaim,
+              transcript.appAttestKeyID == key,
+              attempt.appClaim == AppleAppAttestRegistrationEnvelope.reviewedAppIdentifier,
+              attempt.environmentClaim == "Production",
+              transcript.expiry > issuedAt, transcript.expiry - issuedAt <= 60,
+              now >= issuedAt, now < transcript.expiry
+        else { throw PlatformFailure.appAttestInvalidInput }
+        return try await generateAssertion(keyID: attempt.keyID, clientDataHash: transcript.clientDataHash())
     }
 
     /// Produces the exact fresh custody-rotation assertion supplied by Monas.

@@ -355,7 +355,20 @@ final class FirstDeviceEnrolmentFlow: ObservableObject {
     func handleInitialScanAndBegin(_ qrText: String) async {
         guard presentation == nil else { return }
         handleScan(.success(ScannedQRPayload(text: qrText)))
-        guard presentation != nil else { return }
+        guard let presentation else { return }
+        if BrokerV2Feature.enabled {
+            do {
+                if let stored = try scopedStore.soleRecoverablePresentation() {
+                    guard stored.installationID == presentation.installationID,
+                          stored.presentationDigest == presentation.presentationDigest,
+                          stored.qrText == qrText else { throw PlatformFailure.siteRootBindingUnavailable }
+                    stagedAttemptID = stored.attemptID
+                    awaitingAuthorityBinding = true
+                    status = "Receipt retained; verify installation authority"
+                    return
+                }
+            } catch { fail(error); return }
+        }
         await begin()
     }
 

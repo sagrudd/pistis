@@ -223,6 +223,9 @@ final class ScopedAppAttestStoreTests: XCTestCase {
         let receipt = ScopedStagedEnrollment(attemptID: attempt, output: try stagedOutput(marker: 2))
         XCTAssertThrowsError(try store.stageEnrollment(receipt))
         try store.stage(pending(attempt)); try store.markSubmitted(attemptID: attempt)
+        let digest = Data(repeating: 8, count: 32)
+        XCTAssertEqual(try store.stageProvisionalPresentation(installationID: receipt.output.trust.installationID,
+            digest: digest, qrText: "PISTIS1:test", verifiedAtMillis: 1), attempt)
         try store.stageEnrollment(receipt); try store.stageEnrollment(receipt)
         XCTAssertEqual(try store.stagedEnrollment(attemptID: attempt), receipt)
         XCTAssertNil(try store.binding(installationID: receipt.output.trust.installationID))
@@ -232,6 +235,7 @@ final class ScopedAppAttestStoreTests: XCTestCase {
         XCTAssertEqual(try store.stagedEnrollment(attemptID: attempt), receipt)
         let restarted = ScopedAppAttestStore(persistence: persistence)
         XCTAssertEqual(try restarted.stagedEnrollment(attemptID: attempt), receipt)
+        XCTAssertEqual(try restarted.soleRecoverablePresentation()?.attemptID, attempt)
         try restarted.resetAll()
         XCTAssertNil(try restarted.stagedEnrollment(attemptID: attempt))
     }

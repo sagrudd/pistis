@@ -1,4 +1,5 @@
 import Foundation
+import CoreImage
 import XCTest
 
 @testable import Pistis
@@ -60,6 +61,69 @@ final class SiteRootGenesisRegistrationTests: XCTestCase {
         let current = UInt64(Date().timeIntervalSince1970 * 1_000)
         coordinator.accept(qrText: brokerQR(expiry: current - 1))
         XCTAssertEqual(coordinator.phase, .failed(.siteRootGenesisPresentationExpired))
+    }
+
+    @MainActor
+    func testMonasBrokerPNGWithExistingAuthority() async throws {
+        let fixture = URL(fileURLWithPath: #filePath).deletingLastPathComponent()
+            .deletingLastPathComponent().appendingPathComponent("Fixtures/monas-broker-genesis-synthetic.png")
+        let image = try XCTUnwrap(CIImage(contentsOf: fixture))
+        let detector = try XCTUnwrap(CIDetector(ofType: CIDetectorTypeQRCode, context: nil,
+                                               options: [CIDetectorAccuracy: CIDetectorAccuracyHigh]))
+        let feature = try XCTUnwrap(detector.features(in: image).first as? CIQRCodeFeature)
+        let text = try XCTUnwrap(feature.messageString)
+        XCTAssertTrue(QRPayloadProfile.pistisAuthenticationOrMonasSiteRoot.accepts(text))
+        XCTAssertEqual(MonasJSONScanRoute.classify(text), .siteRootDelegation)
+        let profile: [String: Any] = [
+            MonasSiteRootAuthorityConfiguration.infoDictionaryKey: "https://monas.example.test",
+            MonasSiteRootAuthorityConfiguration.trustModeInfoDictionaryKey:
+                MonasSiteRootAuthorityConfiguration.bootstrapTrustMode,
+            MonasSiteRootAuthorityConfiguration.spkiInfoDictionaryKey:
+                "ERERERERERERERERERERERERERERERERERERERERERE",
+        ]
+        let transport = ProductionMonasSiteRootTransportFactory.make(verifiedRuntimeProfile: profile)
+        XCTAssertTrue(transport is MonasSiteRootDelegationTransport)
+        let coordinator = SiteRootDelegationCoordinator(
+            transport: transport, nowMillis: { 1_794_221_500_013 }
+        )
+        coordinator.accept(qrText: text)
+        guard case .review = coordinator.phase else {
+            return XCTFail("Expected broker review with an existing authority")
+        }
+        XCTAssertTrue(coordinator.isValidatedBrokerFirstDevice)
+        await coordinator.approve()
+        XCTAssertEqual(coordinator.phase, .failed(.siteRootBindingUnavailable))
+        coordinator.accept(qrText: genesisQR(expiry: 1_794_221_560_013))
+        guard case .review = coordinator.phase else {
+            return XCTFail("Expected retained native authority review")
+        }
+        XCTAssertFalse(coordinator.isValidatedBrokerFirstDevice)
+        coordinator.accept(qrText: brokerQR(
+            registrationURL: "https://other.example.test/api/first-install/v1/pistis/site-root-genesis/registration",
+            expiry: 1_794_221_560_013
+        ))
+        XCTAssertEqual(coordinator.phase, .failed(.invalidFirstDevicePresentation))
+        XCTAssertFalse(coordinator.isValidatedBrokerFirstDevice)
+        XCTAssertNil(coordinator.presentedReview)
+    }
+
+    @MainActor
+    func testExistingAuthorityAcceptsFixedBrokerGenesisInvitation() throws {
+        let profile: [String: Any] = [
+            MonasSiteRootAuthorityConfiguration.infoDictionaryKey: "https://monas.example.test",
+            MonasSiteRootAuthorityConfiguration.trustModeInfoDictionaryKey:
+                MonasSiteRootAuthorityConfiguration.bootstrapTrustMode,
+            MonasSiteRootAuthorityConfiguration.spkiInfoDictionaryKey:
+                "ERERERERERERERERERERERERERERERERERERERERERE",
+        ]
+        let transport = ProductionMonasSiteRootTransportFactory.make(verifiedRuntimeProfile: profile)
+        XCTAssertTrue(transport is MonasSiteRootDelegationTransport)
+        let coordinator = SiteRootDelegationCoordinator(transport: transport)
+        let current = UInt64(Date().timeIntervalSince1970 * 1_000)
+        coordinator.accept(qrText: brokerQR(expiry: current + 60_000))
+        guard case .review = coordinator.phase else {
+            return XCTFail("Expected fixed broker invitation review, got \(coordinator.phase)")
+        }
     }
 
     func testGenesisResultMustBindTheReturnedDelegationToTheSubmittedPublicKey() throws {

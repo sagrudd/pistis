@@ -490,6 +490,7 @@ struct ScanView: View {
                 case .siteRootDelegation:
                     siteRootCeremony.accept(qrText: payload.text)
                     if let review = siteRootCeremony.presentedReview,
+                       !siteRootCeremony.isValidatedBrokerFirstDevice,
                        let pinned = siteRootTransport as? MonasSiteRootDelegationTransport,
                        !pinned.isConfiguredAuthorityHost(review.destination)
                     {

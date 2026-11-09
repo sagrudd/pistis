@@ -97,9 +97,12 @@ final class SiteRootDelegationCoordinator: ObservableObject {
     /// review before its final success or failure evidence is visible.
     @Published private(set) var presentedReview: SiteRootDelegationReview?
     private let transport: any MonasSiteRootCeremonyTransport
+    private let brokerTransport: (any MonasSiteRootCeremonyTransport)?
+    private var firstDeviceTransport: (any MonasSiteRootCeremonyTransport)?
     private let appAttestClient: AppleAppAttestClient
     private let authorityCustodyMode: FirstAuthorityCustodyModeV2
     private let eventRecorder: any OnboardingEventRecording
+    private let nowMillis: () throws -> UInt64
     private var pending: PendingPresentation?
     private var eventAttemptID = UUID()
     private var eventFlow: OnboardingEventFlow = .siteRootDelegation
@@ -118,15 +121,22 @@ final class SiteRootDelegationCoordinator: ObservableObject {
         transport: any MonasSiteRootCeremonyTransport = UnavailableMonasSiteRootDelegationTransport(),
         appAttestClient: AppleAppAttestClient = AppleAppAttestClient(),
         authorityCustodyMode: FirstAuthorityCustodyModeV2 = .rotation,
-        eventRecorder: any OnboardingEventRecording = OnboardingEventJournal.shared
+        eventRecorder: any OnboardingEventRecording = OnboardingEventJournal.shared,
+        nowMillis: @escaping () throws -> UInt64 = { try SiteRootDelegationCoordinator.nowUnixMillis() }
     ) {
         self.transport = transport
+        self.brokerTransport = (transport as? MonasSiteRootGenesisBrokerTransport)
+            ?? (try? MonasSiteRootGenesisBrokerTransport())
         self.appAttestClient = appAttestClient
         self.authorityCustodyMode = authorityCustodyMode
         self.eventRecorder = eventRecorder
+        self.nowMillis = nowMillis
     }
 
     func accept(qrText: String) {
+        pending = nil
+        firstDeviceTransport = nil
+        presentedReview = nil
         eventAttemptID = UUID()
         eventFlow = .siteRootDelegation
         eventAuthority = .configuredSiteRoot
@@ -135,44 +145,42 @@ final class SiteRootDelegationCoordinator: ObservableObject {
         eventSequence = 0
         eventAttemptStartedNanoseconds = DispatchTime.now().uptimeNanoseconds
         do {
-            let nowUnixMillis = try Self.nowUnixMillis()
-            if !transport.genesisAuthorityOrigins.isEmpty {
-                do {
-                    let firstDevice = try SiteRootGenesisRegistrationPresentationV1(
-                        qrText: qrText,
-                        authorityOrigins: transport.genesisAuthorityOrigins,
-                        nowUnixMillis: nowUnixMillis,
-                        requireCorrelation: transport.requiresGenesisCorrelation
-                    )
-                    pending = .firstDevice(firstDevice)
-                    eventFlow = .firstDeviceSiteRoot
-                    eventAuthority = .fixedInstallBroker
-                    eventReferenceDigest = OnboardingEvent.redactedDigestData(
-                        for: firstDevice.reference
-                    )
-                    let review = SiteRootDelegationReview(firstDevice: firstDevice)
-                    presentedReview = review
-                    phase = .review(review)
-                    recordEvent(kind: .qrValidated, outcome: .accepted)
-                    return
-                } catch let failure as PlatformFailure
-                    where qrText.contains(SiteRootGenesisRegistrationPresentationV1.schema)
-                {
-                    let reported: PlatformFailure = failure == .siteRootGenesisPresentationExpired
-                        ? failure
-                        : .invalidFirstDevicePresentation
-                    eventFlow = .firstDeviceSiteRoot
-                    eventAuthority = .fixedInstallBroker
-                    recordFailure(reported, review: nil)
-                    phase = .failed(reported)
-                    return
-                } catch where qrText.contains(SiteRootGenesisRegistrationPresentationV1.schema) {
-                    eventFlow = .firstDeviceSiteRoot
-                    eventAuthority = .fixedInstallBroker
-                    recordFailure(.invalidFirstDevicePresentation, review: nil)
-                    phase = .failed(.invalidFirstDevicePresentation)
-                    return
+            let nowUnixMillis = try nowMillis()
+            if qrText.contains(SiteRootGenesisRegistrationPresentationV1.schema) {
+                var rejected: PlatformFailure = .invalidFirstDevicePresentation
+                let candidates: [any MonasSiteRootCeremonyTransport] =
+                    [brokerTransport, transport].compactMap { $0 }
+                for candidate in candidates where !candidate.genesisAuthorityOrigins.isEmpty {
+                    do {
+                        let firstDevice = try SiteRootGenesisRegistrationPresentationV1(
+                            qrText: qrText,
+                            authorityOrigins: candidate.genesisAuthorityOrigins,
+                            nowUnixMillis: nowUnixMillis,
+                            requireCorrelation: candidate.requiresGenesisCorrelation
+                        )
+                        firstDeviceTransport = candidate
+                        pending = .firstDevice(firstDevice)
+                        eventFlow = .firstDeviceSiteRoot
+                        eventAuthority = candidate.requiresGenesisCorrelation
+                            ? .fixedInstallBroker : .configuredSiteRoot
+                        eventReferenceDigest = OnboardingEvent.redactedDigestData(
+                            for: firstDevice.reference
+                        )
+                        let review = SiteRootDelegationReview(firstDevice: firstDevice)
+                        presentedReview = review
+                        phase = .review(review)
+                        recordEvent(kind: .qrValidated, outcome: .accepted)
+                        return
+                    } catch let failure as PlatformFailure {
+                        if failure == .siteRootGenesisPresentationExpired {
+                            rejected = failure
+                        }
+                    } catch { }
                 }
+                eventFlow = .firstDeviceSiteRoot
+                recordFailure(rejected, review: nil)
+                phase = .failed(rejected)
+                return
             }
             let scanned = try SiteRootDelegationQRPresentationV1(qrText: qrText)
             pending = .delegation(scanned)
@@ -210,6 +218,15 @@ final class SiteRootDelegationCoordinator: ObservableObject {
                     registerAppAttest: true
                 )
             case let .firstDevice(firstDevice):
+                guard let firstDeviceTransport else { throw PlatformFailure.invalidConfiguration }
+                // A retained native authority still uses a singleton App Attest
+                // reference and broker setup projection. Until those are
+                // installation-scoped, a second ceremony could overwrite or
+                // misattribute the retained installation. Do not create a key.
+                if firstDeviceTransport is MonasSiteRootGenesisBrokerTransport,
+                   transport is MonasSiteRootDelegationTransport {
+                    throw PlatformFailure.siteRootBindingUnavailable
+                }
                 phase = .registeringFirstDevice
                 enterStage(.siteRootKey)
                 setFirstDeviceStage(.creatingSiteRootKey)
@@ -229,7 +246,7 @@ final class SiteRootDelegationCoordinator: ObservableObject {
                 recordEvent(kind: .stageEntered, outcome: .accepted)
                 enterStage(.monasDelegation)
                 setFirstDeviceStage(.submittingMonasRegistration)
-                let delegation = try await transport.registerGenesis(
+                let delegation = try await firstDeviceTransport.registerGenesis(
                     SiteRootGenesisRegistrationRequestV1(
                         presentation: firstDevice,
                         siteRootKey: siteRootKey,
@@ -242,7 +259,9 @@ final class SiteRootDelegationCoordinator: ObservableObject {
                     }
                 )
                 try appAttestClient.commitAcceptedRegistration(registration)
-                try await completeInitialStaticDelegation(delegation, producer: producer)
+                try await completeInitialStaticDelegation(
+                    delegation, producer: producer, transport: firstDeviceTransport
+                )
             }
         } catch let failure as PlatformFailure {
             recordFailure(failure, review: presentedReview)
@@ -260,6 +279,7 @@ final class SiteRootDelegationCoordinator: ObservableObject {
 
     func reset() {
         pending = nil
+        firstDeviceTransport = nil
         presentedReview = nil
         firstDeviceProgress = nil
         phase = .idle
@@ -279,6 +299,13 @@ final class SiteRootDelegationCoordinator: ObservableObject {
             recordEvent(kind: .cancelled, outcome: .cancelled)
             reset()
         }
+    }
+
+    /// Only an already validated first-device broker presentation may bypass
+    /// the retained authority's host check in the outer scanner.
+    var isValidatedBrokerFirstDevice: Bool {
+        guard case .firstDevice? = pending else { return false }
+        return firstDeviceTransport is MonasSiteRootGenesisBrokerTransport
     }
 
     /// Reject a parsed presentation that the outer router cannot deliver to
@@ -432,7 +459,8 @@ final class SiteRootDelegationCoordinator: ObservableObject {
     /// rather than presenting a successful proof as an unavailable authority.
     private func completeInitialStaticDelegation(
         _ delegation: SiteRootDelegationPresentationV1,
-        producer: SecureEnclaveSiteRootProofProducer
+        producer: SecureEnclaveSiteRootProofProducer,
+        transport: any MonasSiteRootCeremonyTransport
     ) async throws {
         phase = .signing
         enterStage(.siteRootProof)
@@ -561,7 +589,8 @@ final class SiteRootDelegationCoordinator: ObservableObject {
         try? eventRecorder.append(event)
         if let correlation = pendingCorrelation() {
             Task {
-                try? await transport.uploadOnboardingEvent(event, correlation: correlation)
+                try? await (firstDeviceTransport ?? transport)
+                    .uploadOnboardingEvent(event, correlation: correlation)
             }
         }
     }

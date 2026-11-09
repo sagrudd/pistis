@@ -2,6 +2,12 @@
 
 - Reserve the compatible patch in [Kanon PR900](https://github.com/sagrudd/kanon/pull/900); source preparation, lockset, review and release gates remain pending.
 
+- Recognise a strictly validated fixed-broker Site Root invitation even when a
+  native authority is retained, and bind registration and proof to its fixed
+  broker transport. Approval with a retained authority remains deliberately
+  blocked until installation-scoped App Attest and setup binding are reviewed
+  and implemented; this candidate does not enable a second installation.
+
 - Show scan failures and their safe recovery guidance at the top of the scan
   screen, move accessibility focus to the failure, and offer Scan again while
   retaining readiness diagnostics and camera permission Settings access.

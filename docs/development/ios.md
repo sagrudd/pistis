@@ -375,6 +375,22 @@ not physically qualified until a reviewed iPhone run demonstrates one Face ID
 prompt for each requested signature and Jenkins retains the resulting
 non-secret evidence for the exact revision.
 
+## Fixed broker with a retained authority
+
+A validated first Site Root broker invitation is recognised against the fixed
+install origin, independently of the retained native authority. Its selected
+broker transport is retained for registration, polling and initial proof;
+native authority requests retain their pinned transport. Approval of the broker
+invitation while a native authority is retained remains blocked before key
+creation while per-installation App Attest and setup bindings are unresolved.
+ADR 0046 is a proposal, not authority to add a second installation.
+
+The simulator regression fixture `monas-broker-genesis-synthetic.png` was
+rendered by Monas source `881e0514` using
+`broker_presentation_png_from_state`, an isolated synthetic database and a
+synthetic correlation. Its fixed time is injected by the test; it is not a live
+invitation. The image is decoded before entering the normal scan classifier.
+
 ## QR acquisition boundary
 
 The native scanner uses AVFoundation metadata capture and accepts at most one

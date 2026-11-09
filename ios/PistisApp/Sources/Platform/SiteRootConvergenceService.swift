@@ -1225,6 +1225,7 @@ struct SiteRootConvergenceServiceV2: Sendable {
                 ),
                 progress: progress
             )
+            if let pending { try await continueProvisionalBrokerCustody(pending, storage: scopedStorage) }
         }
     }
 
@@ -1254,6 +1255,42 @@ struct SiteRootConvergenceServiceV2: Sendable {
             ),
             progress: progress
         )
+        if let pending { try await continueProvisionalBrokerCustody(pending, storage: scopedStorage) }
+    }
+
+    /// A lost assertion/begin/complete response stays pending and is never
+    /// replayed automatically. The pinned host must later reconcile it.
+    private func continueProvisionalBrokerCustody(_ pending: ScopedAppAttestPending,
+                                                  storage: ScopedAppAttestStore) async throws {
+        try storage.requireFreshCustodyStep("assertion", pending: pending)
+        guard pending.siteClaim.hasPrefix("site-"),
+              let site = SiteRootConvergenceEncoding.uuidBytes(String(pending.siteClaim.dropFirst(5))),
+              let leaf = try storage.provisionalLeaf(attemptID: pending.attemptID),
+              leaf.attemptID == pending.attemptID else { throw PlatformFailure.siteRootBindingUnavailable }
+        var uuid = pending.attemptID.uuid
+        let operation = withUnsafeBytes(of: &uuid) { Data($0) }
+        let digest = Data(SHA256.hash(data: Data("mnemosyne.monas.first-device.correlation.v2\0".utf8) + pending.correlation))
+        let handoff = try SiteX509LeafHandoffV2(data: leaf.wrapper, operationID: operation,
+            correlationDigest: digest, expectedSiteUUID: site, nowUnixSeconds: leaf.verifiedAtSeconds)
+        let native = try MonasAppAttestTransport(authorityOrigin: handoff.nativeOrigin,
+            expectedSPKISHA256: handoff.presentation.monasLeafSPKISHA256)
+        let challenge = try await native.fetchBrokerCustodyChallengeV2(pending: pending,
+            nowUnixSeconds: Self.nowUnixSeconds()).challenge
+        let assertion = try await AppleAppAttestClient().preparePendingCustodyRotationAssertion(
+            challenge: challenge, storage: storage, attemptID: pending.attemptID,
+            verifiedInstallationID: challenge.installationID)
+        try storage.markCustodyStep("assertion", pending: pending)
+        try await native.submitAssertion(assertion)
+        let recovery = try KeychainFirstAuthorityRecoveryEnvelopeStore(site: pending.siteClaim)
+        let producer = try SecureEnclaveFirstAuthorityCustodyProducerV2(
+            authenticationReason: "Approve this exact first-authority custody rotation", store: recovery)
+        let commitment = try producer.prepareInitialRotation()
+        try storage.markCustodyStep("begin", pending: pending)
+        let presentation = try await native.beginFirstAuthorityCustodyRotationV2(
+            commitment, nowUnixSeconds: Self.nowUnixSeconds())
+        let submission = try producer.completeInitialRotation(presentation)
+        try storage.markCustodyStep("complete", pending: pending)
+        _ = try await native.completeFirstAuthorityCustodyRotationV2(submission)
     }
 
     static func validateBrokerEnrolledSiteRootPublicKeyID(

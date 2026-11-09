@@ -386,6 +386,33 @@ final class ScopedAppAttestStore: @unchecked Sendable {
         try withLock { try read(ProvisionalLeafHandoff.self, account: "leaf." + attemptID.uuidString) }
     }
 
+    func requireFreshCustodyStep(_ step: String, pending: ScopedAppAttestPending) throws {
+        guard ["assertion", "begin", "complete"].contains(step) else { throw PlatformFailure.invalidConfiguration }
+        try withLock {
+            guard try read(ScopedAppAttestPending.self, account: staged(pending.attemptID)) == pending,
+                  try read(UUID.self, account: submitted(pending.attemptID)) == pending.attemptID,
+                  try readData(account: "custody." + step + "." + pending.attemptID.uuidString) == nil
+            else { throw PlatformFailure.enrolmentBeginRetryRequired }
+        }
+    }
+
+    func markCustodyStep(_ step: String, pending: ScopedAppAttestPending) throws {
+        guard ["assertion", "begin", "complete"].contains(step) else { throw PlatformFailure.invalidConfiguration }
+        try withLock {
+            let account = "custody." + step + "." + pending.attemptID.uuidString
+            guard !Self.resetInProgress,
+                  try read(ScopedAppAttestPending.self, account: staged(pending.attemptID)) == pending,
+                  try read(UUID.self, account: submitted(pending.attemptID)) == pending.attemptID,
+                  try readData(account: account) == nil else { throw PlatformFailure.enrolmentBeginRetryRequired }
+            if step == "begin" || step == "complete" {
+                let previous = step == "begin" ? "assertion" : "begin"
+                guard try read(UUID.self, account: "custody." + previous + "." + pending.attemptID.uuidString) == pending.attemptID
+                else { throw PlatformFailure.enrolmentBeginRetryRequired }
+            }
+            try createOnce(pending.attemptID, account: account)
+        }
+    }
+
     func markInitialProofSubmitted(attemptID: UUID, expected: ScopedAppAttestPending) throws {
         try withLock {
             guard !Self.resetInProgress,

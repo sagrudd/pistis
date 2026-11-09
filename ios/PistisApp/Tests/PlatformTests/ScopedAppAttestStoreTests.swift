@@ -134,6 +134,21 @@ final class ScopedAppAttestStoreTests: XCTestCase {
         XCTAssertNil(try store.submittedBrokerAttempt(correlation: value.correlation, siteUUID: "10112233-4455-6677-8899-aabbccddeeff"))
     }
 
+    func testCustodyUnknownOutcomesCannotAutomaticallyReplay() throws {
+        let store = ScopedAppAttestStore(persistence: ScopedMemoryPersistence()), attempt = UUID()
+        let value = pending(attempt)
+        try store.stage(value); try store.markSubmitted(attemptID: attempt)
+        XCTAssertThrowsError(try store.markCustodyStep("begin", pending: value))
+        try store.requireFreshCustodyStep("assertion", pending: value)
+        try store.markCustodyStep("assertion", pending: value)
+        XCTAssertThrowsError(try store.requireFreshCustodyStep("assertion", pending: value))
+        XCTAssertThrowsError(try store.markCustodyStep("assertion", pending: value))
+        try store.markCustodyStep("begin", pending: value)
+        XCTAssertThrowsError(try store.requireFreshCustodyStep("begin", pending: value))
+        try store.markCustodyStep("complete", pending: value)
+        XCTAssertThrowsError(try store.markCustodyStep("complete", pending: value))
+    }
+
     func testAdditionalEnrollmentPreservesAAndRejectsSameIDConflict() throws {
         let a = try stagedOutput(marker: 1), b = try stagedOutput(marker: 2)
         let records = try InstallationTrustKeychain.addingAdditionalEnrollment(b, to: [a])

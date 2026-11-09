@@ -421,6 +421,24 @@ final class AppAttestAssertionTransportTests: XCTestCase {
                                                            pending: pending, nowUnixSeconds: 150))
     }
 
+    func testBrokerCustodyChallengeUsesFixedPinnedNativeRoute() async throws {
+        AssertionURLProtocol.reset()
+        let configuration = URLSessionConfiguration.ephemeral
+        configuration.protocolClasses = [AssertionURLProtocol.self]
+        let transport = try MonasAppAttestTransport(authorityOrigin: XCTUnwrap(URL(string: "https://10.0.2.15:8443")),
+            expectedSPKISHA256: Data(repeating: 4, count: 32), configuration: configuration)
+        let pending = ScopedAppAttestPending(attemptID: UUID(), correlation: Data(repeating: 4, count: 32),
+            registrationReference: "reference-b", siteClaim: "site-demo",
+            appClaim: AppleAppAttestRegistrationEnvelope.reviewedAppIdentifier, environmentClaim: "Production",
+            keyID: Data(repeating: 0x11, count: 32).base64EncodedString(), preparedRegistration: Data([1]))
+        let challenge = try await transport.fetchBrokerCustodyChallengeV2(pending: pending, nowUnixSeconds: 150)
+        XCTAssertEqual(challenge.challenge.installationID, Data(repeating: 1, count: 16))
+        let request = try XCTUnwrap(AssertionURLProtocol.lastRequest())
+        XCTAssertEqual(request.url?.absoluteString,
+            "https://10.0.2.15:8443/v1/pistis/site-trust/authority-custody-rotation/v2/broker-assertion-challenge")
+        XCTAssertNil(request.value(forHTTPHeaderField: "Cookie"))
+    }
+
     func testUnavailableServerRegisteredKeyDoesNotChangeTheLocalReference() async throws {
         let unacceptedRetryKeyID = Data(repeating: 0x22, count: 32).base64EncodedString()
         let store = MutableKeyIDStore(keyID: unacceptedRetryKeyID)
@@ -684,13 +702,23 @@ private final class AssertionURLProtocol: URLProtocol, @unchecked Sendable {
         Self.bodyValue = request.httpBody ?? readBodyStream(request.httpBodyStream)
         Self.lock.unlock()
         let isChallenge = request.url?.path.hasSuffix("/assertion-challenge") == true
+            || request.url?.path.hasSuffix("/broker-assertion-challenge") == true
         let response = HTTPURLResponse(
             url: request.url!, statusCode: isChallenge ? 200 : 202, httpVersion: "HTTP/1.1",
             headerFields: ["Cache-Control": "no-store"]
         )!
         client?.urlProtocol(self, didReceive: response, cacheStoragePolicy: .notAllowed)
         if isChallenge {
-            client?.urlProtocol(self, didLoad: Self.challengeData(expires: 200))
+            if request.url?.path.hasSuffix("/broker-assertion-challenge") == true,
+               let body = Self.lastBody(), let object = try? JSONSerialization.jsonObject(with: body) as? [String: Any],
+               let nested = try? JSONSerialization.jsonObject(with: Self.challengeData(expires: 200)),
+               let wrapped = try? JSONSerialization.data(withJSONObject: [
+                   "schema": "monas.first-device.custody-challenge.v2",
+                   "operation_id_b64url": object["operation_id_b64url"] as Any,
+                   "correlation_digest_b64url": object["correlation_digest_b64url"] as Any,
+                   "challenge": nested]) {
+                client?.urlProtocol(self, didLoad: wrapped)
+            } else { client?.urlProtocol(self, didLoad: Self.challengeData(expires: 200)) }
         }
         client?.urlProtocolDidFinishLoading(self)
     }

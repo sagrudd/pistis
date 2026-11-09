@@ -65,6 +65,17 @@ enum FirstDeviceStatusProofV2 {
 /// Exact response comparison only; the caller must also authenticate the
 /// pinned channel and complete the fresh proof exchange before using it.
 enum FirstDeviceStatusResponseV2 {
+    static func challenge(_ data: Data, now: UInt64) throws -> (nonce: Data, expiry: UInt64) {
+        let object = try StrictJSONObject(data: data, maximumBytes: 4_096).values
+        guard Set(object.keys) == ["schema", "nonce_b64url", "expires_unix_seconds"],
+              object["schema"] == .string("monas.first-device.status.challenge.v2"),
+              case let .string(encoded)? = object["nonce_b64url"],
+              let nonce = SiteRootBrokerPresentationV2.base64(encoded, exact: 32),
+              case let .number(text)? = object["expires_unix_seconds"],
+              let expiry = UInt64(text), String(expiry) == text,
+              expiry > now, expiry - now <= 60 else { throw PlatformFailure.invalidConfiguration }
+        return (nonce, expiry)
+    }
     static func validate(_ data: Data, transcript: FirstDeviceStatusTranscriptV2,
                          appIdentifier: String, environment: String,
                          policyGeneration: UInt64, revocationGeneration: UInt64) throws {

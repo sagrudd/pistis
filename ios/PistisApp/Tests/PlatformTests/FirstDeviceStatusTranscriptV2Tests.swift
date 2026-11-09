@@ -4,6 +4,17 @@ import XCTest
 @testable import Pistis
 
 final class FirstDeviceStatusTranscriptV2Tests: XCTestCase {
+    func testStatusChallengeRequiresFreshBoundedNonce() throws {
+        let nonce = SiteRootBrokerPresentationV2.encode(Data(repeating: 5, count: 32))
+        func response(_ expiry: Int) -> Data {
+            Data("{\"schema\":\"monas.first-device.status.challenge.v2\",\"nonce_b64url\":\"\(nonce)\",\"expires_unix_seconds\":\(expiry)}".utf8)
+        }
+        XCTAssertEqual(try FirstDeviceStatusResponseV2.challenge(response(160), now: 100).expiry, 160)
+        XCTAssertThrowsError(try FirstDeviceStatusResponseV2.challenge(response(161), now: 100))
+        XCTAssertThrowsError(try FirstDeviceStatusResponseV2.challenge(response(100), now: 100))
+        let duplicate = Data("{\"schema\":\"monas.first-device.status.challenge.v2\",\"nonce_b64url\":\"\(nonce)\",\"nonce_b64url\":\"\(nonce)\",\"expires_unix_seconds\":120}".utf8)
+        XCTAssertThrowsError(try FirstDeviceStatusResponseV2.challenge(duplicate, now: 100))
+    }
     func testSharedStatusVector() throws {
         let value = FirstDeviceStatusTranscriptV2(
             nonce: Data(96...127), operationID: Data(1...16),

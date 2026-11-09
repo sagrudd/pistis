@@ -2,8 +2,8 @@ import Foundation
 import CryptoKit
 
 enum BrokerV2Feature {
-    // Requires reviewed end-to-end authority handoff and release validation.
-    static let enabled = false
+    // Source candidate only; release remains subject to review and qualification.
+    static let enabled = true
 }
 
 enum BrokerV2RelayEnvelope {

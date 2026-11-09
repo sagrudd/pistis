@@ -235,7 +235,7 @@ final class FirstDeviceEnrolmentFlow: ObservableObject {
     private var stagedAttemptID: UUID?
     private var verifiedScan: (text: String, atMillis: UInt64)?
 #if DEBUG
-    private let testingV2Staging: Bool
+    private let testingV2Staging: Bool?
 #endif
     private var transport: ServerDrivenEnrolmentTransport?
     private var handle: ProviderVerificationHandle?
@@ -310,7 +310,7 @@ final class FirstDeviceEnrolmentFlow: ObservableObject {
         scopedStore = storage
         additionalAdmission = { _ in nil }
 #if DEBUG
-        testingV2Staging = false
+        testingV2Staging = nil
 #endif
     }
 #if DEBUG
@@ -404,7 +404,7 @@ final class FirstDeviceEnrolmentFlow: ObservableObject {
 
     private var provisionalStagingEnabled: Bool {
 #if DEBUG
-        BrokerV2Feature.enabled || testingV2Staging
+        testingV2Staging ?? BrokerV2Feature.enabled
 #else
         BrokerV2Feature.enabled
 #endif

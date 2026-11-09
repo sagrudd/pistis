@@ -180,12 +180,6 @@ struct RootTabView: View {
         }
         .tint(MnColor.action)
         .task {
-            if let transport = siteRootTransport as? MonasSiteRootDelegationTransport,
-               let authorityHost = transport.authorityHost {
-                try? SiteRootInstallationRepository.shared.bindBrokeredSetup(
-                    toNativeAuthorityHost: authorityHost
-                )
-            }
             await enrollment.refresh()
         }
         .onChange(of: scenePhase) { _, phase in

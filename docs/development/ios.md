@@ -436,6 +436,21 @@ actual task cancellation and late response without clearing the pending attempt.
 It does not test a real host, authenticated
 acceptance, activation, signed Keychain access or an A → B → A login.
 
+## Additional enrolment admission
+
+The first-device flow checks for a duplicate installation before creating a
+device key. A distinct additional installation can enter the staged-receipt
+path only through an exact verified presentation and submitted-operation
+admission. The production admission adapter is not yet enabled; the controlled
+adapter exists only in debug tests. A staged receipt is shown as waiting for
+authority binding and is not inserted into the active inventory or selected.
+
+Broker setup projections are no longer automatically rebound to whichever
+native installation happens to be selected. Until exact authenticated
+operation-to-installation reconciliation is available, a legacy setup record
+may remain labelled with the broker and require explicit recovery; this is a
+progress-display limitation and does not delete or change retained trust.
+
 ## Selected installation and ordinary sign-in
 
 The scanned authentication challenge must name the selected installation,

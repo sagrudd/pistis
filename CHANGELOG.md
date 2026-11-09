@@ -21,6 +21,12 @@
   encoder and scoped pending storage with a synthetic authority. It does not
   establish host acceptance, production activation or multi-host login.
 
+- Add a fail-closed additional-enrolment admission seam that rejects duplicate
+  installation IDs before key creation and stages a verified receipt only for
+  an exact submitted operation. The production authority adapter is not yet
+  enabled. Stop relabelling broker setup records to the selected native host;
+  older setup projections may remain broker-labelled pending reconciliation.
+
 - Reject ordinary sign-in challenges for a retained but unselected host,
   clear stale challenges on failure, and bind custody preparation and response
   delivery to the selected enrolment. A synthetic two-host signature test

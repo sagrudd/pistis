@@ -211,36 +211,6 @@ final class SiteRootInstallationRepository {
         guard retained[index].setupPhase == .authorityCustodyRequired else { return }
     }
 
-    /// Rebinds only a broker-created, non-authorising setup projection to the
-    /// exact native authority in a verified or code-signed deployment profile.
-    /// The migration deliberately returns to the custody-required phase: an
-    /// earlier UI projection may have skipped custody, but local state is not
-    /// proof that the protected host signer is ready.
-    func bindBrokeredSetup(toNativeAuthorityHost authorityHost: String) throws {
-        guard let brokerHost = URL(
-            string: SiteRootConvergenceProfileV2.x509BrokerOrigin
-        )?.host else { throw PlatformFailure.invalidConfiguration }
-        let canonicalBroker = try IncompleteSiteRootInstallation.canonicalHost(brokerHost)
-        let canonicalAuthority = try IncompleteSiteRootInstallation.canonicalHost(authorityHost)
-        guard canonicalAuthority != canonicalBroker else {
-            throw PlatformFailure.invalidConfiguration
-        }
-        var retained = try records()
-        let brokerRecords = retained.filter { $0.authorityHost == canonicalBroker }
-        guard !brokerRecords.isEmpty else { return }
-        retained.removeAll { $0.authorityHost == canonicalBroker }
-        retained.append(contentsOf: try brokerRecords.map { current in
-            try IncompleteSiteRootInstallation(
-                id: current.id, authorityHost: canonicalAuthority,
-                redactedReference: current.redactedReference,
-                recordedAt: current.recordedAt,
-                setupPhase: .authorityCustodyRequired,
-                evidence: current.evidence
-            )
-        })
-        try persist(Array(try reconcile(retained).suffix(maximumRecords)))
-    }
-
     /// Erase every non-authorising Site Root setup projection on this phone.
     /// Server-side Site Root, custody and transaction records are unchanged.
     func resetAllLocalInstallations() {

@@ -842,6 +842,46 @@ struct MonasSiteRootGenesisBrokerTransport: MonasSiteRootCeremonyTransport,
     var genesisAuthorityOrigin: URL? { brokerOrigin }
     var requiresGenesisCorrelation: Bool { true }
 
+    /// Sends a single V2 registration to the fixed broker. A queue receipt is
+    /// not host acceptance; uncertain sends remain submitted for reconciliation.
+    func submitV2(
+        presentation: SiteRootBrokerPresentationV2, attemptID: UUID,
+        storage: ScopedAppAttestStore,
+        nowMillis: @Sendable () -> UInt64
+    ) async throws {
+        guard !Task.isCancelled else { throw PlatformFailure.operationCancelled }
+        guard nowMillis() < presentation.expiresAt else { throw PlatformFailure.siteRootGenesisPresentationExpired }
+        let pending = try storage.beginDispatch(attemptID: attemptID)
+        defer { storage.endDispatch() }
+        guard pending.correlation == presentation.correlation,
+              pending.registrationReference == presentation.reference,
+              pending.siteClaim == presentation.site else { throw PlatformFailure.invalidConfiguration }
+        var uuid = attemptID.uuid
+        let operation = withUnsafeBytes(of: &uuid) { Data($0) }
+        try SiteRootBrokerRegistrationWireV2.validate(
+            pending.preparedRegistration, presentation: presentation, operationID: operation)
+        struct Envelope: Encodable {
+            let schema = MonasSiteRootGenesisBrokerEndpointV1.registrationSchema
+            let purpose = MonasSiteRootGenesisBrokerEndpointV1.purpose
+            let reference: String
+            let correlation_b64url: String
+            let registration_request_b64url: String
+        }
+        let body = try JSONEncoder().encode(Envelope(
+            reference: presentation.reference,
+            correlation_b64url: Self.base64URL(presentation.correlation),
+            registration_request_b64url: Self.base64URL(pending.preparedRegistration)))
+        guard body.count <= MonasSiteRootGenesisBrokerEndpointV1.maximumRegistrationBytes
+        else { throw PlatformFailure.invalidConfiguration }
+        guard !Task.isCancelled else { throw PlatformFailure.operationCancelled }
+        guard nowMillis() < presentation.expiresAt else { throw PlatformFailure.siteRootGenesisPresentationExpired }
+        let endpoint = try fixedEndpoint(MonasSiteRootGenesisBrokerEndpointV1.registrationPath)
+        let data = try await post(body: body, endpoint: endpoint, expectedStatus: 202,
+                                  maximumResponseBytes: 1_024,
+                                  rejection: .siteRootGenesisRegistrationRejected)
+        try Self.decodeAcceptedRegistrationResponse(data)
+    }
+
     init() throws {
         guard let origin = URL(string: MonasSiteRootGenesisBrokerEndpointV1.origin),
               MonasSiteRootDelegationTransport.isValidOrigin(origin)

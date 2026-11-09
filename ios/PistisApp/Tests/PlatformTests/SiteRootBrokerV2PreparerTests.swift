@@ -88,6 +88,64 @@ final class SiteRootBrokerV2PreparerTests: XCTestCase {
         XCTAssertThrowsError(try storage.stagePrepared(pending))
         XCTAssertThrowsError(try storage.markSubmitted(attemptID: attempt))
     }
+
+    func testRescanRecoversReservedAttemptAndRejectsChangedInvitation() throws {
+        let persistence = ScopedMemoryPersistence()
+        let presentation = try fixture()
+        let original = try ScopedAppAttestStore(persistence: persistence).reserveBrokerAttempt(presentation)
+        let reopened = ScopedAppAttestStore(persistence: persistence)
+        XCTAssertEqual(try reopened.reserveBrokerAttempt(presentation), original)
+        let url = URL(fileURLWithPath: #filePath).deletingLastPathComponent()
+            .deletingLastPathComponent().appendingPathComponent("Fixtures/broker-v2-qr.json")
+        let text = try String(contentsOf: url, encoding: .utf8)
+        let changed = text.replacingOccurrences(of: presentation.site, with: presentation.site + "-changed")
+        let other = try SiteRootBrokerPresentationV2(qrText: changed, nowMillis: 1_900_000_000_000)
+        XCTAssertThrowsError(try reopened.reserveBrokerAttempt(other))
+    }
+
+    func testDispatchLifetimeExcludesResetAndResetPreventsDispatch() async throws {
+        let storage = ScopedAppAttestStore(persistence: ScopedMemoryPersistence())
+        let preparer = SiteRootBrokerV2Preparer(
+            storage: storage, appAttest: AppleAppAttestClient(service: PreparationTestAppleService(), keyIDStore: PreparationTestLegacyStore()))
+        let attempt = UUID()
+        let pending = try await preparer.prepare(presentation: fixture(), attemptID: attempt,
+                                                  siteRootKey: root(), nowMillis: { 1_900_000_000_000 })
+        XCTAssertEqual(try storage.beginDispatch(attemptID: attempt), pending)
+        XCTAssertThrowsError(try storage.resetAll())
+        XCTAssertThrowsError(try ScopedAppAttestStore.beginLocalReset())
+        storage.endDispatch()
+        try ScopedAppAttestStore.beginLocalReset()
+        XCTAssertThrowsError(try storage.reserveBrokerAttempt(fixture()))
+        ScopedAppAttestStore.endLocalReset()
+        try storage.resetAll()
+        XCTAssertThrowsError(try storage.beginDispatch(attemptID: attempt))
+    }
+
+    func testV2DispatchSendsExactBytesOnceToFixedBroker() async throws {
+        GenesisBrokerURLProtocol.reset()
+        let configuration = URLSessionConfiguration.ephemeral
+        configuration.protocolClasses = [GenesisBrokerURLProtocol.self]
+        let transport = try MonasSiteRootGenesisBrokerTransport(session: URLSession(configuration: configuration))
+        let storage = ScopedAppAttestStore(persistence: ScopedMemoryPersistence())
+        let preparer = SiteRootBrokerV2Preparer(
+            storage: storage, appAttest: AppleAppAttestClient(service: PreparationTestAppleService(), keyIDStore: PreparationTestLegacyStore()))
+        let presentation = try fixture(), attempt = try storage.reserveBrokerAttempt(presentation)
+        let pending = try await preparer.prepare(presentation: presentation, attemptID: attempt,
+                                                  siteRootKey: root(), nowMillis: { 1_900_000_000_000 })
+        try await transport.submitV2(presentation: presentation, attemptID: attempt, storage: storage,
+                                     nowMillis: { 1_900_000_000_000 })
+        let request = try XCTUnwrap(GenesisBrokerURLProtocol.requests().last)
+        XCTAssertEqual(request.url?.absoluteString, MonasSiteRootGenesisBrokerEndpointV1.origin + MonasSiteRootGenesisBrokerEndpointV1.registrationPath)
+        let body = try XCTUnwrap(request.httpBody)
+        let object = try StrictJSONObject(data: body, maximumBytes: 300_000).values
+        XCTAssertEqual(object["registration_request_b64url"], .string(SiteRootBrokerPresentationV2.encode(pending.preparedRegistration)))
+        do {
+            try await transport.submitV2(presentation: presentation, attemptID: attempt, storage: storage,
+                                         nowMillis: { 1_900_000_000_000 })
+            XCTFail("submitted attempt was sent twice")
+        } catch { XCTAssertEqual(error as? PlatformFailure, .invalidConfiguration) }
+        XCTAssertEqual(GenesisBrokerURLProtocol.requests().count, 1)
+    }
 }
 
 private final class PreparationTestLegacyStore: AppleAppAttestKeyIDStoring, @unchecked Sendable {

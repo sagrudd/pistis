@@ -67,6 +67,8 @@ final class LocalDeviceResetService {
 
   func reset() async throws {
     try await authorize()
+    try ScopedAppAttestStore.beginLocalReset()
+    defer { ScopedAppAttestStore.endLocalReset() }
 
     var failed: [LocalDeviceResetTarget] = []
     for operation in operations {

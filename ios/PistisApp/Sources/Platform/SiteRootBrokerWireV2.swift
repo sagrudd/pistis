@@ -10,6 +10,7 @@ struct SiteRootBrokerPresentationV2: Sendable {
     let ceremonyID: String
     let challenge: Data
     let expiresAt: UInt64
+    let presentationDigest: Data
 
     init(qrText: String, nowMillis: UInt64) throws {
         let bytes = Data(qrText.utf8)
@@ -51,6 +52,7 @@ struct SiteRootBrokerPresentationV2: Sendable {
         }
         reference = ref; self.site = site; self.correlation = correlation
         ceremonyID = ceremony; self.challenge = challenge; expiresAt = expiry
+        presentationDigest = Data(SHA256.hash(data: bytes))
     }
 
     static func identifier(_ text: String, maximum: Int) -> Bool {

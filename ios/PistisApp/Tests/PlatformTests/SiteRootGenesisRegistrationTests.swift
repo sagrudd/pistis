@@ -577,7 +577,7 @@ private final class RegistrationProgressRecorder: @unchecked Sendable {
     }
 }
 
-private final class GenesisBrokerURLProtocol: URLProtocol, @unchecked Sendable {
+final class GenesisBrokerURLProtocol: URLProtocol, @unchecked Sendable {
     enum ResponseMode {
         case ready
         case pending

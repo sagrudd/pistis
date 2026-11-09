@@ -152,6 +152,11 @@ enum AppAttestReferenceScope {
     case installation(Data)
 }
 
+private struct BrokerAttemptReservation: Codable, Equatable {
+    let attemptID: UUID
+    let presentationDigest: Data
+}
+
 /// Create-once keychain records. All operations in the Pistis process share
 /// one lock; no app extension or other process may write this private service.
 /// Cancellation markers remain until explicit reset, so a crash cannot turn a
@@ -160,6 +165,8 @@ enum AppAttestReferenceScope {
 // All persistence access is serialized by the process-wide lock below.
 final class ScopedAppAttestStore: @unchecked Sendable {
     private static let lock = NSLock()
+    private nonisolated(unsafe) static var activeDispatches = 0 // Protected by lock.
+    private nonisolated(unsafe) static var resetInProgress = false // Protected by lock.
     private static let productionService = "org.mnemosynebiosciences.pistis.app-attest-scoped.v1"
     private let persistence: any ScopedAppAttestPersistence
 
@@ -187,12 +194,32 @@ final class ScopedAppAttestStore: @unchecked Sendable {
         }
     }
 
+    /// A protected create-once correlation reservation lets a rescan recover
+    /// the original operation even if key generation was interrupted.
+    func reserveBrokerAttempt(_ presentation: SiteRootBrokerPresentationV2) throws -> UUID {
+        try withLock {
+            guard !Self.resetInProgress else { throw PlatformFailure.enrolmentBeginRetryRequired }
+            let digest = SHA256.hash(data: Data("pistis:broker-attempt:v2\0".utf8) + presentation.correlation)
+            let account = "broker." + digest.map { String(format: "%02x", $0) }.joined()
+            if let existing = try read(BrokerAttemptReservation.self, account: account) {
+                guard existing.presentationDigest == presentation.presentationDigest,
+                      existing.attemptID.uuidString != "00000000-0000-0000-0000-000000000000"
+                else { throw PlatformFailure.invalidConfiguration }
+                return existing.attemptID
+            }
+            let value = BrokerAttemptReservation(attemptID: UUID(), presentationDigest: presentation.presentationDigest)
+            try createOnce(value, account: account)
+            return value.attemptID
+        }
+    }
+
     /// A reset or cancellation during Apple key generation invalidates the
     /// marker, preventing the returning asynchronous operation from staging.
     func stagePrepared(_ pending: ScopedAppAttestPending) throws {
         try pending.validate()
         try withLock {
-            guard try read(UUID.self, account: preparing(pending.attemptID)) == pending.attemptID,
+            guard !Self.resetInProgress,
+                  try read(UUID.self, account: preparing(pending.attemptID)) == pending.attemptID,
                   try readData(account: cancelled(pending.attemptID)) == nil,
                   try readData(account: completed(pending.attemptID)) == nil,
                   try readData(account: submitted(pending.attemptID)) == nil
@@ -205,7 +232,8 @@ final class ScopedAppAttestStore: @unchecked Sendable {
     /// marker is ambiguous and blocks automatic generation on restart.
     func markPreparing(_ attemptID: UUID) throws {
         try withLock {
-            guard try readData(account: staged(attemptID)) == nil,
+            guard !Self.resetInProgress,
+                  try readData(account: staged(attemptID)) == nil,
                   try readData(account: submitted(attemptID)) == nil,
                   try readData(account: cancelled(attemptID)) == nil,
                   try readData(account: completed(attemptID)) == nil,
@@ -239,6 +267,44 @@ final class ScopedAppAttestStore: @unchecked Sendable {
             try value.validate()
             try createOnce(attemptID, account: submitted(attemptID))
         }
+    }
+
+    /// Holds a process-wide lifetime claim until the network operation ends.
+    /// Reset is refused while a claim exists, including cancellation cleanup.
+    func beginDispatch(attemptID: UUID) throws -> ScopedAppAttestPending {
+        try withLock {
+            guard !Self.resetInProgress,
+                  try readData(account: cancelled(attemptID)) == nil,
+                  try readData(account: completed(attemptID)) == nil,
+                  try readData(account: submitted(attemptID)) == nil,
+                  let pending = try read(ScopedAppAttestPending.self, account: staged(attemptID)),
+                  pending.attemptID == attemptID else { throw PlatformFailure.invalidConfiguration }
+            try pending.validate()
+            try createOnce(attemptID, account: submitted(attemptID))
+            Self.activeDispatches += 1
+            return pending
+        }
+    }
+
+    func endDispatch() {
+        withLock {
+            precondition(Self.activeDispatches > 0)
+            Self.activeDispatches -= 1
+        }
+    }
+
+    static func beginLocalReset() throws {
+        lock.lock(); defer { lock.unlock() }
+        guard activeDispatches == 0, !resetInProgress else {
+            throw PlatformFailure.enrolmentBeginRetryRequired
+        }
+        resetInProgress = true
+    }
+
+    static func endLocalReset() {
+        lock.lock(); defer { lock.unlock() }
+        precondition(resetInProgress)
+        resetInProgress = false
     }
 
     func pending(attemptID: UUID) throws -> ScopedAppAttestPending? {
@@ -378,7 +444,12 @@ final class ScopedAppAttestStore: @unchecked Sendable {
         }
     }
 
-    func resetAll() throws { try withLock { try persistence.removeAll() } }
+    func resetAll() throws {
+        try withLock {
+            guard Self.activeDispatches == 0 else { throw PlatformFailure.enrolmentBeginRetryRequired }
+            try persistence.removeAll()
+        }
+    }
 
     private func withLock<T>(_ operation: () throws -> T) rethrows -> T {
         Self.lock.lock(); defer { Self.lock.unlock() }

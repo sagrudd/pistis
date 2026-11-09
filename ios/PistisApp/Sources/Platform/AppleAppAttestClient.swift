@@ -612,6 +612,29 @@ final class AppleAppAttestClient: @unchecked Sendable {
         )
     }
 
+    /// Generates a custody assertion for a staged, submitted B attempt without
+    /// reading or changing the legacy primary reference. The caller must first
+    /// authenticate the pinned authority and independently bind its installation
+    /// ID to this exact attempt; the local marker is not authority acceptance.
+    func preparePendingCustodyRotationAssertion(
+        challenge: CustodyRotationAppAttestChallengeV2,
+        storage: ScopedAppAttestStore,
+        attemptID: UUID,
+        verifiedInstallationID: Data
+    ) async throws -> AppleAppAttestAssertionEnvelope {
+        guard service.isSupported,
+              let attempt = try storage.submittedAttempt(attemptID: attemptID),
+              let key = PendingAppAttestReplacementKeyV1.canonicalKeyID(attempt.keyID),
+              challenge.matchesBinding(
+                  installationID: verifiedInstallationID, siteTrustDomain: attempt.siteClaim,
+                  appIdentifier: attempt.appClaim, keyID: key
+              ) else { throw PlatformFailure.appAttestInvalidInput }
+        let assertion = try await generateAssertion(
+            keyID: attempt.keyID, clientDataHash: challenge.clientDataHash
+        )
+        return try AppleAppAttestAssertionEnvelope(ceremonyID: challenge.ceremonyID, assertion: assertion)
+    }
+
     /// Produces the exact fresh custody-rotation assertion supplied by Monas.
     /// The server has already purpose-separated and hashed the challenge, so
     /// this path must neither rehash nor substitute bootstrap/session material.

@@ -121,6 +121,15 @@ private final class ScopedAppAttestKeychainPersistence: ScopedAppAttestPersisten
     }
 }
 
+/// The marker proves only local pre-send staging, never server acceptance.
+struct ScopedSubmittedAttempt: Sendable {
+    fileprivate let pending: ScopedAppAttestPending
+    var keyID: String { pending.keyID }
+    var siteClaim: String { pending.siteClaim }
+    var appClaim: String { pending.appClaim }
+    fileprivate init(_ pending: ScopedAppAttestPending) { self.pending = pending }
+}
+
 enum AppAttestReferenceScope {
     /// Only for the separately verified, unambiguous legacy installation.
     case legacy
@@ -185,6 +194,20 @@ final class ScopedAppAttestStore: @unchecked Sendable {
             try value.validate()
             guard value.attemptID == attemptID else { throw PlatformFailure.invalidConfiguration }
             return value
+        }
+    }
+
+    /// Returns pending context only after the durable pre-send marker exists.
+    func submittedAttempt(attemptID: UUID) throws -> ScopedSubmittedAttempt? {
+        try withLock {
+            guard try read(UUID.self, account: submitted(attemptID)) == attemptID,
+                  try readData(account: cancelled(attemptID)) == nil,
+                  try readData(account: completed(attemptID)) == nil,
+                  let value = try read(ScopedAppAttestPending.self, account: staged(attemptID))
+            else { return nil }
+            try value.validate()
+            guard value.attemptID == attemptID else { throw PlatformFailure.invalidConfiguration }
+            return ScopedSubmittedAttempt(value)
         }
     }
 

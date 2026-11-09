@@ -406,6 +406,12 @@ its matching completion marker is durable; an exact retry completes it. Scoped
 lookup never falls back to the legacy primary. Explicit local reset includes
 the new service. These primitives are not connected to production enrolment
 or assertion handling; the reviewed authority handoff remains required.
+The broker V2 transcript helper has a shared host/phone test vector. A pending
+custody assertion helper requires the durable submitted marker and checks the
+installation, site, app and key against the challenge; the caller must supply
+an independently authenticated installation binding. It never reads or writes
+the legacy primary. No production caller is enabled until that authority
+handoff, the closed V2 wire and in-flight reset coordination are reviewed.
 
 ## QR acquisition boundary
 

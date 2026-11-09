@@ -219,6 +219,78 @@ final class AppAttestAssertionTransportTests: XCTestCase {
         XCTAssertNil(post.value(forHTTPHeaderField: "Authorization"))
     }
 
+    func testPendingCustodyAssertionUsesOnlyBoundBKeyAndPreservesLegacyA() async throws {
+        let bKey = Data(repeating: 0x11, count: 32).base64EncodedString()
+        let aKey = Data(repeating: 0x22, count: 32).base64EncodedString()
+        let legacy = MutableKeyIDStore(keyID: aKey)
+        let service = RecordingAppAttestService(keyID: bKey)
+        let client = AppleAppAttestClient(service: service, keyIDStore: legacy)
+        let storage = ScopedAppAttestStore(persistence: ScopedMemoryPersistence())
+        let attemptID = UUID()
+        let pending = ScopedAppAttestPending(
+            attemptID: attemptID, correlation: Data(repeating: 0x44, count: 32),
+            registrationReference: "reference-b", siteClaim: "site-demo",
+            appClaim: AppleAppAttestRegistrationEnvelope.reviewedAppIdentifier,
+            environmentClaim: "Production", keyID: bKey, preparedRegistration: Data([1])
+        )
+        try storage.stage(pending)
+        XCTAssertNil(try storage.submittedAttempt(attemptID: attemptID))
+        try storage.markSubmitted(attemptID: attemptID)
+        XCTAssertNotNil(try storage.submittedAttempt(attemptID: attemptID))
+        let challenge = try CustodyRotationAppAttestChallengeV2(
+            data: AssertionURLProtocol.challengeData(expires: 200), nowUnixSeconds: 150
+        )
+        do {
+            _ = try await client.preparePendingCustodyRotationAssertion(
+                challenge: challenge, storage: storage, attemptID: attemptID,
+                verifiedInstallationID: Data(repeating: 2, count: 16)
+            )
+            XCTFail("cross-installation challenge was accepted")
+        } catch { XCTAssertEqual(error as? PlatformFailure, .appAttestInvalidInput) }
+        XCTAssertNil(service.assertedKeyID)
+        for (field, value) in [
+            ("site_trust_domain", "other-site"),
+            ("key_id_b64url", Data(repeating: 0x33, count: 32).base64EncodedString()
+                .replacingOccurrences(of: "+", with: "-")
+                .replacingOccurrences(of: "/", with: "_")
+                .replacingOccurrences(of: "=", with: "")),
+        ] {
+            var object = try XCTUnwrap(JSONSerialization.jsonObject(
+                with: AssertionURLProtocol.challengeData(expires: 200)
+            ) as? [String: Any])
+            object[field] = value
+            let swapped = try CustodyRotationAppAttestChallengeV2(
+                data: JSONSerialization.data(withJSONObject: object), nowUnixSeconds: 150
+            )
+            do {
+                _ = try await client.preparePendingCustodyRotationAssertion(
+                    challenge: swapped, storage: storage, attemptID: attemptID,
+                    verifiedInstallationID: Data(repeating: 1, count: 16)
+                )
+                XCTFail("cross-site or cross-key challenge was accepted")
+            } catch { XCTAssertEqual(error as? PlatformFailure, .appAttestInvalidInput) }
+            XCTAssertNil(service.assertedKeyID)
+        }
+        _ = try await client.preparePendingCustodyRotationAssertion(
+            challenge: challenge, storage: storage, attemptID: attemptID,
+            verifiedInstallationID: Data(repeating: 1, count: 16)
+        )
+        XCTAssertEqual(service.assertedKeyID, bKey)
+        XCTAssertEqual(legacy.keyID, aKey)
+        XCTAssertNil(try storage.binding(installationID: Data(repeating: 1, count: 16)))
+        try storage.resetAll()
+        do {
+            _ = try await client.preparePendingCustodyRotationAssertion(
+                challenge: challenge, storage: storage, attemptID: attemptID,
+                verifiedInstallationID: Data(repeating: 1, count: 16)
+            )
+            XCTFail("reset attempt unexpectedly remained usable")
+        } catch { XCTAssertEqual(error as? PlatformFailure, .appAttestInvalidInput) }
+        XCTAssertEqual(legacy.keyID, aKey)
+        XCTAssertEqual(legacy.readCount, 0)
+        XCTAssertEqual(legacy.writeCount, 0)
+    }
+
     func testCustodyAssertionRestoresOnlyTheAppleProvenServerKeyReference() async throws {
         AssertionURLProtocol.reset()
         let serverKeyID = Data(repeating: 0x11, count: 32).base64EncodedString()
@@ -432,11 +504,13 @@ private final class FixedKeyIDStore: AppleAppAttestKeyIDStoring, @unchecked Send
 
 private final class MutableKeyIDStore: AppleAppAttestKeyIDStoring, @unchecked Sendable {
     var keyID: String?
+    private(set) var readCount = 0
+    private(set) var writeCount = 0
 
     init(keyID: String?) { self.keyID = keyID }
 
-    func loadKeyID() -> String? { keyID }
-    func saveKeyID(_ keyID: String) throws { self.keyID = keyID }
+    func loadKeyID() -> String? { readCount += 1; return keyID }
+    func saveKeyID(_ keyID: String) throws { writeCount += 1; self.keyID = keyID }
 }
 
 private final class RecordingAppAttestService: AppleAppAttestServicing, @unchecked Sendable {

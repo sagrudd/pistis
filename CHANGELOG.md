@@ -8,6 +8,11 @@
   blocked until installation-scoped App Attest and setup binding are reviewed
   and implemented; this candidate does not enable a second installation.
 
+- Add the reviewed broker V2 transcript calculation and a non-wired pending
+  custody assertion primitive that checks installation, site, app and key and
+  does not access the legacy primary. The V2 route and authority handoff remain
+  blocked pending their closed wire contract and integration review.
+
 - Add a non-authorising, installation-scoped App Attest storage foundation
   with create-once retry, exact-attempt cancellation, submitted-state retention
   and explicit-reset coverage. It is not wired to enrolment or activation.

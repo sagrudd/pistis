@@ -205,7 +205,7 @@ final class ScopedAppAttestStoreTests: XCTestCase {
     }
 }
 
-private final class ScopedMemoryPersistence: ScopedAppAttestPersistence {
+final class ScopedMemoryPersistence: ScopedAppAttestPersistence {
     private var values: [String: Data] = [:]
     var failNextCompletion = false
     var failNextRemoval = false

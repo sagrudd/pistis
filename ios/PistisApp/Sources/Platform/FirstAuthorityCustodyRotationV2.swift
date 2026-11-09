@@ -257,6 +257,15 @@ private struct FirstAuthorityRecoverySeedEnvelopeV2: Codable {
     let ciphertextB64URL: String
 }
 
+protocol FirstAuthorityCustodyKeyOperations: Sendable {
+    func create() throws -> DevicePublicKey
+    func publicKey() throws -> DevicePublicKey
+    func sign(message: Data) throws -> Data
+    func deriveECDHSharedSecret(peerPublicCompressedSEC1: Data) throws -> Data
+}
+
+extension SecureEnclaveSigner: FirstAuthorityCustodyKeyOperations {}
+
 final class SecureEnclaveFirstAuthorityCustodyProducerV2: @unchecked Sendable {
     private static let localEnvelopeInfo = Data("pistis:first-authority-recovery-envelope:v2".utf8)
     /// The accepted portable ECDH key-wrap profile shared with Thesaurophylax.
@@ -264,7 +273,7 @@ final class SecureEnclaveFirstAuthorityCustodyProducerV2: @unchecked Sendable {
     static let hostEnvelopeInfo = Data(
         "mnemosyne:thesaurophylax:portable-wrap:v1".utf8
     )
-    private let signer: SecureEnclaveSigner
+    private let signer: any FirstAuthorityCustodyKeyOperations
     private let store: any FirstAuthorityRecoveryEnvelopeStoring
 
     init(
@@ -276,6 +285,13 @@ final class SecureEnclaveFirstAuthorityCustodyProducerV2: @unchecked Sendable {
         )
         self.store = store
     }
+
+#if DEBUG
+    init(testSigner: any FirstAuthorityCustodyKeyOperations, store: any FirstAuthorityRecoveryEnvelopeStoring) {
+        signer = testSigner
+        self.store = store
+    }
+#endif
 
     func prepareInitialRotation() throws -> FirstAuthorityCustodySeedCommitmentV2 {
         let device = try signer.create()

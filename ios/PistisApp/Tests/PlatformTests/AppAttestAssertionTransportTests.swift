@@ -694,6 +694,8 @@ final class AssertionURLProtocol: URLProtocol, @unchecked Sendable {
     private nonisolated(unsafe) static var bodyValue: Data?
     nonisolated(unsafe) static var challengeSite = "site-demo"
     nonisolated(unsafe) static var challengeKeyByte: UInt8 = 0x11
+    nonisolated(unsafe) static var rotationBeginResponse: Data?
+    nonisolated(unsafe) static var rotationCompleteResponse: Data?
 
     override class func canInit(with _: URLRequest) -> Bool { true }
     override class func canonicalRequest(for request: URLRequest) -> URLRequest { request }
@@ -705,12 +707,15 @@ final class AssertionURLProtocol: URLProtocol, @unchecked Sendable {
         Self.lock.unlock()
         let isChallenge = request.url?.path.hasSuffix("/assertion-challenge") == true
             || request.url?.path.hasSuffix("/broker-assertion-challenge") == true
+        let rotation = request.url?.path.hasSuffix("/authority-custody-rotation/v2/begin") == true ? Self.rotationBeginResponse
+            : (request.url?.path.hasSuffix("/authority-custody-rotation/v2/complete") == true ? Self.rotationCompleteResponse : nil)
         let response = HTTPURLResponse(
-            url: request.url!, statusCode: isChallenge ? 200 : 202, httpVersion: "HTTP/1.1",
+            url: request.url!, statusCode: isChallenge || rotation != nil ? 200 : 202, httpVersion: "HTTP/1.1",
             headerFields: ["Cache-Control": "no-store"]
         )!
         client?.urlProtocol(self, didReceive: response, cacheStoragePolicy: .notAllowed)
-        if isChallenge {
+        if let rotation { client?.urlProtocol(self, didLoad: rotation) }
+        else if isChallenge {
             if request.url?.path.hasSuffix("/broker-assertion-challenge") == true,
                let body = Self.lastBody(), let object = try? JSONSerialization.jsonObject(with: body) as? [String: Any],
                let nested = try? JSONSerialization.jsonObject(with: Self.challengeData(expires: 200)),
@@ -743,6 +748,8 @@ final class AssertionURLProtocol: URLProtocol, @unchecked Sendable {
         bodyValue = nil
         challengeSite = "site-demo"
         challengeKeyByte = 0x11
+        rotationBeginResponse = nil
+        rotationCompleteResponse = nil
     }
 
     static func challengeData(expires: UInt64) -> Data {

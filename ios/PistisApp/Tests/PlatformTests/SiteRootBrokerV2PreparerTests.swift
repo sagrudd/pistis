@@ -70,13 +70,52 @@ final class SiteRootBrokerV2PreparerTests: XCTestCase {
         nativeConfiguration.protocolClasses = [AssertionURLProtocol.self]
         let native = try MonasAppAttestTransport(authorityOrigin: XCTUnwrap(URL(string: "https://10.0.2.15:8443")),
             expectedSPKISHA256: Data(repeating: 10, count: 32), configuration: nativeConfiguration)
-        let challenge = try await native.fetchBrokerCustodyChallengeV2(pending: pending, nowUnixSeconds: 150).challenge
-        let assertion = try await AppleAppAttestClient(service: service, keyIDStore: legacy)
-            .preparePendingCustodyRotationAssertion(challenge: challenge, storage: storage,
-                attemptID: attempt, verifiedInstallationID: challenge.installationID)
-        try storage.markCustodyStep("assertion", pending: pending)
-        try await native.submitAssertion(assertion)
+        let device = try ControlledCustodySigner()
+        let recovery = ControlledRecoveryStore()
+        let custody = SecureEnclaveFirstAuthorityCustodyProducerV2(testSigner: device, store: recovery)
+        let commitment = try custody.prepareInitialRotation()
+        let hostKey = P256.KeyAgreement.PrivateKey()
+        let identity = try FirstAuthorityCustodyIdentityV2(siteTrustDomain: pending.siteClaim,
+            custodyGeneration: "generation-v2", deviceKeyID: commitment.deviceKeyID,
+            enrolledDevicePublicSEC1: commitment.enrolledDevicePublicSEC1,
+            recoverySeedEd25519PublicKey: commitment.recoverySeedEd25519PublicKey, revocationGeneration: 1)
+        let rotation = FirstAuthorityRotationPresentationV2(correlation: Data(repeating: 1, count: 16), identity: identity,
+            hostEphemeralPublicSEC1: hostKey.publicKey.compressedRepresentation,
+            legacyRecordSHA256: Data(repeating: 4, count: 32), installationBindingSHA256: Data(repeating: 5, count: 32),
+            appAttestAcceptanceSHA256: Data(repeating: 6, count: 32), siteRootProofSHA256: Data(repeating: 7, count: 32),
+            delegationSerial: "delegation-v2", expiresAtUnixSeconds: 200)
+        let encode = SiteRootBrokerPresentationV2.encode
+        let begin: [String: Any] = ["schema": FirstAuthorityCustodyRotationV2Wire.presentationSchema,
+            "purpose": FirstAuthorityCustodyPurposeV2.rotation, "correlation_b64url": encode(rotation.correlation),
+            "canonical_transcript_b64url": encode(try rotation.canonicalTranscript()), "site_trust_domain_id": identity.siteTrustDomain,
+            "custody_generation": identity.custodyGeneration, "device_key_id": identity.deviceKeyID,
+            "enrolled_device_public_sec1_b64url": encode(identity.enrolledDevicePublicSEC1),
+            "recovery_seed_ed25519_public_key_b64url": encode(identity.recoverySeedEd25519PublicKey), "revocation_generation": 1,
+            "host_ephemeral_public_sec1_b64url": encode(rotation.hostEphemeralPublicSEC1),
+            "legacy_record_sha256_b64url": encode(rotation.legacyRecordSHA256),
+            "installation_binding_sha256_b64url": encode(rotation.installationBindingSHA256),
+            "app_attest_acceptance_sha256_b64url": encode(rotation.appAttestAcceptanceSHA256),
+            "site_root_proof_sha256_b64url": encode(rotation.siteRootProofSHA256),
+            "delegation_serial": rotation.delegationSerial, "expires_at_unix_seconds": 200]
+        AssertionURLProtocol.rotationBeginResponse = try JSONSerialization.data(withJSONObject: begin)
+        AssertionURLProtocol.rotationCompleteResponse = try JSONSerialization.data(withJSONObject: [
+            "schema": FirstAuthorityCustodyRotationV2Wire.acceptedSchema, "correlation_b64url": encode(rotation.correlation),
+            "authority_descriptor_b64url": encode(Data(repeating: 9, count: 64))])
+        try await convergence.testOnlyDriveProvisionalCustody(pending, storage: storage, native: native,
+            appAttest: AppleAppAttestClient(service: service, keyIDStore: legacy), producer: custody, now: { 150 })
+        let sent = try XCTUnwrap(JSONSerialization.jsonObject(with: XCTUnwrap(AssertionURLProtocol.lastBody())) as? [String: Any])
+        let cipherText = try XCTUnwrap(sent["rewrapped_seed_ciphertext_b64url"] as? String)
+        let cipher = try XCTUnwrap(SiteRootBrokerPresentationV2.base64(cipherText, exact: 60))
+        let shared = try hostKey.sharedSecretFromKeyAgreement(with: P256.KeyAgreement.PublicKey(compressedRepresentation: commitment.enrolledDevicePublicSEC1))
+        let aad = Data(SHA256.hash(data: try rotation.canonicalTranscript()))
+        let wrapKey = shared.hkdfDerivedSymmetricKey(using: SHA256.self, salt: aad,
+            sharedInfo: SecureEnclaveFirstAuthorityCustodyProducerV2.hostEnvelopeInfo, outputByteCount: 32)
+        let recoveredSeed = try SecureEnclaveFirstAuthorityCustodyProducerV2.open(cipher, key: wrapKey, aad: aad)
+        XCTAssertEqual(try Curve25519.Signing.PrivateKey(rawRepresentation: recoveredSeed).publicKey.rawRepresentation,
+                       commitment.recoverySeedEd25519PublicKey)
         XCTAssertThrowsError(try storage.requireFreshCustodyStep("assertion", pending: pending))
+        XCTAssertThrowsError(try storage.requireFreshCustodyStep("begin", pending: pending))
+        XCTAssertThrowsError(try storage.requireFreshCustodyStep("complete", pending: pending))
         XCTAssertEqual(legacy.reads, 0); XCTAssertEqual(legacy.writes, 0)
     }
     func testRecoverExternallyIssuedSyntheticV4Profile() throws {
@@ -341,6 +380,34 @@ private final class ControlledV2Authorizer: SiteX509BrokerContinuationAuthorizin
         try storage.stageProvisionalLeaf(ProvisionalLeafHandoff(attemptID: pending.attemptID,
             wrapper: data, verifiedAtSeconds: 1_900_000_000), pending: pending)
         return Data([1])
+    }
+}
+
+private final class ControlledRecoveryStore: FirstAuthorityRecoveryEnvelopeStoring, @unchecked Sendable {
+    private var value: Data?
+    func load() throws -> Data? { value }
+    func insert(_ envelope: Data) throws {
+        guard value == nil else { throw PlatformFailure.invalidConfiguration }; value = envelope
+    }
+}
+
+private struct ControlledCustodySigner: FirstAuthorityCustodyKeyOperations {
+    let signing: P256.Signing.PrivateKey
+    let agreement: P256.KeyAgreement.PrivateKey
+    init() throws {
+        signing = P256.Signing.PrivateKey()
+        agreement = try P256.KeyAgreement.PrivateKey(rawRepresentation: signing.rawRepresentation)
+    }
+    func create() throws -> DevicePublicKey { try publicKey() }
+    func publicKey() throws -> DevicePublicKey {
+        DevicePublicKey(compressedSEC1: signing.publicKey.compressedRepresentation, assurance: .secureEnclaveFaceIDCurrentSet)
+    }
+    func sign(message: Data) throws -> Data {
+        try P256Format.rawSignature(fromStrictDER: signing.signature(for: message).derRepresentation)
+    }
+    func deriveECDHSharedSecret(peerPublicCompressedSEC1: Data) throws -> Data {
+        let shared = try agreement.sharedSecretFromKeyAgreement(with: P256.KeyAgreement.PublicKey(compressedRepresentation: peerPublicCompressedSEC1))
+        return shared.withUnsafeBytes { Data($0) }
     }
 }
 

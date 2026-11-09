@@ -1274,24 +1274,41 @@ struct SiteRootConvergenceServiceV2: Sendable {
             correlationDigest: digest, expectedSiteUUID: site, nowUnixSeconds: leaf.verifiedAtSeconds)
         let native = try MonasAppAttestTransport(authorityOrigin: handoff.nativeOrigin,
             expectedSPKISHA256: handoff.presentation.monasLeafSPKISHA256)
+        let recovery = try KeychainFirstAuthorityRecoveryEnvelopeStore(site: pending.siteClaim)
+        let producer = try SecureEnclaveFirstAuthorityCustodyProducerV2(
+            authenticationReason: "Approve this exact first-authority custody rotation", store: recovery)
+        try await driveProvisionalBrokerCustody(pending, storage: storage, native: native,
+            appAttest: AppleAppAttestClient(), producer: producer, now: Self.nowUnixSeconds)
+    }
+
+    private func driveProvisionalBrokerCustody(_ pending: ScopedAppAttestPending, storage: ScopedAppAttestStore,
+        native: MonasAppAttestTransport, appAttest: AppleAppAttestClient,
+        producer: SecureEnclaveFirstAuthorityCustodyProducerV2, now: @Sendable () throws -> UInt64) async throws {
+        try storage.requireFreshCustodyStep("assertion", pending: pending)
         let challenge = try await native.fetchBrokerCustodyChallengeV2(pending: pending,
-            nowUnixSeconds: Self.nowUnixSeconds()).challenge
-        let assertion = try await AppleAppAttestClient().preparePendingCustodyRotationAssertion(
+            nowUnixSeconds: now()).challenge
+        let assertion = try await appAttest.preparePendingCustodyRotationAssertion(
             challenge: challenge, storage: storage, attemptID: pending.attemptID,
             verifiedInstallationID: challenge.installationID)
         try storage.markCustodyStep("assertion", pending: pending)
         try await native.submitAssertion(assertion)
-        let recovery = try KeychainFirstAuthorityRecoveryEnvelopeStore(site: pending.siteClaim)
-        let producer = try SecureEnclaveFirstAuthorityCustodyProducerV2(
-            authenticationReason: "Approve this exact first-authority custody rotation", store: recovery)
         let commitment = try producer.prepareInitialRotation()
         try storage.markCustodyStep("begin", pending: pending)
         let presentation = try await native.beginFirstAuthorityCustodyRotationV2(
-            commitment, nowUnixSeconds: Self.nowUnixSeconds())
+            commitment, nowUnixSeconds: now())
         let submission = try producer.completeInitialRotation(presentation)
         try storage.markCustodyStep("complete", pending: pending)
         _ = try await native.completeFirstAuthorityCustodyRotationV2(submission)
     }
+
+#if DEBUG
+    func testOnlyDriveProvisionalCustody(_ pending: ScopedAppAttestPending, storage: ScopedAppAttestStore,
+        native: MonasAppAttestTransport, appAttest: AppleAppAttestClient,
+        producer: SecureEnclaveFirstAuthorityCustodyProducerV2, now: @Sendable () throws -> UInt64) async throws {
+        try await driveProvisionalBrokerCustody(pending, storage: storage, native: native,
+                                                appAttest: appAttest, producer: producer, now: now)
+    }
+#endif
 
     /// Retry only the unsent native transition, never the earlier broker or
     /// leaf submissions. Durable step markers deny ambiguous replays.

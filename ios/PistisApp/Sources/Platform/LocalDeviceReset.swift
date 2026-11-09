@@ -9,6 +9,7 @@ enum LocalDeviceResetTarget: String, CaseIterable, Equatable {
   case installationTrust
   case secureEnclaveKeys
   case appAttestPrimaryReference
+  case appAttestScopedReferences
   case appAttestReplacementReference
   case firstAuthorityRecoveryEnvelope
   case siteRootConvergenceAcknowledgement
@@ -97,6 +98,9 @@ final class LocalDeviceResetService {
         },
         LocalDeviceResetOperation(target: .appAttestPrimaryReference) {
           try KeychainAppleAppAttestKeyIDStore().resetLocalReference()
+        },
+        LocalDeviceResetOperation(target: .appAttestScopedReferences) {
+          try ScopedAppAttestStore().resetAll()
         },
         LocalDeviceResetOperation(target: .appAttestReplacementReference) {
           try KeychainAppleAppAttestReplacementKeyStore().resetPendingReference()

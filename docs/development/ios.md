@@ -392,6 +392,21 @@ rendered by Monas source `881e0514` using
 synthetic correlation. Its fixed time is injected by the test; it is not a live
 invitation. The image is decoded before entering the normal scan classifier.
 
+## Scoped App Attest storage foundation
+
+The local scoped store stages an exact operation and prepared registration in a
+separate device-only Keychain service; it does not activate an installation or
+replace the existing primary reference. A submitted marker is persisted before
+network delivery. Once marked, local cancellation cannot erase an ambiguous
+attempt; authority reconciliation is required. An unsubmitted attempt can be
+cancelled only by its exact ID, and cleanup retains an opaque cancellation
+marker while erasing pending material. Binding writes are create-once and
+conflicts fail closed. A partially written binding remains unavailable until
+its matching completion marker is durable; an exact retry completes it. Scoped
+lookup never falls back to the legacy primary. Explicit local reset includes
+the new service. These primitives are not connected to production enrolment
+or assertion handling; the reviewed authority handoff remains required.
+
 ## QR acquisition boundary
 
 The native scanner uses AVFoundation metadata capture and accepts at most one

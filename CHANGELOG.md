@@ -8,6 +8,10 @@
   blocked until installation-scoped App Attest and setup binding are reviewed
   and implemented; this candidate does not enable a second installation.
 
+- Add a non-authorising, installation-scoped App Attest storage foundation
+  with create-once retry, exact-attempt cancellation, submitted-state retention
+  and explicit-reset coverage. It is not wired to enrolment or activation.
+
 - Preserve the installation and Site Trust fields in the existing App Attest
   custody challenge and provide an exact binding comparison for future scoped
   handling. This does not yet enable multi-installation assertions.

@@ -300,7 +300,7 @@ final class SecureEnclaveSiteX509LeafApprovalProducerV1: @unchecked Sendable {
         _ presentation: SiteX509LeafApprovalPresentationV1,
         using ceremony: FaceIDCeremonyContext
     ) throws -> SiteX509LeafApprovalSubmissionV1 {
-        let record = try store.current()
+        let record = try BrokerV2Feature.enabled ? store.current(siteUUID: presentation.siteUUID) : store.current()
         try presentation.validateCurrentSigner(record)
         let signer = try SecureEnclaveSigner(
             namespace: "site-root-convergence-ack-v2",

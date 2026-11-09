@@ -158,7 +158,8 @@ final class SecureEnclaveSiteX509BrokerContinuationAuthorizerV2:
             generation: presentation.deviceKeyGeneration
         )
         try presentation.validateCurrentSigner(record)
-        try store.retain(record)
+        if BrokerV2Feature.enabled { try store.retainScoped(record) }
+        else { try store.retain(record) }
         let submission = try SecureEnclaveSiteX509LeafApprovalProducerV1(store: store)
             .produce(presentation, using: ceremony)
         return try JSONEncoder().encode(submission)

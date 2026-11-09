@@ -908,8 +908,18 @@ struct SiteRootConvergenceAckRecordV2: Codable, Equatable, Sendable {
 }
 
 final class SiteRootConvergenceAckStoreV2: @unchecked Sendable {
-    private let service = "org.mnemosyne.pistis.site-root-convergence-ack-v2"
+    private let service: String
     private let account = "registration"
+
+    init() { service = "org.mnemosyne.pistis.site-root-convergence-ack-v2" }
+#if DEBUG
+    init(testService: String) throws {
+        let prefix = "org.mnemosyne.pistis.test.ack."
+        guard testService.hasPrefix(prefix), UUID(uuidString: String(testService.dropFirst(prefix.count))) != nil
+        else { throw PlatformFailure.invalidConfiguration }
+        service = testService
+    }
+#endif
 
     func retain(_ record: SiteRootConvergenceAckRecordV2) throws {
         if let existing = try load() {
@@ -929,6 +939,45 @@ final class SiteRootConvergenceAckStoreV2: @unchecked Sendable {
         }
     }
 
+    /// Keeps a separate create-once projection per site, without modifying
+    /// the legacy registration or the shared Secure Enclave signer.
+    func retainScoped(_ record: SiteRootConvergenceAckRecordV2) throws {
+        guard let site = SiteRootConvergenceEncoding.uuidBytes(record.siteUUID) else { throw PlatformFailure.invalidConfiguration }
+        let scopedAccount = "site." + site.map { String(format: "%02x", $0) }.joined()
+        if let legacy = try load(), SiteRootConvergenceEncoding.uuidBytes(legacy.siteUUID) == site {
+            guard legacy == record else { throw PlatformFailure.invalidConfiguration }
+            return
+        }
+        if let existing = try load(account: scopedAccount) {
+            guard existing == record else { throw PlatformFailure.invalidConfiguration }
+            return
+        }
+        let data = try JSONEncoder().encode(record)
+        let query: [CFString: Any] = [kSecClass: kSecClassGenericPassword, kSecAttrService: service,
+            kSecAttrAccount: scopedAccount, kSecAttrAccessible: kSecAttrAccessibleWhenUnlockedThisDeviceOnly,
+            kSecValueData: data]
+        let status = SecItemAdd(query as CFDictionary, nil)
+        if status == errSecDuplicateItem {
+            guard try load(account: scopedAccount) == record else { throw PlatformFailure.invalidConfiguration }
+        } else if status != errSecSuccess { throw PlatformFailure.enrolmentStorageFailed }
+    }
+
+    func current(siteUUID: Data) throws -> SiteRootConvergenceAckRecordV2 {
+        guard siteUUID.count == 16 else { throw PlatformFailure.invalidConfiguration }
+        let scopedAccount = "site." + siteUUID.map { String(format: "%02x", $0) }.joined()
+        if let value = try load(account: scopedAccount) {
+            guard SiteRootConvergenceEncoding.uuidBytes(value.siteUUID) == siteUUID, value.generation > 0
+            else { throw PlatformFailure.invalidConfiguration }
+            if let legacy = try load(), SiteRootConvergenceEncoding.uuidBytes(legacy.siteUUID) == siteUUID {
+                guard legacy == value else { throw PlatformFailure.invalidConfiguration }
+            }
+            return value
+        }
+        guard let legacy = try load(), SiteRootConvergenceEncoding.uuidBytes(legacy.siteUUID) == siteUUID,
+              legacy.generation > 0 else { throw PlatformFailure.siteRootAuthorityUnavailable }
+        return legacy
+    }
+
     /// Loads the exact enrolled acknowledgement signer binding. This exposes
     /// public identifiers only and never creates or repairs a signer.
     func current() throws -> SiteRootConvergenceAckRecordV2 {
@@ -945,7 +994,6 @@ final class SiteRootConvergenceAckStoreV2: @unchecked Sendable {
         let query: [CFString: Any] = [
             kSecClass: kSecClassGenericPassword,
             kSecAttrService: service,
-            kSecAttrAccount: account,
         ]
         let status = SecItemDelete(query as CFDictionary)
         guard status == errSecSuccess || status == errSecItemNotFound else {
@@ -953,11 +1001,11 @@ final class SiteRootConvergenceAckStoreV2: @unchecked Sendable {
         }
     }
 
-    private func load() throws -> SiteRootConvergenceAckRecordV2? {
+    private func load(account requestedAccount: String? = nil) throws -> SiteRootConvergenceAckRecordV2? {
         let query: [CFString: Any] = [
             kSecClass: kSecClassGenericPassword,
             kSecAttrService: service,
-            kSecAttrAccount: account,
+            kSecAttrAccount: requestedAccount ?? account,
             kSecReturnData: true,
             kSecMatchLimit: kSecMatchLimitOne,
         ]
@@ -1293,7 +1341,7 @@ struct SiteRootConvergenceServiceV2: Sendable {
     }
 
     func acknowledge(_ presentation: SiteRootConvergenceAckPresentationV2) async throws {
-        let record = try store.current()
+        let record = try BrokerV2Feature.enabled ? store.current(siteUUID: presentation.assertion.siteUUID) : store.current()
         let ceremony = try await FaceIDCeremonyContext.authenticate(
             reason: "Approve this exact Site Root HTTPS convergence"
         )

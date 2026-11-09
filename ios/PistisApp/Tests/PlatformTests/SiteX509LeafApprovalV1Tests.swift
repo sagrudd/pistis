@@ -1,9 +1,33 @@
 import Foundation
+import Security
 import XCTest
 
 @testable import Pistis
 
 final class SiteX509LeafApprovalV1Tests: XCTestCase {
+    func testSignedKeychainKeepsLegacyAndAdditionalSiteAcknowledgements() throws {
+        let service = "org.mnemosyne.pistis.test.ack." + UUID().uuidString
+        let probe: [String: Any] = [kSecClass as String: kSecClassGenericPassword,
+            kSecAttrService as String: service, kSecAttrAccount as String: "probe", kSecReturnData as String: true]
+        var result: CFTypeRef?
+        if SecItemCopyMatching(probe as CFDictionary, &result) == errSecMissingEntitlement {
+            throw XCTSkip("This simulator runner has no Keychain entitlement.")
+        }
+        let store = try SiteRootConvergenceAckStoreV2(testService: service)
+        defer { try? store.resetLocalRecord() }
+        let a = SiteRootConvergenceAckRecordV2(siteUUID: "00112233-4455-6677-8899-aabbccddeeff",
+            targetIDB64URL: "a", ackPublicKeyB64URL: "a", generation: 1)
+        let b = SiteRootConvergenceAckRecordV2(siteUUID: "10112233-4455-6677-8899-aabbccddeeff",
+            targetIDB64URL: "b", ackPublicKeyB64URL: "b", generation: 2)
+        try store.retain(a); try store.retainScoped(b)
+        let reopened = try SiteRootConvergenceAckStoreV2(testService: service)
+        XCTAssertEqual(try reopened.current(siteUUID: XCTUnwrap(SiteRootConvergenceEncoding.uuidBytes(a.siteUUID))), a)
+        XCTAssertEqual(try reopened.current(siteUUID: XCTUnwrap(SiteRootConvergenceEncoding.uuidBytes(b.siteUUID))), b)
+        let conflict = SiteRootConvergenceAckRecordV2(siteUUID: b.siteUUID,
+            targetIDB64URL: "other", ackPublicKeyB64URL: "b", generation: 2)
+        XCTAssertThrowsError(try reopened.retainScoped(conflict))
+        XCTAssertEqual(try reopened.current(), a)
+    }
     func testSharedV2HandoffsAndSwappedOperationAreRejected() throws {
         let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent()
             .deletingLastPathComponent().appendingPathComponent("Fixtures")

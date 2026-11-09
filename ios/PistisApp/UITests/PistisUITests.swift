@@ -201,14 +201,20 @@ final class PistisUITests: XCTestCase {
         }
         application.tabBars.buttons["Scan"].tap()
 
-        // The simulator has no capture device, so acquisition fails without a QR.
+        // The simulator reports a permission or capture-device failure without a QR.
         let failure = application.staticTexts["Scan failed"]
         XCTAssertTrue(failure.waitForExistence(timeout: 10))
         XCTAssertTrue(failure.isHittable)
-        let message = application.staticTexts[
+        let unavailable = application.staticTexts[
             "No supported camera is available. Try again on an iPhone with a working camera."
         ]
-        XCTAssertTrue(message.isHittable)
+        let permissionDenied = application.staticTexts[
+            "Camera access is disabled. Allow camera access in Settings, then try again."
+        ]
+        XCTAssertTrue(unavailable.isHittable || permissionDenied.isHittable)
+        if permissionDenied.exists {
+            XCTAssertTrue(application.buttons["Open Settings"].isHittable)
+        }
         let retry = application.buttons["Scan again"]
         XCTAssertTrue(retry.isHittable)
         retry.tap()

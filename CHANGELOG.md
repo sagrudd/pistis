@@ -1,4 +1,6 @@
-## Pending iOS scanner feedback — source candidate
+## Pistis iOS 0.28.1+76 — scanner feedback source candidate
+
+- Reserve the compatible patch in [Kanon PR900](https://github.com/sagrudd/kanon/pull/900); source preparation, lockset, review and release gates remain pending.
 
 - Show scan failures and their safe recovery guidance at the top of the scan
   screen, move accessibility focus to the failure, and offer Scan again while

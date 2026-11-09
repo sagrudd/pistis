@@ -312,6 +312,17 @@ final class ScopedAppAttestStore: @unchecked Sendable {
         }
     }
 
+    func markInitialProofSubmitted(attemptID: UUID, expected: ScopedAppAttestPending) throws {
+        try withLock {
+            guard !Self.resetInProgress,
+                  try read(UUID.self, account: submitted(attemptID)) == attemptID,
+                  try read(ScopedAppAttestPending.self, account: staged(attemptID)) == expected,
+                  try readData(account: "proof-submitted." + attemptID.uuidString) == nil
+            else { throw PlatformFailure.invalidConfiguration }
+            try createOnce(attemptID, account: "proof-submitted." + attemptID.uuidString)
+        }
+    }
+
     static func beginLocalReset() throws {
         lock.lock(); defer { lock.unlock() }
         guard activeDispatches == 0, !resetInProgress else {

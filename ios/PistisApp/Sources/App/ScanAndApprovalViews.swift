@@ -1398,6 +1398,7 @@ private struct SiteRootFirstDeviceProgressView: View {
 extension SiteRootDelegationCoordinator.Completion {
     var heading: String {
         switch self {
+        case .proofQueued: "Proof submitted"
         case .siteTrustEstablished: "Site Trust established"
         case .sessionEstablished: "Site Root ceremony complete"
         }
@@ -1405,6 +1406,8 @@ extension SiteRootDelegationCoordinator.Completion {
 
     var orientation: String {
         switch self {
+        case .proofQueued:
+            "The install service received the proof. Continue setup when Monas provides the next invitation."
         case .siteTrustEstablished:
             "Monas accepted this first-device proof and created Site Trust and custody. This installation is recorded as setup in progress; identity enrolment is the next ceremony."
         case .sessionEstablished:
@@ -1414,6 +1417,7 @@ extension SiteRootDelegationCoordinator.Completion {
 
     var evidenceLabel: String {
         switch self {
+        case .proofQueued: "Setup state"
         case .siteTrustEstablished: "Setup state"
         case .sessionEstablished: "Custody rewrap"
         }
@@ -1421,6 +1425,7 @@ extension SiteRootDelegationCoordinator.Completion {
 
     var evidenceValue: String {
         switch self {
+        case .proofQueued: "Awaiting Monas"
         case .siteTrustEstablished: "Setup in progress"
         case .sessionEstablished: "Submitted"
         }
@@ -1428,6 +1433,8 @@ extension SiteRootDelegationCoordinator.Completion {
 
     var detail: String {
         switch self {
+        case .proofQueued:
+            "The installation remains pending until Monas verifies this ceremony."
         case .siteTrustEstablished:
             "The installation’s Monas audit remains authoritative. Pistis stores only a redacted setup observation and cannot authenticate or approve work until identity enrolment completes."
         case .sessionEstablished:
@@ -1437,6 +1444,7 @@ extension SiteRootDelegationCoordinator.Completion {
 
     var actionTitle: String {
         switch self {
+        case .proofQueued: "Continue"
         case .siteTrustEstablished: "View setup progress"
         case .sessionEstablished: "View installation"
         }

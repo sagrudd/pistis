@@ -191,8 +191,6 @@ enum FirstDeviceAdmissionPolicy {
 
 @MainActor
 final class FirstDeviceEnrolmentFlow: ObservableObject {
-    // Enable only after reviewed host handoff, promotion and full-flow tests.
-    private static let brokerV2IntegrationEnabled = false
     @Published private(set) var presentation: VerifiedFirstDevicePresentation?
     @Published private(set) var prompt: GitHubDeviceAuthorizationPrompt?
     @Published private(set) var verifiedSubject: UInt64?
@@ -235,7 +233,7 @@ final class FirstDeviceEnrolmentFlow: ObservableObject {
         let storage = ScopedAppAttestStore()
         scopedStore = storage
         additionalAdmission = { presentation in
-            guard Self.brokerV2IntegrationEnabled else { return nil }
+            guard BrokerV2Feature.enabled else { return nil }
             let attempt = try storage.stageProvisionalPresentation(
                 installationID: presentation.installationID, digest: presentation.presentationDigest)
             return .provisional(attemptID: attempt, installationID: presentation.installationID,

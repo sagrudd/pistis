@@ -69,6 +69,7 @@ final class SiteRootDelegationCoordinator: ObservableObject {
     /// proof establishes setup progress, whereas a later delegation has also
     /// completed the App Attest and custody hand-off.
     enum Completion: Equatable {
+        case proofQueued
         case siteTrustEstablished
         case sessionEstablished
     }
@@ -230,9 +231,11 @@ final class SiteRootDelegationCoordinator: ObservableObject {
                     producer: producer,
                     registerAppAttest: true
                 )
-            case .firstDeviceV2:
-                // V2 registration and authority handoff are not yet wired.
-                throw PlatformFailure.siteRootBindingUnavailable
+            case let .firstDeviceV2(presentation):
+                guard BrokerV2Feature.enabled,
+                      let broker = brokerTransport as? MonasSiteRootGenesisBrokerTransport
+                else { throw PlatformFailure.siteRootBindingUnavailable }
+                try await completeProvisionalBrokerV2(presentation, broker: broker)
             case let .firstDevice(firstDevice):
                 guard let firstDeviceTransport else { throw PlatformFailure.invalidConfiguration }
                 // A retained native authority still uses a singleton App Attest
@@ -291,6 +294,45 @@ final class SiteRootDelegationCoordinator: ObservableObject {
             recordFailure(failure, review: presentedReview)
             phase = .failed(failure)
         }
+    }
+
+    /// The queue and proof results advance setup only. They do not establish
+    /// the final B installation identity or select it.
+    private func completeProvisionalBrokerV2(
+        _ presentation: SiteRootBrokerPresentationV2,
+        broker: MonasSiteRootGenesisBrokerTransport
+    ) async throws {
+        let storage = ScopedAppAttestStore()
+        let attempt = try storage.reserveBrokerAttempt(presentation)
+        phase = .registeringFirstDevice
+        setFirstDeviceStage(.creatingSiteRootKey)
+        let producer = try SecureEnclaveSiteRootProofProducer(
+            authenticationReason: "Sign this exact Monas Site Root delegation")
+        let root = try producer.register()
+        setFirstDeviceStage(.preparingAppAttest)
+        let clock: @Sendable () -> UInt64 = {
+            UInt64(max(0, Date().timeIntervalSince1970) * 1_000)
+        }
+        let preparer = SiteRootBrokerV2Preparer(storage: storage, appAttest: appAttestClient)
+        let retained = try await preparer.prepare(presentation: presentation, attemptID: attempt,
+                                                  siteRootKey: root, nowMillis: clock)
+        if try storage.submittedAttempt(attemptID: attempt) == nil {
+            setFirstDeviceStage(.submittingMonasRegistration)
+            try await broker.submitV2(presentation: presentation, attemptID: attempt,
+                                      storage: storage, nowMillis: clock)
+        }
+        let delegation = try await broker.pollV2(presentation: presentation, attemptID: attempt, storage: storage)
+        try storage.beginSubmittedPoll(attemptID: attempt, expected: retained)
+        defer { storage.endDispatch() }
+        phase = .signing
+        setFirstDeviceStage(.signingInitialProof)
+        let proof = try producer.prove(delegation)
+        setFirstDeviceStage(.submittingInitialProof)
+        try storage.markInitialProofSubmitted(attemptID: attempt, expected: retained)
+        try await broker.submitInitialStaticCompletion(
+            MonasSiteRootDelegationSubmissionRequestV1(endpoint: delegation.submitURL, submission: proof))
+        firstDeviceProgress = nil
+        phase = .submitted(.proofQueued)
     }
 
     func reset() {

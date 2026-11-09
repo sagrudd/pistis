@@ -136,6 +136,8 @@ final class SiteRootBrokerV2PreparerTests: XCTestCase {
         let pending = try await preparer.prepare(presentation: fixture(), attemptID: attempt,
                                                   siteRootKey: root(), nowMillis: { 1_900_000_000_000 })
         XCTAssertEqual(try storage.beginDispatch(attemptID: attempt, expected: pending), pending)
+        try storage.markInitialProofSubmitted(attemptID: attempt, expected: pending)
+        XCTAssertThrowsError(try storage.markInitialProofSubmitted(attemptID: attempt, expected: pending))
         XCTAssertThrowsError(try storage.resetAll())
         XCTAssertThrowsError(try ScopedAppAttestStore.beginLocalReset())
         storage.endDispatch()

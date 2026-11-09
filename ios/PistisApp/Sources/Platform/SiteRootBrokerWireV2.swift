@@ -1,6 +1,11 @@
 import Foundation
 import CryptoKit
 
+enum BrokerV2Feature {
+    // Requires reviewed end-to-end authority handoff and release validation.
+    static let enabled = false
+}
+
 enum BrokerV2RelayEnvelope {
     static func encode(reference: String, correlation: Data, registration: Data) throws -> Data {
         guard !registration.isEmpty, registration.count <= 12 * 1024,

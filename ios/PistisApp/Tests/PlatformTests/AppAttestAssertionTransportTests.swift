@@ -400,6 +400,27 @@ final class AppAttestAssertionTransportTests: XCTestCase {
         XCTAssertEqual(legacy.readCount, 0); XCTAssertEqual(legacy.writeCount, 0)
     }
 
+    func testBrokerCustodyChallengeBindsPendingOperationAndKey() throws {
+        let attempt = UUID(), correlation = Data(repeating: 4, count: 32)
+        let pending = ScopedAppAttestPending(attemptID: attempt, correlation: correlation,
+            registrationReference: "reference-b", siteClaim: "site-demo",
+            appClaim: AppleAppAttestRegistrationEnvelope.reviewedAppIdentifier, environmentClaim: "Production",
+            keyID: Data(repeating: 0x11, count: 32).base64EncodedString(), preparedRegistration: Data([1]))
+        var uuid = attempt.uuid
+        let operation = withUnsafeBytes(of: &uuid) { Data($0) }
+        let digest = Data(SHA256.hash(data: Data("mnemosyne.monas.first-device.correlation.v2\0".utf8) + correlation))
+        let nested = try JSONSerialization.jsonObject(with: AssertionURLProtocol.challengeData(expires: 200))
+        var wrapper: [String: Any] = ["schema": "monas.first-device.custody-challenge.v2",
+            "operation_id_b64url": SiteRootBrokerPresentationV2.encode(operation),
+            "correlation_digest_b64url": SiteRootBrokerPresentationV2.encode(digest), "challenge": nested]
+        let value = try BrokerCustodyChallengeV2(data: JSONSerialization.data(withJSONObject: wrapper),
+                                                 pending: pending, nowUnixSeconds: 150)
+        XCTAssertEqual(value.challenge.installationID, Data(repeating: 1, count: 16))
+        wrapper["operation_id_b64url"] = SiteRootBrokerPresentationV2.encode(Data(repeating: 8, count: 16))
+        XCTAssertThrowsError(try BrokerCustodyChallengeV2(data: JSONSerialization.data(withJSONObject: wrapper),
+                                                           pending: pending, nowUnixSeconds: 150))
+    }
+
     func testUnavailableServerRegisteredKeyDoesNotChangeTheLocalReference() async throws {
         let unacceptedRetryKeyID = Data(repeating: 0x22, count: 32).base64EncodedString()
         let store = MutableKeyIDStore(keyID: unacceptedRetryKeyID)

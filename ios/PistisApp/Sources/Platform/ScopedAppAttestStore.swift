@@ -271,14 +271,14 @@ final class ScopedAppAttestStore: @unchecked Sendable {
 
     /// Holds a process-wide lifetime claim until the network operation ends.
     /// Reset is refused while a claim exists, including cancellation cleanup.
-    func beginDispatch(attemptID: UUID) throws -> ScopedAppAttestPending {
+    func beginDispatch(attemptID: UUID, expected: ScopedAppAttestPending) throws -> ScopedAppAttestPending {
         try withLock {
-            guard !Self.resetInProgress,
+            guard !Task.isCancelled, !Self.resetInProgress,
                   try readData(account: cancelled(attemptID)) == nil,
                   try readData(account: completed(attemptID)) == nil,
                   try readData(account: submitted(attemptID)) == nil,
                   let pending = try read(ScopedAppAttestPending.self, account: staged(attemptID)),
-                  pending.attemptID == attemptID else { throw PlatformFailure.invalidConfiguration }
+                  pending.attemptID == attemptID, pending == expected else { throw PlatformFailure.invalidConfiguration }
             try pending.validate()
             try createOnce(attemptID, account: submitted(attemptID))
             Self.activeDispatches += 1

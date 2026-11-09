@@ -110,7 +110,7 @@ final class SiteRootBrokerV2PreparerTests: XCTestCase {
         let attempt = UUID()
         let pending = try await preparer.prepare(presentation: fixture(), attemptID: attempt,
                                                   siteRootKey: root(), nowMillis: { 1_900_000_000_000 })
-        XCTAssertEqual(try storage.beginDispatch(attemptID: attempt), pending)
+        XCTAssertEqual(try storage.beginDispatch(attemptID: attempt, expected: pending), pending)
         XCTAssertThrowsError(try storage.resetAll())
         XCTAssertThrowsError(try ScopedAppAttestStore.beginLocalReset())
         storage.endDispatch()
@@ -118,7 +118,7 @@ final class SiteRootBrokerV2PreparerTests: XCTestCase {
         XCTAssertThrowsError(try storage.reserveBrokerAttempt(fixture()))
         ScopedAppAttestStore.endLocalReset()
         try storage.resetAll()
-        XCTAssertThrowsError(try storage.beginDispatch(attemptID: attempt))
+        XCTAssertThrowsError(try storage.beginDispatch(attemptID: attempt, expected: pending))
     }
 
     func testV2DispatchSendsExactBytesOnceToFixedBroker() async throws {
@@ -132,6 +132,18 @@ final class SiteRootBrokerV2PreparerTests: XCTestCase {
         let presentation = try fixture(), attempt = try storage.reserveBrokerAttempt(presentation)
         let pending = try await preparer.prepare(presentation: presentation, attemptID: attempt,
                                                   siteRootKey: root(), nowMillis: { 1_900_000_000_000 })
+        let fixtureURL = URL(fileURLWithPath: #filePath).deletingLastPathComponent()
+            .deletingLastPathComponent().appendingPathComponent("Fixtures/broker-v2-qr.json")
+        let text = try String(contentsOf: fixtureURL, encoding: .utf8)
+        let wrong = try SiteRootBrokerPresentationV2(
+            qrText: text.replacingOccurrences(of: presentation.site, with: presentation.site + "-changed"),
+            nowMillis: 1_900_000_000_000)
+        do {
+            try await transport.submitV2(presentation: wrong, attemptID: attempt, storage: storage,
+                                         nowMillis: { 1_900_000_000_000 })
+            XCTFail("mismatched presentation was sent")
+        } catch { XCTAssertEqual(error as? PlatformFailure, .invalidConfiguration) }
+        XCTAssertEqual(GenesisBrokerURLProtocol.requests().count, 0)
         try await transport.submitV2(presentation: presentation, attemptID: attempt, storage: storage,
                                      nowMillis: { 1_900_000_000_000 })
         let request = try XCTUnwrap(GenesisBrokerURLProtocol.requests().last)

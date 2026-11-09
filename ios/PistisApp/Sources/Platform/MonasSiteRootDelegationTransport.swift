@@ -851,8 +851,7 @@ struct MonasSiteRootGenesisBrokerTransport: MonasSiteRootCeremonyTransport,
     ) async throws {
         guard !Task.isCancelled else { throw PlatformFailure.operationCancelled }
         guard nowMillis() < presentation.expiresAt else { throw PlatformFailure.siteRootGenesisPresentationExpired }
-        let pending = try storage.beginDispatch(attemptID: attemptID)
-        defer { storage.endDispatch() }
+        guard let pending = try storage.pending(attemptID: attemptID) else { throw PlatformFailure.invalidConfiguration }
         guard pending.correlation == presentation.correlation,
               pending.registrationReference == presentation.reference,
               pending.siteClaim == presentation.site else { throw PlatformFailure.invalidConfiguration }
@@ -876,6 +875,8 @@ struct MonasSiteRootGenesisBrokerTransport: MonasSiteRootCeremonyTransport,
         guard !Task.isCancelled else { throw PlatformFailure.operationCancelled }
         guard nowMillis() < presentation.expiresAt else { throw PlatformFailure.siteRootGenesisPresentationExpired }
         let endpoint = try fixedEndpoint(MonasSiteRootGenesisBrokerEndpointV1.registrationPath)
+        _ = try storage.beginDispatch(attemptID: attemptID, expected: pending)
+        defer { storage.endDispatch() }
         let data = try await post(body: body, endpoint: endpoint, expectedStatus: 202,
                                   maximumResponseBytes: 1_024,
                                   rejection: .siteRootGenesisRegistrationRejected)

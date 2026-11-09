@@ -176,7 +176,35 @@ protocol FirstAuthorityRecoveryEnvelopeStoring: Sendable {
 final class KeychainFirstAuthorityRecoveryEnvelopeStore:
     FirstAuthorityRecoveryEnvelopeStoring, @unchecked Sendable
 {
-    private let service = "org.mnemosyne.pistis.first-authority-recovery-envelope.v2"
+    private let service: String
+    private let account: String
+
+    init() {
+        service = "org.mnemosyne.pistis.first-authority-recovery-envelope.v2"
+        account = "site-root-v2"
+    }
+
+    init(site: String) throws {
+        guard SiteRootBrokerPresentationV2.identifier(site, maximum: 255) else { throw PlatformFailure.invalidConfiguration }
+        service = "org.mnemosyne.pistis.first-authority-recovery-envelope.v2"
+        account = Self.siteAccount(site)
+    }
+
+#if DEBUG
+    init(testService: String, site: String?) throws {
+        let prefix = "org.mnemosyne.pistis.test.recovery."
+        guard testService.hasPrefix(prefix), UUID(uuidString: String(testService.dropFirst(prefix.count))) != nil,
+              site == nil || SiteRootBrokerPresentationV2.identifier(site!, maximum: 255)
+        else { throw PlatformFailure.invalidConfiguration }
+        service = testService
+        account = site.map(Self.siteAccount) ?? "site-root-v2"
+    }
+#endif
+
+    private static func siteAccount(_ site: String) -> String {
+        "site." + SHA256.hash(data: Data("pistis:recovery-site:v2\0".utf8) + Data(site.utf8))
+            .map { String(format: "%02x", $0) }.joined()
+    }
 
     func load() throws -> Data? {
         var query = baseQuery()
@@ -206,7 +234,8 @@ final class KeychainFirstAuthorityRecoveryEnvelopeStore:
     /// Delete only this phone's retained recovery envelope. The authority's
     /// custody and audit records are not contacted or modified.
     func resetLocalEnvelope() throws {
-        let status = SecItemDelete(baseQuery() as CFDictionary)
+        let query: [String: Any] = [kSecClass as String: kSecClassGenericPassword, kSecAttrService as String: service]
+        let status = SecItemDelete(query as CFDictionary)
         guard status == errSecSuccess || status == errSecItemNotFound else {
             throw PlatformFailure.custodyRewrapUnavailable
         }
@@ -215,7 +244,7 @@ final class KeychainFirstAuthorityRecoveryEnvelopeStore:
     private func baseQuery() -> [String: Any] {
         [kSecClass as String: kSecClassGenericPassword,
          kSecAttrService as String: service,
-         kSecAttrAccount as String: "site-root-v2"]
+         kSecAttrAccount as String: account]
     }
 }
 

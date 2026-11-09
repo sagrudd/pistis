@@ -379,8 +379,26 @@ struct RootTabView: View {
         }
 
         progress(.prepareCustody)
+        let recoveryStore: KeychainFirstAuthorityRecoveryEnvelopeStore
+        if BrokerV2Feature.enabled {
+            guard let selected = try await InstallationTrustKeychain.shared.activeEnrollment() else {
+                throw PlatformFailure.siteRootBindingUnavailable
+            }
+            let scoped = ScopedAppAttestStore()
+            if let binding = try scoped.binding(installationID: selected.trust.installationID) {
+                recoveryStore = try KeychainFirstAuthorityRecoveryEnvelopeStore(site: binding.site)
+            } else {
+                let inventory = try await InstallationTrustKeychain.shared.enrollmentInventoryRecords()
+                var unscoped: [Data] = []
+                for record in inventory where try scoped.binding(installationID: record.installationID) == nil {
+                    unscoped.append(record.installationID)
+                }
+                guard unscoped == [selected.trust.installationID] else { throw PlatformFailure.siteRootBindingUnavailable }
+                recoveryStore = KeychainFirstAuthorityRecoveryEnvelopeStore()
+            }
+        } else { recoveryStore = KeychainFirstAuthorityRecoveryEnvelopeStore() }
         let producer = try SecureEnclaveFirstAuthorityCustodyProducerV2(
-            authenticationReason: authenticationReason
+            authenticationReason: authenticationReason, store: recoveryStore
         )
         switch status {
         case .appAttestAssertionRequired:

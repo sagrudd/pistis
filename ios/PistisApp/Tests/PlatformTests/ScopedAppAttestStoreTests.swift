@@ -1,5 +1,6 @@
 import Foundation
 import XCTest
+import PistisCore
 @testable import Pistis
 
 final class ScopedAppAttestStoreTests: XCTestCase {
@@ -170,6 +171,46 @@ final class ScopedAppAttestStoreTests: XCTestCase {
         try restarted.cancel(attemptID: cancelled)
         XCTAssertEqual(try restarted.pending(attemptID: retained), pending(retained))
         XCTAssertNil(try persistence.read(account: "pending." + cancelled.uuidString))
+    }
+
+    func testReceiptStagingDoesNotPromoteOrSelectInstallation() throws {
+        let persistence = ScopedMemoryPersistence()
+        let store = ScopedAppAttestStore(persistence: persistence)
+        let attempt = UUID()
+        let receipt = ScopedStagedEnrollment(attemptID: attempt, output: try stagedOutput(marker: 2))
+        XCTAssertThrowsError(try store.stageEnrollment(receipt))
+        try store.stage(pending(attempt)); try store.markSubmitted(attemptID: attempt)
+        try store.stageEnrollment(receipt); try store.stageEnrollment(receipt)
+        XCTAssertEqual(try store.stagedEnrollment(attemptID: attempt), receipt)
+        XCTAssertNil(try store.binding(installationID: receipt.output.trust.installationID))
+        XCTAssertEqual(try store.reference(for: .legacy) { "legacy-a" }, "legacy-a")
+        let conflict = ScopedStagedEnrollment(attemptID: attempt, output: try stagedOutput(marker: 3))
+        XCTAssertThrowsError(try store.stageEnrollment(conflict))
+        XCTAssertEqual(try store.stagedEnrollment(attemptID: attempt), receipt)
+        let restarted = ScopedAppAttestStore(persistence: persistence)
+        XCTAssertEqual(try restarted.stagedEnrollment(attemptID: attempt), receipt)
+        try restarted.resetAll()
+        XCTAssertNil(try restarted.stagedEnrollment(attemptID: attempt))
+    }
+
+    private func stagedOutput(marker: UInt8) throws -> AuthenticatedEnrollmentOutput {
+        let user = Data(repeating: marker + 1, count: 16)
+        let identity = Data(repeating: marker + 2, count: 16)
+        let trust = try InstallationTrustRecord(
+            installationID: Data(repeating: marker, count: 16), displayName: "Fixture",
+            audience: "prosopikon:pistis:enrolment", authorisedProductAudiences: ["jenkins"],
+            userID: user, externalIdentityID: identity, fingerprint: Data(repeating: 4, count: 32),
+            installationKeyID: Data(repeating: 5, count: 32),
+            installationPublicKey: Data([2]) + Data(repeating: 6, count: 32),
+            authorityKeyID: Data(repeating: 7, count: 32), authorityReceipt: Data([8]),
+            policyGeneration: 2, revocationGeneration: 3,
+            expiresAt: Date(timeIntervalSince1970: 2_000_000_000), active: true)
+        return try AuthenticatedEnrollmentOutput(
+            trust: trust, responseContext: DeviceResponseContext(
+                deviceID: Data(repeating: 9, count: 16), deviceKeyID: Data(repeating: 10, count: 32),
+                userID: user, externalIdentityID: identity),
+            allowedHosts: ["pistis.example.test"], httpsOrigin: "https://pistis.example.test",
+            tlsSPKISHA256: Data(repeating: 11, count: 32))
     }
 
     func testScopedLookupNeverFallsBackToLegacy() throws {

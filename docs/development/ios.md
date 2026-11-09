@@ -406,6 +406,10 @@ its matching completion marker is durable; an exact retry completes it. Scoped
 lookup never falls back to the legacy primary. Explicit local reset includes
 the new service. These primitives are not connected to production enrolment
 or assertion handling; the reviewed authority handoff remains required.
+A separately verified enrolment output may also be staged against a submitted
+attempt without inserting it into the active inventory or selecting it. Staging
+alone does not bind its installation to that broker operation or establish
+current generations.
 The broker V2 transcript helper has a shared host/phone test vector. A pending
 custody assertion helper requires the durable submitted marker and checks the
 installation, site, app and key against the challenge; the caller must supply

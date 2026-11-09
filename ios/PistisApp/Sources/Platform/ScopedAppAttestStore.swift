@@ -121,6 +121,14 @@ private final class ScopedAppAttestKeychainPersistence: ScopedAppAttestPersisten
     }
 }
 
+/// A staged receipt is not in the active installation inventory. Its
+/// association with the broker attempt remains unverified until the separate
+/// authority handoff succeeds.
+struct ScopedStagedEnrollment: Codable, Equatable, Sendable {
+    let attemptID: UUID
+    let output: AuthenticatedEnrollmentOutput
+}
+
 /// The marker proves only local pre-send staging, never server acceptance.
 struct ScopedSubmittedAttempt: Sendable {
     fileprivate let pending: ScopedAppAttestPending
@@ -211,6 +219,29 @@ final class ScopedAppAttestStore: @unchecked Sendable {
         }
     }
 
+    /// Retains a separately verified enrolment output without selecting it or
+    /// adding it to InstallationTrustKeychain. It does not establish a link
+    /// from the broker operation to the receipt's installation.
+    func stageEnrollment(_ value: ScopedStagedEnrollment) throws {
+        try withLock {
+            guard try read(UUID.self, account: submitted(value.attemptID)) == value.attemptID,
+                  try readData(account: cancelled(value.attemptID)) == nil,
+                  try readData(account: completed(value.attemptID)) == nil,
+                  let pending = try read(ScopedAppAttestPending.self, account: staged(value.attemptID)),
+                  pending.attemptID == value.attemptID else { throw PlatformFailure.invalidConfiguration }
+            try pending.validate()
+            try createOnce(value, account: enrollment(value.attemptID))
+        }
+    }
+
+    func stagedEnrollment(attemptID: UUID) throws -> ScopedStagedEnrollment? {
+        try withLock {
+            guard let value = try read(ScopedStagedEnrollment.self, account: enrollment(attemptID)) else { return nil }
+            guard value.attemptID == attemptID else { throw PlatformFailure.invalidConfiguration }
+            return value
+        }
+    }
+
     /// Persistence primitive only; call only after exact authority acceptance.
     func commit(_ binding: ScopedAppAttestBinding) throws {
         try binding.validate()
@@ -296,6 +327,7 @@ final class ScopedAppAttestStore: @unchecked Sendable {
         return try operation()
     }
     private func staged(_ id: UUID) -> String { "pending." + id.uuidString }
+    private func enrollment(_ id: UUID) -> String { "enrollment." + id.uuidString }
     private func cancelled(_ id: UUID) -> String { "cancelled." + id.uuidString }
     private func completed(_ id: UUID) -> String { "completed." + id.uuidString }
     private func submitted(_ id: UUID) -> String { "submitted." + id.uuidString }
@@ -305,12 +337,14 @@ final class ScopedAppAttestStore: @unchecked Sendable {
     }
     private func read<T: Decodable>(_ type: T.Type, account: String) throws -> T? {
         guard let data = try readData(account: account) else { return nil }
+        guard data.count <= 1_048_576 else { throw PlatformFailure.invalidConfiguration }
         do { return try JSONDecoder().decode(type, from: data) }
         catch { throw PlatformFailure.invalidConfiguration }
     }
     private func createOnce<T: Codable & Equatable>(_ value: T, account: String) throws {
         let encoder = JSONEncoder(); encoder.outputFormatting = [.sortedKeys]
         let data = try encoder.encode(value)
+        guard data.count <= 1_048_576 else { throw PlatformFailure.invalidConfiguration }
         if try !persistence.add(account: account, data: data) {
             guard try read(T.self, account: account) == value else { throw PlatformFailure.invalidConfiguration }
         }

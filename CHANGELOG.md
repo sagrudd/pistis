@@ -18,6 +18,9 @@
   does not access the legacy primary. The V2 route and authority handoff remain
   blocked pending their closed wire contract and integration review.
 
+- Add a non-authorising receipt-staging primitive for a submitted operation;
+  it does not insert or select an installation, or claim an authority join.
+
 - Add a non-authorising, installation-scoped App Attest storage foundation
   with create-once retry, exact-attempt cancellation, submitted-state retention
   and explicit-reset coverage. It is not wired to enrolment or activation.

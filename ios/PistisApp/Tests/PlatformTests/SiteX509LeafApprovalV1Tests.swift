@@ -4,6 +4,34 @@ import XCTest
 @testable import Pistis
 
 final class SiteX509LeafApprovalV1Tests: XCTestCase {
+    func testSharedV2HandoffsAndSwappedOperationAreRejected() throws {
+        let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent()
+            .deletingLastPathComponent().appendingPathComponent("Fixtures")
+        let site = Data([0xcb,0x5f,0xc9,0x80,0x8a,0x52,0x42,0x7a,0x83,0xd1,0xa5,0xe6,0xa5,0x4b,0x66,0x42])
+        for name in ["leaf-v2-ipv4.json", "leaf-v2-ipv6.json"] {
+            let data = try Data(contentsOf: root.appendingPathComponent(name))
+            let value = try SiteX509LeafHandoffV2(data: data, operationID: Data(repeating: 1, count: 16),
+                correlationDigest: Data(repeating: 2, count: 32), expectedSiteUUID: site, nowUnixSeconds: 1_900_000_000)
+            XCTAssertEqual(value.presentation.siteUUID, site)
+            XCTAssertThrowsError(try SiteX509LeafHandoffV2(data: data, operationID: Data(repeating: 3, count: 16),
+                correlationDigest: Data(repeating: 2, count: 32), expectedSiteUUID: site, nowUnixSeconds: 1_900_000_000))
+            XCTAssertThrowsError(try SiteX509LeafHandoffV2(data: data, operationID: Data(repeating: 1, count: 16),
+                correlationDigest: Data(repeating: 4, count: 32), expectedSiteUUID: site, nowUnixSeconds: 1_900_000_000))
+            XCTAssertThrowsError(try SiteX509LeafHandoffV2(data: data, operationID: Data(repeating: 1, count: 16),
+                correlationDigest: Data(repeating: 2, count: 32), expectedSiteUUID: Data(repeating: 1, count: 16), nowUnixSeconds: 1_900_000_000))
+            var object = try XCTUnwrap(JSONSerialization.jsonObject(with: data) as? [String: Any])
+            object["native_origin"] = "https://example.test:8443"
+            XCTAssertThrowsError(try SiteX509LeafHandoffV2(data: JSONSerialization.data(withJSONObject: object),
+                operationID: Data(repeating: 1, count: 16), correlationDigest: Data(repeating: 2, count: 32),
+                expectedSiteUUID: site, nowUnixSeconds: 1_900_000_000))
+            object = try XCTUnwrap(JSONSerialization.jsonObject(with: data) as? [String: Any])
+            let addresses = try XCTUnwrap(object["ordered_ip_octets_b64url"] as? [String])
+            object["ordered_ip_octets_b64url"] = addresses + addresses
+            XCTAssertThrowsError(try SiteX509LeafHandoffV2(data: JSONSerialization.data(withJSONObject: object),
+                operationID: Data(repeating: 1, count: 16), correlationDigest: Data(repeating: 2, count: 32),
+                expectedSiteUUID: site, nowUnixSeconds: 1_900_000_000))
+        }
+    }
     func testExactPXLAAndCurrentAckGenerationAreAccepted() throws {
         let fixture = LeafFixture()
         let value = try fixture.decode()

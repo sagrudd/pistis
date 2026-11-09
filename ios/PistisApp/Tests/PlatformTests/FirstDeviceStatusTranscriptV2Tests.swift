@@ -4,6 +4,31 @@ import XCTest
 @testable import Pistis
 
 final class FirstDeviceStatusTranscriptV2Tests: XCTestCase {
+    func testActualSyntheticHostResponseUsesLowercaseWireEnvironment() throws {
+        let url = URL(fileURLWithPath: #filePath).deletingLastPathComponent()
+            .deletingLastPathComponent().appendingPathComponent("Fixtures/status-v2-host-response.json")
+        let data = try Data(contentsOf: url)
+        let fields = try StrictJSONObject(data: data, maximumBytes: 4_096).values
+        func bytes(_ key: String, _ count: Int) throws -> Data {
+            guard case let .string(value)? = fields[key],
+                  let data = SiteRootBrokerPresentationV2.base64(value, exact: count) else { throw PlatformFailure.invalidConfiguration }
+            return data
+        }
+        let transcript = FirstDeviceStatusTranscriptV2(nonce: Data(repeating: 3, count: 32),
+            operationID: try bytes("operation_b64url", 16), correlationDigest: try bytes("correlation_digest_b64url", 32),
+            reference: "ref", installationID: try bytes("installation_id_b64url", 16), site: "site-trust-test",
+            presentationDigest: try bytes("presentation_digest_b64url", 32), receiptDigest: try bytes("receipt_digest_b64url", 32),
+            tlsSPKIDigest: try bytes("tls_spki_sha256_b64url", 32), appAttestKeyID: try bytes("app_attest_key_id_b64url", 32),
+            siteRootKeyDigest: Data(repeating: 4, count: 32), deviceKeyDigest: Data(repeating: 5, count: 32), expiry: 200)
+        try FirstDeviceStatusResponseV2.validate(data, transcript: transcript,
+            appIdentifier: AppleAppAttestRegistrationEnvelope.reviewedAppIdentifier,
+            environment: "Production", policyGeneration: 1, revocationGeneration: 1)
+        var wrong = try XCTUnwrap(JSONSerialization.jsonObject(with: data) as? [String: Any])
+        wrong["environment"] = "Production"
+        XCTAssertThrowsError(try FirstDeviceStatusResponseV2.validate(JSONSerialization.data(withJSONObject: wrong),
+            transcript: transcript, appIdentifier: AppleAppAttestRegistrationEnvelope.reviewedAppIdentifier,
+            environment: "Production", policyGeneration: 1, revocationGeneration: 1))
+    }
     func testStatusChallengeRequiresFreshBoundedNonce() throws {
         let nonce = SiteRootBrokerPresentationV2.encode(Data(repeating: 5, count: 32))
         func response(_ expiry: Int) -> Data {
@@ -34,7 +59,7 @@ final class FirstDeviceStatusTranscriptV2Tests: XCTestCase {
             "installation_id_b64url": encode(value.installationID), "site_trust_domain": value.site,
             "app_attest_key_id_b64url": encode(value.appAttestKeyID),
             "app_identifier": AppleAppAttestRegistrationEnvelope.reviewedAppIdentifier,
-            "environment": "Production", "policy_generation": 1, "revocation_generation": 2,
+            "environment": "production", "policy_generation": 1, "revocation_generation": 2,
             "presentation_digest_b64url": encode(value.presentationDigest),
             "receipt_digest_b64url": encode(value.receiptDigest), "tls_spki_sha256_b64url": encode(value.tlsSPKIDigest),
         ]

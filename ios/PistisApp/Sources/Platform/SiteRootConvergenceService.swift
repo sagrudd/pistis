@@ -1196,6 +1196,11 @@ struct SiteRootConvergenceServiceV2: Sendable {
         _ presentation: SiteX509FirstProvisionBrokerPresentationV1,
         progress: (SiteX509BrokerApprovalStageV1) -> Void = { _ in }
     ) async throws {
+        let scopedStorage = ScopedAppAttestStore()
+        let pending = try BrokerV2Feature.enabled
+            ? scopedStorage.submittedBrokerAttempt(correlation: presentation.correlation, siteUUID: presentation.siteUUID) : nil
+        if let pending { try scopedStorage.beginSubmittedPoll(attemptID: pending.attemptID, expected: pending) }
+        defer { if pending != nil { scopedStorage.endDispatch() } }
         // The fixed broker reservation is deliberately the first side effect.
         // It consumes the QR even when Face ID, App Attest, signing, or the
         // later proof submission fails; a failed authorization must not make
@@ -1216,7 +1221,7 @@ struct SiteRootConvergenceServiceV2: Sendable {
                 expectedSiteUUID: presentation.siteUUID,
                 transport: continuation,
                 authorizer: SecureEnclaveSiteX509BrokerContinuationAuthorizerV2(
-                    ceremony: ceremony, store: store
+                    ceremony: ceremony, store: store, pendingBrokerAttempt: pending, scopedStorage: scopedStorage
                 ),
                 progress: progress
             )
@@ -1231,6 +1236,11 @@ struct SiteRootConvergenceServiceV2: Sendable {
         guard let continuation = continuationTransport else {
             throw PlatformFailure.siteRootAuthorityUnavailable
         }
+        let scopedStorage = ScopedAppAttestStore()
+        let pending = try BrokerV2Feature.enabled
+            ? scopedStorage.submittedBrokerAttempt(correlation: presentation.correlation, siteUUID: presentation.siteUUID) : nil
+        if let pending { try scopedStorage.beginSubmittedPoll(attemptID: pending.attemptID, expected: pending) }
+        defer { if pending != nil { scopedStorage.endDispatch() } }
         progress(.awaitingFaceID)
         let ceremony = try await FaceIDCeremonyContext.authenticate(
             reason: "Resume accepted Site X.509 custody and certificate approval"
@@ -1240,7 +1250,7 @@ struct SiteRootConvergenceServiceV2: Sendable {
             expectedSiteUUID: presentation.siteUUID,
             transport: continuation,
             authorizer: SecureEnclaveSiteX509BrokerContinuationAuthorizerV2(
-                ceremony: ceremony, store: store
+                ceremony: ceremony, store: store, pendingBrokerAttempt: pending, scopedStorage: scopedStorage
             ),
             progress: progress
         )

@@ -165,6 +165,12 @@ struct ProvisionalBrokerPresentation: Codable, Equatable {
     let verifiedAtMillis: UInt64
 }
 
+struct ProvisionalLeafHandoff: Codable, Equatable {
+    let attemptID: UUID
+    let wrapper: Data
+    let verifiedAtSeconds: UInt64
+}
+
 /// Create-once keychain records. All operations in the Pistis process share
 /// one lock; no app extension or other process may write this private service.
 /// Cancellation markers remain until explicit reset, so a crash cannot turn a
@@ -334,6 +340,50 @@ final class ScopedAppAttestStore: @unchecked Sendable {
             }
             return pending
         }
+    }
+
+    func submittedBrokerAttempt(correlation: Data, siteUUID: String) throws -> ScopedAppAttestPending? {
+        guard let uuid = UUID(uuidString: siteUUID), uuid.uuidString.lowercased() == siteUUID,
+              correlation.count == 32 else { throw PlatformFailure.invalidConfiguration }
+        return try withLock {
+            var found: [ScopedAppAttestPending] = []
+            for (account, data) in try persistence.entries() where account.hasPrefix("pending.") {
+                let pending = try JSONDecoder().decode(ScopedAppAttestPending.self, from: data)
+                try pending.validate()
+                guard account == staged(pending.attemptID) else { throw PlatformFailure.invalidConfiguration }
+                if pending.siteClaim == "site-" + siteUUID,
+                   try read(UUID.self, account: submitted(pending.attemptID)) == pending.attemptID,
+                   try readData(account: cancelled(pending.attemptID)) == nil,
+                   try readData(account: completed(pending.attemptID)) == nil {
+                    guard pending.correlation == correlation else { throw PlatformFailure.siteRootBindingUnavailable }
+                    found.append(pending)
+                }
+            }
+            guard found.count <= 1 else { throw PlatformFailure.siteRootBindingUnavailable }
+            return found.first
+        }
+    }
+
+    func stageProvisionalLeaf(_ value: ProvisionalLeafHandoff, pending: ScopedAppAttestPending) throws {
+        guard value.attemptID == pending.attemptID, value.wrapper.count <= 8_192,
+              value.verifiedAtSeconds > 0 else { throw PlatformFailure.invalidConfiguration }
+        try withLock {
+            guard !Self.resetInProgress,
+                  try read(UUID.self, account: submitted(value.attemptID)) == value.attemptID,
+                  try read(ScopedAppAttestPending.self, account: staged(value.attemptID)) == pending,
+                  try readData(account: completed(value.attemptID)) == nil
+            else { throw PlatformFailure.invalidConfiguration }
+            let account = "leaf." + value.attemptID.uuidString
+            if let existing = try read(ProvisionalLeafHandoff.self, account: account) {
+                guard existing.attemptID == value.attemptID, existing.wrapper == value.wrapper else {
+                    throw PlatformFailure.invalidConfiguration
+                }
+            } else { try createOnce(value, account: account) }
+        }
+    }
+
+    func provisionalLeaf(attemptID: UUID) throws -> ProvisionalLeafHandoff? {
+        try withLock { try read(ProvisionalLeafHandoff.self, account: "leaf." + attemptID.uuidString) }
     }
 
     func markInitialProofSubmitted(attemptID: UUID, expected: ScopedAppAttestPending) throws {

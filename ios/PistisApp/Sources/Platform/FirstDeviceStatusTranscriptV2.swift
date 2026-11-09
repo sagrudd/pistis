@@ -90,7 +90,7 @@ enum FirstDeviceStatusResponseV2 {
             "site_trust_domain": .string(transcript.site),
             "app_attest_key_id_b64url": .string(encode(transcript.appAttestKeyID)),
             "app_identifier": .string(appIdentifier),
-            "environment": .string(environment),
+            "environment": .string(environment == "Production" ? "production" : "development"),
             "policy_generation": .number(String(policyGeneration)),
             "revocation_generation": .number(String(revocationGeneration)),
             "presentation_digest_b64url": .string(encode(transcript.presentationDigest)),

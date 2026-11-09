@@ -124,6 +124,16 @@ final class ScopedAppAttestStoreTests: XCTestCase {
         XCTAssertNil(try reopened.statusPending(attemptID: attempt))
     }
 
+    func testBrokerContinuationRequiresExactSiteAndCorrelation() throws {
+        let store = ScopedAppAttestStore(persistence: ScopedMemoryPersistence()), attempt = UUID()
+        let siteUUID = "00112233-4455-6677-8899-aabbccddeeff"
+        let value = pending(attempt, site: "site-" + siteUUID)
+        try store.stage(value); try store.markSubmitted(attemptID: attempt)
+        XCTAssertEqual(try store.submittedBrokerAttempt(correlation: value.correlation, siteUUID: siteUUID), value)
+        XCTAssertThrowsError(try store.submittedBrokerAttempt(correlation: Data(repeating: 9, count: 32), siteUUID: siteUUID))
+        XCTAssertNil(try store.submittedBrokerAttempt(correlation: value.correlation, siteUUID: "10112233-4455-6677-8899-aabbccddeeff"))
+    }
+
     func testAdditionalEnrollmentPreservesAAndRejectsSameIDConflict() throws {
         let a = try stagedOutput(marker: 1), b = try stagedOutput(marker: 2)
         let records = try InstallationTrustKeychain.addingAdditionalEnrollment(b, to: [a])

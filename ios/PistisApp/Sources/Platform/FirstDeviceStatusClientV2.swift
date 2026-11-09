@@ -21,7 +21,7 @@ struct FirstDeviceStatusClientV2 {
 
     func verify(attemptID: UUID, storage: ScopedAppAttestStore,
                 nowSeconds: @Sendable () -> UInt64) async throws -> ScopedAppAttestBinding {
-        guard let pending = try storage.pending(attemptID: attemptID),
+        guard let pending = try storage.statusPending(attemptID: attemptID),
               let provisional = try storage.provisionalPresentation(attemptID: attemptID),
               let staged = try storage.stagedEnrollment(attemptID: attemptID),
               provisional.installationID == presentation.installationID,

@@ -439,6 +439,22 @@ actor InstallationTrustKeychain: InstallationTrustStoring {
         try saveInventory(records: records, selectedInstallationID: output.trust.installationID)
     }
 
+    /// An additional host may be created or resumed exactly; it may never
+    /// replace an existing installation with the same identifier.
+    func installAdditionalAuthenticated(_ output: AuthenticatedEnrollmentOutput) throws {
+        let inventory = try loadInventoryRecords()
+        guard !inventory.contains(where: { if case .legacy = $0 { return true }; return false })
+        else { throw PlatformFailure.invalidConfiguration }
+        var records = inventory.compactMap { record -> AuthenticatedEnrollmentOutput? in
+            guard case let .current(value) = record else { return nil }
+            return value
+        }
+        if let existing = records.first(where: { $0.trust.installationID == output.trust.installationID }) {
+            guard existing == output else { throw PlatformFailure.invalidConfiguration }
+        } else { records.append(output) }
+        try saveInventory(records: records, selectedInstallationID: output.trust.installationID)
+    }
+
     enum FirstInstallDisposition: Equatable {
         case create
         case idempotent

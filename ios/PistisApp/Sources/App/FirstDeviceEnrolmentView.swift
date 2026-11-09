@@ -39,6 +39,14 @@ struct FirstDeviceEnrolmentView: View {
                     )
                     .font(.footnote)
                 } else {
+                    if flow.awaitingAuthorityBinding {
+                        Button("Verify installation authority") {
+                            Task { await flow.retryAuthorityBinding() }
+                        }
+                        .buttonStyle(.borderedProminent)
+                        .tint(MnColor.action)
+                        .disabled(flow.busy)
+                    }
                     MnPanel {
                         VStack(alignment: .leading, spacing: MnSpacing.x3) {
                             MnEvidenceRow(
@@ -49,7 +57,10 @@ struct FirstDeviceEnrolmentView: View {
                                 label: "Authority",
                                 value: flow.presentation?.httpsOrigin.host ?? ""
                             )
-                            if flow.prompt == nil && flow.verifiedSubject == nil {
+                            if flow.awaitingAuthorityBinding {
+                                Text("The receipt is retained while the installation authority binding is verified.")
+                                    .font(.footnote)
+                            } else if flow.prompt == nil && flow.verifiedSubject == nil {
                                 Text("Cryptographic host identity verified")
                                     .font(.headline)
                                 if flow.canRetryProviderStatus {
@@ -142,8 +153,8 @@ struct FirstDeviceEnrolmentView: View {
         .navigationTitle("Enrol first device")
         .mnScreenBackground()
         .task {
-            guard let initialQRText else { return }
-            await flow.handleInitialScanAndBegin(initialQRText)
+            if let initialQRText { await flow.handleInitialScanAndBegin(initialQRText) }
+            else { flow.restorePendingAuthorityBinding() }
         }
     }
 
@@ -240,6 +251,51 @@ final class FirstDeviceEnrolmentFlow: ObservableObject {
     var canRetryProviderStatus: Bool {
         providerContinuation.nextAction == .status
             && prompt == nil && verifiedSubject == nil
+    }
+
+    func restorePendingAuthorityBinding() {
+        guard BrokerV2Feature.enabled, presentation == nil else { return }
+        do {
+            guard let stored = try scopedStore.soleRecoverablePresentation() else { return }
+            presentation = try ProvisionalPresentationRecovery.verify(stored,
+                expectedAppConfigurationDigest: GitHubEnrolmentConfiguration.reviewedAppConfigurationDigest)
+            stagedAttemptID = stored.attemptID
+            awaitingAuthorityBinding = true
+            status = "Receipt retained; verify installation authority"
+        } catch { fail(error) }
+    }
+
+    func retryAuthorityBinding() async {
+        guard BrokerV2Feature.enabled, !busy, awaitingAuthorityBinding,
+              let presentation, let attempt = stagedAttemptID else { return }
+        busy = true
+        defer { busy = false }
+        do {
+            guard let pending = try scopedStore.statusPending(attemptID: attempt),
+                  let staged = try scopedStore.stagedEnrollment(attemptID: attempt)
+            else { throw PlatformFailure.invalidConfiguration }
+            let client = try FirstDeviceStatusClientV2(presentation: presentation)
+            let binding = try await client.verify(attemptID: attempt, storage: scopedStore,
+                nowSeconds: { UInt64(max(0, Date().timeIntervalSince1970)) })
+            try scopedStore.beginSubmittedPoll(attemptID: attempt, expected: pending)
+            defer { scopedStore.endDispatch() }
+            guard try scopedStore.stagedEnrollment(attemptID: attempt) == staged else {
+                throw PlatformFailure.invalidConfiguration
+            }
+            let inventory = try await InstallationTrustKeychain.shared.enrollmentInventoryRecords()
+            for record in inventory where record.installationID == binding.installationID {
+                guard case let .current(existing) = record, existing == staged.output else {
+                    throw PlatformFailure.invalidConfiguration
+                }
+            }
+            try scopedStore.commit(binding, retainPending: true)
+            try await InstallationTrustKeychain.shared.installAdditionalAuthenticated(staged.output)
+            try scopedStore.commit(binding)
+            awaitingAuthorityBinding = false
+            enrolmentComplete = true
+            failure = nil
+            status = "Device enrolled and authority binding verified"
+        } catch { fail(error) }
     }
 
     init(

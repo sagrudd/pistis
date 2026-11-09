@@ -107,6 +107,23 @@ final class ScopedAppAttestStoreTests: XCTestCase {
         XCTAssertEqual(try restarted.binding(installationID: Data(repeating: 2, count: 16)), binding(attempt))
     }
 
+    func testPromotionRetryRetainsStatusCapabilityAcrossRestart() throws {
+        let persistence = ScopedMemoryPersistence(), attempt = UUID()
+        let store = ScopedAppAttestStore(persistence: persistence)
+        try store.stage(pending(attempt)); try store.markSubmitted(attemptID: attempt)
+        try store.commit(binding(attempt), retainPending: true)
+        let reopened = ScopedAppAttestStore(persistence: persistence)
+        XCTAssertEqual(try reopened.statusPending(attemptID: attempt), pending(attempt))
+        XCTAssertNil(try reopened.pending(attemptID: attempt))
+        XCTAssertEqual(try reopened.statusPending(attemptID: attempt), pending(attempt))
+        try reopened.beginSubmittedPoll(attemptID: attempt, expected: pending(attempt))
+        XCTAssertThrowsError(try reopened.resetAll())
+        reopened.endDispatch()
+        XCTAssertThrowsError(try reopened.commit(binding(attempt, installation: 3), retainPending: true))
+        try reopened.commit(binding(attempt))
+        XCTAssertNil(try reopened.statusPending(attemptID: attempt))
+    }
+
     func testConcurrentAttemptsForSameInstallationDoNotOverwrite() throws {
         let persistence = ScopedMemoryPersistence()
         let store = ScopedAppAttestStore(persistence: persistence)

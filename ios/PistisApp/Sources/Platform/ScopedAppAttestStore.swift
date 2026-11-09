@@ -306,11 +306,33 @@ final class ScopedAppAttestStore: @unchecked Sendable {
             guard !Task.isCancelled, !Self.resetInProgress,
                   try read(UUID.self, account: submitted(attemptID)) == attemptID,
                   try readData(account: cancelled(attemptID)) == nil,
-                  try readData(account: completed(attemptID)) == nil,
                   try read(ScopedAppAttestPending.self, account: staged(attemptID)) == expected,
                   expected.attemptID == attemptID else { throw PlatformFailure.invalidConfiguration }
             try expected.validate()
+            if let binding = try read(ScopedAppAttestBinding.self, account: completed(attemptID)) {
+                guard binding.attemptID == attemptID, binding.keyID == expected.keyID,
+                      try read(ScopedAppAttestBinding.self, account: installed(binding.installationID)) == binding
+                else { throw PlatformFailure.invalidConfiguration }
+            }
             Self.activeDispatches += 1
+        }
+    }
+
+    /// Retains submitted capability during a partially completed promotion so
+    /// the authority can be checked freshly before retrying inventory writes.
+    func statusPending(attemptID: UUID) throws -> ScopedAppAttestPending? {
+        try withLock {
+            guard try read(UUID.self, account: submitted(attemptID)) == attemptID,
+                  try readData(account: cancelled(attemptID)) == nil,
+                  let pending = try read(ScopedAppAttestPending.self, account: staged(attemptID)),
+                  pending.attemptID == attemptID else { return nil }
+            try pending.validate()
+            if let binding = try read(ScopedAppAttestBinding.self, account: completed(attemptID)) {
+                guard binding.attemptID == attemptID, binding.keyID == pending.keyID,
+                      try read(ScopedAppAttestBinding.self, account: installed(binding.installationID)) == binding
+                else { throw PlatformFailure.invalidConfiguration }
+            }
+            return pending
         }
     }
 
@@ -351,7 +373,6 @@ final class ScopedAppAttestStore: @unchecked Sendable {
                 guard completion.attemptID == attemptID,
                       try read(ScopedAppAttestBinding.self, account: installed(completion.installationID)) == completion
                 else { throw PlatformFailure.invalidConfiguration }
-                try persistence.remove(account: staged(attemptID))
                 return nil
             }
             guard let value = try read(ScopedAppAttestPending.self, account: staged(attemptID)) else { return nil }
@@ -419,6 +440,23 @@ final class ScopedAppAttestStore: @unchecked Sendable {
         try withLock { try read(ProvisionalBrokerPresentation.self, account: "provisional." + attemptID.uuidString) }
     }
 
+    func soleRecoverablePresentation() throws -> ProvisionalBrokerPresentation? {
+        try withLock {
+            var matches: [ProvisionalBrokerPresentation] = []
+            for (account, data) in try persistence.entries() where account.hasPrefix("provisional.") {
+                let value = try JSONDecoder().decode(ProvisionalBrokerPresentation.self, from: data)
+                guard account == "provisional." + value.attemptID.uuidString else { throw PlatformFailure.invalidConfiguration }
+                if try read(UUID.self, account: submitted(value.attemptID)) == value.attemptID,
+                   try readData(account: staged(value.attemptID)) != nil,
+                   try read(ScopedStagedEnrollment.self, account: enrollment(value.attemptID)) != nil {
+                    matches.append(value)
+                }
+            }
+            guard matches.count <= 1 else { throw PlatformFailure.siteRootBindingUnavailable }
+            return matches.first
+        }
+    }
+
     /// Retains a separately verified enrolment output without selecting it or
     /// adding it to InstallationTrustKeychain. It does not establish a link
     /// from the broker operation to the receipt's installation.
@@ -443,7 +481,7 @@ final class ScopedAppAttestStore: @unchecked Sendable {
     }
 
     /// Persistence primitive only; call only after exact authority acceptance.
-    func commit(_ binding: ScopedAppAttestBinding) throws {
+    func commit(_ binding: ScopedAppAttestBinding, retainPending: Bool = false) throws {
         try binding.validate()
         try withLock {
             guard try readData(account: cancelled(binding.attemptID)) == nil else {
@@ -453,7 +491,7 @@ final class ScopedAppAttestStore: @unchecked Sendable {
                 guard marker == binding,
                       try read(ScopedAppAttestBinding.self, account: installed(binding.installationID)) == binding
                 else { throw PlatformFailure.invalidConfiguration }
-                try persistence.remove(account: staged(binding.attemptID))
+                if !retainPending { try persistence.remove(account: staged(binding.attemptID)) }
                 return
             }
             guard try read(UUID.self, account: submitted(binding.attemptID)) == binding.attemptID,
@@ -469,7 +507,7 @@ final class ScopedAppAttestStore: @unchecked Sendable {
             }
             try createOnce(binding, account: installed(binding.installationID))
             try createOnce(binding, account: completed(binding.attemptID))
-            try persistence.remove(account: staged(binding.attemptID))
+            if !retainPending { try persistence.remove(account: staged(binding.attemptID)) }
         }
     }
 

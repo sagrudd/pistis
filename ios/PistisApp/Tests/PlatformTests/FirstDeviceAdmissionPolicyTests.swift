@@ -13,6 +13,8 @@ final class FirstDeviceAdmissionPolicyTests: XCTestCase {
             attemptID: attempt, installationID: b, presentationDigest: digest)
         XCTAssertNil(try FirstDeviceAdmissionPolicy.additionalAttempt(
             installationID: b, presentationDigest: digest, existingIDs: [], admission: nil, pendingIsSubmitted: false))
+        XCTAssertEqual(try FirstDeviceAdmissionPolicy.additionalAttempt(
+            installationID: b, presentationDigest: digest, existingIDs: [], admission: accepted, pendingIsSubmitted: true), attempt)
         XCTAssertThrowsError(try FirstDeviceAdmissionPolicy.additionalAttempt(
             installationID: b, presentationDigest: digest, existingIDs: [a], admission: nil, pendingIsSubmitted: false))
         XCTAssertThrowsError(try FirstDeviceAdmissionPolicy.additionalAttempt(
@@ -71,6 +73,13 @@ final class FirstDeviceAdmissionPolicyTests: XCTestCase {
             XCTFail("duplicate installation accepted")
         } catch { XCTAssertEqual(error as? PlatformFailure, .siteRootBindingUnavailable) }
         XCTAssertEqual(admissionCalls, callsBeforeDuplicate)
+        let freshFlow = FirstDeviceEnrolmentFlow(testingScopedStore: storage,
+            additionalAdmission: { _ in XCTFail("V2 must not use legacy admission"); return nil },
+            enableV2Staging: true, now: { now }, eventRecorder: AdmissionEventSink())
+        freshFlow.handleScan(.success(ScannedQRPayload(text: qr)))
+        let freshDecision = try await freshFlow.testOnlyResolveScannedAdmission(existingIDs: [])
+        XCTAssertEqual(freshDecision, attempt)
+        XCTAssertEqual(try storage.provisionalPresentation(attemptID: attempt)?.installationID, presentation.installationID)
     }
 
 }

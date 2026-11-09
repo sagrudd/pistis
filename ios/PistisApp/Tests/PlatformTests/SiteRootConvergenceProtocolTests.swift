@@ -499,6 +499,19 @@ final class SiteRootConvergenceProtocolTests: XCTestCase {
         ])
     }
 
+    @MainActor
+    func testBrokerContinuationAcceptsSharedV2LeafHandoff() async throws {
+        let url = URL(fileURLWithPath: #filePath).deletingLastPathComponent()
+            .deletingLastPathComponent().appendingPathComponent("Fixtures/leaf-v2-ipv4.json")
+        let events = LockedContinuationEvents()
+        let transport = RecordingContinuationTransport(events: events, leafPayload: try Data(contentsOf: url))
+        let authorizer = ValidatingV2ContinuationAuthorizer(events: events)
+        let service = SiteRootConvergenceServiceV2(transport: RecordingBrokerTransport(recorder: BrokerAttemptRecorder()))
+        try await service.continueBrokerSiteX509(correlation: Data(repeating: 0x52, count: 32),
+            expectedSiteUUID: "cb5fc980-8a52-427a-83d1-a5e6a54b6642", transport: transport, authorizer: authorizer)
+        XCTAssertEqual(Array(events.values().suffix(3)), ["await-leaf-approval", "authorize-v2-leaf", "submit-leaf-approval"])
+    }
+
     func testBrokerAckRegistrationPresentationIsExactAndAuthorityBound() throws {
         let target = Data(repeating: 0x63, count: 32)
         let site = "02020202-0202-0202-0202-020202020202"
@@ -812,12 +825,13 @@ private final class LockedContinuationEvents: @unchecked Sendable {
 
 private struct RecordingContinuationTransport: MonasSiteX509BrokerContinuing {
     let events: LockedContinuationEvents
+    var leafPayload: Data? = nil
 
     func awaitSiteX509Continuation(
         correlation _: Data, phase: SiteX509BrokerContinuationPhaseV1
     ) async throws -> SiteX509BrokerContinuationPresentationV1? {
         events.append("await-\(phase.rawValue)")
-        let payload = Data("presentation-\(phase.rawValue)".utf8)
+        let payload = phase == .leafApproval ? (leafPayload ?? Data("presentation-\(phase.rawValue)".utf8)) : Data("presentation-\(phase.rawValue)".utf8)
         return SiteX509BrokerContinuationPresentationV1(
             payload: payload, sha256: Data(SHA256.hash(data: payload))
         )
@@ -830,6 +844,21 @@ private struct RecordingContinuationTransport: MonasSiteX509BrokerContinuing {
         XCTAssertEqual(presentationSHA256.count, 32)
         XCTAssertFalse(submission.isEmpty)
         events.append("submit-\(phase.rawValue)")
+    }
+}
+
+private final class ValidatingV2ContinuationAuthorizer: SiteX509BrokerContinuationAuthorizingV2, @unchecked Sendable {
+    private let events: LockedContinuationEvents
+    init(events: LockedContinuationEvents) { self.events = events }
+    func attendedUnlock(_: Data, role _: SiteX509AttendedUnlockRoleV2) throws -> Data { Data([1]) }
+    func prepareAckRegistration(expectedSiteUUID _: String) throws {}
+    func ackRegistration(_: Data) throws -> Data { Data([1]) }
+    func leafApproval(_ data: Data) throws -> Data {
+        let site = Data([0xcb,0x5f,0xc9,0x80,0x8a,0x52,0x42,0x7a,0x83,0xd1,0xa5,0xe6,0xa5,0x4b,0x66,0x42])
+        _ = try SiteX509LeafHandoffV2(data: data, operationID: Data(repeating: 1, count: 16),
+            correlationDigest: Data(repeating: 2, count: 32), expectedSiteUUID: site, nowUnixSeconds: 1_900_000_000)
+        events.append("authorize-v2-leaf")
+        return Data([1])
     }
 }
 

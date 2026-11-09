@@ -1293,6 +1293,20 @@ struct SiteRootConvergenceServiceV2: Sendable {
         _ = try await native.completeFirstAuthorityCustodyRotationV2(submission)
     }
 
+    /// Retry only the unsent native transition, never the earlier broker or
+    /// leaf submissions. Durable step markers deny ambiguous replays.
+    func retryProvisionalBrokerCustody(correlation: Data, siteUUID: String) async throws {
+        let storage = ScopedAppAttestStore()
+        guard let pending = try storage.submittedBrokerAttempt(correlation: correlation, siteUUID: siteUUID),
+              try storage.provisionalLeaf(attemptID: pending.attemptID) != nil else {
+            throw PlatformFailure.siteRootBindingUnavailable
+        }
+        try storage.requireFreshCustodyStep("assertion", pending: pending)
+        try storage.beginSubmittedPoll(attemptID: pending.attemptID, expected: pending)
+        defer { storage.endDispatch() }
+        try await continueProvisionalBrokerCustody(pending, storage: storage)
+    }
+
     static func validateBrokerEnrolledSiteRootPublicKeyID(
         _ expectedKeyID: Data, actualPublicKeyCompressedSEC1: Data
     ) throws {

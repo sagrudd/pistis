@@ -75,6 +75,11 @@ struct SiteRootConvergenceReviewView: View {
                 VStack(alignment: .leading, spacing: MnSpacing.x3) {
                     MnStatusLabel(text: "Stopped safely", kind: .danger)
                     Text(failure.safeUserMessage)
+                    if coordinator.canRetryBrokerCustody {
+                        MnPrimaryButton("Retry Monas connection", systemImage: "arrow.clockwise") {
+                            Task { await coordinator.retryBrokerCustody() }
+                        }
+                    }
                     MnPrimaryButton("Close", systemImage: "xmark") { dismiss() }
                 }
             }

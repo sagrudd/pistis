@@ -364,6 +364,20 @@ final class ScopedAppAttestStore: @unchecked Sendable {
         }
     }
 
+    func hasSubmittedBrokerAttempt() throws -> Bool {
+        try withLock {
+            for (account, data) in try persistence.entries() where account.hasPrefix("pending.") {
+                let pending = try JSONDecoder().decode(ScopedAppAttestPending.self, from: data)
+                try pending.validate()
+                guard account == staged(pending.attemptID) else { throw PlatformFailure.invalidConfiguration }
+                if try read(UUID.self, account: submitted(pending.attemptID)) == pending.attemptID,
+                   try readData(account: cancelled(pending.attemptID)) == nil,
+                   try readData(account: completed(pending.attemptID)) == nil { return true }
+            }
+            return false
+        }
+    }
+
     func stageProvisionalLeaf(_ value: ProvisionalLeafHandoff, pending: ScopedAppAttestPending) throws {
         guard value.attemptID == pending.attemptID, value.wrapper.count <= 8_192,
               value.verifiedAtSeconds > 0 else { throw PlatformFailure.invalidConfiguration }

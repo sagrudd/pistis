@@ -378,6 +378,28 @@ final class AppAttestAssertionTransportTests: XCTestCase {
         XCTAssertTrue(prepared.restoredRegisteredKeyReference)
     }
 
+    func testBoundCustodyAssertionUsesOnlyMatchingInstallationKey() async throws {
+        let bKey = Data(repeating: 0x11, count: 32).base64EncodedString()
+        let legacy = MutableKeyIDStore(keyID: Data(repeating: 0x22, count: 32).base64EncodedString())
+        let service = RecordingAppAttestService(keyID: bKey)
+        let client = AppleAppAttestClient(service: service, keyIDStore: legacy)
+        let challenge = try CustodyRotationAppAttestChallengeV2(data: AssertionURLProtocol.challengeData(expires: 200), nowUnixSeconds: 150)
+        let binding = ScopedAppAttestBinding(attemptID: UUID(), installationID: Data(repeating: 1, count: 16),
+            site: "site-demo", appIdentifier: AppleAppAttestRegistrationEnvelope.reviewedAppIdentifier,
+            environment: "Production", keyID: bKey, policyGeneration: 1, revocationGeneration: 1)
+        let wrong = ScopedAppAttestBinding(attemptID: binding.attemptID, installationID: Data(repeating: 2, count: 16),
+            site: binding.site, appIdentifier: binding.appIdentifier, environment: binding.environment,
+            keyID: binding.keyID, policyGeneration: 1, revocationGeneration: 1)
+        do {
+            _ = try await client.prepareBoundCustodyRotationAssertion(challenge: challenge, binding: wrong)
+            XCTFail("cross-installation assertion unexpectedly accepted")
+        } catch { XCTAssertEqual(error as? PlatformFailure, .appAttestInvalidInput) }
+        XCTAssertNil(service.assertedKeyID)
+        _ = try await client.prepareBoundCustodyRotationAssertion(challenge: challenge, binding: binding)
+        XCTAssertEqual(service.assertedKeyID, bKey)
+        XCTAssertEqual(legacy.readCount, 0); XCTAssertEqual(legacy.writeCount, 0)
+    }
+
     func testUnavailableServerRegisteredKeyDoesNotChangeTheLocalReference() async throws {
         let unacceptedRetryKeyID = Data(repeating: 0x22, count: 32).base64EncodedString()
         let store = MutableKeyIDStore(keyID: unacceptedRetryKeyID)

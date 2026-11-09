@@ -1,7 +1,9 @@
 # ADR 0046: Isolate App Attest and broker setup by installation
 
-- Status: Proposed — implementation and acceptance pending
+- Status: Accepted by project owner; cross-authority feasibility and implementation review pending
 - Date: 2026-11-09
+- Accepted: 2026-11-09 by Stephen, project owner, explicitly in the task chat,
+  for the exact proposal at `7d5fee32d8831079b26430283fe726aece0a305e`
 - Decision owners: product owner, Pistis mobile security, Monas authority and
   Thesaurophylax custody
 - Tracking issue: [#546](https://github.com/sagrudd/pistis/issues/546)
@@ -19,7 +21,7 @@ are also rebound by broker hostname to whichever native authority is selected.
 Neither a shared broker hostname nor a QR-supplied origin proves that two
 ceremonies refer to the same installed authority.
 
-## Proposed decision
+## Accepted design decision
 
 - Keep each existing installation and its device and App Attest references
   independent. Bind each reference to an authenticated, stable installation and
@@ -78,12 +80,12 @@ serialised per installation and pending ceremony.
 
 ## Review and qualification sequence
 
-Before accepting this proposed design, the decision owners and mobile-security,
-Monas and Thesaurophylax reviewers must establish feasibility and the exact
+Following the project owner’s acceptance of the design, mobile-security, Monas
+and Thesaurophylax reviewers must establish feasibility and the exact
 authoritative same-ceremony provenance, custody boundary, atomicity and
 interruption recovery. Monas must affirm that the operation and correlation
 are durably bound in authoritative records; a client echo is insufficient.
-After acceptance, implementation and independent review must demonstrate
+Implementation and independent review must demonstrate
 isolated A → B → A enrolment and authentication,
 wrong-site assertion rejection, same-ID conflicts, retries, restart and lost
 responses at each commit boundary, concurrent A/B, legacy ambiguity, swapped
@@ -94,7 +96,7 @@ and any live use. The actual existing iPhone and its data must not be reset or
 overwritten. This proposal does not establish that the current source supports
 multi-host operation or that any release is qualified.
 
-## Concrete bounded decision for owner review
+## Concrete bounded design
 
 Preserve A's existing `primary` and legacy path. B's pending Keychain item is
 create-once under an opaque local operation ID, with its Apple key reference,
@@ -144,4 +146,5 @@ acceptance contract. The decision owners must verify server-side correlation
 provenance and environmental/generation availability and approve the exact
 status response and crash/replay ordering; if any value is unavailable the
 operation remains blocked until Monas can supply it from an authoritative
-record. No production operation is authorised by proposing this design.
+record. The owner’s design decision does not waive cross-authority review, implementation
+qualification, signing or the separate physical-device action gate.

@@ -383,7 +383,8 @@ broker transport is retained for registration, polling and initial proof;
 native authority requests retain their pinned transport. Approval of the broker
 invitation while a native authority is retained remains blocked before key
 creation while per-installation App Attest and setup bindings are unresolved.
-ADR 0046 is a proposal, not authority to add a second installation.
+ADR 0046 records the accepted design; implementation and cross-authority
+qualification are still required before adding a second installation.
 
 The simulator regression fixture `monas-broker-genesis-synthetic.png` was
 rendered by Monas source `881e0514` using

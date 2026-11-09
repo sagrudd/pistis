@@ -342,8 +342,10 @@ struct RootTabView: View {
             let challenge = try await appAttestTransport
                 .fetchCustodyRotationAssertionChallengeV2(nowUnixSeconds: now)
             progress(.generateAssertion)
-            let assertion = try await AppleAppAttestClient()
-                .prepareCustodyRotationAssertion(challenge: challenge)
+            let client = AppleAppAttestClient()
+            let assertion = try await (BrokerV2Feature.enabled
+                ? client.prepareSelectedCustodyRotationAssertion(challenge: challenge)
+                : client.prepareCustodyRotationAssertion(challenge: challenge))
             if assertion.restoredRegisteredKeyReference {
                 try? LocalHistoryRepository.shared.record(
                     HistoryEvent(
@@ -359,6 +361,10 @@ struct RootTabView: View {
                 )
             }
             progress(.submitAssertion)
+            if BrokerV2Feature.enabled {
+                guard try await InstallationTrustKeychain.shared.activeEnrollment()?.trust.installationID == challenge.installationID
+                else { throw PlatformFailure.siteRootBindingUnavailable }
+            }
             try await appAttestTransport.submitAssertion(assertion.envelope)
             progress(.resolveCustodyLifecycle)
             let observedLifecycle = try await transport.authorityCustodyStatusV2(

@@ -696,6 +696,44 @@ final class AppleAppAttestClient: @unchecked Sendable {
         )
     }
 
+    /// Uses only the selected installation's scoped key, or the one retained
+    /// legacy key when exactly one installation remains unscoped.
+    func prepareSelectedCustodyRotationAssertion(
+        challenge: CustodyRotationAppAttestChallengeV2,
+        storage: ScopedAppAttestStore = ScopedAppAttestStore()
+    ) async throws -> PreparedCustodyRotationAppAttestAssertion {
+        guard service.isSupported,
+              let selected = try await InstallationTrustKeychain.shared.activeEnrollment(),
+              selected.trust.installationID == challenge.installationID else {
+            throw PlatformFailure.appAttestInvalidInput
+        }
+        let keyID: String
+        if let binding = try storage.binding(installationID: selected.trust.installationID) {
+            guard let bytes = PendingAppAttestReplacementKeyV1.canonicalKeyID(binding.keyID),
+                  challenge.matchesBinding(installationID: binding.installationID,
+                    siteTrustDomain: binding.site, appIdentifier: binding.appIdentifier, keyID: bytes)
+            else { throw PlatformFailure.appAttestInvalidInput }
+            keyID = binding.keyID
+        } else {
+            let inventory = try await InstallationTrustKeychain.shared.enrollmentInventoryRecords()
+            var unscoped: [Data] = []
+            for record in inventory where try storage.binding(installationID: record.installationID) == nil {
+                unscoped.append(record.installationID)
+            }
+            guard unscoped == [selected.trust.installationID], let legacy = existingKeyID(),
+                  PendingAppAttestReplacementKeyV1.canonicalKeyID(legacy) == challenge.keyID
+            else { throw PlatformFailure.appAttestInvalidInput }
+            keyID = legacy
+        }
+        let assertion = try await generateAssertion(keyID: keyID, clientDataHash: challenge.clientDataHash)
+        guard try await InstallationTrustKeychain.shared.activeEnrollment() == selected else {
+            throw PlatformFailure.siteRootBindingUnavailable
+        }
+        return PreparedCustodyRotationAppAttestAssertion(
+            envelope: try AppleAppAttestAssertionEnvelope(ceremonyID: challenge.ceremonyID, assertion: assertion),
+            restoredRegisteredKeyReference: false)
+    }
+
     /// Produces one fresh assertion for the exact, purpose-separated MTGS
     /// recovery challenge carried by a strictly validated Monas invitation.
     func prepareMTGSRecoveryAssertion(

@@ -31,11 +31,13 @@ ceremonies refer to the same installed authority.
   by broker hostname. Promote or associate a single pending ceremony only when
   authenticated authority evidence establishes the same installation and site;
   ambiguity, interruption or substitution fails closed without changing A.
-- Preserve the legacy global key reference. Migrate or associate it with A only
-  when authenticated evidence unambiguously binds that exact key to A; otherwise
-  retain it unchanged and fail closed. Adding or failing B never overwrites A.
-  Define durable, idempotent migration and retry ordering before implementation;
-  a crash at any step must preserve A and avoid activating an unverified B.
+- Preserve A's legacy global reference and its working legacy path without
+  migrating or overwriting it. A may use the unscoped path only where the
+  retained context unambiguously identifies the one eligible legacy
+  installation. B uses a distinct create-once scoped reference and never falls
+  back to `primary`. Adding or failing B never overwrites A. Define durable,
+  idempotent pending and retry ordering before implementation; a crash at any
+  step must preserve A and avoid activating an unverified B.
 - A new first-device attempt must reject a conflicting same-installation ID
   before creating or deleting keys. Identical retries remain bounded and
   idempotent; different installation IDs may coexist only after the above
@@ -48,14 +50,19 @@ ceremonies refer to the same installed authority.
 
 ## Unresolved authority evidence and transaction ordering
 
-The exact authenticated Monas authority record carrying the current Apple key
-identifier, stable installation and Site Trust identities, app identifier and
-Apple environment, and applicable policy and revocation generations must be
-identified and independently verified before acceptance. A record lacking any
-binding, or a mismatch against the exact retained reference, is insufficient.
-No host selection, self-asserted QR, or broker correlation substitutes for it.
-If no such record exists, a reviewed authority contract and owner decision are
-required; do not infer a migration from a matching hostname.
+The existing pinned-channel `CustodyRotationAppAttestChallengeV2` includes an
+installation ID, Site Trust domain, app identifier and Apple key identifier;
+the current parser discards the first two after validation. It does not carry
+Apple environment or policy and revocation generations. The existing assertion
+submission reports transport success rather than a typed acceptance binding all
+those facts. Preserve and compare the available challenge fields against the
+selected or in-progress authenticated context, and require durable authority
+acceptance before associating any scoped reference. The Monas and Pistis owners
+must specify the exact authenticated same-ceremony handoff from pending broker
+setup to the final installation ID, how environment and relevant generations
+are established, and the acceptance/reconciliation evidence. If existing
+records do not establish these facts, the coordinated authority contract must
+provide them; neither matching hostname nor broker correlation suffices.
 
 Pending reference storage must be durable and create-once for the exact
 ceremony. A retry after a timeout or lost response must reuse the same key and

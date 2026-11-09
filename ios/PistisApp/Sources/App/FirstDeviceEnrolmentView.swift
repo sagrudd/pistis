@@ -149,9 +149,8 @@ struct FirstDeviceEnrolmentView: View {
 
 }
 
-/// An additional enrolment remains staged until an independently reviewed
-/// authority handoff supplies this exact attempt and V4 presentation binding.
-/// The production adapter is intentionally unavailable until that wire exists.
+/// A provisional local association permits receipt staging only. The later
+/// authority handoff must bind the exact attempt and V4 before activation.
 struct AdditionalEnrolmentAdmission: Equatable {
     let attemptID: UUID
     let installationID: Data
@@ -162,6 +161,9 @@ struct AdditionalEnrolmentAdmission: Equatable {
         self.installationID = installationID
         self.presentationDigest = presentationDigest
     }
+    static func provisional(attemptID: UUID, installationID: Data, presentationDigest: Data) -> Self {
+        Self(attemptID: attemptID, installationID: installationID, presentationDigest: presentationDigest)
+    }
 #if DEBUG
     static func testOnly(attemptID: UUID, installationID: Data, presentationDigest: Data) -> Self {
         Self(attemptID: attemptID, installationID: installationID, presentationDigest: presentationDigest)
@@ -171,7 +173,7 @@ struct AdditionalEnrolmentAdmission: Equatable {
 
 enum FirstDeviceAdmissionPolicy {
     /// A duplicate installation never reaches key creation; an additional
-    /// installation needs a separately verified, exact pending-operation join.
+    /// installation needs a provisional exact pending-operation association.
     static func additionalAttempt(
         installationID: Data, presentationDigest: Data, existingIDs: [Data],
         admission: AdditionalEnrolmentAdmission?, pendingIsSubmitted: Bool
@@ -189,6 +191,8 @@ enum FirstDeviceAdmissionPolicy {
 
 @MainActor
 final class FirstDeviceEnrolmentFlow: ObservableObject {
+    // Enable only after reviewed host handoff, promotion and full-flow tests.
+    private static let brokerV2IntegrationEnabled = false
     @Published private(set) var presentation: VerifiedFirstDevicePresentation?
     @Published private(set) var prompt: GitHubDeviceAuthorizationPrompt?
     @Published private(set) var verifiedSubject: UInt64?
@@ -228,8 +232,15 @@ final class FirstDeviceEnrolmentFlow: ObservableObject {
     ) {
         self.eventRecorder = eventRecorder
         now = Date.init
-        scopedStore = ScopedAppAttestStore()
-        additionalAdmission = { _ in nil }
+        let storage = ScopedAppAttestStore()
+        scopedStore = storage
+        additionalAdmission = { presentation in
+            guard Self.brokerV2IntegrationEnabled else { return nil }
+            let attempt = try storage.stageProvisionalPresentation(
+                installationID: presentation.installationID, digest: presentation.presentationDigest)
+            return .provisional(attemptID: attempt, installationID: presentation.installationID,
+                                presentationDigest: presentation.presentationDigest)
+        }
     }
 #if DEBUG
     /// Test-only seam; no production admission adapter is enabled.

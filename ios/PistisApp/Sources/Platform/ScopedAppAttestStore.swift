@@ -157,6 +157,12 @@ private struct BrokerAttemptReservation: Codable, Equatable {
     let presentationDigest: Data
 }
 
+private struct ProvisionalBrokerPresentation: Codable, Equatable {
+    let attemptID: UUID
+    let installationID: Data
+    let presentationDigest: Data
+}
+
 /// Create-once keychain records. All operations in the Pistis process share
 /// one lock; no app extension or other process may write this private service.
 /// Cancellation markers remain until explicit reset, so a crash cannot turn a
@@ -353,6 +359,35 @@ final class ScopedAppAttestStore: @unchecked Sendable {
             try value.validate()
             guard value.attemptID == attemptID else { throw PlatformFailure.invalidConfiguration }
             return ScopedSubmittedAttempt(value)
+        }
+    }
+
+    /// Associates an attended, independently verified V4 scan with the only
+    /// pending operation for receipt staging. This is not authority evidence.
+    func stageProvisionalPresentation(installationID: Data, digest: Data) throws -> UUID {
+        guard installationID.count == 16, !installationID.allSatisfy({ $0 == 0 }),
+              digest.count == 32, !digest.allSatisfy({ $0 == 0 })
+        else { throw PlatformFailure.invalidConfiguration }
+        return try withLock {
+            guard !Self.resetInProgress else { throw PlatformFailure.enrolmentBeginRetryRequired }
+            var candidates: [ScopedAppAttestPending] = []
+            for (account, data) in try persistence.entries() where account.hasPrefix("pending.") {
+                let value = try JSONDecoder().decode(ScopedAppAttestPending.self, from: data)
+                try value.validate()
+                guard account == staged(value.attemptID) else { throw PlatformFailure.invalidConfiguration }
+                if try read(UUID.self, account: submitted(value.attemptID)) == value.attemptID,
+                   try readData(account: cancelled(value.attemptID)) == nil,
+                   try readData(account: completed(value.attemptID)) == nil {
+                    candidates.append(value)
+                }
+            }
+            guard candidates.count == 1, let pending = candidates.first else {
+                throw PlatformFailure.siteRootBindingUnavailable
+            }
+            let value = ProvisionalBrokerPresentation(attemptID: pending.attemptID,
+                installationID: installationID, presentationDigest: digest)
+            try createOnce(value, account: "provisional." + pending.attemptID.uuidString)
+            return pending.attemptID
         }
     }
 

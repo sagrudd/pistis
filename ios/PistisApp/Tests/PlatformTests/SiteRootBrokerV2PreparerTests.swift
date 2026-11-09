@@ -11,6 +11,24 @@ final class SiteRootBrokerV2PreparerTests: XCTestCase {
         XCTAssertLessThanOrEqual(body.count, 32 * 1024)
         XCTAssertThrowsError(try BrokerV2RelayEnvelope.encode(reference: "test", correlation: Data(repeating: 1, count: 32), registration: registration + Data([1])))
     }
+    func testProvisionalPresentationIsCreateOnceAndAmbiguityFailsClosed() async throws {
+        let storage = ScopedAppAttestStore(persistence: ScopedMemoryPersistence())
+        let preparer = SiteRootBrokerV2Preparer(
+            storage: storage, appAttest: AppleAppAttestClient(service: PreparationTestAppleService(), keyIDStore: PreparationTestLegacyStore()))
+        let presentation = try fixture(), first = UUID(), key = root()
+        _ = try await preparer.prepare(presentation: presentation, attemptID: first,
+                                       siteRootKey: key, nowMillis: { 1_900_000_000_000 })
+        try storage.markSubmitted(attemptID: first)
+        let installation = Data(repeating: 3, count: 16), digest = Data(repeating: 4, count: 32)
+        XCTAssertEqual(try storage.stageProvisionalPresentation(installationID: installation, digest: digest), first)
+        XCTAssertEqual(try storage.stageProvisionalPresentation(installationID: installation, digest: digest), first)
+        XCTAssertThrowsError(try storage.stageProvisionalPresentation(installationID: installation, digest: Data(repeating: 5, count: 32)))
+        let second = UUID()
+        _ = try await preparer.prepare(presentation: presentation, attemptID: second,
+                                       siteRootKey: key, nowMillis: { 1_900_000_000_000 })
+        try storage.markSubmitted(attemptID: second)
+        XCTAssertThrowsError(try storage.stageProvisionalPresentation(installationID: installation, digest: digest))
+    }
     private func fixture() throws -> SiteRootBrokerPresentationV2 {
         let url = URL(fileURLWithPath: #filePath).deletingLastPathComponent()
             .deletingLastPathComponent().appendingPathComponent("Fixtures/broker-v2-qr.json")

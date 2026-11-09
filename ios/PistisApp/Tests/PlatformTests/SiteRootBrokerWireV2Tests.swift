@@ -84,7 +84,7 @@ final class SiteRootBrokerWireV2Tests: XCTestCase {
     }
 
     @MainActor
-    func testNormalScannerRecognisesV2ButCannotApprove() async throws {
+    func testNormalScannerRecognisesV2AndSimulatorLacksSecureHardware() async throws {
         let qr = try XCTUnwrap(String(data: fixture("qr"), encoding: .utf8))
         XCTAssertTrue(QRPayloadProfile.pistisAuthenticationOrMonasSiteRoot.accepts(qr))
         XCTAssertEqual(MonasJSONScanRoute.classify(qr), .siteRootDelegation)
@@ -93,6 +93,6 @@ final class SiteRootBrokerWireV2Tests: XCTestCase {
         guard case .review = coordinator.phase else { return XCTFail("expected V2 review") }
         XCTAssertTrue(coordinator.isValidatedBrokerFirstDevice)
         await coordinator.approve()
-        XCTAssertEqual(coordinator.phase, .failed(.siteRootBindingUnavailable))
+        XCTAssertEqual(coordinator.phase, .failed(.secureHardwareUnavailable))
     }
 }

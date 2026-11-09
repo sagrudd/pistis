@@ -36,7 +36,7 @@ struct FirstDeviceStatusClientV2 {
         guard recovered == presentation else { throw PlatformFailure.invalidConfiguration }
         let root = try SecureEnclaveSiteRootProofProducer(authenticationReason: "Confirm this Monas Site Root")
         guard let registration = try root.existingRegistration() else { throw PlatformFailure.keyNotFound }
-        let request = try StrictJSONObject(data: pending.preparedRegistration, maximumBytes: 12 * 1024).values
+        let request = try SiteRootBrokerRegistrationWireV2.parse(pending.preparedRegistration)
         guard case let .object(key)? = request["site_root_key"],
               key["device_key_id"] == .string(registration.deviceKeyID),
               key["public_key_compressed_sec1_base64url"] == .string(SiteRootBrokerPresentationV2.encode(registration.publicKeyCompressedSEC1))

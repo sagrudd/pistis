@@ -110,6 +110,14 @@ struct SiteRootBrokerPresentationV2: Sendable {
 /// Closed no-escape request grammar. Canonicality is not authentication.
 enum SiteRootBrokerRegistrationWireV2 {
     static let schema = "monas.site-root-genesis-registration.v2"
+    static let maximumBytes = 12 * 1_024
+
+    /// Registration alone permits a large encoded Apple attestation. The
+    /// enclosing object retains the same fixed total size limit.
+    static func parse(_ data: Data) throws -> [String: StrictJSONObject.Value] {
+        try StrictJSONObject(data: data, maximumBytes: maximumBytes,
+                             maximumStringBytes: maximumBytes).values
+    }
     private struct Request: Encodable {
         let schema = SiteRootBrokerRegistrationWireV2.schema
         let reference: String
@@ -131,7 +139,7 @@ enum SiteRootBrokerRegistrationWireV2 {
             throw PlatformFailure.qrPayloadUnsupported
         }
         let values: [String: StrictJSONObject.Value]
-        do { values = try StrictJSONObject(data: data, maximumBytes: 12 * 1024).values }
+        do { values = try parse(data) }
         catch { throw PlatformFailure.qrPayloadUnsupported }
         func render(_ object: [String: StrictJSONObject.Value]) throws -> String {
             try "{" + object.keys.sorted().map { key in
@@ -181,7 +189,7 @@ enum SiteRootBrokerRegistrationWireV2 {
 
     static func validate(_ data: Data, presentation: SiteRootBrokerPresentationV2, operationID: Data) throws {
         _ = try canonicalWire(data)
-        let values = try StrictJSONObject(data: data, maximumBytes: 12 * 1024).values
+        let values = try parse(data)
         guard Set(values.keys) == ["schema", "reference", "operation_id_b64url", "site_root_key", "app_attest_registration"],
               values["schema"] == .string(schema), values["reference"] == .string(presentation.reference),
               values["operation_id_b64url"] == .string(SiteRootBrokerPresentationV2.encode(operationID)),

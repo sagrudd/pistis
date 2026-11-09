@@ -369,8 +369,10 @@ final class SiteRootDelegationCoordinator: ObservableObject {
 #endif
         let attempt = try storage.reserveBrokerAttempt(presentation)
         phase = .registeringFirstDevice
+        enterStage(.siteRootKey)
         setFirstDeviceStage(.creatingSiteRootKey)
         let root = try producer.register()
+        enterStage(.appAttest)
         setFirstDeviceStage(.preparingAppAttest)
         let clock: @Sendable () -> UInt64 = {
             UInt64(max(0, Date().timeIntervalSince1970) * 1_000)
@@ -379,14 +381,17 @@ final class SiteRootDelegationCoordinator: ObservableObject {
         let retained = try await preparer.prepare(presentation: presentation, attemptID: attempt,
                                                   siteRootKey: root, nowMillis: clock)
         if try storage.submittedAttempt(attemptID: attempt) == nil {
+            enterStage(.monasDelegation)
             setFirstDeviceStage(.submittingMonasRegistration)
             try await broker.submitV2(presentation: presentation, attemptID: attempt,
                                       storage: storage, nowMillis: clock)
         }
+        enterStage(.delegationPoll)
         let delegation = try await broker.pollV2(presentation: presentation, attemptID: attempt, storage: storage)
         try storage.beginSubmittedPoll(attemptID: attempt, expected: retained)
         defer { storage.endDispatch() }
         phase = .signing
+        enterStage(.siteRootProof)
         setFirstDeviceStage(.signingInitialProof)
         let proof = try producer.prove(delegation)
         setFirstDeviceStage(.submittingInitialProof)

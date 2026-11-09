@@ -54,10 +54,13 @@ struct SiteRootBrokerV2Preparer: Sendable {
                   retained.environmentClaim == "Production" else {
                 throw PlatformFailure.invalidConfiguration
             }
-            try SiteRootBrokerRegistrationWireV2.validate(
-                retained.preparedRegistration, presentation: presentation, operationID: operation
-            )
-            let values = try StrictJSONObject(data: retained.preparedRegistration, maximumBytes: 12 * 1024).values
+            do {
+                try SiteRootBrokerRegistrationWireV2.validate(
+                    retained.preparedRegistration, presentation: presentation, operationID: operation)
+            } catch PlatformFailure.qrPayloadUnsupported {
+                throw PlatformFailure.siteRootGenesisRegistrationPreparationFailed
+            }
+            let values = try SiteRootBrokerRegistrationWireV2.parse(retained.preparedRegistration)
             guard case let .object(root)? = values["site_root_key"],
                   root["device_key_id"] == .string(siteRootKey.deviceKeyID),
                   root["public_key_compressed_sec1_base64url"] == .string(
@@ -68,7 +71,8 @@ struct SiteRootBrokerV2Preparer: Sendable {
             else { throw PlatformFailure.invalidConfiguration }
             return retained
         }
-        try SiteRootBrokerRegistrationWireV2.validateSiteRootKey(siteRootKey)
+        do { try SiteRootBrokerRegistrationWireV2.validateSiteRootKey(siteRootKey) }
+        catch PlatformFailure.qrPayloadUnsupported { throw PlatformFailure.siteRootGenesisRegistrationPreparationFailed }
         let hash = try SiteRootBrokerRegistrationTranscriptV2.clientDataHash(
             operationID: operation, correlation: presentation.correlation,
             reference: presentation.reference, hostChallenge: presentation.challenge
@@ -82,10 +86,14 @@ struct SiteRootBrokerV2Preparer: Sendable {
         guard nowMillis() < presentation.expiresAt else {
             throw PlatformFailure.siteRootGenesisPresentationExpired
         }
-        let request = try SiteRootBrokerRegistrationWireV2.encode(
-            presentation: presentation, operationID: operation,
-            siteRootKey: siteRootKey, appAttest: registration.envelope
-        )
+        let request: Data
+        do {
+            request = try SiteRootBrokerRegistrationWireV2.encode(
+                presentation: presentation, operationID: operation,
+                siteRootKey: siteRootKey, appAttest: registration.envelope)
+        } catch PlatformFailure.qrPayloadUnsupported {
+            throw PlatformFailure.siteRootGenesisRegistrationPreparationFailed
+        }
         let pending = ScopedAppAttestPending(
             attemptID: attemptID, correlation: presentation.correlation,
             registrationReference: presentation.reference, siteClaim: presentation.site,

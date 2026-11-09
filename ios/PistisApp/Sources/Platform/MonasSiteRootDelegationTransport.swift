@@ -885,7 +885,7 @@ struct MonasSiteRootGenesisBrokerTransport: MonasSiteRootCeremonyTransport,
         let operation = withUnsafeBytes(of: &uuid) { Data($0) }
         try SiteRootBrokerRegistrationWireV2.validate(
             pending.preparedRegistration, presentation: presentation, operationID: operation)
-        let request = try StrictJSONObject(data: pending.preparedRegistration, maximumBytes: 12 * 1024).values
+        let request = try SiteRootBrokerRegistrationWireV2.parse(pending.preparedRegistration)
         guard case let .object(root)? = request["site_root_key"],
               case let .string(keyID)? = root["device_key_id"] else { throw PlatformFailure.invalidConfiguration }
         let endpoint = try fixedEndpoint(MonasSiteRootGenesisBrokerEndpointV1.delegationPollPath)

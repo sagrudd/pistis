@@ -6,6 +6,55 @@ import XCTest
 
 final class SiteRootBrokerV2PreparerTests: XCTestCase {
     @MainActor
+    func testOversizedRegistrationReportsPreparationStageBeforeSending() async throws {
+        GenesisBrokerURLProtocol.reset()
+        let configuration = URLSessionConfiguration.ephemeral
+        configuration.protocolClasses = [GenesisBrokerURLProtocol.self]
+        let broker = try MonasSiteRootGenesisBrokerTransport(session: URLSession(configuration: configuration))
+        let service = PreparationTestAppleService(attestation: Data(repeating: 0x42, count: 10_000))
+        let legacy = PreparationTestLegacyStore(), events = ControlledBrokerEventSink()
+        let coordinator = SiteRootDelegationCoordinator(testBroker: broker,
+            appAttestClient: AppleAppAttestClient(service: service, keyIDStore: legacy),
+            producer: ControlledBrokerRoot(registration: root()), storage: ScopedAppAttestStore(persistence: ScopedMemoryPersistence()),
+            eventRecorder: events, nowMillis: { 1_900_000_000_000 })
+        let url = URL(fileURLWithPath: #filePath).deletingLastPathComponent()
+            .deletingLastPathComponent().appendingPathComponent("Fixtures/broker-v2-qr.json")
+        coordinator.accept(qrText: try String(contentsOf: url, encoding: .utf8))
+        await coordinator.approve()
+        XCTAssertEqual(coordinator.phase, .failed(.siteRootGenesisRegistrationPreparationFailed))
+        XCTAssertEqual(events.values.last?.stage, .appAttest)
+        XCTAssertEqual(events.values.last?.failure, .appAttest)
+        XCTAssertTrue(GenesisBrokerURLProtocol.requests().isEmpty)
+        XCTAssertEqual(legacy.reads, 0); XCTAssertEqual(legacy.writes, 0)
+    }
+    func testRegistrationAcceptsMultiKilobyteAttestationWithinWireLimit() throws {
+        let presentation = try fixture()
+        let operation = Data(repeating: 1, count: 16)
+        let hash = try SiteRootBrokerRegistrationTranscriptV2.clientDataHash(operationID: operation,
+            correlation: presentation.correlation, reference: presentation.reference, hostChallenge: presentation.challenge)
+        // Structurally realistic CBOR, with synthetic certificate and receipt
+        // bytes; it is not valid Apple evidence and is never submitted.
+        func bytes(_ count: Int, _ value: UInt8) -> Data {
+            Data([0x59, UInt8(count >> 8), UInt8(count & 0xff)]) + Data(repeating: value, count: count)
+        }
+        var attestation = Data([0xa3, 0x63]); attestation.append(Data("fmt".utf8))
+        attestation.append(0x6f); attestation.append(Data("apple-appattest".utf8))
+        attestation.append(0x67); attestation.append(Data("attStmt".utf8))
+        attestation.append(contentsOf: [0xa2, 0x63]); attestation.append(Data("x5c".utf8)); attestation.append(0x82)
+        attestation.append(bytes(1_400, 0x30)); attestation.append(bytes(1_400, 0x31))
+        attestation.append(0x67); attestation.append(Data("receipt".utf8)); attestation.append(bytes(600, 0x32))
+        attestation.append(0x68); attestation.append(Data("authData".utf8)); attestation.append(bytes(128, 0x33))
+        let apple = try AppleAppAttestRegistrationEnvelope(ceremonyID: presentation.ceremonyID,
+            siteTrustDomain: presentation.site, appleKeyID: Data(repeating: 2, count: 32).base64EncodedString(),
+            clientDataHash: hash, attestationObject: attestation)
+        let request = try SiteRootBrokerRegistrationWireV2.encode(presentation: presentation,
+            operationID: operation, siteRootKey: root(), appAttest: apple)
+        XCTAssertLessThan(request.count, 12 * 1_024)
+        XCTAssertGreaterThan(apple.attestationObjectB64URL.utf8.count, 4_096)
+        XCTAssertThrowsError(try StrictJSONObject(data: request, maximumBytes: 12 * 1_024))
+        XCTAssertThrowsError(try SiteRootBrokerRegistrationWireV2.parse(Data(repeating: 0x41, count: 12 * 1_024 + 1)))
+    }
+    @MainActor
     func testNormalCoordinatorRunsBrokerV2WithControlledPeers() async throws {
         GenesisBrokerURLProtocol.reset()
         let configuration = URLSessionConfiguration.ephemeral
@@ -221,6 +270,22 @@ final class SiteRootBrokerV2PreparerTests: XCTestCase {
         } catch { XCTAssertEqual(error as? PlatformFailure, .invalidConfiguration) }
         XCTAssertEqual(service.generated, 1)
     }
+    func testLargeAttestationStagesAndReopensWithoutNewKey() async throws {
+        let service = PreparationTestAppleService(attestation: Data(repeating: 0x42, count: 4_096))
+        let legacy = PreparationTestLegacyStore(), persistence = ScopedMemoryPersistence()
+        let storage = ScopedAppAttestStore(persistence: persistence)
+        let preparer = SiteRootBrokerV2Preparer(storage: storage,
+            appAttest: AppleAppAttestClient(service: service, keyIDStore: legacy))
+        let presentation = try fixture(), key = root(), attempt = UUID()
+        let staged = try await preparer.prepare(presentation: presentation, attemptID: attempt,
+                                                 siteRootKey: key, nowMillis: { 1_900_000_000_000 })
+        let reopened = SiteRootBrokerV2Preparer(storage: ScopedAppAttestStore(persistence: persistence),
+            appAttest: AppleAppAttestClient(service: service, keyIDStore: legacy))
+        let retried = try await reopened.prepare(presentation: presentation, attemptID: attempt,
+                                                   siteRootKey: key, nowMillis: { 1_900_000_000_000 })
+        XCTAssertEqual(staged, retried); XCTAssertEqual(service.generated, 1)
+        XCTAssertEqual(legacy.reads, 0); XCTAssertEqual(legacy.writes, 0)
+    }
     func testOrphanedPreparationNeverRegeneratesOnRestart() async throws {
         let service = PreparationTestAppleService()
         let persistence = ScopedMemoryPersistence(); persistence.failNextPending = true
@@ -243,13 +308,24 @@ final class SiteRootBrokerV2PreparerTests: XCTestCase {
             XCTFail("orphaned attempt regenerated a key")
         } catch { XCTAssertEqual(error as? PlatformFailure, .invalidConfiguration) }
         XCTAssertEqual(service.generated, 1)
+        let url = URL(fileURLWithPath: #filePath).deletingLastPathComponent()
+            .deletingLastPathComponent().appendingPathComponent("Fixtures/broker-v2-qr.json")
+        let original = try String(contentsOf: url, encoding: .utf8)
+        let replacement = original.replacingOccurrences(of: SiteRootBrokerPresentationV2.encode(presentation.correlation),
+                                                        with: SiteRootBrokerPresentationV2.encode(Data(repeating: 0x55, count: 32)))
+        let fresh = try SiteRootBrokerPresentationV2(qrText: replacement, nowMillis: 1_900_000_000_000)
+        let freshAttempt = try storage.reserveBrokerAttempt(fresh)
+        let freshValue = try await restarted.prepare(presentation: fresh, attemptID: freshAttempt,
+                                                       siteRootKey: key, nowMillis: { 1_900_000_000_000 })
+        XCTAssertEqual(freshValue.attemptID, freshAttempt)
+        XCTAssertEqual(service.generated, 2)
         try storage.abandonPreparing(attempt)
         do {
             _ = try await restarted.prepare(presentation: presentation, attemptID: attempt,
                                              siteRootKey: key, nowMillis: { 1_900_000_000_000 })
             XCTFail("abandoned attempt restarted")
         } catch { XCTAssertEqual(error as? PlatformFailure, .invalidConfiguration) }
-        XCTAssertEqual(service.generated, 1)
+        XCTAssertEqual(service.generated, 2)
     }
 
     func testResetInvalidatesInFlightPreparationMarker() async throws {
@@ -421,7 +497,8 @@ private struct ControlledCustodySigner: FirstAuthorityCustodyKeyOperations {
 }
 
 @MainActor private final class ControlledBrokerEventSink: OnboardingEventRecording {
-    func append(_: OnboardingEvent) throws {}
+    private(set) var values: [OnboardingEvent] = []
+    func append(_ value: OnboardingEvent) throws { values.append(value) }
 }
 
 private final class PreparationTestLegacyStore: AppleAppAttestKeyIDStoring, @unchecked Sendable {
@@ -431,8 +508,10 @@ private final class PreparationTestLegacyStore: AppleAppAttestKeyIDStoring, @unc
 }
 private final class PreparationTestAppleService: AppleAppAttestServicing, @unchecked Sendable {
     private(set) var generated = 0; private(set) var attested = 0
+    private let attestation: Data
+    init(attestation: Data = Data([1, 2, 3])) { self.attestation = attestation }
     var isSupported: Bool { true }
     func generateKey() async throws -> String { generated += 1; return Data(repeating: 0x22, count: 32).base64EncodedString() }
-    func attestKey(_: String, clientDataHash _: Data) async throws -> Data { attested += 1; return Data([1, 2, 3]) }
+    func attestKey(_: String, clientDataHash _: Data) async throws -> Data { attested += 1; return attestation }
     func generateAssertion(_: String, clientDataHash _: Data) async throws -> Data { Data(repeating: 0x44, count: 64) }
 }

@@ -1,3 +1,8 @@
+## Pistis iOS 0.29.1+77 — first-device registration fix
+
+- Accept a realistically sized Apple App Attest object within the existing 12 KiB V2 registration limit. Report local registration preparation failures at the App Attest stage rather than describing them as unsupported QR codes.
+- The [Kanon allocation](https://github.com/sagrudd/kanon/pull/907), source review and device qualification remain pending; the candidate does not reset existing identities or retry an ambiguous ceremony automatically.
+
 ## Pending Pistis Monas 0.14.0 — status assertion source candidate
 
 - Add an inactive first-device status purpose with a server-owned typed binding
@@ -11,7 +16,7 @@
 
 - Reserve the compatible minor in [Kanon PR900](https://github.com/sagrudd/kanon/pull/900). Source review, coordinated host delivery, lockset, signing and release qualification remain pending.
 - Add the fixed-broker V2 first-device route with operation-scoped App Attest, attended X.509 handoff and pinned native custody. Retain pending attempts and prevent automatic replay after an ambiguous custody send.
-- Stage additional enrollment until the exact signed presentation, receipt and fresh native status are joined. Preserve retained installations and reject conflicting installation IDs; scope new acknowledgement and recovery records without replacing legacy references.
+- Stage additional enrolment until the exact signed presentation, receipt and fresh native status are joined. Preserve retained installations and reject conflicting installation IDs; scope new acknowledgement and recovery records without replacing legacy references.
 - Bind ordinary login to the selected installation and retain the original installation when switching. Show scan failures and recovery guidance prominently with accessibility focus and a Scan again action.
 - Simulator rehearsals use synthetic credentials and controlled peers. Physical Apple App Attest, Secure Enclave and the complete real-host flow remain unqualified.
 

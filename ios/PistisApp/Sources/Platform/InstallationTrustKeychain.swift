@@ -445,14 +445,21 @@ actor InstallationTrustKeychain: InstallationTrustStoring {
         let inventory = try loadInventoryRecords()
         guard !inventory.contains(where: { if case .legacy = $0 { return true }; return false })
         else { throw PlatformFailure.invalidConfiguration }
-        var records = inventory.compactMap { record -> AuthenticatedEnrollmentOutput? in
+        let records = inventory.compactMap { record -> AuthenticatedEnrollmentOutput? in
             guard case let .current(value) = record else { return nil }
             return value
         }
+        let updated = try Self.addingAdditionalEnrollment(output, to: records)
+        try saveInventory(records: updated, selectedInstallationID: output.trust.installationID)
+    }
+
+    static func addingAdditionalEnrollment(_ output: AuthenticatedEnrollmentOutput,
+                                           to current: [AuthenticatedEnrollmentOutput]) throws -> [AuthenticatedEnrollmentOutput] {
+        var records = current
         if let existing = records.first(where: { $0.trust.installationID == output.trust.installationID }) {
             guard existing == output else { throw PlatformFailure.invalidConfiguration }
         } else { records.append(output) }
-        try saveInventory(records: records, selectedInstallationID: output.trust.installationID)
+        return records
     }
 
     enum FirstInstallDisposition: Equatable {

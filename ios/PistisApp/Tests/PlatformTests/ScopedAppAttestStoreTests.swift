@@ -124,6 +124,17 @@ final class ScopedAppAttestStoreTests: XCTestCase {
         XCTAssertNil(try reopened.statusPending(attemptID: attempt))
     }
 
+    func testAdditionalEnrollmentPreservesAAndRejectsSameIDConflict() throws {
+        let a = try stagedOutput(marker: 1), b = try stagedOutput(marker: 2)
+        let records = try InstallationTrustKeychain.addingAdditionalEnrollment(b, to: [a])
+        XCTAssertEqual(records, [a, b])
+        XCTAssertEqual(try InstallationTrustKeychain.addingAdditionalEnrollment(b, to: records), records)
+        let conflict = try AuthenticatedEnrollmentOutput(trust: b.trust, responseContext: b.responseContext,
+            allowedHosts: b.allowedHosts, httpsOrigin: b.httpsOrigin, tlsSPKISHA256: Data(repeating: 12, count: 32))
+        XCTAssertThrowsError(try InstallationTrustKeychain.addingAdditionalEnrollment(conflict, to: records))
+        XCTAssertEqual(records[0], a)
+    }
+
     func testConcurrentAttemptsForSameInstallationDoNotOverwrite() throws {
         let persistence = ScopedMemoryPersistence()
         let store = ScopedAppAttestStore(persistence: persistence)

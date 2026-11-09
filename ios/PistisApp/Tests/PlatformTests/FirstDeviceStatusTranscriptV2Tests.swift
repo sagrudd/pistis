@@ -36,8 +36,8 @@ final class FirstDeviceStatusTranscriptV2Tests: XCTestCase {
         XCTAssertTrue(P256Format.isCanonicalRawSignature(rootBytes)); XCTAssertTrue(P256Format.isCanonicalRawSignature(deviceBytes))
         let rootSignature = try P256.Signing.ECDSASignature(rawRepresentation: rootBytes)
         let deviceSignature = try P256.Signing.ECDSASignature(rawRepresentation: deviceBytes)
-        let rootMessage = Data("mnemosyne.monas.first-device.status.site-root.v2\0".utf8) + Data(repeating: 9, count: 32)
-        let deviceMessage = Data("mnemosyne.monas.first-device.status.device.v2\0".utf8) + Data(repeating: 9, count: 32)
+        let messages = try FirstDeviceStatusProofV2.messages(statusHash: Data(repeating: 9, count: 32))
+        let rootMessage = messages.siteRoot, deviceMessage = messages.device
         XCTAssertTrue(root.isValidSignature(rootSignature, for: rootMessage))
         XCTAssertTrue(device.isValidSignature(deviceSignature, for: deviceMessage))
         XCTAssertFalse(root.isValidSignature(rootSignature, for: deviceMessage))

@@ -39,3 +39,25 @@ struct FirstDeviceStatusTranscriptV2 {
         return Data(SHA256.hash(data: bytes))
     }
 }
+
+/// The signer receives these exact messages and hashes once internally.
+enum FirstDeviceStatusProofV2 {
+    static func messages(statusHash: Data) throws -> (siteRoot: Data, device: Data) {
+        guard statusHash.count == 32, !statusHash.allSatisfy({ $0 == 0 }) else {
+            throw PlatformFailure.invalidConfiguration
+        }
+        return (Data("mnemosyne.monas.first-device.status.site-root.v2\0".utf8) + statusHash,
+                Data("mnemosyne.monas.first-device.status.device.v2\0".utf8) + statusHash)
+    }
+
+    static func signDevice(transcript: FirstDeviceStatusTranscriptV2) throws -> Data {
+        let namespace = transcript.installationID.map { String(format: "%02x", $0) }.joined()
+        let signer = try SecureEnclaveSigner(namespace: namespace,
+            authenticationReason: "Confirm this Pistis installation")
+        let key = try signer.publicKey().compressedSEC1
+        guard Data(SHA256.hash(data: key)) == transcript.deviceKeyDigest else {
+            throw PlatformFailure.invalidConfiguration
+        }
+        return try signer.sign(message: messages(statusHash: transcript.clientDataHash()).device)
+    }
+}

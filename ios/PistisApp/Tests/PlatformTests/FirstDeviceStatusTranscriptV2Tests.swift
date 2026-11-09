@@ -15,6 +15,28 @@ final class FirstDeviceStatusTranscriptV2Tests: XCTestCase {
             deviceKeyDigest: Data(repeating: 0x13, count: 32), expiry: 1_900_000_060)
         XCTAssertEqual(try value.clientDataHash().map { String(format: "%02x", $0) }.joined(),
                        "e00ad831caab2341c8d2ced32915570555bc3359dc26f60318527c588bef330b")
+        let encode = SiteRootBrokerPresentationV2.encode
+        var result: [String: Any] = [
+            "schema": "monas.first-device.status.result.v2", "state": "accepted",
+            "operation_b64url": encode(value.operationID), "reference": value.reference,
+            "correlation_digest_b64url": encode(value.correlationDigest),
+            "installation_id_b64url": encode(value.installationID), "site_trust_domain": value.site,
+            "app_attest_key_id_b64url": encode(value.appAttestKeyID),
+            "app_identifier": AppleAppAttestRegistrationEnvelope.reviewedAppIdentifier,
+            "environment": "Production", "policy_generation": 1, "revocation_generation": 2,
+            "presentation_digest_b64url": encode(value.presentationDigest),
+            "receipt_digest_b64url": encode(value.receiptDigest), "tls_spki_sha256_b64url": encode(value.tlsSPKIDigest),
+        ]
+        let app = AppleAppAttestRegistrationEnvelope.reviewedAppIdentifier
+        let valid = try JSONSerialization.data(withJSONObject: result)
+        try FirstDeviceStatusResponseV2.validate(valid, transcript: value, appIdentifier: app,
+                                                 environment: "Production", policyGeneration: 1, revocationGeneration: 2)
+        result["site_trust_domain"] = "different-site"
+        XCTAssertThrowsError(try FirstDeviceStatusResponseV2.validate(JSONSerialization.data(withJSONObject: result),
+            transcript: value, appIdentifier: app, environment: "Production", policyGeneration: 1, revocationGeneration: 2))
+        result["site_trust_domain"] = value.site; result["extra"] = true
+        XCTAssertThrowsError(try FirstDeviceStatusResponseV2.validate(JSONSerialization.data(withJSONObject: result),
+            transcript: value, appIdentifier: app, environment: "Production", policyGeneration: 1, revocationGeneration: 2))
     }
     func testSyntheticHostProofVectorsUseDistinctDomainsAndLowS() throws {
         func hex(_ value: String) throws -> Data {

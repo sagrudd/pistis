@@ -61,3 +61,35 @@ enum FirstDeviceStatusProofV2 {
         return try signer.sign(message: messages(statusHash: transcript.clientDataHash()).device)
     }
 }
+
+/// Exact response comparison only; the caller must also authenticate the
+/// pinned channel and complete the fresh proof exchange before using it.
+enum FirstDeviceStatusResponseV2 {
+    static func validate(_ data: Data, transcript: FirstDeviceStatusTranscriptV2,
+                         appIdentifier: String, environment: String,
+                         policyGeneration: UInt64, revocationGeneration: UInt64) throws {
+        let encode = SiteRootBrokerPresentationV2.encode
+        let expected: [String: StrictJSONObject.Value] = [
+            "schema": .string("monas.first-device.status.result.v2"),
+            "state": .string("accepted"),
+            "operation_b64url": .string(encode(transcript.operationID)),
+            "reference": .string(transcript.reference),
+            "correlation_digest_b64url": .string(encode(transcript.correlationDigest)),
+            "installation_id_b64url": .string(encode(transcript.installationID)),
+            "site_trust_domain": .string(transcript.site),
+            "app_attest_key_id_b64url": .string(encode(transcript.appAttestKeyID)),
+            "app_identifier": .string(appIdentifier),
+            "environment": .string(environment),
+            "policy_generation": .number(String(policyGeneration)),
+            "revocation_generation": .number(String(revocationGeneration)),
+            "presentation_digest_b64url": .string(encode(transcript.presentationDigest)),
+            "receipt_digest_b64url": .string(encode(transcript.receiptDigest)),
+            "tls_spki_sha256_b64url": .string(encode(transcript.tlsSPKIDigest)),
+        ]
+        _ = try transcript.clientDataHash()
+        guard appIdentifier == AppleAppAttestRegistrationEnvelope.reviewedAppIdentifier,
+              ["Production", "Development"].contains(environment),
+              try StrictJSONObject(data: data, maximumBytes: 4_096).values == expected
+        else { throw PlatformFailure.invalidConfiguration }
+    }
+}

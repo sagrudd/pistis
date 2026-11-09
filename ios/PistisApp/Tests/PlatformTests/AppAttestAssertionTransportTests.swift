@@ -688,10 +688,12 @@ private final class FailingAttestationService: AppleAppAttestServicing, @uncheck
     }
 }
 
-private final class AssertionURLProtocol: URLProtocol, @unchecked Sendable {
+final class AssertionURLProtocol: URLProtocol, @unchecked Sendable {
     private static let lock = NSLock()
     private nonisolated(unsafe) static var requestValue: URLRequest?
     private nonisolated(unsafe) static var bodyValue: Data?
+    nonisolated(unsafe) static var challengeSite = "site-demo"
+    nonisolated(unsafe) static var challengeKeyByte: UInt8 = 0x11
 
     override class func canInit(with _: URLRequest) -> Bool { true }
     override class func canonicalRequest(for request: URLRequest) -> URLRequest { request }
@@ -739,6 +741,8 @@ private final class AssertionURLProtocol: URLProtocol, @unchecked Sendable {
         lock.lock(); defer { lock.unlock() }
         requestValue = nil
         bodyValue = nil
+        challengeSite = "site-demo"
+        challengeKeyByte = 0x11
     }
 
     static func challengeData(expires: UInt64) -> Data {
@@ -750,11 +754,11 @@ private final class AssertionURLProtocol: URLProtocol, @unchecked Sendable {
         return try! JSONSerialization.data(withJSONObject: [
             "schema": "monas.first-authority-custody-app-attest-challenge.v2",
             "installation_id_b64url": b64(Data(repeating: 1, count: 16)),
-            "site_trust_domain": "site-demo",
+            "site_trust_domain": challengeSite,
             "ceremony_id_b64url": b64(Data(repeating: 2, count: 16)),
             "client_data_hash_b64url": b64(Data(repeating: 0x33, count: 32)),
             "app_identifier": "C7A6NQTSY4.org.mnemosynebiosciences.pistis",
-            "key_id_b64url": b64(Data(repeating: 0x11, count: 32)),
+            "key_id_b64url": b64(Data(repeating: challengeKeyByte, count: 32)),
             "issued_at_unix_seconds": 100,
             "expires_at_unix_seconds": expires,
         ])

@@ -787,7 +787,7 @@ final class SiteRootConvergenceProtocolTests: XCTestCase {
     }
 }
 
-private actor BrokerAttemptRecorder {
+actor BrokerAttemptRecorder {
     private var values: [String] = []
     private var reservationCount = 0
 
@@ -892,7 +892,7 @@ private final class RecordingContinuationAuthorizer:
     }
 }
 
-private struct RecordingBrokerTransport: MonasSiteRootConvergenceSubmitting {
+struct RecordingBrokerTransport: MonasSiteRootConvergenceSubmitting {
     let authorityOrigin = URL(string: SiteRootConvergenceProfileV2.x509BrokerOrigin)!
     let recorder: BrokerAttemptRecorder
 

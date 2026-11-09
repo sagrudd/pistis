@@ -36,6 +36,48 @@ final class SiteRootBrokerV2PreparerTests: XCTestCase {
         guard case .failed = coordinator.phase else { return XCTFail("completed proof was replayed") }
         XCTAssertEqual(GenesisBrokerURLProtocol.requests().filter { $0.url?.path == MonasSiteRootGenesisBrokerEndpointV1.proofPath }.count, 1)
         XCTAssertEqual(service.generated, 1)
+
+        // Join the same operation to a production PXLA continuation and a
+        // fixed native challenge, using explicitly controlled peers/signers.
+        let attempt = try storage.reserveBrokerAttempt(presentation)
+        let pending = try XCTUnwrap(storage.pending(attemptID: attempt))
+        let siteUUID = String(presentation.site.dropFirst(5))
+        let siteBytes = try XCTUnwrap(SiteRootConvergenceEncoding.uuidBytes(siteUUID))
+        let leafURL = url.deletingLastPathComponent().appendingPathComponent("leaf-v2-ipv4.json")
+        var wrapper = try XCTUnwrap(JSONSerialization.jsonObject(with: Data(contentsOf: leafURL)) as? [String: Any])
+        var nested = try XCTUnwrap(wrapper["presentation"] as? [String: Any])
+        var canonicalLeaf = try XCTUnwrap(Data(base64Encoded: XCTUnwrap(nested["canonical_payload_b64"] as? String)))
+        canonicalLeaf.replaceSubrange(11..<27, with: siteBytes)
+        nested["canonical_payload_b64"] = canonicalLeaf.base64EncodedString()
+        wrapper["presentation"] = nested
+        var uuid = attempt.uuid
+        let operation = withUnsafeBytes(of: &uuid) { Data($0) }
+        let digest = Data(SHA256.hash(data: Data("mnemosyne.monas.first-device.correlation.v2\0".utf8) + pending.correlation))
+        wrapper["operation_id_b64url"] = SiteRootBrokerPresentationV2.encode(operation)
+        wrapper["correlation_digest_b64url"] = SiteRootBrokerPresentationV2.encode(digest)
+        let leafData = try JSONSerialization.data(withJSONObject: wrapper)
+        let continuation = ControlledV2Continuation(leaf: leafData)
+        let authorizer = ControlledV2Authorizer(pending: pending, storage: storage, expectedSite: siteBytes)
+        let convergence = SiteRootConvergenceServiceV2(transport: RecordingBrokerTransport(recorder: BrokerAttemptRecorder()))
+        try await convergence.continueBrokerSiteX509(correlation: pending.correlation, expectedSiteUUID: siteUUID,
+                                                     transport: continuation, authorizer: authorizer)
+        XCTAssertNotNil(try storage.provisionalLeaf(attemptID: attempt))
+        AssertionURLProtocol.reset()
+        AssertionURLProtocol.challengeSite = pending.siteClaim
+        AssertionURLProtocol.challengeKeyByte = 0x22
+        defer { AssertionURLProtocol.reset() }
+        let nativeConfiguration = URLSessionConfiguration.ephemeral
+        nativeConfiguration.protocolClasses = [AssertionURLProtocol.self]
+        let native = try MonasAppAttestTransport(authorityOrigin: XCTUnwrap(URL(string: "https://10.0.2.15:8443")),
+            expectedSPKISHA256: Data(repeating: 10, count: 32), configuration: nativeConfiguration)
+        let challenge = try await native.fetchBrokerCustodyChallengeV2(pending: pending, nowUnixSeconds: 150).challenge
+        let assertion = try await AppleAppAttestClient(service: service, keyIDStore: legacy)
+            .preparePendingCustodyRotationAssertion(challenge: challenge, storage: storage,
+                attemptID: attempt, verifiedInstallationID: challenge.installationID)
+        try storage.markCustodyStep("assertion", pending: pending)
+        try await native.submitAssertion(assertion)
+        XCTAssertThrowsError(try storage.requireFreshCustodyStep("assertion", pending: pending))
+        XCTAssertEqual(legacy.reads, 0); XCTAssertEqual(legacy.writes, 0)
     }
     func testRecoverExternallyIssuedSyntheticV4Profile() throws {
         let url = URL(fileURLWithPath: "/tmp/pistis-swift-bridge-20261109/enrollment-b.json")
@@ -270,6 +312,38 @@ private struct ControlledBrokerRoot: BrokerV2SiteRootProducing {
     }
 }
 
+private struct ControlledV2Continuation: MonasSiteX509BrokerContinuing {
+    let leaf: Data
+    func awaitSiteX509Continuation(correlation _: Data, phase: SiteX509BrokerContinuationPhaseV1) async throws -> SiteX509BrokerContinuationPresentationV1? {
+        let data = phase == .leafApproval ? leaf : Data([1])
+        return SiteX509BrokerContinuationPresentationV1(payload: data, sha256: Data(SHA256.hash(data: data)))
+    }
+    func submitSiteX509Continuation(correlation _: Data, phase _: SiteX509BrokerContinuationPhaseV1,
+                                    presentationSHA256 _: Data, submission _: Data) async throws {}
+}
+
+private final class ControlledV2Authorizer: SiteX509BrokerContinuationAuthorizingV2, @unchecked Sendable {
+    let pending: ScopedAppAttestPending
+    let storage: ScopedAppAttestStore
+    let expectedSite: Data
+    init(pending: ScopedAppAttestPending, storage: ScopedAppAttestStore, expectedSite: Data) {
+        self.pending = pending; self.storage = storage; self.expectedSite = expectedSite
+    }
+    func attendedUnlock(_: Data, role _: SiteX509AttendedUnlockRoleV2) throws -> Data { Data([1]) }
+    func prepareAckRegistration(expectedSiteUUID _: String) throws {}
+    func ackRegistration(_: Data) throws -> Data { Data([1]) }
+    func leafApproval(_ data: Data) throws -> Data {
+        var uuid = pending.attemptID.uuid
+        let operation = withUnsafeBytes(of: &uuid) { Data($0) }
+        let digest = Data(SHA256.hash(data: Data("mnemosyne.monas.first-device.correlation.v2\0".utf8) + pending.correlation))
+        _ = try SiteX509LeafHandoffV2(data: data, operationID: operation, correlationDigest: digest,
+            expectedSiteUUID: expectedSite, nowUnixSeconds: 1_900_000_000)
+        try storage.stageProvisionalLeaf(ProvisionalLeafHandoff(attemptID: pending.attemptID,
+            wrapper: data, verifiedAtSeconds: 1_900_000_000), pending: pending)
+        return Data([1])
+    }
+}
+
 @MainActor private final class ControlledBrokerEventSink: OnboardingEventRecording {
     func append(_: OnboardingEvent) throws {}
 }
@@ -284,5 +358,5 @@ private final class PreparationTestAppleService: AppleAppAttestServicing, @unche
     var isSupported: Bool { true }
     func generateKey() async throws -> String { generated += 1; return Data(repeating: 0x22, count: 32).base64EncodedString() }
     func attestKey(_: String, clientDataHash _: Data) async throws -> Data { attested += 1; return Data([1, 2, 3]) }
-    func generateAssertion(_: String, clientDataHash _: Data) async throws -> Data { throw PlatformFailure.appAttestUnavailable }
+    func generateAssertion(_: String, clientDataHash _: Data) async throws -> Data { Data(repeating: 0x44, count: 64) }
 }

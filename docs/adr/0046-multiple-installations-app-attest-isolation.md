@@ -89,3 +89,54 @@ The actual existing iPhone and its data must not be reset or overwritten. An
 accepted decision and specialist implementation review remain prerequisites;
 this proposal does not establish that the current source supports multi-host
 operation or that any release is qualified.
+
+## Concrete bounded decision for owner review
+
+Preserve A's existing `primary` and legacy path. B's pending Keychain item is
+create-once under an opaque local operation ID, with its Apple key reference,
+validated broker correlation, registration reference, site domain, app ID and
+Apple environment. It is not an active installation and the correlation does
+not select an authority. Persist the item before the first registration POST;
+a retry reuses its exact key and operation, never regenerates a key or changes
+A. Competing attempts for the same operation must serialize.
+
+After genesis and before B is treated as an installation, introduce a
+purpose-specific Monas authenticated status operation, over B's separately
+verified and pinned native authority transport, with a fixed reviewed path and
+strict bounded response. Its request names the pending operation and the
+validated ceremony reference; it may not supply an origin. Its authoritative
+response must bind, in one durable same-ceremony record: operation ID and
+ceremony reference, broker correlation digest, stable 16-byte installation ID,
+Site Trust domain, exact registered Apple key ID, app identifier, Apple
+attestation environment, relevant policy and revocation generations, and
+terminal acceptance state. It must distinguish pending, accepted and rejected;
+identical retries return the same accepted facts, and conflicting reuse is a
+hard denial. The server derives these values from its committed genesis and
+App Attest records, not client claims. Pinned TLS plus strict endpoint and
+response binding authenticate this operation; this proposal does not invent a
+signature or infer trust from a QR. Exact schema and fixed path require a
+coordinated Monas/Pistis protocol change, fixtures and specialist review.
+
+The phone compares every response fact with the pending record and the
+independently verified native installation profile, including exact Apple key,
+site, app and environment. It writes a create-once B binding and verifies it
+is durable before marking B usable or removing pending state. An interruption
+before that point leaves A usable and B pending; after it, replay sees the same
+binding and completes cleanup idempotently. A mismatch, unavailable or
+ambiguous status, changed origin, or conflicting existing B binding preserves
+A and pending B and fails closed. B assertions and replacement use only B's
+scoped reference; challenges must retain and compare their installation, site,
+app and key fields before assertion. Never repair the global `primary` from a
+B challenge. Per-installation selection, forget and explicit reset enumerate
+exact scoped references, while A's primary and shared Site Root key are never
+removed as a side effect of B failure.
+
+Existing evidence for feasibility is Monas's durable genesis registration
+context and custody rotation records, which contain installation, site and
+App Attest key references, and the existing pinned-channel custody challenge.
+Those records are not by themselves the proposed phone-facing same-ceremony
+acceptance contract. The decision owners must verify server-side correlation
+provenance and environmental/generation availability and approve the exact
+status response and crash/replay ordering; if any value is unavailable the
+operation remains blocked until Monas can supply it from an authoritative
+record. No production operation is authorised by proposing this design.

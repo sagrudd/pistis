@@ -293,6 +293,19 @@ final class ScopedAppAttestStore: @unchecked Sendable {
         }
     }
 
+    func beginSubmittedPoll(attemptID: UUID, expected: ScopedAppAttestPending) throws {
+        try withLock {
+            guard !Task.isCancelled, !Self.resetInProgress,
+                  try read(UUID.self, account: submitted(attemptID)) == attemptID,
+                  try readData(account: cancelled(attemptID)) == nil,
+                  try readData(account: completed(attemptID)) == nil,
+                  try read(ScopedAppAttestPending.self, account: staged(attemptID)) == expected,
+                  expected.attemptID == attemptID else { throw PlatformFailure.invalidConfiguration }
+            try expected.validate()
+            Self.activeDispatches += 1
+        }
+    }
+
     static func beginLocalReset() throws {
         lock.lock(); defer { lock.unlock() }
         guard activeDispatches == 0, !resetInProgress else {

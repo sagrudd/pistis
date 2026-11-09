@@ -587,11 +587,13 @@ final class GenesisBrokerURLProtocol: URLProtocol, @unchecked Sendable {
     private static let lock = NSLock()
     nonisolated(unsafe) private static var capturedRequests: [URLRequest] = []
     nonisolated(unsafe) static var mode: ResponseMode = .ready
+    nonisolated(unsafe) static var delegationOverride: String?
 
     static func reset() {
         lock.lock()
         capturedRequests = []
         mode = .ready
+        delegationOverride = nil
         lock.unlock()
     }
 
@@ -630,7 +632,7 @@ final class GenesisBrokerURLProtocol: URLProtocol, @unchecked Sendable {
                 body = Data("{\"schema\":\"\(MonasSiteRootGenesisBrokerEndpointV1.responseSchema)\",\"state\":\"pending\"}".utf8)
             } else {
                 let canonical = "{\"device_key_id\":\"site-root-1234\",\"proof_profile\":\"pistis-secure-enclave-es256-cose-v1\",\"schema\":\"monas.site-root-delegation.v1\",\"secure_enclave_attestation\":\"not-asserted\",\"site_trust_domain\":\"site-demo-1\"}"
-                let result = "{\"schema\":\"monas.site-root-genesis-registration-result.v1\",\"canonical_delegation_base64url\":\"\(Self.base64URL(Data(canonical.utf8)))\",\"device_key_id\":\"site-root-1234\",\"site_trust_domain\":\"site-demo-1\",\"submit_url\":\"https://customer.example.test/auth/pistis/site-root-delegations/v1/submit\",\"reference\":\"genesis-reference-1\"}"
+                let result = Self.delegationOverride ?? "{\"schema\":\"monas.site-root-genesis-registration-result.v1\",\"canonical_delegation_base64url\":\"\(Self.base64URL(Data(canonical.utf8)))\",\"device_key_id\":\"site-root-1234\",\"site_trust_domain\":\"site-demo-1\",\"submit_url\":\"https://customer.example.test/auth/pistis/site-root-delegations/v1/submit\",\"reference\":\"genesis-reference-1\"}"
                 body = Data("{\"schema\":\"\(MonasSiteRootGenesisBrokerEndpointV1.responseSchema)\",\"state\":\"ready\",\"delegation_b64url\":\"\(Self.base64URL(Data(result.utf8)))\"}".utf8)
             }
             status = 200

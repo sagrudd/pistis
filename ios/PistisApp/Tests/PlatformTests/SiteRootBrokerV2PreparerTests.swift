@@ -4,6 +4,13 @@ import XCTest
 @testable import Pistis
 
 final class SiteRootBrokerV2PreparerTests: XCTestCase {
+    func testBrokerEnvelopeUsesDistinctDecodedAndOuterLimits() throws {
+        let registration = Data(repeating: 0x41, count: 12 * 1024)
+        let body = try BrokerV2RelayEnvelope.encode(reference: "test", correlation: Data(repeating: 1, count: 32), registration: registration)
+        XCTAssertGreaterThan(body.count, 12 * 1024)
+        XCTAssertLessThanOrEqual(body.count, 32 * 1024)
+        XCTAssertThrowsError(try BrokerV2RelayEnvelope.encode(reference: "test", correlation: Data(repeating: 1, count: 32), registration: registration + Data([1])))
+    }
     private func fixture() throws -> SiteRootBrokerPresentationV2 {
         let url = URL(fileURLWithPath: #filePath).deletingLastPathComponent()
             .deletingLastPathComponent().appendingPathComponent("Fixtures/broker-v2-qr.json")
@@ -129,9 +136,9 @@ final class SiteRootBrokerV2PreparerTests: XCTestCase {
         let storage = ScopedAppAttestStore(persistence: ScopedMemoryPersistence())
         let preparer = SiteRootBrokerV2Preparer(
             storage: storage, appAttest: AppleAppAttestClient(service: PreparationTestAppleService(), keyIDStore: PreparationTestLegacyStore()))
-        let presentation = try fixture(), attempt = try storage.reserveBrokerAttempt(presentation)
+        let presentation = try fixture(), attempt = try storage.reserveBrokerAttempt(presentation), key = root()
         let pending = try await preparer.prepare(presentation: presentation, attemptID: attempt,
-                                                  siteRootKey: root(), nowMillis: { 1_900_000_000_000 })
+                                                  siteRootKey: key, nowMillis: { 1_900_000_000_000 })
         let fixtureURL = URL(fileURLWithPath: #filePath).deletingLastPathComponent()
             .deletingLastPathComponent().appendingPathComponent("Fixtures/broker-v2-qr.json")
         let text = try String(contentsOf: fixtureURL, encoding: .utf8)
@@ -157,6 +164,17 @@ final class SiteRootBrokerV2PreparerTests: XCTestCase {
             XCTFail("submitted attempt was sent twice")
         } catch { XCTAssertEqual(error as? PlatformFailure, .invalidConfiguration) }
         XCTAssertEqual(GenesisBrokerURLProtocol.requests().count, 1)
+        do {
+            _ = try await transport.pollV2(presentation: presentation, attemptID: attempt, storage: storage)
+            XCTFail("foreign delegation unexpectedly accepted")
+        } catch { XCTAssertEqual(error as? PlatformFailure, .siteRootAuthorityUnavailable) }
+        XCTAssertEqual(try storage.pending(attemptID: attempt), pending)
+        let canonical = "{\"device_key_id\":\"\(key.deviceKeyID)\",\"proof_profile\":\"pistis-secure-enclave-es256-cose-v1\",\"schema\":\"monas.site-root-delegation.v1\",\"secure_enclave_attestation\":\"not-asserted\",\"site_trust_domain\":\"\(presentation.site)\"}"
+        GenesisBrokerURLProtocol.delegationOverride = "{\"schema\":\"monas.site-root-genesis-registration-result.v1\",\"canonical_delegation_base64url\":\"\(SiteRootBrokerPresentationV2.encode(Data(canonical.utf8)))\",\"device_key_id\":\"\(key.deviceKeyID)\",\"site_trust_domain\":\"\(presentation.site)\",\"submit_url\":\"https://customer.example.test/auth/pistis/site-root-delegations/v1/submit\",\"reference\":\"\(presentation.reference)\"}"
+        let delegation = try await transport.pollV2(presentation: presentation, attemptID: attempt, storage: storage)
+        XCTAssertEqual(delegation.deviceKeyID, key.deviceKeyID)
+        XCTAssertEqual(delegation.siteTrustDomain, presentation.site)
+        XCTAssertEqual(try storage.pending(attemptID: attempt), pending)
     }
 }
 

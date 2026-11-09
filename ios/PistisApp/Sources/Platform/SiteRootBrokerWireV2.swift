@@ -1,6 +1,27 @@
 import Foundation
 import CryptoKit
 
+enum BrokerV2RelayEnvelope {
+    static func encode(reference: String, correlation: Data, registration: Data) throws -> Data {
+        guard !registration.isEmpty, registration.count <= 12 * 1024,
+              correlation.count == 32, !correlation.allSatisfy({ $0 == 0 }),
+              SiteRootBrokerPresentationV2.identifier(reference, maximum: 128)
+        else { throw PlatformFailure.invalidConfiguration }
+        struct Envelope: Encodable {
+            let schema = MonasSiteRootGenesisBrokerEndpointV1.registrationSchema
+            let purpose = MonasSiteRootGenesisBrokerEndpointV1.purpose
+            let reference: String
+            let correlation_b64url: String
+            let registration_request_b64url: String
+        }
+        let data = try JSONEncoder().encode(Envelope(
+            reference: reference, correlation_b64url: SiteRootBrokerPresentationV2.encode(correlation),
+            registration_request_b64url: SiteRootBrokerPresentationV2.encode(registration)))
+        guard data.count <= 32 * 1024 else { throw PlatformFailure.invalidConfiguration }
+        return data
+    }
+}
+
 /// A broker V2 invitation is untrusted input, never an authority profile.
 struct SiteRootBrokerPresentationV2: Sendable {
     static let schema = "monas.site-root-genesis-registration-presentation.v2"

@@ -171,6 +171,22 @@ struct AdditionalEnrolmentAdmission: Equatable {
 #endif
 }
 
+enum ProvisionalPresentationRecovery {
+    /// Reverify the exact previously attended frame at its recorded validation
+    /// time. Current authority is established later by fresh pinned status.
+    static func verify(_ stored: ProvisionalBrokerPresentation,
+                       expectedAppConfigurationDigest: Data) throws -> VerifiedFirstDevicePresentation {
+        let value = try FirstDevicePresentationV4.verify(
+            qrText: stored.qrText, expectedAppConfigurationDigest: expectedAppConfigurationDigest,
+            now: Date(timeIntervalSince1970: Double(stored.verifiedAtMillis) / 1_000))
+        guard value.installationID == stored.installationID,
+              value.presentationDigest == stored.presentationDigest else {
+            throw PlatformFailure.invalidConfiguration
+        }
+        return value
+    }
+}
+
 enum FirstDeviceAdmissionPolicy {
     /// A duplicate installation never reaches key creation; an additional
     /// installation needs a provisional exact pending-operation association.
@@ -206,6 +222,7 @@ final class FirstDeviceEnrolmentFlow: ObservableObject {
     private let scopedStore: ScopedAppAttestStore
     private let additionalAdmission: (VerifiedFirstDevicePresentation) async throws -> AdditionalEnrolmentAdmission?
     private var stagedAttemptID: UUID?
+    private var verifiedScan: (text: String, atMillis: UInt64)?
     private var transport: ServerDrivenEnrolmentTransport?
     private var handle: ProviderVerificationHandle?
     private var devicePublicKey: Data?
@@ -232,13 +249,7 @@ final class FirstDeviceEnrolmentFlow: ObservableObject {
         now = Date.init
         let storage = ScopedAppAttestStore()
         scopedStore = storage
-        additionalAdmission = { presentation in
-            guard BrokerV2Feature.enabled else { return nil }
-            let attempt = try storage.stageProvisionalPresentation(
-                installationID: presentation.installationID, digest: presentation.presentationDigest)
-            return .provisional(attemptID: attempt, installationID: presentation.installationID,
-                                presentationDigest: presentation.presentationDigest)
-        }
+        additionalAdmission = { _ in nil }
     }
 #if DEBUG
     /// Test-only seam; no production admission adapter is enabled.
@@ -264,12 +275,14 @@ final class FirstDeviceEnrolmentFlow: ObservableObject {
         eventAttemptStartedNanoseconds = DispatchTime.now().uptimeNanoseconds
         do {
             let payload = try result.get()
+            let verifiedAt = now()
             let verified = try FirstDevicePresentationV4.verify(
                 qrText: payload.text,
                 expectedAppConfigurationDigest:
                     GitHubEnrolmentConfiguration.reviewedAppConfigurationDigest,
-                now: now()
+                now: verifiedAt
             )
+            verifiedScan = (payload.text, UInt64(verifiedAt.timeIntervalSince1970 * 1_000))
             eventReferenceDigest = verified.presentationDigest
             recordEvent(kind: .qrValidated, outcome: .accepted)
             presentation = verified
@@ -296,7 +309,15 @@ final class FirstDeviceEnrolmentFlow: ObservableObject {
         guard !existingIDs.contains(presentation.installationID) else {
             throw PlatformFailure.siteRootBindingUnavailable
         }
-        let admission = existingIDs.isEmpty ? nil : try await additionalAdmission(presentation)
+        let admission: AdditionalEnrolmentAdmission?
+        if existingIDs.isEmpty { admission = nil }
+        else if BrokerV2Feature.enabled, let scan = verifiedScan {
+            let attempt = try scopedStore.stageProvisionalPresentation(
+                installationID: presentation.installationID, digest: presentation.presentationDigest,
+                qrText: scan.text, verifiedAtMillis: scan.atMillis)
+            admission = .provisional(attemptID: attempt, installationID: presentation.installationID,
+                                     presentationDigest: presentation.presentationDigest)
+        } else { admission = try await additionalAdmission(presentation) }
         let pending = try admission.flatMap { try scopedStore.submittedAttempt(attemptID: $0.attemptID) }
         return try FirstDeviceAdmissionPolicy.additionalAttempt(
             installationID: presentation.installationID,

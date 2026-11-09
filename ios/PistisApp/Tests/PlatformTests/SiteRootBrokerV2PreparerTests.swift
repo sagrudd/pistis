@@ -1,9 +1,38 @@
 import CryptoKit
 import Foundation
+import PistisCore
 import XCTest
 @testable import Pistis
 
 final class SiteRootBrokerV2PreparerTests: XCTestCase {
+    func testRecoverExternallyIssuedSyntheticV4Profile() throws {
+        let url = URL(fileURLWithPath: "/tmp/pistis-swift-bridge-20261109/enrollment-b.json")
+        guard FileManager.default.fileExists(atPath: url.path) else { throw XCTSkip("synthetic authority fixture unavailable") }
+        let object = try XCTUnwrap(JSONSerialization.jsonObject(with: Data(contentsOf: url)) as? [String: Any])
+        let frameText = try XCTUnwrap(object["frame"] as? String)
+        var frame = Data(); var cursor = frameText.startIndex
+        while cursor < frameText.endIndex {
+            let end = frameText.index(cursor, offsetBy: 2, limitedBy: frameText.endIndex) ?? frameText.endIndex
+            frame.append(try XCTUnwrap(UInt8(frameText[cursor..<end], radix: 16)))
+            cursor = end
+        }
+        let body = SiteRootBrokerPresentationV2.encode(frame)
+        let checksum = SHA256.hash(data: Data("PISTIS1:\(body)".utf8)).prefix(8)
+            .map { String(format: "%02x", $0) }.joined()
+        let qr = "PISTIS1:\(body).\(checksum)"
+        let millis = try XCTUnwrap(object["now_ms"] as? UInt64)
+        let verified = try FirstDevicePresentationV4.verify(qrText: qr,
+            expectedAppConfigurationDigest: Data(repeating: 7, count: 32),
+            now: Date(timeIntervalSince1970: Double(millis) / 1_000))
+        let record = ProvisionalBrokerPresentation(attemptID: UUID(), installationID: verified.installationID,
+            presentationDigest: verified.presentationDigest, qrText: qr, verifiedAtMillis: millis)
+        XCTAssertEqual(try ProvisionalPresentationRecovery.verify(record,
+            expectedAppConfigurationDigest: Data(repeating: 7, count: 32)), verified)
+        let wrong = ProvisionalBrokerPresentation(attemptID: record.attemptID, installationID: Data(repeating: 9, count: 16),
+            presentationDigest: record.presentationDigest, qrText: qr, verifiedAtMillis: millis)
+        XCTAssertThrowsError(try ProvisionalPresentationRecovery.verify(wrong,
+            expectedAppConfigurationDigest: Data(repeating: 7, count: 32)))
+    }
     func testBrokerEnvelopeUsesDistinctDecodedAndOuterLimits() throws {
         let registration = Data(repeating: 0x41, count: 12 * 1024)
         let body = try BrokerV2RelayEnvelope.encode(reference: "test", correlation: Data(repeating: 1, count: 32), registration: registration)
@@ -20,14 +49,15 @@ final class SiteRootBrokerV2PreparerTests: XCTestCase {
                                        siteRootKey: key, nowMillis: { 1_900_000_000_000 })
         try storage.markSubmitted(attemptID: first)
         let installation = Data(repeating: 3, count: 16), digest = Data(repeating: 4, count: 32)
-        XCTAssertEqual(try storage.stageProvisionalPresentation(installationID: installation, digest: digest), first)
-        XCTAssertEqual(try storage.stageProvisionalPresentation(installationID: installation, digest: digest), first)
-        XCTAssertThrowsError(try storage.stageProvisionalPresentation(installationID: installation, digest: Data(repeating: 5, count: 32)))
+        XCTAssertEqual(try storage.stageProvisionalPresentation(installationID: installation, digest: digest, qrText: "PISTIS1:test", verifiedAtMillis: 1), first)
+        XCTAssertEqual(try storage.provisionalPresentation(attemptID: first)?.qrText, "PISTIS1:test")
+        XCTAssertEqual(try storage.stageProvisionalPresentation(installationID: installation, digest: digest, qrText: "PISTIS1:test", verifiedAtMillis: 1), first)
+        XCTAssertThrowsError(try storage.stageProvisionalPresentation(installationID: installation, digest: Data(repeating: 5, count: 32), qrText: "PISTIS1:test", verifiedAtMillis: 1))
         let second = UUID()
         _ = try await preparer.prepare(presentation: presentation, attemptID: second,
                                        siteRootKey: key, nowMillis: { 1_900_000_000_000 })
         try storage.markSubmitted(attemptID: second)
-        XCTAssertThrowsError(try storage.stageProvisionalPresentation(installationID: installation, digest: digest))
+        XCTAssertThrowsError(try storage.stageProvisionalPresentation(installationID: installation, digest: digest, qrText: "PISTIS1:test", verifiedAtMillis: 1))
     }
     private func fixture() throws -> SiteRootBrokerPresentationV2 {
         let url = URL(fileURLWithPath: #filePath).deletingLastPathComponent()

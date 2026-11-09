@@ -157,10 +157,12 @@ private struct BrokerAttemptReservation: Codable, Equatable {
     let presentationDigest: Data
 }
 
-private struct ProvisionalBrokerPresentation: Codable, Equatable {
+struct ProvisionalBrokerPresentation: Codable, Equatable {
     let attemptID: UUID
     let installationID: Data
     let presentationDigest: Data
+    let qrText: String
+    let verifiedAtMillis: UInt64
 }
 
 /// Create-once keychain records. All operations in the Pistis process share
@@ -375,9 +377,11 @@ final class ScopedAppAttestStore: @unchecked Sendable {
 
     /// Associates an attended, independently verified V4 scan with the only
     /// pending operation for receipt staging. This is not authority evidence.
-    func stageProvisionalPresentation(installationID: Data, digest: Data) throws -> UUID {
+    func stageProvisionalPresentation(installationID: Data, digest: Data,
+                                      qrText: String, verifiedAtMillis: UInt64) throws -> UUID {
         guard installationID.count == 16, !installationID.allSatisfy({ $0 == 0 }),
-              digest.count == 32, !digest.allSatisfy({ $0 == 0 })
+              digest.count == 32, !digest.allSatisfy({ $0 == 0 }),
+              qrText.hasPrefix("PISTIS1:"), qrText.utf8.count <= 8_192, verifiedAtMillis > 0
         else { throw PlatformFailure.invalidConfiguration }
         return try withLock {
             guard !Self.resetInProgress else { throw PlatformFailure.enrolmentBeginRetryRequired }
@@ -395,11 +399,24 @@ final class ScopedAppAttestStore: @unchecked Sendable {
             guard candidates.count == 1, let pending = candidates.first else {
                 throw PlatformFailure.siteRootBindingUnavailable
             }
+            let account = "provisional." + pending.attemptID.uuidString
+            if let existing = try read(ProvisionalBrokerPresentation.self, account: account) {
+                guard existing.attemptID == pending.attemptID, existing.installationID == installationID,
+                      existing.presentationDigest == digest, existing.qrText == qrText else {
+                    throw PlatformFailure.invalidConfiguration
+                }
+                return existing.attemptID
+            }
             let value = ProvisionalBrokerPresentation(attemptID: pending.attemptID,
-                installationID: installationID, presentationDigest: digest)
-            try createOnce(value, account: "provisional." + pending.attemptID.uuidString)
+                installationID: installationID, presentationDigest: digest,
+                qrText: qrText, verifiedAtMillis: verifiedAtMillis)
+            try createOnce(value, account: account)
             return pending.attemptID
         }
+    }
+
+    func provisionalPresentation(attemptID: UUID) throws -> ProvisionalBrokerPresentation? {
+        try withLock { try read(ProvisionalBrokerPresentation.self, account: "provisional." + attemptID.uuidString) }
     }
 
     /// Retains a separately verified enrolment output without selecting it or

@@ -181,6 +181,7 @@ final class ScopedAppAttestStore: @unchecked Sendable {
     private static let lock = NSLock()
     private nonisolated(unsafe) static var activeDispatches = 0 // Protected by lock.
     private nonisolated(unsafe) static var resetInProgress = false // Protected by lock.
+    private nonisolated(unsafe) static var legacyWriteInProgress = false // Protected by lock.
     private static let productionService = "org.mnemosynebiosciences.pistis.app-attest-scoped.v1"
     private let persistence: any ScopedAppAttestPersistence
 
@@ -212,7 +213,7 @@ final class ScopedAppAttestStore: @unchecked Sendable {
     /// the original operation even if key generation was interrupted.
     func reserveBrokerAttempt(_ presentation: SiteRootBrokerPresentationV2) throws -> UUID {
         try withLock {
-            guard !Self.resetInProgress else { throw PlatformFailure.enrolmentBeginRetryRequired }
+            guard !Self.resetInProgress, !Self.legacyWriteInProgress else { throw PlatformFailure.enrolmentBeginRetryRequired }
             let digest = SHA256.hash(data: Data("pistis:broker-attempt:v2\0".utf8) + presentation.correlation)
             let account = "broker." + digest.map { String(format: "%02x", $0) }.joined()
             if let existing = try read(BrokerAttemptReservation.self, account: account) {
@@ -378,6 +379,8 @@ final class ScopedAppAttestStore: @unchecked Sendable {
         }
     }
 
+    func hasAnyScopedBinding() throws -> Bool { try withLock { try !allBindings().isEmpty } }
+
     func stageProvisionalLeaf(_ value: ProvisionalLeafHandoff, pending: ScopedAppAttestPending) throws {
         guard value.attemptID == pending.attemptID, value.wrapper.count <= 8_192,
               value.verifiedAtSeconds > 0 else { throw PlatformFailure.invalidConfiguration }
@@ -440,10 +443,24 @@ final class ScopedAppAttestStore: @unchecked Sendable {
 
     static func beginLocalReset() throws {
         lock.lock(); defer { lock.unlock() }
-        guard activeDispatches == 0, !resetInProgress else {
+        guard activeDispatches == 0, !resetInProgress, !legacyWriteInProgress else {
             throw PlatformFailure.enrolmentBeginRetryRequired
         }
         resetInProgress = true
+    }
+
+    func beginLegacyGlobalWrite() throws {
+        try withLock {
+            guard !Self.resetInProgress, !Self.legacyWriteInProgress, Self.activeDispatches == 0,
+                  try allBindings().isEmpty,
+                  try !persistence.entries().contains(where: { $0.0.hasPrefix("broker.") || $0.0.hasPrefix("pending.") })
+            else { throw PlatformFailure.siteRootBindingUnavailable }
+            Self.legacyWriteInProgress = true
+        }
+    }
+
+    func endLegacyGlobalWrite() {
+        withLock { precondition(Self.legacyWriteInProgress); Self.legacyWriteInProgress = false }
     }
 
     static func endLocalReset() {

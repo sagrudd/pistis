@@ -184,25 +184,26 @@ final class KeychainFirstAuthorityRecoveryEnvelopeStore:
         account = "site-root-v2"
     }
 
-    init(site: String) throws {
+    init(site: String, attemptID: UUID) throws {
         guard SiteRootBrokerPresentationV2.identifier(site, maximum: 255) else { throw PlatformFailure.invalidConfiguration }
         service = "org.mnemosyne.pistis.first-authority-recovery-envelope.v2"
-        account = Self.siteAccount(site)
+        account = Self.siteAccount(site, attemptID: attemptID)
     }
 
 #if DEBUG
-    init(testService: String, site: String?) throws {
+    init(testService: String, site: String?, attemptID: UUID? = nil) throws {
         let prefix = "org.mnemosyne.pistis.test.recovery."
         guard testService.hasPrefix(prefix), UUID(uuidString: String(testService.dropFirst(prefix.count))) != nil,
-              site == nil || SiteRootBrokerPresentationV2.identifier(site!, maximum: 255)
+              (site == nil && attemptID == nil) || (site != nil && attemptID != nil && SiteRootBrokerPresentationV2.identifier(site!, maximum: 255))
         else { throw PlatformFailure.invalidConfiguration }
         service = testService
-        account = site.map(Self.siteAccount) ?? "site-root-v2"
+        if let site, let attemptID { account = Self.siteAccount(site, attemptID: attemptID) }
+        else { account = "site-root-v2" }
     }
 #endif
 
-    private static func siteAccount(_ site: String) -> String {
-        "site." + SHA256.hash(data: Data("pistis:recovery-site:v2\0".utf8) + Data(site.utf8))
+    private static func siteAccount(_ site: String, attemptID: UUID) -> String {
+        "site." + SHA256.hash(data: Data("pistis:recovery-site:v2\0".utf8) + Data(site.utf8) + Data(attemptID.uuidString.utf8))
             .map { String(format: "%02x", $0) }.joined()
     }
 

@@ -1274,7 +1274,7 @@ struct SiteRootConvergenceServiceV2: Sendable {
             correlationDigest: digest, expectedSiteUUID: site, nowUnixSeconds: leaf.verifiedAtSeconds)
         let native = try MonasAppAttestTransport(authorityOrigin: handoff.nativeOrigin,
             expectedSPKISHA256: handoff.presentation.monasLeafSPKISHA256)
-        let recovery = try KeychainFirstAuthorityRecoveryEnvelopeStore(site: pending.siteClaim)
+        let recovery = try KeychainFirstAuthorityRecoveryEnvelopeStore(site: pending.siteClaim, attemptID: pending.attemptID)
         let producer = try SecureEnclaveFirstAuthorityCustodyProducerV2(
             authenticationReason: "Approve this exact first-authority custody rotation", store: recovery)
         try await driveProvisionalBrokerCustody(pending, storage: storage, native: native,
@@ -1286,7 +1286,7 @@ struct SiteRootConvergenceServiceV2: Sendable {
         producer: SecureEnclaveFirstAuthorityCustodyProducerV2, now: @Sendable () throws -> UInt64) async throws {
         try storage.requireFreshCustodyStep("assertion", pending: pending)
         let challenge = try await native.fetchBrokerCustodyChallengeV2(pending: pending,
-            nowUnixSeconds: now()).challenge
+            now: now).challenge
         let assertion = try await appAttest.preparePendingCustodyRotationAssertion(
             challenge: challenge, storage: storage, attemptID: pending.attemptID,
             verifiedInstallationID: challenge.installationID)

@@ -99,7 +99,13 @@ struct FirstDeviceStatusClientV2 {
         guard let response = raw as? HTTPURLResponse, response.url == url,
               response.statusCode == 200, response.value(forHTTPHeaderField: "Set-Cookie") == nil,
               response.value(forHTTPHeaderField: "Cache-Control")?.lowercased().contains("no-store") == true,
+              Self.isJSONContentType(response.value(forHTTPHeaderField: "Content-Type")),
               data.count <= 4_096 else { throw PlatformFailure.siteRootAuthorityUnavailable }
         return data
+    }
+
+    static func isJSONContentType(_ value: String?) -> Bool {
+        value?.split(separator: ";", maxSplits: 1).first?
+            .trimmingCharacters(in: .whitespaces).lowercased() == "application/json"
     }
 }

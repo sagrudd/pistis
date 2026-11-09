@@ -423,6 +423,7 @@ final class AppAttestAssertionTransportTests: XCTestCase {
 
     func testBrokerCustodyChallengeUsesFixedPinnedNativeRoute() async throws {
         AssertionURLProtocol.reset()
+        AssertionURLProtocol.brokerUnavailableRemaining = 2
         let configuration = URLSessionConfiguration.ephemeral
         configuration.protocolClasses = [AssertionURLProtocol.self]
         let transport = try MonasAppAttestTransport(authorityOrigin: XCTUnwrap(URL(string: "https://10.0.2.15:8443")),
@@ -431,12 +432,13 @@ final class AppAttestAssertionTransportTests: XCTestCase {
             registrationReference: "reference-b", siteClaim: "site-demo",
             appClaim: AppleAppAttestRegistrationEnvelope.reviewedAppIdentifier, environmentClaim: "Production",
             keyID: Data(repeating: 0x11, count: 32).base64EncodedString(), preparedRegistration: Data([1]))
-        let challenge = try await transport.fetchBrokerCustodyChallengeV2(pending: pending, nowUnixSeconds: 150)
+        let challenge = try await transport.fetchBrokerCustodyChallengeV2(pending: pending, now: { 150 })
         XCTAssertEqual(challenge.challenge.installationID, Data(repeating: 1, count: 16))
         let request = try XCTUnwrap(AssertionURLProtocol.lastRequest())
         XCTAssertEqual(request.url?.absoluteString,
             "https://10.0.2.15:8443/v1/pistis/site-trust/authority-custody-rotation/v2/broker-assertion-challenge")
         XCTAssertNil(request.value(forHTTPHeaderField: "Cookie"))
+        XCTAssertEqual(AssertionURLProtocol.brokerRequestCount, 3)
     }
 
     func testUnavailableServerRegisteredKeyDoesNotChangeTheLocalReference() async throws {
@@ -696,6 +698,8 @@ final class AssertionURLProtocol: URLProtocol, @unchecked Sendable {
     nonisolated(unsafe) static var challengeKeyByte: UInt8 = 0x11
     nonisolated(unsafe) static var rotationBeginResponse: Data?
     nonisolated(unsafe) static var rotationCompleteResponse: Data?
+    nonisolated(unsafe) static var brokerUnavailableRemaining = 0
+    nonisolated(unsafe) static var brokerRequestCount = 0
 
     override class func canInit(with _: URLRequest) -> Bool { true }
     override class func canonicalRequest(for request: URLRequest) -> URLRequest { request }
@@ -707,14 +711,23 @@ final class AssertionURLProtocol: URLProtocol, @unchecked Sendable {
         Self.lock.unlock()
         let isChallenge = request.url?.path.hasSuffix("/assertion-challenge") == true
             || request.url?.path.hasSuffix("/broker-assertion-challenge") == true
+        let isBroker = request.url?.path.hasSuffix("/broker-assertion-challenge") == true
+        var unavailable = false
+        if isBroker {
+            Self.lock.lock()
+            Self.brokerRequestCount += 1
+            if Self.brokerUnavailableRemaining > 0 { Self.brokerUnavailableRemaining -= 1; unavailable = true }
+            Self.lock.unlock()
+        }
         let rotation = request.url?.path.hasSuffix("/authority-custody-rotation/v2/begin") == true ? Self.rotationBeginResponse
             : (request.url?.path.hasSuffix("/authority-custody-rotation/v2/complete") == true ? Self.rotationCompleteResponse : nil)
         let response = HTTPURLResponse(
-            url: request.url!, statusCode: isChallenge || rotation != nil ? 200 : 202, httpVersion: "HTTP/1.1",
+            url: request.url!, statusCode: unavailable ? 503 : (isChallenge || rotation != nil ? 200 : 202), httpVersion: "HTTP/1.1",
             headerFields: ["Cache-Control": "no-store"]
         )!
         client?.urlProtocol(self, didReceive: response, cacheStoragePolicy: .notAllowed)
-        if let rotation { client?.urlProtocol(self, didLoad: rotation) }
+        if unavailable { }
+        else if let rotation { client?.urlProtocol(self, didLoad: rotation) }
         else if isChallenge {
             if request.url?.path.hasSuffix("/broker-assertion-challenge") == true,
                let body = Self.lastBody(), let object = try? JSONSerialization.jsonObject(with: body) as? [String: Any],
@@ -750,6 +763,8 @@ final class AssertionURLProtocol: URLProtocol, @unchecked Sendable {
         challengeKeyByte = 0x11
         rotationBeginResponse = nil
         rotationCompleteResponse = nil
+        brokerUnavailableRemaining = 0
+        brokerRequestCount = 0
     }
 
     static func challengeData(expires: UInt64) -> Data {

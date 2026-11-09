@@ -374,7 +374,7 @@ struct MonasAppAttestTransport: Sendable {
     /// V2 bootstrap challenge is scoped by the host ledger to the previously
     /// attended leaf handoff. Call only on its exact single pinned origin.
     func fetchBrokerCustodyChallengeV2(pending: ScopedAppAttestPending,
-                                        nowUnixSeconds: UInt64) async throws -> BrokerCustodyChallengeV2 {
+                                        now: @Sendable () throws -> UInt64) async throws -> BrokerCustodyChallengeV2 {
         var uuid = pending.attemptID.uuid
         let operation = withUnsafeBytes(of: &uuid) { Data($0) }
         let digest = Data(SHA256.hash(data: Data("mnemosyne.monas.first-device.correlation.v2\0".utf8) + pending.correlation))
@@ -386,16 +386,27 @@ struct MonasAppAttestTransport: Sendable {
         let endpoints = candidateEndpoints("/v1/pistis/site-trust/authority-custody-rotation/v2/broker-assertion-challenge")
         guard endpoints.count == 1, let endpoint = endpoints.first else { throw PlatformFailure.invalidConfiguration }
         var request = URLRequest(url: endpoint)
-        request.httpMethod = "POST"; request.httpBody = body; request.timeoutInterval = 15
+        request.httpMethod = "POST"; request.httpBody = body; request.timeoutInterval = 2
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.setValue("application/json", forHTTPHeaderField: "Accept")
         request.setValue("no-store", forHTTPHeaderField: "Cache-Control")
-        let (data, response) = try await originData(for: request)
-        guard let http = response as? HTTPURLResponse, http.url == endpoint,
-              http.statusCode == 200, http.value(forHTTPHeaderField: "Set-Cookie") == nil,
-              http.value(forHTTPHeaderField: "Cache-Control")?.lowercased().contains("no-store") == true
-        else { throw PlatformFailure.siteRootAuthorityUnavailable }
-        return try BrokerCustodyChallengeV2(data: data, pending: pending, nowUnixSeconds: nowUnixSeconds)
+        for attempt in 0..<6 {
+            do {
+                let (data, response) = try await originData(for: request)
+                guard let http = response as? HTTPURLResponse, http.url == endpoint,
+                      http.value(forHTTPHeaderField: "Set-Cookie") == nil,
+                      http.value(forHTTPHeaderField: "Cache-Control")?.lowercased().contains("no-store") == true
+                else { throw PlatformFailure.siteRootAuthorityUnavailable }
+                if http.statusCode == 200 {
+                    return try BrokerCustodyChallengeV2(data: data, pending: pending, nowUnixSeconds: now())
+                }
+                guard http.statusCode == 503 else { throw PlatformFailure.siteRootAuthorityUnavailable }
+            } catch OriginAttemptFailure.unreachable {
+                // Only pre-assertion connection readiness is retried.
+            }
+            if attempt < 5 { try await Task.sleep(nanoseconds: 400_000_000) }
+        }
+        throw PlatformFailure.siteRootAuthorityUnavailable
     }
 
     /// Submits one recovery assertion to the fixed, purpose-separated Monas route.

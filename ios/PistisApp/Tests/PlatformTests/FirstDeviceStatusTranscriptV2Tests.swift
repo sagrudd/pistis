@@ -4,6 +4,12 @@ import XCTest
 @testable import Pistis
 
 final class FirstDeviceStatusTranscriptV2Tests: XCTestCase {
+    func testStatusResponseRequiresJSONContentType() {
+        XCTAssertTrue(FirstDeviceStatusClientV2.isJSONContentType("application/json"))
+        XCTAssertTrue(FirstDeviceStatusClientV2.isJSONContentType("application/json; charset=utf-8"))
+        XCTAssertFalse(FirstDeviceStatusClientV2.isJSONContentType("text/html"))
+        XCTAssertFalse(FirstDeviceStatusClientV2.isJSONContentType(nil))
+    }
     func testActualSyntheticHostResponseUsesLowercaseWireEnvironment() throws {
         let url = URL(fileURLWithPath: #filePath).deletingLastPathComponent()
             .deletingLastPathComponent().appendingPathComponent("Fixtures/status-v2-host-response.json")

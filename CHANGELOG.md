@@ -7,55 +7,13 @@
 - Reserve the compatible minor in [Kanon PR900](https://github.com/sagrudd/kanon/pull/900);
   source preparation and a new resolved lockset remain pending.
 
-## Pistis iOS 0.28.1+76 — scanner feedback source candidate
+## Pistis iOS 0.29.0+76 — multi-host source candidate
 
-- Reserve the compatible patch in [Kanon PR900](https://github.com/sagrudd/kanon/pull/900); source preparation, lockset, review and release gates remain pending.
-
-- Recognise a strictly validated fixed-broker Site Root invitation even when a
-  native authority is retained, and bind registration and proof to its fixed
-  broker transport. Approval with a retained authority remains deliberately
-  blocked until installation-scoped App Attest and setup binding are reviewed
-  and implemented; this candidate does not enable a second installation.
-
-- Exercise a test-only V2 lost-response path across the scanner, request
-  encoder and scoped pending storage with a synthetic authority. It does not
-  establish host acceptance, production activation or multi-host login.
-
-- Add a fail-closed additional-enrolment admission seam that rejects duplicate
-  installation IDs before key creation and stages a verified receipt only for
-  an exact submitted operation. The production authority adapter is not yet
-  enabled. Stop relabelling broker setup records to the selected native host;
-  older setup projections may remain broker-labelled pending reconciliation.
-
-- Reject ordinary sign-in challenges for a retained but unselected host,
-  clear stale challenges on failure, and bind custody preparation and response
-  delivery to the selected enrolment. A synthetic two-host signature test
-  covers selection and return to the original A key.
-
-- Recognise the closed fixed-origin broker V2 QR in the Scan tab and add a
-  canonical request encoder with strict field, transcript and Site Root key
-  checks. Review is available; approval, transport and activation remain
-  blocked pending the authority handoff and integration qualification.
-
-- Add the reviewed broker V2 transcript calculation and a non-wired pending
-  custody assertion primitive that checks installation, site, app and key and
-  does not access the legacy primary. The V2 route and authority handoff remain
-  blocked pending their closed wire contract and integration review.
-
-- Add a non-authorising receipt-staging primitive for a submitted operation;
-  it does not insert or select an installation, or claim an authority join.
-
-- Add a non-authorising, installation-scoped App Attest storage foundation
-  with create-once retry, exact-attempt cancellation, submitted-state retention
-  and explicit-reset coverage. It is not wired to enrolment or activation.
-
-- Preserve the installation and Site Trust fields in the existing App Attest
-  custody challenge and provide an exact binding comparison for future scoped
-  handling. This does not yet enable multi-installation assertions.
-
-- Show scan failures and their safe recovery guidance at the top of the scan
-  screen, move accessibility focus to the failure, and offer Scan again while
-  retaining readiness diagnostics and camera permission Settings access.
+- Reserve the compatible minor in [Kanon PR900](https://github.com/sagrudd/kanon/pull/900). Source review, coordinated host delivery, lockset, signing and release qualification remain pending.
+- Add the fixed-broker V2 first-device route with operation-scoped App Attest, attended X.509 handoff and pinned native custody. Retain pending attempts and prevent automatic replay after an ambiguous custody send.
+- Stage additional enrollment until the exact signed presentation, receipt and fresh native status are joined. Preserve retained installations and reject conflicting installation IDs; scope new acknowledgement and recovery records without replacing legacy references.
+- Bind ordinary login to the selected installation and retain the original installation when switching. Show scan failures and recovery guidance prominently with accessibility focus and a Scan again action.
+- Simulator rehearsals use synthetic credentials and controlled peers. Physical Apple App Attest, Secure Enclave and the complete real-host flow remain unqualified.
 
 ## Pending maintained SDK cryptography patches — source candidate
 

@@ -14,10 +14,13 @@ final class FirstAuthorityCustodyRotationV2Tests: XCTestCase {
             throw XCTSkip("This simulator runner has no Keychain entitlement.")
         }
         let legacy = try KeychainFirstAuthorityRecoveryEnvelopeStore(testService: service, site: nil)
-        let b = try KeychainFirstAuthorityRecoveryEnvelopeStore(testService: service, site: "site-b")
+        let attempt = UUID()
+        let b = try KeychainFirstAuthorityRecoveryEnvelopeStore(testService: service, site: "site-b", attemptID: attempt)
         defer { try? legacy.resetLocalEnvelope() }
         try legacy.insert(Data([1])); try b.insert(Data([2]))
-        let reopened = try KeychainFirstAuthorityRecoveryEnvelopeStore(testService: service, site: "site-b")
+        let reopened = try KeychainFirstAuthorityRecoveryEnvelopeStore(testService: service, site: "site-b", attemptID: attempt)
+        let other = try KeychainFirstAuthorityRecoveryEnvelopeStore(testService: service, site: "site-b", attemptID: UUID())
+        XCTAssertNil(try other.load())
         XCTAssertEqual(try legacy.load(), Data([1])); XCTAssertEqual(try reopened.load(), Data([2]))
         XCTAssertThrowsError(try reopened.insert(Data([3])))
         XCTAssertEqual(try legacy.load(), Data([1]))

@@ -95,6 +95,9 @@ final class AppAttestKeyReplacementCoordinatorV1: ObservableObject {
             return
         }
         do {
+            let claimed = try beginLegacyWrite()
+            defer { if claimed { ScopedAppAttestStore().endLegacyGlobalWrite() } }
+            try await requireLegacyReplacementSafe()
             phase = .producing
             let response = try await producer.produce(
                 presentation, nowUnixMillis: nowUnixMillis
@@ -121,21 +124,12 @@ final class AppAttestKeyReplacementCoordinatorV1: ObservableObject {
     /// constructed JSON are not an acceptance boundary.
     func commitAuthenticatedAccepted(
         _ authenticated: AuthenticatedAppAttestReplacementAcceptanceV1
-    ) {
+    ) async {
         do {
-            let accepted = authenticated.accepted
-            guard phase == .responseReady, let staged, let presentation,
-                PXARJSON.canonicalUUID(accepted.transactionID) == staged.transactionUUID,
-                accepted.installationID == presentation.wire.installationID,
-                accepted.oldGeneration == presentation.wire.oldGeneration,
-                accepted.newGeneration == presentation.wire.newGeneration,
-                accepted.oldKeyIDB64URL == presentation.wire.oldKeyIDB64URL,
-                let newKey = PXARJSON.base64URL(accepted.newKeyIDB64URL, count: 32),
-                newKey.base64EncodedString() == staged.replacementKeyID
-            else { throw PlatformFailure.appAttestInvalidInput }
-            try committer.commitReplacementKey(staged, authenticated: authenticated)
-            responseFileBytes = nil
-            phase = .accepted
+            let claimed = try beginLegacyWrite()
+            defer { if claimed { ScopedAppAttestStore().endLegacyGlobalWrite() } }
+            try await requireLegacyReplacementSafe()
+            try commitGuarded(authenticated)
         } catch { phase = .failed }
     }
 
@@ -145,13 +139,16 @@ final class AppAttestKeyReplacementCoordinatorV1: ObservableObject {
             return
         }
         do {
+            let claimed = try beginLegacyWrite()
+            defer { if claimed { ScopedAppAttestStore().endLegacyGlobalWrite() } }
+            try await requireLegacyReplacementSafe()
             phase = .submitting
             let authenticated = try await transport.submitAppAttestReplacement(
                 canonicalSubmission: responseFileBytes
             )
             // Restore the guarded phase consumed by the same commit boundary.
             phase = .responseReady
-            commitAuthenticatedAccepted(authenticated)
+            try commitGuarded(authenticated)
         } catch AppAttestReplacementTransportFailure.ambiguousDelivery {
             // A transport failure is ambiguous: Monas may have accepted the
             // request. Preserve the exact durable bytes for idempotent retry.
@@ -161,6 +158,36 @@ final class AppAttestKeyReplacementCoordinatorV1: ObservableObject {
             // attempt, but durable bytes remain for operator reconciliation.
             phase = .failed
         }
+    }
+
+    private func beginLegacyWrite() throws -> Bool {
+        guard BrokerV2Feature.enabled else { return false }
+        try ScopedAppAttestStore().beginLegacyGlobalWrite()
+        return true
+    }
+
+    private func commitGuarded(_ authenticated: AuthenticatedAppAttestReplacementAcceptanceV1) throws {
+        let accepted = authenticated.accepted
+        guard phase == .responseReady, let staged, let presentation,
+            PXARJSON.canonicalUUID(accepted.transactionID) == staged.transactionUUID,
+            accepted.installationID == presentation.wire.installationID,
+            accepted.oldGeneration == presentation.wire.oldGeneration,
+            accepted.newGeneration == presentation.wire.newGeneration,
+            accepted.oldKeyIDB64URL == presentation.wire.oldKeyIDB64URL,
+            let newKey = PXARJSON.base64URL(accepted.newKeyIDB64URL, count: 32),
+            newKey.base64EncodedString() == staged.replacementKeyID
+        else { throw PlatformFailure.appAttestInvalidInput }
+        try committer.commitReplacementKey(staged, authenticated: authenticated)
+        responseFileBytes = nil
+        phase = .accepted
+    }
+
+    private func requireLegacyReplacementSafe() async throws {
+        guard BrokerV2Feature.enabled else { return }
+        let inventory = try await InstallationTrustKeychain.shared.enrollmentInventoryRecords()
+        let scoped = ScopedAppAttestStore()
+        guard inventory.count <= 1, try !scoped.hasAnyScopedBinding(),
+              try !scoped.hasSubmittedBrokerAttempt() else { throw PlatformFailure.siteRootBindingUnavailable }
     }
 
     func restoreRetainedSubmission() {

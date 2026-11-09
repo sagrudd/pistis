@@ -386,7 +386,7 @@ struct RootTabView: View {
             }
             let scoped = ScopedAppAttestStore()
             if let binding = try scoped.binding(installationID: selected.trust.installationID) {
-                recoveryStore = try KeychainFirstAuthorityRecoveryEnvelopeStore(site: binding.site)
+                recoveryStore = try KeychainFirstAuthorityRecoveryEnvelopeStore(site: binding.site, attemptID: binding.attemptID)
             } else {
                 let inventory = try await InstallationTrustKeychain.shared.enrollmentInventoryRecords()
                 var unscoped: [Data] = []

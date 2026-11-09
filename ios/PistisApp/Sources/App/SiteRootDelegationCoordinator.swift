@@ -253,6 +253,8 @@ final class SiteRootDelegationCoordinator: ObservableObject {
         do {
             switch pending {
             case let .delegation(qrPresentation):
+                let claimed = try await beginLegacyRegistration()
+                defer { if claimed { ScopedAppAttestStore().endLegacyGlobalWrite() } }
                 let producer = try SecureEnclaveSiteRootProofProducer(
                     authenticationReason: "Sign this exact Monas Site Root delegation"
                 )
@@ -268,6 +270,8 @@ final class SiteRootDelegationCoordinator: ObservableObject {
                 try await completeProvisionalBrokerV2(presentation, broker: broker)
             case let .firstDevice(firstDevice):
                 guard let firstDeviceTransport else { throw PlatformFailure.invalidConfiguration }
+                let claimed = try await beginLegacyRegistration()
+                defer { if claimed { ScopedAppAttestStore().endLegacyGlobalWrite() } }
                 // A retained native authority still uses a singleton App Attest
                 // reference and broker setup projection. Until those are
                 // installation-scoped, a second ceremony could overwrite or
@@ -324,6 +328,19 @@ final class SiteRootDelegationCoordinator: ObservableObject {
             recordFailure(failure, review: presentedReview)
             phase = .failed(failure)
         }
+    }
+
+    /// Hold the legacy singleton exclusive while preserving the old one-host
+    /// ceremony. V2 reservation cannot start before the legacy write ends.
+    private func beginLegacyRegistration() async throws -> Bool {
+        guard BrokerV2Feature.enabled else { return false }
+        let storage = ScopedAppAttestStore()
+        try storage.beginLegacyGlobalWrite()
+        do {
+            let inventory = try await InstallationTrustKeychain.shared.enrollmentInventoryRecords()
+            guard inventory.count <= 1 else { throw PlatformFailure.siteRootBindingUnavailable }
+            return true
+        } catch { storage.endLegacyGlobalWrite(); throw error }
     }
 
     private var brokerV2Enabled: Bool {

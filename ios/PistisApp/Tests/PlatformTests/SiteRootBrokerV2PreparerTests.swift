@@ -153,6 +153,15 @@ final class SiteRootBrokerV2PreparerTests: XCTestCase {
         XCTAssertLessThanOrEqual(body.count, 32 * 1024)
         XCTAssertThrowsError(try BrokerV2RelayEnvelope.encode(reference: "test", correlation: Data(repeating: 1, count: 32), registration: registration + Data([1])))
     }
+    func testLegacyGlobalWriteExcludesV2ReservationAndReset() throws {
+        let storage = ScopedAppAttestStore(persistence: ScopedMemoryPersistence())
+        try storage.beginLegacyGlobalWrite()
+        XCTAssertThrowsError(try storage.reserveBrokerAttempt(fixture()))
+        XCTAssertThrowsError(try ScopedAppAttestStore.beginLocalReset())
+        storage.endLegacyGlobalWrite()
+        _ = try storage.reserveBrokerAttempt(fixture())
+        XCTAssertThrowsError(try storage.beginLegacyGlobalWrite())
+    }
     func testProvisionalPresentationIsCreateOnceAndAmbiguityFailsClosed() async throws {
         let storage = ScopedAppAttestStore(persistence: ScopedMemoryPersistence())
         let preparer = SiteRootBrokerV2Preparer(

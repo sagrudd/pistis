@@ -413,6 +413,16 @@ an independently authenticated installation binding. It never reads or writes
 the legacy primary. No production caller is enabled until that authority
 handoff, the closed V2 wire and in-flight reset coordination are reviewed.
 
+## Broker V2 wire candidate
+
+The Scan tab strictly parses the fixed-origin V2 broker invitation and can show
+its review, but cannot approve it until the authority handoff and protected
+storage integration are complete. The paired request encoder emits the closed
+no-escape canonical grammar and checks the transcript and Site Root public-key
+binding. The shared Monas fixtures are wire-only synthetic data; the request
+fixture contains an invalid public key and must fail semantic validation. The
+mobile checks do not replace Monas verification of real Apple attestation.
+
 ## QR acquisition boundary
 
 The native scanner uses AVFoundation metadata capture and accepts at most one

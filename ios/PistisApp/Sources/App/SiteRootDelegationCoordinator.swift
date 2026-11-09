@@ -115,6 +115,7 @@ final class SiteRootDelegationCoordinator: ObservableObject {
     private enum PendingPresentation {
         case delegation(SiteRootDelegationQRPresentationV1)
         case firstDevice(SiteRootGenesisRegistrationPresentationV1)
+        case firstDeviceV2(SiteRootBrokerPresentationV2)
     }
 
     init(
@@ -146,6 +147,18 @@ final class SiteRootDelegationCoordinator: ObservableObject {
         eventAttemptStartedNanoseconds = DispatchTime.now().uptimeNanoseconds
         do {
             let nowUnixMillis = try nowMillis()
+            if qrText.contains(SiteRootBrokerPresentationV2.schema) {
+                let presentation = try SiteRootBrokerPresentationV2(qrText: qrText, nowMillis: nowUnixMillis)
+                pending = .firstDeviceV2(presentation)
+                eventFlow = .firstDeviceSiteRoot
+                eventAuthority = .fixedInstallBroker
+                eventReferenceDigest = OnboardingEvent.redactedDigestData(for: presentation.reference)
+                let review = SiteRootDelegationReview(firstDeviceV2: presentation)
+                presentedReview = review
+                phase = .review(review)
+                recordEvent(kind: .qrValidated, outcome: .accepted)
+                return
+            }
             if qrText.contains(SiteRootGenesisRegistrationPresentationV1.schema) {
                 var rejected: PlatformFailure = .invalidFirstDevicePresentation
                 let candidates: [any MonasSiteRootCeremonyTransport] =
@@ -217,6 +230,9 @@ final class SiteRootDelegationCoordinator: ObservableObject {
                     producer: producer,
                     registerAppAttest: true
                 )
+            case .firstDeviceV2:
+                // V2 registration and authority handoff are not yet wired.
+                throw PlatformFailure.siteRootBindingUnavailable
             case let .firstDevice(firstDevice):
                 guard let firstDeviceTransport else { throw PlatformFailure.invalidConfiguration }
                 // A retained native authority still uses a singleton App Attest
@@ -304,6 +320,7 @@ final class SiteRootDelegationCoordinator: ObservableObject {
     /// Only an already validated first-device broker presentation may bypass
     /// the retained authority's host check in the outer scanner.
     var isValidatedBrokerFirstDevice: Bool {
+        if case .firstDeviceV2? = pending { return true }
         guard case .firstDevice? = pending else { return false }
         return firstDeviceTransport is MonasSiteRootGenesisBrokerTransport
     }
@@ -679,6 +696,13 @@ struct SiteRootDelegationReview: Equatable, Identifiable {
         reference = Self.redact(firstDevice.reference)
         deviceKeyFingerprint = "Created with Face ID"
         destination = firstDevice.registrationURL.host ?? "unavailable"
+        isFirstDevice = true
+    }
+
+    init(firstDeviceV2: SiteRootBrokerPresentationV2) {
+        reference = Self.redact(firstDeviceV2.reference)
+        deviceKeyFingerprint = "Created with Face ID"
+        destination = URL(string: MonasSiteRootGenesisBrokerEndpointV1.origin)?.host ?? "unavailable"
         isFirstDevice = true
     }
 

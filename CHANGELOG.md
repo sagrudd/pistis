@@ -8,6 +8,11 @@
   blocked until installation-scoped App Attest and setup binding are reviewed
   and implemented; this candidate does not enable a second installation.
 
+- Recognise the closed fixed-origin broker V2 QR in the Scan tab and add a
+  canonical request encoder with strict field, transcript and Site Root key
+  checks. Review is available; approval, transport and activation remain
+  blocked pending the authority handoff and integration qualification.
+
 - Add the reviewed broker V2 transcript calculation and a non-wired pending
   custody assertion primitive that checks installation, site, app and key and
   does not access the legacy primary. The V2 route and authority handoff remain

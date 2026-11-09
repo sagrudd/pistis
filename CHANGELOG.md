@@ -8,6 +8,10 @@
   blocked until installation-scoped App Attest and setup binding are reviewed
   and implemented; this candidate does not enable a second installation.
 
+- Exercise a test-only V2 lost-response path across the scanner, request
+  encoder and scoped pending storage with a synthetic authority. It does not
+  establish host acceptance, production activation or multi-host login.
+
 - Recognise the closed fixed-origin broker V2 QR in the Scan tab and add a
   canonical request encoder with strict field, transcript and Site Root key
   checks. Review is available; approval, transport and activation remain

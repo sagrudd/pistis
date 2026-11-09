@@ -427,6 +427,13 @@ binding. The shared Monas fixtures are wire-only synthetic data; the request
 fixture contains an invalid public key and must fail semantic validation. The
 mobile checks do not replace Monas verification of real Apple attestation.
 
+The test-target V2 interruption harness joins the production scanner classifier,
+QR parser, transcript and request encoder with the scoped staging primitives and
+a synthetic authority. It exercises loss of a response after the submitted
+marker and verifies the exact pending attempt remains without changing the
+synthetic legacy reference. It does not test a real host, authenticated
+acceptance, activation, signed Keychain access or an A → B → A login.
+
 ## QR acquisition boundary
 
 The native scanner uses AVFoundation metadata capture and accepts at most one

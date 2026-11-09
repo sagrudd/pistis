@@ -69,6 +69,34 @@ final class BrokerV2IntegrationHarnessTests: XCTestCase {
         XCTAssertEqual(sentCount, 1)
     }
 
+    func testTaskCancellationDuringDeliveryLeavesSubmittedAttemptForReconciliation() async throws {
+        let persistence = ScopedMemoryPersistence()
+        let store = ScopedAppAttestStore(persistence: persistence)
+        let id = UUID()
+        let pending = ScopedAppAttestPending(
+            attemptID: id, correlation: Data(repeating: 3, count: 32), registrationReference: "test",
+            siteClaim: "site-b", appClaim: AppleAppAttestRegistrationEnvelope.reviewedAppIdentifier,
+            environmentClaim: "Production", keyID: Data(repeating: 4, count: 32).base64EncodedString(),
+            preparedRegistration: Data([1]))
+        try store.stage(pending)
+        try store.markSubmitted(attemptID: id)
+        let authority = ControlledSyntheticDelivery()
+        let task = Task {
+            await authority.send()
+            try Task.checkCancellation()
+        }
+        await authority.waitUntilSent()
+        task.cancel()
+        XCTAssertThrowsError(try store.cancel(attemptID: id))
+        await authority.finish()
+        do { try await task.value; XCTFail("cancelled task unexpectedly succeeded") }
+        catch is CancellationError { }
+        let restarted = ScopedAppAttestStore(persistence: persistence)
+        XCTAssertEqual(try restarted.pending(attemptID: id), pending)
+        XCTAssertEqual(try restarted.reference(for: .legacy) { "legacy-a" }, "legacy-a")
+        XCTAssertNil(try restarted.binding(installationID: Data(repeating: 2, count: 16)))
+    }
+
     func testNeverSubmittedCancellationCannotBecomeSubmitted() throws {
         let persistence = ScopedMemoryPersistence()
         let store = ScopedAppAttestStore(persistence: persistence)
@@ -95,4 +123,21 @@ private actor SyntheticBrokerAuthority {
     }
     func acceptedBytes() -> Data? { exactRequest }
     func submissionCount() -> Int { sends }
+}
+
+private actor ControlledSyntheticDelivery {
+    private var continuation: CheckedContinuation<Void, Never>?
+    private var started: CheckedContinuation<Void, Never>?
+    private var sent = false
+    func send() async {
+        sent = true
+        started?.resume()
+        started = nil
+        await withCheckedContinuation { continuation = $0 }
+    }
+    func waitUntilSent() async {
+        if sent { return }
+        await withCheckedContinuation { started = $0 }
+    }
+    func finish() { continuation?.resume(); continuation = nil }
 }

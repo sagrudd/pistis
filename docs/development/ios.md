@@ -431,7 +431,9 @@ The test-target V2 interruption harness joins the production scanner classifier,
 QR parser, transcript and request encoder with the scoped staging primitives and
 a synthetic authority. It exercises loss of a response after the submitted
 marker and verifies the exact pending attempt remains without changing the
-synthetic legacy reference. It does not test a real host, authenticated
+synthetic legacy reference. A controlled suspended delivery also exercises
+actual task cancellation and late response without clearing the pending attempt.
+It does not test a real host, authenticated
 acceptance, activation, signed Keychain access or an A → B → A login.
 
 ## QR acquisition boundary

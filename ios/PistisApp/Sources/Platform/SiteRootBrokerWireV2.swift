@@ -128,6 +128,16 @@ enum SiteRootBrokerRegistrationWireV2 {
         return canonical
     }
 
+    static func validateSiteRootKey(_ key: SiteRootKeyRegistrationV1) throws {
+        guard key.schema == "pistis.site-root-key-registration.v1",
+              key.secureEnclaveAttestation == "not-asserted",
+              key.publicKeyCompressedSEC1.count == 33,
+              (try? P256.Signing.PublicKey(compressedRepresentation: key.publicKeyCompressedSEC1)) != nil,
+              key.deviceKeyID == "site-root-" + SHA256.hash(data: key.publicKeyCompressedSEC1)
+                .map({ String(format: "%02x", $0) }).joined()
+        else { throw PlatformFailure.qrPayloadUnsupported }
+    }
+
     static func encode(
         presentation: SiteRootBrokerPresentationV2, operationID: Data,
         siteRootKey: SiteRootKeyRegistrationV1, appAttest: AppleAppAttestRegistrationEnvelope

@@ -1,6 +1,7 @@
 import Foundation
 import XCTest
 import PistisCore
+import Security
 @testable import Pistis
 
 final class ScopedAppAttestStoreTests: XCTestCase {
@@ -17,6 +18,31 @@ final class ScopedAppAttestStoreTests: XCTestCase {
         ScopedAppAttestBinding(attemptID: id, installationID: Data(repeating: installation, count: 16),
                                site: "site-b", appIdentifier: AppleAppAttestRegistrationEnvelope.reviewedAppIdentifier,
                                environment: "Production", keyID: key, policyGeneration: 1, revocationGeneration: 1)
+    }
+
+    func testSignedSimulatorKeychainRetainsTwoIsolatedBindings() throws {
+        let service = "org.mnemosynebiosciences.pistis.test.scoped." + UUID().uuidString
+        let probe: [String: Any] = [
+            kSecClass as String: kSecClassGenericPassword,
+            kSecAttrService as String: service,
+            kSecAttrAccount as String: "probe",
+            kSecReturnData as String: true,
+        ]
+        var result: CFTypeRef?
+        if SecItemCopyMatching(probe as CFDictionary, &result) == errSecMissingEntitlement {
+            throw XCTSkip("This simulator runner has no Keychain entitlement.")
+        }
+        let store = try ScopedAppAttestStore(testService: service)
+        defer { try? store.resetAll() }
+        let first = UUID(), second = UUID()
+        try store.stage(pending(first)); try store.markSubmitted(attemptID: first); try store.commit(binding(first))
+        try store.stage(pending(second)); try store.markSubmitted(attemptID: second)
+        try store.commit(binding(second, installation: 3))
+        let restarted = try ScopedAppAttestStore(testService: service)
+        XCTAssertEqual(try restarted.binding(installationID: Data(repeating: 2, count: 16)), binding(first))
+        XCTAssertEqual(try restarted.binding(installationID: Data(repeating: 3, count: 16)), binding(second, installation: 3))
+        XCTAssertThrowsError(try restarted.commit(binding(second)))
+        XCTAssertEqual(try restarted.binding(installationID: Data(repeating: 2, count: 16)), binding(first))
     }
 
     func testRetryRestartConflictAndDistinctInstallation() throws {
@@ -249,9 +275,14 @@ final class ScopedAppAttestStoreTests: XCTestCase {
 final class ScopedMemoryPersistence: ScopedAppAttestPersistence {
     private var values: [String: Data] = [:]
     var failNextCompletion = false
+    var failNextPending = false
     var failNextRemoval = false
     func read(account: String) throws -> Data? { values[account] }
     func add(account: String, data: Data) throws -> Bool {
+        if account.hasPrefix("pending."), failNextPending {
+            failNextPending = false
+            throw PlatformFailure.appAttestKeyCreationFailed
+        }
         if account.hasPrefix("completed."), failNextCompletion {
             failNextCompletion = false
             throw PlatformFailure.appAttestKeyCreationFailed

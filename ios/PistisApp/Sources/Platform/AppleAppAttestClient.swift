@@ -84,7 +84,8 @@ struct AppleAppAttestRegistrationEnvelope: Codable, Equatable, Sendable {
 /// accompanying envelope before the caller commits this value.
 struct PreparedAppleAppAttestRegistration: Sendable {
     let envelope: AppleAppAttestRegistrationEnvelope
-    fileprivate let keyID: String
+    /// Opaque Apple key reference for the protected pending store only.
+    let keyID: String
 }
 
 /// One assertion for the exact server-registered custody key plus a redacted

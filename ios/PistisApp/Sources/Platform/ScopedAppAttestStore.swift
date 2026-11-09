@@ -167,6 +167,15 @@ final class ScopedAppAttestStore: @unchecked Sendable {
         persistence = ScopedAppAttestKeychainPersistence(service: Self.productionService)
     }
     init(persistence: any ScopedAppAttestPersistence) { self.persistence = persistence }
+#if DEBUG
+    /// Isolated simulator test service; cannot address the production service.
+    init(testService: String) throws {
+        guard testService.hasPrefix("org.mnemosynebiosciences.pistis.test.scoped."),
+              UUID(uuidString: String(testService.dropFirst("org.mnemosynebiosciences.pistis.test.scoped.".count))) != nil
+        else { throw PlatformFailure.invalidConfiguration }
+        persistence = ScopedAppAttestKeychainPersistence(service: testService)
+    }
+#endif
 
     func stage(_ pending: ScopedAppAttestPending) throws {
         try pending.validate()
@@ -175,6 +184,47 @@ final class ScopedAppAttestStore: @unchecked Sendable {
                   try readData(account: completed(pending.attemptID)) == nil
             else { throw PlatformFailure.invalidConfiguration }
             try createOnce(pending, account: staged(pending.attemptID))
+        }
+    }
+
+    /// A reset or cancellation during Apple key generation invalidates the
+    /// marker, preventing the returning asynchronous operation from staging.
+    func stagePrepared(_ pending: ScopedAppAttestPending) throws {
+        try pending.validate()
+        try withLock {
+            guard try read(UUID.self, account: preparing(pending.attemptID)) == pending.attemptID,
+                  try readData(account: cancelled(pending.attemptID)) == nil,
+                  try readData(account: completed(pending.attemptID)) == nil,
+                  try readData(account: submitted(pending.attemptID)) == nil
+            else { throw PlatformFailure.invalidConfiguration }
+            try createOnce(pending, account: staged(pending.attemptID))
+        }
+    }
+
+    /// Atomically records intent before generating an Apple key. An orphaned
+    /// marker is ambiguous and blocks automatic generation on restart.
+    func markPreparing(_ attemptID: UUID) throws {
+        try withLock {
+            guard try readData(account: staged(attemptID)) == nil,
+                  try readData(account: submitted(attemptID)) == nil,
+                  try readData(account: cancelled(attemptID)) == nil,
+                  try readData(account: completed(attemptID)) == nil,
+                  try readData(account: preparing(attemptID)) == nil
+            else { throw PlatformFailure.invalidConfiguration }
+            try createOnce(attemptID, account: preparing(attemptID))
+        }
+    }
+
+    /// An orphaned pre-send attempt may be abandoned by exact ID. The Apple
+    /// key may remain OS-managed; no other local credential is deleted.
+    func abandonPreparing(_ attemptID: UUID) throws {
+        try withLock {
+            guard try read(UUID.self, account: preparing(attemptID)) == attemptID,
+                  try readData(account: staged(attemptID)) == nil,
+                  try readData(account: submitted(attemptID)) == nil,
+                  try readData(account: completed(attemptID)) == nil
+            else { throw PlatformFailure.invalidConfiguration }
+            try createOnce(attemptID, account: cancelled(attemptID))
         }
     }
 
@@ -335,6 +385,7 @@ final class ScopedAppAttestStore: @unchecked Sendable {
         return try operation()
     }
     private func staged(_ id: UUID) -> String { "pending." + id.uuidString }
+    private func preparing(_ id: UUID) -> String { "preparing." + id.uuidString }
     private func enrollment(_ id: UUID) -> String { "enrollment." + id.uuidString }
     private func cancelled(_ id: UUID) -> String { "cancelled." + id.uuidString }
     private func completed(_ id: UUID) -> String { "completed." + id.uuidString }

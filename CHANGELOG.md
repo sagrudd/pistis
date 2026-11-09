@@ -1,3 +1,9 @@
+## Pending iOS scanner feedback — source candidate
+
+- Show scan failures and their safe recovery guidance at the top of the scan
+  screen, move accessibility focus to the failure, and offer Scan again while
+  retaining readiness diagnostics and camera permission Settings access.
+
 ## Pending maintained SDK cryptography patches — source candidate
 
 - Use the merged Thesaurophylax API 0.94.5 source revision already selected by

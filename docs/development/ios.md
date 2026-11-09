@@ -380,7 +380,11 @@ non-secret evidence for the exact revision.
 The native scanner uses AVFoundation metadata capture and accepts at most one
 2,331-byte ASCII `PISTIS1` value. It installs no photo or sample-buffer output,
 retains no camera frame, stops after one result, cancels on backgrounding, and
-offers accessible permission, unsupported-code, oversize, and retry states.
+offers accessible permission, unsupported-code, oversize, and retry states. On
+failure the scanner returns to the top of the screen, focuses the failure for
+assistive technology, and shows the safe recovery guidance and Scan again action.
+Camera permission failures also provide Open Settings. Readiness diagnostics
+remain available further down the screen.
 
 Acquisition is not verification. The production coordinator loads only an
 authenticated enrolment output from the device-only Keychain, verifies the

@@ -193,6 +193,29 @@ final class PistisUITests: XCTestCase {
         XCTAssertFalse(application.buttons["Deny"].exists)
     }
 
+    func testScannerFailureAndRetryAreVisibleWithoutScrolling() {
+        let application = XCUIApplication()
+        application.launch()
+        if application.buttons["Continue to Pistis"].exists {
+            application.buttons["Continue to Pistis"].tap()
+        }
+        application.tabBars.buttons["Scan"].tap()
+
+        // The simulator has no capture device, so acquisition fails without a QR.
+        let failure = application.staticTexts["Scan failed"]
+        XCTAssertTrue(failure.waitForExistence(timeout: 10))
+        XCTAssertTrue(failure.isHittable)
+        let message = application.staticTexts[
+            "No supported camera is available. Try again on an iPhone with a working camera."
+        ]
+        XCTAssertTrue(message.isHittable)
+        let retry = application.buttons["Scan again"]
+        XCTAssertTrue(retry.isHittable)
+        retry.tap()
+        XCTAssertTrue(failure.waitForExistence(timeout: 10))
+        XCTAssertTrue(retry.isHittable)
+    }
+
     func testScannerRoutesSiteRootWithoutASeparateCameraEntryPoint() {
         let application = XCUIApplication()
         application.launch()

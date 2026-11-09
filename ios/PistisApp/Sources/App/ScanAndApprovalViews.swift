@@ -134,6 +134,7 @@ struct ScanView: View {
     @State private var importingAppAttestReplacement = false
     @State private var firstDeviceScanRequest: FirstDeviceScanRequest?
     @State private var scanFailure: PlatformFailure?
+    @AccessibilityFocusState private var scanFailureFocused: Bool
     @State private var readiness = PasswordlessReadiness.checking
 
     init(
@@ -206,117 +207,132 @@ struct ScanView: View {
     }
 
     var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: MnSpacing.x6) {
-                MnSectionHeading(
-                    "Scan a Pistis or Monas request",
-                    orientation: "Point the camera at a supported QR code. Captured frames are not saved."
-                )
-
-                ZStack {
-                    RoundedRectangle(cornerRadius: MnRadius.large)
-                        .fill(MnColor.textPrimary)
-                        .aspectRatio(1, contentMode: .fit)
-                    if scanning {
-                        QRScannerCameraView(
-                            profile: .pistisAuthenticationOrMonasSiteRoot,
-                            onResult: handleScan
-                        )
-                            .clipShape(RoundedRectangle(cornerRadius: MnRadius.large))
-                            .aspectRatio(1, contentMode: .fill)
-                        Image(systemName: "viewfinder")
-                            .resizable()
-                            .scaledToFit()
-                            .frame(width: 160, height: 160)
-                            .foregroundStyle(MnColor.onBrand)
-                            .accessibilityHidden(true)
-                    } else {
-                        Image(systemName: "qrcode.viewfinder")
-                            .resizable()
-                            .scaledToFit()
-                            .frame(width: 112, height: 112)
-                            .foregroundStyle(MnColor.onBrand)
-                            .accessibilityHidden(true)
-                    }
-                }
-                .accessibilityElement(children: .ignore)
-                .accessibilityLabel(scanning ? "Scanning for a supported QR code" : "Pistis camera unavailable")
-
-                MnPanel {
-                    VStack(alignment: .leading, spacing: MnSpacing.x2) {
-                        MnStatusLabel(
-                            text: statusText,
-                            kind: statusKind
-                        )
-                        Text("Only bounded Pistis and purpose-separated Monas envelopes are acquired. Base Camp migration and successor rotation always require their own review and fresh Face ID; ordinary sign-in cannot approve them. After acceptance, Pistis returns to Identities instead of reopening the camera.")
-                            .font(.footnote)
-                            .foregroundStyle(MnColor.textPrimary)
-                            .background(MnColor.raised)
-                            .accessibilityIdentifier("basecamp-governed-scan-policy")
-                            .fixedSize(horizontal: false, vertical: true)
-                    }
-                }
-
-                Button {
-                    importingOfflinePresentation = true
-                } label: {
-                    Label("Import first Site HTTPS challenge", systemImage: "doc.badge.plus")
-                }
-                .font(.headline)
-                .frame(maxWidth: .infinity, minHeight: MnMetrics.minimumTarget)
-                .buttonStyle(.borderedProminent)
-                .tint(MnColor.action)
-                .foregroundStyle(MnColor.onBrand)
-
-                Button {
-                    importingAppAttestReplacement = true
-                } label: {
-                    Label("Import App Attest replacement file", systemImage: "key.horizontal")
-                }
-                .font(.headline)
-                .frame(maxWidth: .infinity, minHeight: MnMetrics.minimumTarget)
-                .buttonStyle(.bordered)
-                .disabled(appAttestReplacementTransport == nil)
-
-                MnPanel {
-                    VStack(alignment: .leading, spacing: MnSpacing.x4) {
-                        MnStatusLabel(
-                            text: readiness.approvalEnabled
-                                ? "Passwordless approval ready"
-                                : "Passwordless approval unavailable",
-                            kind: readiness.approvalEnabled ? .success : .warning
-                        )
-                        ForEach(readiness.items) { item in
-                            ReadinessRow(item: item)
-                        }
-                        if !readiness.approvalEnabled {
-                            Text("Approve remains disabled until every capability and trust check is ready.")
-                                .font(.footnote.weight(.semibold))
-                                .foregroundStyle(MnColor.textPrimary)
-                                .background(MnColor.raised)
-                        }
-                    }
-                }
-
-                if let scanFailure {
-                    MnPanel {
-                        VStack(alignment: .leading, spacing: MnSpacing.x3) {
-                            MnStatusLabel(text: "Scan failed", kind: .danger)
-                            Text(scanFailure.safeUserMessage)
-                                .foregroundStyle(MnColor.textPrimary)
-                                .background(MnColor.raised)
-                            if scanFailure == .cameraPermissionDenied {
-                                Button("Open Settings") { openCameraSettings() }
+        ScrollViewReader { proxy in
+            ScrollView {
+                VStack(alignment: .leading, spacing: MnSpacing.x6) {
+                    if let scanFailure {
+                        MnPanel {
+                            VStack(alignment: .leading, spacing: MnSpacing.x3) {
+                                MnStatusLabel(text: "Scan failed", kind: .danger)
+                                    .accessibilityFocused($scanFailureFocused)
+                                Text(scanFailure.safeUserMessage)
+                                    .foregroundStyle(MnColor.textPrimary)
+                                    .background(MnColor.raised)
+                                    .fixedSize(horizontal: false, vertical: true)
+                                if scanFailure == .cameraPermissionDenied {
+                                    Button("Open Settings") { openCameraSettings() }
+                                        .font(.headline)
+                                        .frame(minHeight: MnMetrics.minimumTarget)
+                                }
+                                Button("Scan again") { startScanning() }
                                     .font(.headline)
                                     .frame(minHeight: MnMetrics.minimumTarget)
                             }
                         }
+                        .id("scan-failure")
                     }
-                }
 
+                    MnSectionHeading(
+                        "Scan a Pistis or Monas request",
+                        orientation: "Point the camera at a supported QR code. Captured frames are not saved."
+                    )
+
+                    ZStack {
+                        RoundedRectangle(cornerRadius: MnRadius.large)
+                            .fill(MnColor.textPrimary)
+                            .aspectRatio(1, contentMode: .fit)
+                        if scanning {
+                            QRScannerCameraView(
+                                profile: .pistisAuthenticationOrMonasSiteRoot,
+                                onResult: handleScan
+                            )
+                                .clipShape(RoundedRectangle(cornerRadius: MnRadius.large))
+                                .aspectRatio(1, contentMode: .fill)
+                            Image(systemName: "viewfinder")
+                                .resizable()
+                                .scaledToFit()
+                                .frame(width: 160, height: 160)
+                                .foregroundStyle(MnColor.onBrand)
+                                .accessibilityHidden(true)
+                        } else {
+                            Image(systemName: "qrcode.viewfinder")
+                                .resizable()
+                                .scaledToFit()
+                                .frame(width: 112, height: 112)
+                                .foregroundStyle(MnColor.onBrand)
+                                .accessibilityHidden(true)
+                        }
+                    }
+                    .accessibilityElement(children: .ignore)
+                    .accessibilityLabel(scanning ? "Scanning for a supported QR code" : "Pistis camera unavailable")
+
+                    MnPanel {
+                        VStack(alignment: .leading, spacing: MnSpacing.x2) {
+                            MnStatusLabel(
+                                text: statusText,
+                                kind: statusKind
+                            )
+                            Text("Only bounded Pistis and purpose-separated Monas envelopes are acquired. Base Camp migration and successor rotation always require their own review and fresh Face ID; ordinary sign-in cannot approve them. After acceptance, Pistis returns to Identities instead of reopening the camera.")
+                                .font(.footnote)
+                                .foregroundStyle(MnColor.textPrimary)
+                                .background(MnColor.raised)
+                                .accessibilityIdentifier("basecamp-governed-scan-policy")
+                                .fixedSize(horizontal: false, vertical: true)
+                        }
+                    }
+
+                    Button {
+                        importingOfflinePresentation = true
+                    } label: {
+                        Label("Import first Site HTTPS challenge", systemImage: "doc.badge.plus")
+                    }
+                    .font(.headline)
+                    .frame(maxWidth: .infinity, minHeight: MnMetrics.minimumTarget)
+                    .buttonStyle(.borderedProminent)
+                    .tint(MnColor.action)
+                    .foregroundStyle(MnColor.onBrand)
+
+                    Button {
+                        importingAppAttestReplacement = true
+                    } label: {
+                        Label("Import App Attest replacement file", systemImage: "key.horizontal")
+                    }
+                    .font(.headline)
+                    .frame(maxWidth: .infinity, minHeight: MnMetrics.minimumTarget)
+                    .buttonStyle(.bordered)
+                    .disabled(appAttestReplacementTransport == nil)
+
+                    MnPanel {
+                        VStack(alignment: .leading, spacing: MnSpacing.x4) {
+                            MnStatusLabel(
+                                text: readiness.approvalEnabled
+                                    ? "Passwordless approval ready"
+                                    : "Passwordless approval unavailable",
+                                kind: readiness.approvalEnabled ? .success : .warning
+                            )
+                            ForEach(readiness.items) { item in
+                                ReadinessRow(item: item)
+                            }
+                            if !readiness.approvalEnabled {
+                                Text("Approve remains disabled until every capability and trust check is ready.")
+                                    .font(.footnote.weight(.semibold))
+                                    .foregroundStyle(MnColor.textPrimary)
+                                    .background(MnColor.raised)
+                            }
+                        }
+                    }
+
+
+                }
+                .padding(MnMetrics.screenGutter)
+                .padding(.bottom, MnSpacing.x8 * 3)
             }
-            .padding(MnMetrics.screenGutter)
-            .padding(.bottom, MnSpacing.x8 * 3)
+            .onChange(of: scanFailure) { _, failure in
+                if failure != nil {
+                    proxy.scrollTo("scan-failure", anchor: .top)
+                    scanFailureFocused = true
+                }
+            }
         }
         .navigationTitle("Scan")
         .mnScreenBackground()

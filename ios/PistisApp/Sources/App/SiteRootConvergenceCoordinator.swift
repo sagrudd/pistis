@@ -42,6 +42,8 @@ final class SiteRootConvergenceCoordinator: ObservableObject {
     private var pending: Pending?
     private var operationID = UUID()
     private var standaloneUnlock = false
+    private var brokerCustodyRetry: (correlation: Data, siteUUID: String)?
+    var canRetryBrokerCustody: Bool { brokerCustodyRetry != nil }
 
     private enum Pending {
         case provision(SiteRootBundleReceiptProvisionPresentationV1)
@@ -250,7 +252,7 @@ final class SiteRootConvergenceCoordinator: ObservableObject {
                 try await service.acknowledge(value)
                 completedBrokeredSiteX509 = false
             }
-            if completedBrokeredSiteX509 {
+            if completedBrokeredSiteX509 && shouldRecordLegacyProgress(for: pending) {
                 // Remote acceptance is already authoritative at this point.
                 // Local progress is deliberately best-effort and can never
                 // turn an accepted protected transaction into a false failure.
@@ -262,18 +264,65 @@ final class SiteRootConvergenceCoordinator: ObservableObject {
             phase = .completed
         } catch let failure as PlatformFailure {
             guard operationID == operation else { return }
+            retainSafeBrokerRetry(for: pending)
             self.pending = nil
             phase = .failed(failure)
         } catch {
             guard operationID == operation else { return }
+            retainSafeBrokerRetry(for: pending)
             self.pending = nil
             phase = .failed(.siteRootAuthorityUnavailable)
+        }
+    }
+
+    private func shouldRecordLegacyProgress(for pending: Pending) -> Bool {
+        guard BrokerV2Feature.enabled else { return true }
+        let context: (Data, String)
+        switch pending {
+        case let .siteX509Broker(value): context = (value.correlation, value.siteUUID)
+        case let .siteX509ContinuationRecovery(value): context = (value.correlation, value.siteUUID)
+        default: return true
+        }
+        do { return try ScopedAppAttestStore().submittedBrokerAttempt(correlation: context.0, siteUUID: context.1) == nil }
+        catch { return false }
+    }
+
+    private func retainSafeBrokerRetry(for pending: Pending) {
+        brokerCustodyRetry = nil
+        guard BrokerV2Feature.enabled else { return }
+        let context: (Data, String)
+        switch pending {
+        case let .siteX509Broker(value): context = (value.correlation, value.siteUUID)
+        case let .siteX509ContinuationRecovery(value): context = (value.correlation, value.siteUUID)
+        default: return
+        }
+        let storage = ScopedAppAttestStore()
+        guard let attempt = try? storage.submittedBrokerAttempt(correlation: context.0, siteUUID: context.1),
+              (try? storage.provisionalLeaf(attemptID: attempt.attemptID)) != nil,
+              (try? storage.requireFreshCustodyStep("assertion", pending: attempt)) != nil else { return }
+        brokerCustodyRetry = context
+    }
+
+    func retryBrokerCustody() async {
+        guard let context = brokerCustodyRetry, let service = brokerService else { return }
+        phase = .authenticating
+        do {
+            try await service.retryProvisionalBrokerCustody(correlation: context.correlation, siteUUID: context.siteUUID)
+            brokerCustodyRetry = nil
+            phase = .completed
+        } catch {
+            let storage = ScopedAppAttestStore()
+            if let pending = try? storage.submittedBrokerAttempt(correlation: context.correlation, siteUUID: context.siteUUID) {
+                if (try? storage.requireFreshCustodyStep("assertion", pending: pending)) == nil { brokerCustodyRetry = nil }
+            } else { brokerCustodyRetry = nil }
+            phase = .failed((error as? PlatformFailure) ?? .siteRootAuthorityUnavailable)
         }
     }
 
     func reset() {
         operationID = UUID()
         standaloneUnlock = false
+        brokerCustodyRetry = nil
         pending = nil
         presentedReview = nil
         phase = .idle

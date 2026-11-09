@@ -1,5 +1,12 @@
 import Foundation
 
+protocol BrokerV2SiteRootProducing: Sendable {
+    func register() throws -> SiteRootKeyRegistrationV1
+    func prove(_ presentation: SiteRootDelegationPresentationV1) throws -> SiteRootDelegationSubmissionV1
+}
+
+extension SecureEnclaveSiteRootProofProducer: BrokerV2SiteRootProducing {}
+
 /// UI state for the distinct, attended iPhone Site Root ceremony.
 ///
 /// This coordinator is intentionally separate from `ProductionCeremonyCoordinator`:
@@ -69,6 +76,7 @@ final class SiteRootDelegationCoordinator: ObservableObject {
     /// proof establishes setup progress, whereas a later delegation has also
     /// completed the App Attest and custody hand-off.
     enum Completion: Equatable {
+        case proofQueued
         case siteTrustEstablished
         case sessionEstablished
     }
@@ -97,9 +105,16 @@ final class SiteRootDelegationCoordinator: ObservableObject {
     /// review before its final success or failure evidence is visible.
     @Published private(set) var presentedReview: SiteRootDelegationReview?
     private let transport: any MonasSiteRootCeremonyTransport
+    private let brokerTransport: (any MonasSiteRootCeremonyTransport)?
+    private var firstDeviceTransport: (any MonasSiteRootCeremonyTransport)?
     private let appAttestClient: AppleAppAttestClient
     private let authorityCustodyMode: FirstAuthorityCustodyModeV2
     private let eventRecorder: any OnboardingEventRecording
+    private let nowMillis: () throws -> UInt64
+#if DEBUG
+    private let testV2Producer: (any BrokerV2SiteRootProducing)?
+    private let testV2Storage: ScopedAppAttestStore?
+#endif
     private var pending: PendingPresentation?
     private var eventAttemptID = UUID()
     private var eventFlow: OnboardingEventFlow = .siteRootDelegation
@@ -112,21 +127,48 @@ final class SiteRootDelegationCoordinator: ObservableObject {
     private enum PendingPresentation {
         case delegation(SiteRootDelegationQRPresentationV1)
         case firstDevice(SiteRootGenesisRegistrationPresentationV1)
+        case firstDeviceV2(SiteRootBrokerPresentationV2)
     }
 
     init(
         transport: any MonasSiteRootCeremonyTransport = UnavailableMonasSiteRootDelegationTransport(),
         appAttestClient: AppleAppAttestClient = AppleAppAttestClient(),
         authorityCustodyMode: FirstAuthorityCustodyModeV2 = .rotation,
-        eventRecorder: any OnboardingEventRecording = OnboardingEventJournal.shared
+        eventRecorder: any OnboardingEventRecording = OnboardingEventJournal.shared,
+        nowMillis: @escaping () throws -> UInt64 = { try SiteRootDelegationCoordinator.nowUnixMillis() }
     ) {
         self.transport = transport
+        self.brokerTransport = (transport as? MonasSiteRootGenesisBrokerTransport)
+            ?? (try? MonasSiteRootGenesisBrokerTransport())
         self.appAttestClient = appAttestClient
         self.authorityCustodyMode = authorityCustodyMode
         self.eventRecorder = eventRecorder
+        self.nowMillis = nowMillis
+#if DEBUG
+        testV2Producer = nil
+        testV2Storage = nil
+#endif
     }
 
+#if DEBUG
+    init(testBroker: MonasSiteRootGenesisBrokerTransport, appAttestClient: AppleAppAttestClient,
+         producer: any BrokerV2SiteRootProducing, storage: ScopedAppAttestStore,
+         eventRecorder: any OnboardingEventRecording, nowMillis: @escaping () throws -> UInt64) {
+        transport = UnavailableMonasSiteRootDelegationTransport()
+        brokerTransport = testBroker
+        self.appAttestClient = appAttestClient
+        authorityCustodyMode = .rotation
+        self.eventRecorder = eventRecorder
+        self.nowMillis = nowMillis
+        testV2Producer = producer
+        testV2Storage = storage
+    }
+#endif
+
     func accept(qrText: String) {
+        pending = nil
+        firstDeviceTransport = nil
+        presentedReview = nil
         eventAttemptID = UUID()
         eventFlow = .siteRootDelegation
         eventAuthority = .configuredSiteRoot
@@ -135,44 +177,54 @@ final class SiteRootDelegationCoordinator: ObservableObject {
         eventSequence = 0
         eventAttemptStartedNanoseconds = DispatchTime.now().uptimeNanoseconds
         do {
-            let nowUnixMillis = try Self.nowUnixMillis()
-            if !transport.genesisAuthorityOrigins.isEmpty {
-                do {
-                    let firstDevice = try SiteRootGenesisRegistrationPresentationV1(
-                        qrText: qrText,
-                        authorityOrigins: transport.genesisAuthorityOrigins,
-                        nowUnixMillis: nowUnixMillis,
-                        requireCorrelation: transport.requiresGenesisCorrelation
-                    )
-                    pending = .firstDevice(firstDevice)
-                    eventFlow = .firstDeviceSiteRoot
-                    eventAuthority = .fixedInstallBroker
-                    eventReferenceDigest = OnboardingEvent.redactedDigestData(
-                        for: firstDevice.reference
-                    )
-                    let review = SiteRootDelegationReview(firstDevice: firstDevice)
-                    presentedReview = review
-                    phase = .review(review)
-                    recordEvent(kind: .qrValidated, outcome: .accepted)
-                    return
-                } catch let failure as PlatformFailure
-                    where qrText.contains(SiteRootGenesisRegistrationPresentationV1.schema)
-                {
-                    let reported: PlatformFailure = failure == .siteRootGenesisPresentationExpired
-                        ? failure
-                        : .invalidFirstDevicePresentation
-                    eventFlow = .firstDeviceSiteRoot
-                    eventAuthority = .fixedInstallBroker
-                    recordFailure(reported, review: nil)
-                    phase = .failed(reported)
-                    return
-                } catch where qrText.contains(SiteRootGenesisRegistrationPresentationV1.schema) {
-                    eventFlow = .firstDeviceSiteRoot
-                    eventAuthority = .fixedInstallBroker
-                    recordFailure(.invalidFirstDevicePresentation, review: nil)
-                    phase = .failed(.invalidFirstDevicePresentation)
-                    return
+            let nowUnixMillis = try nowMillis()
+            if qrText.contains(SiteRootBrokerPresentationV2.schema) {
+                let presentation = try SiteRootBrokerPresentationV2(qrText: qrText, nowMillis: nowUnixMillis)
+                pending = .firstDeviceV2(presentation)
+                eventFlow = .firstDeviceSiteRoot
+                eventAuthority = .fixedInstallBroker
+                eventReferenceDigest = OnboardingEvent.redactedDigestData(for: presentation.reference)
+                let review = SiteRootDelegationReview(firstDeviceV2: presentation)
+                presentedReview = review
+                phase = .review(review)
+                recordEvent(kind: .qrValidated, outcome: .accepted)
+                return
+            }
+            if qrText.contains(SiteRootGenesisRegistrationPresentationV1.schema) {
+                var rejected: PlatformFailure = .invalidFirstDevicePresentation
+                let candidates: [any MonasSiteRootCeremonyTransport] =
+                    [brokerTransport, transport].compactMap { $0 }
+                for candidate in candidates where !candidate.genesisAuthorityOrigins.isEmpty {
+                    do {
+                        let firstDevice = try SiteRootGenesisRegistrationPresentationV1(
+                            qrText: qrText,
+                            authorityOrigins: candidate.genesisAuthorityOrigins,
+                            nowUnixMillis: nowUnixMillis,
+                            requireCorrelation: candidate.requiresGenesisCorrelation
+                        )
+                        firstDeviceTransport = candidate
+                        pending = .firstDevice(firstDevice)
+                        eventFlow = .firstDeviceSiteRoot
+                        eventAuthority = candidate.requiresGenesisCorrelation
+                            ? .fixedInstallBroker : .configuredSiteRoot
+                        eventReferenceDigest = OnboardingEvent.redactedDigestData(
+                            for: firstDevice.reference
+                        )
+                        let review = SiteRootDelegationReview(firstDevice: firstDevice)
+                        presentedReview = review
+                        phase = .review(review)
+                        recordEvent(kind: .qrValidated, outcome: .accepted)
+                        return
+                    } catch let failure as PlatformFailure {
+                        if failure == .siteRootGenesisPresentationExpired {
+                            rejected = failure
+                        }
+                    } catch { }
                 }
+                eventFlow = .firstDeviceSiteRoot
+                recordFailure(rejected, review: nil)
+                phase = .failed(rejected)
+                return
             }
             let scanned = try SiteRootDelegationQRPresentationV1(qrText: qrText)
             pending = .delegation(scanned)
@@ -201,6 +253,8 @@ final class SiteRootDelegationCoordinator: ObservableObject {
         do {
             switch pending {
             case let .delegation(qrPresentation):
+                let claimed = try await beginLegacyRegistration()
+                defer { if claimed { ScopedAppAttestStore().endLegacyGlobalWrite() } }
                 let producer = try SecureEnclaveSiteRootProofProducer(
                     authenticationReason: "Sign this exact Monas Site Root delegation"
                 )
@@ -209,7 +263,23 @@ final class SiteRootDelegationCoordinator: ObservableObject {
                     producer: producer,
                     registerAppAttest: true
                 )
+            case let .firstDeviceV2(presentation):
+                guard brokerV2Enabled,
+                      let broker = brokerTransport as? MonasSiteRootGenesisBrokerTransport
+                else { throw PlatformFailure.siteRootBindingUnavailable }
+                try await completeProvisionalBrokerV2(presentation, broker: broker)
             case let .firstDevice(firstDevice):
+                guard let firstDeviceTransport else { throw PlatformFailure.invalidConfiguration }
+                let claimed = try await beginLegacyRegistration()
+                defer { if claimed { ScopedAppAttestStore().endLegacyGlobalWrite() } }
+                // A retained native authority still uses a singleton App Attest
+                // reference and broker setup projection. Until those are
+                // installation-scoped, a second ceremony could overwrite or
+                // misattribute the retained installation. Do not create a key.
+                if firstDeviceTransport is MonasSiteRootGenesisBrokerTransport,
+                   transport is MonasSiteRootDelegationTransport {
+                    throw PlatformFailure.siteRootBindingUnavailable
+                }
                 phase = .registeringFirstDevice
                 enterStage(.siteRootKey)
                 setFirstDeviceStage(.creatingSiteRootKey)
@@ -229,7 +299,7 @@ final class SiteRootDelegationCoordinator: ObservableObject {
                 recordEvent(kind: .stageEntered, outcome: .accepted)
                 enterStage(.monasDelegation)
                 setFirstDeviceStage(.submittingMonasRegistration)
-                let delegation = try await transport.registerGenesis(
+                let delegation = try await firstDeviceTransport.registerGenesis(
                     SiteRootGenesisRegistrationRequestV1(
                         presentation: firstDevice,
                         siteRootKey: siteRootKey,
@@ -242,7 +312,9 @@ final class SiteRootDelegationCoordinator: ObservableObject {
                     }
                 )
                 try appAttestClient.commitAcceptedRegistration(registration)
-                try await completeInitialStaticDelegation(delegation, producer: producer)
+                try await completeInitialStaticDelegation(
+                    delegation, producer: producer, transport: firstDeviceTransport
+                )
             }
         } catch let failure as PlatformFailure {
             recordFailure(failure, review: presentedReview)
@@ -258,8 +330,81 @@ final class SiteRootDelegationCoordinator: ObservableObject {
         }
     }
 
+    /// Hold the legacy singleton exclusive while preserving the old one-host
+    /// ceremony. V2 reservation cannot start before the legacy write ends.
+    private func beginLegacyRegistration() async throws -> Bool {
+        guard BrokerV2Feature.enabled else { return false }
+        let storage = ScopedAppAttestStore()
+        try storage.beginLegacyGlobalWrite()
+        do {
+            let inventory = try await InstallationTrustKeychain.shared.enrollmentInventoryRecords()
+            guard inventory.count <= 1 else { throw PlatformFailure.siteRootBindingUnavailable }
+            return true
+        } catch { storage.endLegacyGlobalWrite(); throw error }
+    }
+
+    private var brokerV2Enabled: Bool {
+#if DEBUG
+        BrokerV2Feature.enabled || testV2Producer != nil
+#else
+        BrokerV2Feature.enabled
+#endif
+    }
+
+    /// The queue and proof results advance setup only. They do not establish
+    /// the final B installation identity or select it.
+    private func completeProvisionalBrokerV2(
+        _ presentation: SiteRootBrokerPresentationV2,
+        broker: MonasSiteRootGenesisBrokerTransport
+    ) async throws {
+        let storage: ScopedAppAttestStore
+        let producer: any BrokerV2SiteRootProducing
+#if DEBUG
+        storage = testV2Storage ?? ScopedAppAttestStore()
+        if let testV2Producer { producer = testV2Producer }
+        else { producer = try SecureEnclaveSiteRootProofProducer(authenticationReason: "Sign this exact Monas Site Root delegation") }
+#else
+        storage = ScopedAppAttestStore()
+        producer = try SecureEnclaveSiteRootProofProducer(authenticationReason: "Sign this exact Monas Site Root delegation")
+#endif
+        let attempt = try storage.reserveBrokerAttempt(presentation)
+        phase = .registeringFirstDevice
+        enterStage(.siteRootKey)
+        setFirstDeviceStage(.creatingSiteRootKey)
+        let root = try producer.register()
+        enterStage(.appAttest)
+        setFirstDeviceStage(.preparingAppAttest)
+        let clock: @Sendable () -> UInt64 = {
+            UInt64(max(0, Date().timeIntervalSince1970) * 1_000)
+        }
+        let preparer = SiteRootBrokerV2Preparer(storage: storage, appAttest: appAttestClient)
+        let retained = try await preparer.prepare(presentation: presentation, attemptID: attempt,
+                                                  siteRootKey: root, nowMillis: clock)
+        if try storage.submittedAttempt(attemptID: attempt) == nil {
+            enterStage(.monasDelegation)
+            setFirstDeviceStage(.submittingMonasRegistration)
+            try await broker.submitV2(presentation: presentation, attemptID: attempt,
+                                      storage: storage, nowMillis: clock)
+        }
+        enterStage(.delegationPoll)
+        let delegation = try await broker.pollV2(presentation: presentation, attemptID: attempt, storage: storage)
+        try storage.beginSubmittedPoll(attemptID: attempt, expected: retained)
+        defer { storage.endDispatch() }
+        phase = .signing
+        enterStage(.siteRootProof)
+        setFirstDeviceStage(.signingInitialProof)
+        let proof = try producer.prove(delegation)
+        setFirstDeviceStage(.submittingInitialProof)
+        try storage.markInitialProofSubmitted(attemptID: attempt, expected: retained)
+        try await broker.submitInitialStaticCompletion(
+            MonasSiteRootDelegationSubmissionRequestV1(endpoint: delegation.submitURL, submission: proof))
+        firstDeviceProgress = nil
+        phase = .submitted(.proofQueued)
+    }
+
     func reset() {
         pending = nil
+        firstDeviceTransport = nil
         presentedReview = nil
         firstDeviceProgress = nil
         phase = .idle
@@ -279,6 +424,14 @@ final class SiteRootDelegationCoordinator: ObservableObject {
             recordEvent(kind: .cancelled, outcome: .cancelled)
             reset()
         }
+    }
+
+    /// Only an already validated first-device broker presentation may bypass
+    /// the retained authority's host check in the outer scanner.
+    var isValidatedBrokerFirstDevice: Bool {
+        if case .firstDeviceV2? = pending { return true }
+        guard case .firstDevice? = pending else { return false }
+        return firstDeviceTransport is MonasSiteRootGenesisBrokerTransport
     }
 
     /// Reject a parsed presentation that the outer router cannot deliver to
@@ -432,7 +585,8 @@ final class SiteRootDelegationCoordinator: ObservableObject {
     /// rather than presenting a successful proof as an unavailable authority.
     private func completeInitialStaticDelegation(
         _ delegation: SiteRootDelegationPresentationV1,
-        producer: SecureEnclaveSiteRootProofProducer
+        producer: SecureEnclaveSiteRootProofProducer,
+        transport: any MonasSiteRootCeremonyTransport
     ) async throws {
         phase = .signing
         enterStage(.siteRootProof)
@@ -561,7 +715,8 @@ final class SiteRootDelegationCoordinator: ObservableObject {
         try? eventRecorder.append(event)
         if let correlation = pendingCorrelation() {
             Task {
-                try? await transport.uploadOnboardingEvent(event, correlation: correlation)
+                try? await (firstDeviceTransport ?? transport)
+                    .uploadOnboardingEvent(event, correlation: correlation)
             }
         }
     }
@@ -650,6 +805,13 @@ struct SiteRootDelegationReview: Equatable, Identifiable {
         reference = Self.redact(firstDevice.reference)
         deviceKeyFingerprint = "Created with Face ID"
         destination = firstDevice.registrationURL.host ?? "unavailable"
+        isFirstDevice = true
+    }
+
+    init(firstDeviceV2: SiteRootBrokerPresentationV2) {
+        reference = Self.redact(firstDeviceV2.reference)
+        deviceKeyFingerprint = "Created with Face ID"
+        destination = URL(string: MonasSiteRootGenesisBrokerEndpointV1.origin)?.host ?? "unavailable"
         isFirstDevice = true
     }
 

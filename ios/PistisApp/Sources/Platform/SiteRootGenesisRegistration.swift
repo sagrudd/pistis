@@ -480,6 +480,16 @@ struct MonasSiteRootGenesisRegistrationResult {
         brokerProofURL: URL,
         correlation: Data
     ) throws {
+        try self.init(brokerData: data, expectedDeviceKeyID: request.siteRootKey.deviceKeyID,
+                      expectedSite: request.presentation.siteTrustDomain,
+                      expectedReference: request.presentation.reference,
+                      brokerProofURL: brokerProofURL, correlation: correlation)
+    }
+
+    init(
+        brokerData data: Data, expectedDeviceKeyID: String, expectedSite: String,
+        expectedReference: String, brokerProofURL: URL, correlation: Data
+    ) throws {
         let values = try StrictJSONObject(data: data, maximumBytes: Self.maximumResponseBytes).values
         let required: Set<String> = [
             "schema", "canonical_delegation_base64url", "device_key_id",
@@ -490,9 +500,9 @@ struct MonasSiteRootGenesisRegistrationResult {
               case let .string(encodedDelegation)? = values["canonical_delegation_base64url"],
               let canonicalDelegation = Self.decodeBase64URL(encodedDelegation),
               case let .string(deviceKeyID)? = values["device_key_id"],
-              deviceKeyID == request.siteRootKey.deviceKeyID,
+              deviceKeyID == expectedDeviceKeyID,
               case let .string(siteTrustDomain)? = values["site_trust_domain"],
-              siteTrustDomain == request.presentation.siteTrustDomain,
+              siteTrustDomain == expectedSite,
               case let .string(submitURLText)? = values["submit_url"],
               let submitURL = URL(string: submitURLText),
               submitURL.scheme == "https",
@@ -503,7 +513,7 @@ struct MonasSiteRootGenesisRegistrationResult {
               submitURL.query == nil,
               submitURL.fragment == nil,
               case let .string(reference)? = values["reference"],
-              reference == request.presentation.reference,
+              reference == expectedReference,
               MonasSiteRootDelegationTransport.matchesAuthority(
                   brokerProofURL,
                   origin: URL(string: MonasSiteRootGenesisBrokerEndpointV1.origin)!,

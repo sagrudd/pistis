@@ -180,12 +180,6 @@ struct RootTabView: View {
         }
         .tint(MnColor.action)
         .task {
-            if let transport = siteRootTransport as? MonasSiteRootDelegationTransport,
-               let authorityHost = transport.authorityHost {
-                try? SiteRootInstallationRepository.shared.bindBrokeredSetup(
-                    toNativeAuthorityHost: authorityHost
-                )
-            }
             await enrollment.refresh()
         }
         .onChange(of: scenePhase) { _, phase in
@@ -295,9 +289,9 @@ struct RootTabView: View {
     /// ordinary-login request reaches the signing boundary. A ready authority
     /// adds no prompt. A required rotation or recovery remains attended by its
     /// own exact Face ID reason, then the original login continues.
-    private func prepareOrdinaryLogin() async throws {
-        guard let activeEnrollment = try await InstallationTrustKeychain.shared.activeEnrollment(),
-              let authorityHost = URL(string: activeEnrollment.httpsOrigin)?.host,
+    private func prepareOrdinaryLogin(expected: AuthenticatedEnrollmentOutput) async throws {
+        guard try await InstallationTrustKeychain.shared.activeEnrollment() == expected,
+              let authorityHost = URL(string: expected.httpsOrigin)?.host,
               let transport = siteRootTransport as? MonasSiteRootDelegationTransport,
               transport.isConfiguredAuthorityHost(authorityHost)
         else { throw PlatformFailure.siteRootAuthorityUnavailable }
@@ -348,8 +342,10 @@ struct RootTabView: View {
             let challenge = try await appAttestTransport
                 .fetchCustodyRotationAssertionChallengeV2(nowUnixSeconds: now)
             progress(.generateAssertion)
-            let assertion = try await AppleAppAttestClient()
-                .prepareCustodyRotationAssertion(challenge: challenge)
+            let client = AppleAppAttestClient()
+            let assertion = try await (BrokerV2Feature.enabled
+                ? client.prepareSelectedCustodyRotationAssertion(challenge: challenge)
+                : client.prepareCustodyRotationAssertion(challenge: challenge))
             if assertion.restoredRegisteredKeyReference {
                 try? LocalHistoryRepository.shared.record(
                     HistoryEvent(
@@ -365,6 +361,10 @@ struct RootTabView: View {
                 )
             }
             progress(.submitAssertion)
+            if BrokerV2Feature.enabled {
+                guard try await InstallationTrustKeychain.shared.activeEnrollment()?.trust.installationID == challenge.installationID
+                else { throw PlatformFailure.siteRootBindingUnavailable }
+            }
             try await appAttestTransport.submitAssertion(assertion.envelope)
             progress(.resolveCustodyLifecycle)
             let observedLifecycle = try await transport.authorityCustodyStatusV2(
@@ -379,8 +379,26 @@ struct RootTabView: View {
         }
 
         progress(.prepareCustody)
+        let recoveryStore: KeychainFirstAuthorityRecoveryEnvelopeStore
+        if BrokerV2Feature.enabled {
+            guard let selected = try await InstallationTrustKeychain.shared.activeEnrollment() else {
+                throw PlatformFailure.siteRootBindingUnavailable
+            }
+            let scoped = ScopedAppAttestStore()
+            if let binding = try scoped.binding(installationID: selected.trust.installationID) {
+                recoveryStore = try KeychainFirstAuthorityRecoveryEnvelopeStore(site: binding.site, attemptID: binding.attemptID)
+            } else {
+                let inventory = try await InstallationTrustKeychain.shared.enrollmentInventoryRecords()
+                var unscoped: [Data] = []
+                for record in inventory where try scoped.binding(installationID: record.installationID) == nil {
+                    unscoped.append(record.installationID)
+                }
+                guard unscoped == [selected.trust.installationID] else { throw PlatformFailure.siteRootBindingUnavailable }
+                recoveryStore = KeychainFirstAuthorityRecoveryEnvelopeStore()
+            }
+        } else { recoveryStore = KeychainFirstAuthorityRecoveryEnvelopeStore() }
         let producer = try SecureEnclaveFirstAuthorityCustodyProducerV2(
-            authenticationReason: authenticationReason
+            authenticationReason: authenticationReason, store: recoveryStore
         )
         switch status {
         case .appAttestAssertionRequired:

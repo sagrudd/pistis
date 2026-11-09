@@ -1,9 +1,32 @@
 import CryptoKit
+import Security
 import XCTest
 
 @testable import Pistis
 
 final class FirstAuthorityCustodyRotationV2Tests: XCTestCase {
+    func testSignedKeychainSeparatesLegacyAndSiteRecoveryEnvelopes() throws {
+        let service = "org.mnemosyne.pistis.test.recovery." + UUID().uuidString
+        let probe: [String: Any] = [kSecClass as String: kSecClassGenericPassword,
+            kSecAttrService as String: service, kSecAttrAccount as String: "probe", kSecReturnData as String: true]
+        var item: CFTypeRef?
+        if SecItemCopyMatching(probe as CFDictionary, &item) == errSecMissingEntitlement {
+            throw XCTSkip("This simulator runner has no Keychain entitlement.")
+        }
+        let legacy = try KeychainFirstAuthorityRecoveryEnvelopeStore(testService: service, site: nil)
+        let attempt = UUID()
+        let b = try KeychainFirstAuthorityRecoveryEnvelopeStore(testService: service, site: "site-b", attemptID: attempt)
+        defer { try? legacy.resetLocalEnvelope() }
+        try legacy.insert(Data([1])); try b.insert(Data([2]))
+        let reopened = try KeychainFirstAuthorityRecoveryEnvelopeStore(testService: service, site: "site-b", attemptID: attempt)
+        let other = try KeychainFirstAuthorityRecoveryEnvelopeStore(testService: service, site: "site-b", attemptID: UUID())
+        XCTAssertNil(try other.load())
+        XCTAssertEqual(try legacy.load(), Data([1])); XCTAssertEqual(try reopened.load(), Data([2]))
+        XCTAssertThrowsError(try reopened.insert(Data([3])))
+        XCTAssertEqual(try legacy.load(), Data([1]))
+        try legacy.resetLocalEnvelope()
+        XCTAssertNil(try reopened.load()); XCTAssertNil(try legacy.load())
+    }
     func testHostEnvelopeUsesAcceptedThesaurophylaxPortableWrapProfile() {
         XCTAssertEqual(
             SecureEnclaveFirstAuthorityCustodyProducerV2.hostEnvelopeInfo,

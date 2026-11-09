@@ -842,6 +842,81 @@ struct MonasSiteRootGenesisBrokerTransport: MonasSiteRootCeremonyTransport,
     var genesisAuthorityOrigin: URL? { brokerOrigin }
     var requiresGenesisCorrelation: Bool { true }
 
+    /// Sends a single V2 registration to the fixed broker. A queue receipt is
+    /// not host acceptance; uncertain sends remain submitted for reconciliation.
+    func submitV2(
+        presentation: SiteRootBrokerPresentationV2, attemptID: UUID,
+        storage: ScopedAppAttestStore,
+        nowMillis: @Sendable () -> UInt64
+    ) async throws {
+        guard !Task.isCancelled else { throw PlatformFailure.operationCancelled }
+        guard nowMillis() < presentation.expiresAt else { throw PlatformFailure.siteRootGenesisPresentationExpired }
+        guard let pending = try storage.pending(attemptID: attemptID) else { throw PlatformFailure.invalidConfiguration }
+        guard pending.correlation == presentation.correlation,
+              pending.registrationReference == presentation.reference,
+              pending.siteClaim == presentation.site else { throw PlatformFailure.invalidConfiguration }
+        var uuid = attemptID.uuid
+        let operation = withUnsafeBytes(of: &uuid) { Data($0) }
+        try SiteRootBrokerRegistrationWireV2.validate(
+            pending.preparedRegistration, presentation: presentation, operationID: operation)
+        let body = try BrokerV2RelayEnvelope.encode(reference: presentation.reference,
+            correlation: presentation.correlation, registration: pending.preparedRegistration)
+        guard !Task.isCancelled else { throw PlatformFailure.operationCancelled }
+        guard nowMillis() < presentation.expiresAt else { throw PlatformFailure.siteRootGenesisPresentationExpired }
+        let endpoint = try fixedEndpoint(MonasSiteRootGenesisBrokerEndpointV1.registrationPath)
+        _ = try storage.beginDispatch(attemptID: attemptID, expected: pending)
+        defer { storage.endDispatch() }
+        let data = try await post(body: body, endpoint: endpoint, expectedStatus: 202,
+                                  maximumResponseBytes: 1_024,
+                                  rejection: .siteRootGenesisRegistrationRejected)
+        try Self.decodeAcceptedRegistrationResponse(data)
+    }
+
+    /// Polling can resume after an uncertain send, but the returned material
+    /// is still only a delegation for this exact staged attempt, not B's final
+    /// authenticated installation binding.
+    func pollV2(presentation: SiteRootBrokerPresentationV2, attemptID: UUID,
+                storage: ScopedAppAttestStore) async throws -> SiteRootDelegationPresentationV1 {
+        guard let pending = try storage.pending(attemptID: attemptID),
+              pending.correlation == presentation.correlation,
+              pending.registrationReference == presentation.reference,
+              pending.siteClaim == presentation.site else { throw PlatformFailure.invalidConfiguration }
+        var uuid = attemptID.uuid
+        let operation = withUnsafeBytes(of: &uuid) { Data($0) }
+        try SiteRootBrokerRegistrationWireV2.validate(
+            pending.preparedRegistration, presentation: presentation, operationID: operation)
+        let request = try SiteRootBrokerRegistrationWireV2.parse(pending.preparedRegistration)
+        guard case let .object(root)? = request["site_root_key"],
+              case let .string(keyID)? = root["device_key_id"] else { throw PlatformFailure.invalidConfiguration }
+        let endpoint = try fixedEndpoint(MonasSiteRootGenesisBrokerEndpointV1.delegationPollPath)
+        let proofURL = try fixedEndpoint(MonasSiteRootGenesisBrokerEndpointV1.proofPath)
+        let body = try JSONEncoder().encode(MonasSiteRootGenesisBrokerDelegationPollRequest(correlation: pending.correlation))
+        try storage.beginSubmittedPoll(attemptID: attemptID, expected: pending)
+        defer { storage.endDispatch() }
+        let deadline = Date().addingTimeInterval(maximumPollDuration)
+        for attempt in 0..<maximumPollAttempts {
+            let remaining = deadline.timeIntervalSinceNow
+            guard remaining > 0 else { throw PlatformFailure.siteRootGenesisDelegationTimedOut }
+            let data = try await post(body: body, endpoint: endpoint, expectedStatus: 200,
+                                      maximumResponseBytes: MonasSiteRootGenesisBrokerEndpointV1.maximumDelegationBytes,
+                                      timeoutInterval: min(15, remaining), rejection: .siteRootGenesisDelegationUnavailable)
+            switch try Self.decodeDelegationPollResponse(data) {
+            case let .ready(delegation):
+                return try MonasSiteRootGenesisRegistrationResult(
+                    brokerData: delegation, expectedDeviceKeyID: keyID, expectedSite: pending.siteClaim,
+                    expectedReference: pending.registrationReference, brokerProofURL: proofURL,
+                    correlation: pending.correlation).presentation
+            case .pending:
+                if attempt + 1 < maximumPollAttempts {
+                    let remaining = deadline.timeIntervalSinceNow
+                    guard remaining > 0 else { throw PlatformFailure.siteRootGenesisDelegationTimedOut }
+                    try await Task.sleep(nanoseconds: min(pollDelayNanoseconds, UInt64(remaining * 1_000_000_000)))
+                }
+            }
+        }
+        throw PlatformFailure.siteRootGenesisDelegationTimedOut
+    }
+
     init() throws {
         guard let origin = URL(string: MonasSiteRootGenesisBrokerEndpointV1.origin),
               MonasSiteRootDelegationTransport.isValidOrigin(origin)

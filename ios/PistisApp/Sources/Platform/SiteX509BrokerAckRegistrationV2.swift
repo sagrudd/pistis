@@ -50,11 +50,16 @@ final class SecureEnclaveSiteX509BrokerContinuationAuthorizerV2:
 {
     private let ceremony: FaceIDCeremonyContext
     private let store: SiteRootConvergenceAckStoreV2
+    private let pendingBrokerAttempt: ScopedAppAttestPending?
+    private let scopedStorage: ScopedAppAttestStore
     private var pendingAck: PendingBrokerAckRegistrationV2?
 
-    init(ceremony: FaceIDCeremonyContext, store: SiteRootConvergenceAckStoreV2) {
+    init(ceremony: FaceIDCeremonyContext, store: SiteRootConvergenceAckStoreV2,
+         pendingBrokerAttempt: ScopedAppAttestPending? = nil, scopedStorage: ScopedAppAttestStore = ScopedAppAttestStore()) {
         self.ceremony = ceremony
         self.store = store
+        self.pendingBrokerAttempt = pendingBrokerAttempt
+        self.scopedStorage = scopedStorage
     }
 
     func attendedUnlock(
@@ -145,10 +150,17 @@ final class SecureEnclaveSiteX509BrokerContinuationAuthorizerV2:
 
     func leafApproval(_ payload: Data) throws -> Data {
         guard let pendingAck else { throw PlatformFailure.invalidConfiguration }
-        let presentation = try SiteX509LeafApprovalPresentationV1(
-            data: payload,
-            nowUnixSeconds: SiteRootConvergenceServiceV2.nowUnixSeconds()
-        )
+        let now = try SiteRootConvergenceServiceV2.nowUnixSeconds()
+        let presentation: SiteX509LeafApprovalPresentationV1
+        if let pending = pendingBrokerAttempt {
+            var uuid = pending.attemptID.uuid
+            let operation = withUnsafeBytes(of: &uuid) { Data($0) }
+            let digest = Data(SHA256.hash(data: Data("mnemosyne.monas.first-device.correlation.v2\0".utf8) + pending.correlation))
+            presentation = try SiteX509LeafHandoffV2(data: payload, operationID: operation,
+                correlationDigest: digest, expectedSiteUUID: pendingAck.siteUUIDBytes, nowUnixSeconds: now).presentation
+        } else {
+            presentation = try SiteX509LeafApprovalPresentationV1(data: payload, nowUnixSeconds: now)
+        }
         let record = SiteRootConvergenceAckRecordV2(
             siteUUID: pendingAck.siteUUID,
             targetIDB64URL: SiteRootConvergenceEncoding.encode(pendingAck.targetID),
@@ -158,9 +170,14 @@ final class SecureEnclaveSiteX509BrokerContinuationAuthorizerV2:
             generation: presentation.deviceKeyGeneration
         )
         try presentation.validateCurrentSigner(record)
-        try store.retain(record)
+        if BrokerV2Feature.enabled { try store.retainScoped(record) }
+        else { try store.retain(record) }
         let submission = try SecureEnclaveSiteX509LeafApprovalProducerV1(store: store)
             .produce(presentation, using: ceremony)
+        if let pending = pendingBrokerAttempt {
+            try scopedStorage.stageProvisionalLeaf(ProvisionalLeafHandoff(attemptID: pending.attemptID,
+                wrapper: payload, verifiedAtSeconds: now), pending: pending)
+        }
         return try JSONEncoder().encode(submission)
     }
 }

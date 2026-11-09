@@ -84,7 +84,8 @@ struct AppleAppAttestRegistrationEnvelope: Codable, Equatable, Sendable {
 /// accompanying envelope before the caller commits this value.
 struct PreparedAppleAppAttestRegistration: Sendable {
     let envelope: AppleAppAttestRegistrationEnvelope
-    fileprivate let keyID: String
+    /// Opaque Apple key reference for the protected pending store only.
+    let keyID: String
 }
 
 /// One assertion for the exact server-registered custody key plus a redacted
@@ -612,6 +613,60 @@ final class AppleAppAttestClient: @unchecked Sendable {
         )
     }
 
+    /// Generates a custody assertion for a staged, submitted B attempt without
+    /// reading or changing the legacy primary reference. The caller must first
+    /// authenticate the pinned authority and independently bind its installation
+    /// ID to this exact attempt; the local marker is not authority acceptance.
+    func preparePendingCustodyRotationAssertion(
+        challenge: CustodyRotationAppAttestChallengeV2,
+        storage: ScopedAppAttestStore,
+        attemptID: UUID,
+        verifiedInstallationID: Data
+    ) async throws -> AppleAppAttestAssertionEnvelope {
+        guard service.isSupported,
+              let attempt = try storage.submittedAttempt(attemptID: attemptID),
+              attempt.environmentClaim == "Production",
+              let key = PendingAppAttestReplacementKeyV1.canonicalKeyID(attempt.keyID),
+              challenge.matchesBinding(
+                  installationID: verifiedInstallationID, siteTrustDomain: attempt.siteClaim,
+                  appIdentifier: attempt.appClaim, keyID: key
+              ) else { throw PlatformFailure.appAttestInvalidInput }
+        let assertion = try await generateAssertion(
+            keyID: attempt.keyID, clientDataHash: challenge.clientDataHash
+        )
+        return try AppleAppAttestAssertionEnvelope(ceremonyID: challenge.ceremonyID, assertion: assertion)
+    }
+
+    /// Produces only the status-purpose assertion for a submitted B attempt.
+    /// The caller must authenticate the pinned status challenge and bind all
+    /// joined facts to the same attempt. This primitive neither accepts status
+    /// nor advances the server's shared counter, and is not a production route.
+    func preparePendingFirstDeviceStatusAssertion(
+        transcript: FirstDeviceStatusTranscriptV2,
+        storage: ScopedAppAttestStore,
+        attemptID: UUID,
+        verifiedInstallationID: Data,
+        issuedAt: UInt64,
+        now: UInt64
+    ) async throws -> Data {
+        var operation = attemptID.uuid
+        let operationBytes = withUnsafeBytes(of: &operation) { Data($0) }
+        guard service.isSupported,
+              let attempt = try storage.submittedAttempt(attemptID: attemptID),
+              let key = PendingAppAttestReplacementKeyV1.canonicalKeyID(attempt.keyID),
+              transcript.operationID == operationBytes,
+              attempt.matchesStatus(transcript),
+              transcript.installationID == verifiedInstallationID,
+              transcript.site == attempt.siteClaim,
+              transcript.appAttestKeyID == key,
+              attempt.appClaim == AppleAppAttestRegistrationEnvelope.reviewedAppIdentifier,
+              attempt.environmentClaim == "Production",
+              transcript.expiry > issuedAt, transcript.expiry - issuedAt <= 60,
+              now >= issuedAt, now < transcript.expiry
+        else { throw PlatformFailure.appAttestInvalidInput }
+        return try await generateAssertion(keyID: attempt.keyID, clientDataHash: transcript.clientDataHash())
+    }
+
     /// Produces the exact fresh custody-rotation assertion supplied by Monas.
     /// The server has already purpose-separated and hashed the challenge, so
     /// this path must neither rehash nor substitute bootstrap/session material.
@@ -639,6 +694,50 @@ final class AppleAppAttestClient: @unchecked Sendable {
             envelope: envelope,
             restoredRegisteredKeyReference: retainedKeyID != expectedKeyID
         )
+    }
+
+    /// Uses only the selected installation's scoped key, or the one retained
+    /// legacy key when exactly one installation remains unscoped.
+    func prepareSelectedCustodyRotationAssertion(
+        challenge: CustodyRotationAppAttestChallengeV2,
+        storage: ScopedAppAttestStore = ScopedAppAttestStore()
+    ) async throws -> PreparedCustodyRotationAppAttestAssertion {
+        guard service.isSupported,
+              let selected = try await InstallationTrustKeychain.shared.activeEnrollment(),
+              selected.trust.installationID == challenge.installationID else {
+            throw PlatformFailure.appAttestInvalidInput
+        }
+        let envelope: AppleAppAttestAssertionEnvelope
+        if let binding = try storage.binding(installationID: selected.trust.installationID) {
+            envelope = try await prepareBoundCustodyRotationAssertion(challenge: challenge, binding: binding)
+        } else {
+            let inventory = try await InstallationTrustKeychain.shared.enrollmentInventoryRecords()
+            var unscoped: [Data] = []
+            for record in inventory where try storage.binding(installationID: record.installationID) == nil {
+                unscoped.append(record.installationID)
+            }
+            guard unscoped == [selected.trust.installationID], let legacy = existingKeyID(),
+                  PendingAppAttestReplacementKeyV1.canonicalKeyID(legacy) == challenge.keyID
+            else { throw PlatformFailure.appAttestInvalidInput }
+            let assertion = try await generateAssertion(keyID: legacy, clientDataHash: challenge.clientDataHash)
+            envelope = try AppleAppAttestAssertionEnvelope(ceremonyID: challenge.ceremonyID, assertion: assertion)
+        }
+        guard try await InstallationTrustKeychain.shared.activeEnrollment() == selected else {
+            throw PlatformFailure.siteRootBindingUnavailable
+        }
+        return PreparedCustodyRotationAppAttestAssertion(
+            envelope: envelope, restoredRegisteredKeyReference: false)
+    }
+
+    func prepareBoundCustodyRotationAssertion(challenge: CustodyRotationAppAttestChallengeV2,
+                                               binding: ScopedAppAttestBinding) async throws -> AppleAppAttestAssertionEnvelope {
+        try binding.validate()
+        guard let bytes = PendingAppAttestReplacementKeyV1.canonicalKeyID(binding.keyID),
+              challenge.matchesBinding(installationID: binding.installationID,
+                siteTrustDomain: binding.site, appIdentifier: binding.appIdentifier, keyID: bytes)
+        else { throw PlatformFailure.appAttestInvalidInput }
+        let assertion = try await generateAssertion(keyID: binding.keyID, clientDataHash: challenge.clientDataHash)
+        return try AppleAppAttestAssertionEnvelope(ceremonyID: challenge.ceremonyID, assertion: assertion)
     }
 
     /// Produces one fresh assertion for the exact, purpose-separated MTGS

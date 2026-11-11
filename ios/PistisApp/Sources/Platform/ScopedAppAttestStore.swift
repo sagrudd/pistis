@@ -131,12 +131,73 @@ struct ScopedStagedEnrollment: Codable, Equatable, Sendable {
 }
 
 /// The marker proves only local pre-send staging, never server acceptance.
+/// Unauthorising recovery material. Exact bytes are retained for reconciliation.
+struct ScopedAttendedRecoveryProof: Codable, Equatable, Sendable {
+    let attemptID: UUID
+    let correlation: Data
+    let transcriptDigest: Data
+    let nonce: Data
+    let expiresAt: UInt64
+    let relaySecret: Data
+    let proof: Data
+    let successorSecret: Data?
+    let successorExpiry: UInt64?
+    let requestID: Data?
+    let intentDigest: Data?
+
+    init(attemptID: UUID, correlation: Data, transcriptDigest: Data, nonce: Data,
+         expiresAt: UInt64, relaySecret: Data, proof: Data,
+         successorSecret: Data? = nil, successorExpiry: UInt64? = nil,
+         requestID: Data? = nil, intentDigest: Data? = nil) {
+        self.attemptID = attemptID; self.correlation = correlation; self.transcriptDigest = transcriptDigest
+        self.nonce = nonce; self.expiresAt = expiresAt; self.relaySecret = relaySecret; self.proof = proof
+        self.successorSecret = successorSecret; self.successorExpiry = successorExpiry
+        self.requestID = requestID; self.intentDigest = intentDigest
+    }
+
+    func validate() throws {
+        guard correlation.count == 32, !correlation.allSatisfy({ $0 == 0 }),
+              transcriptDigest.count == 32, !transcriptDigest.allSatisfy({ $0 == 0 }),
+              nonce.count == 32, !nonce.allSatisfy({ $0 == 0 }), expiresAt > 0,
+              relaySecret.count == 32, !relaySecret.allSatisfy({ $0 == 0 }),
+              !proof.isEmpty, proof.count <= 16_384 else { throw PlatformFailure.invalidConfiguration }
+        switch (requestID, intentDigest) {
+        case (nil, nil): break
+        case let (request?, digest?) where request.count == 16 && !request.allSatisfy({ $0 == 0 })
+            && digest.count == 32 && !digest.allSatisfy({ $0 == 0 }): break
+        default: throw PlatformFailure.invalidConfiguration
+        }
+        switch (successorSecret, successorExpiry) {
+        case (nil, nil): break
+        case let (secret?, expiry?) where secret.count == 32 && !secret.allSatisfy({ $0 == 0 })
+            && secret != relaySecret && expiry > expiresAt: break
+        default: throw PlatformFailure.invalidConfiguration
+        }
+    }
+
+    #if DEBUG
+    /// Testing material only; possession does not establish successor activation.
+    func testOnlySuccessorContext(now: UInt64) throws -> (requestID: Data, intentDigest: Data, capability: Data, expiry: UInt64) {
+        try validate()
+        guard let requestID, let intentDigest, let successorSecret, let successorExpiry,
+              now < successorExpiry else { throw PlatformFailure.invalidConfiguration }
+        return (requestID, intentDigest, successorSecret, successorExpiry)
+    }
+    #endif
+}
+
 struct ScopedSubmittedAttempt: Sendable {
     fileprivate let pending: ScopedAppAttestPending
     var keyID: String { pending.keyID }
     var siteClaim: String { pending.siteClaim }
     var appClaim: String { pending.appClaim }
     var environmentClaim: String { pending.environmentClaim }
+    func matchesRecovery(_ transcript: AttendedRecoveryTranscriptV1) -> Bool {
+        var operation = pending.attemptID.uuid
+        let operationBytes = withUnsafeBytes(of: &operation) { Data($0) }
+        return transcript.operation == operationBytes && transcript.correlation == pending.correlation
+            && transcript.reference == pending.registrationReference && transcript.site == pending.siteClaim
+    }
     func matchesStatus(_ transcript: FirstDeviceStatusTranscriptV2) -> Bool {
         let digest = Data(SHA256.hash(
             data: Data("mnemosyne.monas.first-device.correlation.v2\0".utf8) + pending.correlation
@@ -628,6 +689,78 @@ final class ScopedAppAttestStore: @unchecked Sendable {
             try value.validate()
             guard value.installationID == installationID else { throw PlatformFailure.invalidConfiguration }
             return value
+        }
+    }
+
+    /// Write before invoking a one-use App Attest assertion. An interrupted
+    /// attempt remains reserved and cannot silently generate a replacement.
+    func reserveAttendedRecoveryAssertion(attemptID: UUID, expected: ScopedAppAttestPending) throws {
+        try withLock {
+            let account = "attended-assertion-reserved." + attemptID.uuidString
+            guard !Task.isCancelled, !Self.resetInProgress,
+                  try read(UUID.self, account: submitted(attemptID)) == attemptID,
+                  try readData(account: cancelled(attemptID)) == nil,
+                  try readData(account: completed(attemptID)) == nil,
+                  try read(ScopedAppAttestPending.self, account: staged(attemptID)) == expected,
+                  expected.attemptID == attemptID, try readData(account: account) == nil
+            else { throw PlatformFailure.invalidConfiguration }
+            try expected.validate()
+            try createOnce(attemptID, account: account)
+        }
+    }
+
+    /// Inactive create-once staging only; this does not authenticate or dispatch a proof.
+    func stageAttendedRecoveryProof(_ value: ScopedAttendedRecoveryProof) throws {
+        try value.validate()
+        try withLock {
+            guard !Self.resetInProgress,
+                  try read(UUID.self, account: submitted(value.attemptID)) == value.attemptID,
+                  try readData(account: cancelled(value.attemptID)) == nil,
+                  try readData(account: completed(value.attemptID)) == nil,
+                  let pending = try read(ScopedAppAttestPending.self, account: staged(value.attemptID)),
+                  pending.attemptID == value.attemptID, pending.correlation == value.correlation
+            else { throw PlatformFailure.invalidConfiguration }
+            try pending.validate()
+            try createOnce(value, account: "attended-proof." + value.attemptID.uuidString)
+        }
+    }
+
+    /// Reopening returns only the identical stored material; expiry does not erase evidence.
+    func attendedRecoveryProof(attemptID: UUID) throws -> ScopedAttendedRecoveryProof? {
+        try withLock {
+            guard let value = try read(ScopedAttendedRecoveryProof.self, account: "attended-proof." + attemptID.uuidString)
+            else { return nil }
+            try value.validate()
+            guard value.attemptID == attemptID,
+                  try read(UUID.self, account: submitted(attemptID)) == attemptID,
+                  try readData(account: cancelled(attemptID)) == nil,
+                  let pending = try read(ScopedAppAttestPending.self, account: staged(attemptID)),
+                  pending.correlation == value.correlation else { throw PlatformFailure.invalidConfiguration }
+            try pending.validate()
+            return value
+        }
+    }
+
+    /// Final, inactive send-boundary claim. The caller must validate the exact
+    /// endpoint and body before this call, recheck cancellation before starting
+    /// a request, and retain the claim until all asynchronous work has ended.
+    /// An unknown outcome is not permission to send a second request.
+    func beginAttendedRecoveryDispatch(expected: ScopedAttendedRecoveryProof, now: UInt64) throws {
+        try expected.validate()
+        try withLock {
+            let id = expected.attemptID
+            guard !Task.isCancelled, !Self.resetInProgress, now < expected.expiresAt,
+                  try read(UUID.self, account: submitted(id)) == id,
+                  try readData(account: cancelled(id)) == nil,
+                  try readData(account: completed(id)) == nil,
+                  try readData(account: "attended-dispatched." + id.uuidString) == nil,
+                  try read(ScopedAttendedRecoveryProof.self, account: "attended-proof." + id.uuidString) == expected,
+                  let pending = try read(ScopedAppAttestPending.self, account: staged(id)),
+                  pending.attemptID == id, pending.correlation == expected.correlation
+            else { throw PlatformFailure.invalidConfiguration }
+            try pending.validate()
+            try createOnce(id, account: "attended-dispatched." + id.uuidString)
+            Self.activeDispatches += 1
         }
     }
 

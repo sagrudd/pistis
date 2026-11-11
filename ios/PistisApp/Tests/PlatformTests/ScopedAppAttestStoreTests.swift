@@ -20,6 +20,69 @@ final class ScopedAppAttestStoreTests: XCTestCase {
                                environment: "Production", keyID: key, policyGeneration: 1, revocationGeneration: 1)
     }
 
+    func testAttendedProofStagingIsCreateOnceAndAttemptScopedAcrossRestart() throws {
+        let persistence = ScopedMemoryPersistence()
+        let store = ScopedAppAttestStore(persistence: persistence)
+        defer { try? store.resetAll() }
+        let b = UUID(), a = UUID()
+        try store.stage(pending(a)); try store.markSubmitted(attemptID: a); try store.commit(binding(a))
+        let bPending = pending(b)
+        try store.stage(bPending); try store.markSubmitted(attemptID: b)
+        let proof = ScopedAttendedRecoveryProof(attemptID: b, correlation: bPending.correlation,
+            transcriptDigest: Data(repeating: 3, count: 32), nonce: Data(repeating: 4, count: 32),
+            expiresAt: 1, relaySecret: Data(repeating: 5, count: 32), proof: Data([6, 7]))
+        try store.stageAttendedRecoveryProof(proof)
+        try store.stageAttendedRecoveryProof(proof)
+        let reopened = ScopedAppAttestStore(persistence: persistence)
+        XCTAssertEqual(try reopened.attendedRecoveryProof(attemptID: b), proof)
+        XCTAssertThrowsError(try proof.testOnlySuccessorContext(now: 0))
+        let changed = ScopedAttendedRecoveryProof(attemptID: b, correlation: bPending.correlation,
+            transcriptDigest: Data(repeating: 9, count: 32), nonce: proof.nonce,
+            expiresAt: proof.expiresAt, relaySecret: proof.relaySecret, proof: proof.proof)
+        XCTAssertThrowsError(try reopened.stageAttendedRecoveryProof(changed))
+        XCTAssertEqual(try reopened.binding(installationID: Data(repeating: 2, count: 16)), binding(a))
+        try reopened.resetAll()
+        XCTAssertNil(try store.attendedRecoveryProof(attemptID: b))
+    }
+
+    func testAttendedProofRequiresSubmittedExactCorrelationAndBounds() throws {
+        let store = ScopedAppAttestStore(persistence: ScopedMemoryPersistence())
+        defer { try? store.resetAll() }
+        let id = UUID(), value = pending(id)
+        try store.stage(value)
+        let proof = ScopedAttendedRecoveryProof(attemptID: id, correlation: value.correlation,
+            transcriptDigest: Data(repeating: 3, count: 32), nonce: Data(repeating: 4, count: 32),
+            expiresAt: 10, relaySecret: Data(repeating: 5, count: 32), proof: Data([6]))
+        XCTAssertThrowsError(try store.stageAttendedRecoveryProof(proof))
+        try store.markSubmitted(attemptID: id)
+        let wrong = ScopedAttendedRecoveryProof(attemptID: id, correlation: Data(repeating: 8, count: 32),
+            transcriptDigest: proof.transcriptDigest, nonce: proof.nonce, expiresAt: 10,
+            relaySecret: proof.relaySecret, proof: proof.proof)
+        XCTAssertThrowsError(try store.stageAttendedRecoveryProof(wrong))
+        let oversized = ScopedAttendedRecoveryProof(attemptID: id, correlation: value.correlation,
+            transcriptDigest: proof.transcriptDigest, nonce: proof.nonce, expiresAt: 10,
+            relaySecret: proof.relaySecret, proof: Data(repeating: 1, count: 16_385))
+        XCTAssertThrowsError(try store.stageAttendedRecoveryProof(oversized))
+        XCTAssertNil(try store.attendedRecoveryProof(attemptID: id))
+    }
+
+    func testAttendedDispatchBlocksResetAndRetainsUnknownOutcome() throws {
+        let store = ScopedAppAttestStore(persistence: ScopedMemoryPersistence())
+        defer { try? store.resetAll() }
+        let id = UUID(), value = pending(id)
+        try store.stage(value); try store.markSubmitted(attemptID: id)
+        let proof = ScopedAttendedRecoveryProof(attemptID: id, correlation: value.correlation,
+            transcriptDigest: Data(repeating: 3, count: 32), nonce: Data(repeating: 4, count: 32),
+            expiresAt: 10, relaySecret: Data(repeating: 5, count: 32), proof: Data([6]))
+        try store.stageAttendedRecoveryProof(proof)
+        XCTAssertThrowsError(try store.beginAttendedRecoveryDispatch(expected: proof, now: 10))
+        try store.beginAttendedRecoveryDispatch(expected: proof, now: 9)
+        XCTAssertThrowsError(try store.resetAll())
+        store.endDispatch()
+        XCTAssertThrowsError(try store.beginAttendedRecoveryDispatch(expected: proof, now: 9))
+        XCTAssertEqual(try store.attendedRecoveryProof(attemptID: id), proof)
+    }
+
     func testSignedSimulatorKeychainRetainsTwoIsolatedBindings() throws {
         let service = "org.mnemosynebiosciences.pistis.test.scoped." + UUID().uuidString
         let probe: [String: Any] = [
@@ -36,7 +99,21 @@ final class ScopedAppAttestStoreTests: XCTestCase {
         defer { try? store.resetAll() }
         let first = UUID(), second = UUID()
         try store.stage(pending(first)); try store.markSubmitted(attemptID: first); try store.commit(binding(first))
-        try store.stage(pending(second)); try store.markSubmitted(attemptID: second)
+        let secondPending = pending(second)
+        try store.stage(secondPending); try store.markSubmitted(attemptID: second)
+        let proof = ScopedAttendedRecoveryProof(attemptID: second, correlation: secondPending.correlation,
+            transcriptDigest: Data(repeating: 3, count: 32), nonce: Data(repeating: 4, count: 32),
+            expiresAt: 1, relaySecret: Data(repeating: 5, count: 32), proof: Data([6, 7]),
+            successorSecret: Data(repeating: 8, count: 32), successorExpiry: 20,
+            requestID: Data(repeating: 9, count: 16), intentDigest: Data(repeating: 10, count: 32))
+        try store.stageAttendedRecoveryProof(proof)
+        let reloaded = try XCTUnwrap(ScopedAppAttestStore(testService: service).attendedRecoveryProof(attemptID: second))
+        XCTAssertEqual(reloaded, proof)
+        let context = try reloaded.testOnlySuccessorContext(now: 10)
+        XCTAssertEqual(context.requestID, Data(repeating: 9, count: 16))
+        XCTAssertEqual(context.intentDigest, Data(repeating: 10, count: 32))
+        XCTAssertEqual(context.capability, Data(repeating: 8, count: 32))
+        XCTAssertThrowsError(try reloaded.testOnlySuccessorContext(now: 20))
         try store.commit(binding(second, installation: 3))
         let restarted = try ScopedAppAttestStore(testService: service)
         XCTAssertEqual(try restarted.binding(installationID: Data(repeating: 2, count: 16)), binding(first))

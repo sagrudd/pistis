@@ -1,3 +1,7 @@
+## Pending Pistis iOS 0.30.0+78 — attended B recovery
+
+- Prepare the attended recovery comparison for a pending installation. The recovery protocol, authority integration and signed-device qualification remain under review; the comparison is not yet connected to a scan flow.
+
 ## Pistis iOS 0.29.1+77 — first-device registration fix
 
 - Accept a realistically sized Apple App Attest object within the existing 12 KiB V2 registration limit. Report local registration preparation failures at the App Attest stage rather than describing them as unsupported QR codes.

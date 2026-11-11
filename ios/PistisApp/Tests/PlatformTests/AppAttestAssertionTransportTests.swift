@@ -291,6 +291,45 @@ final class AppAttestAssertionTransportTests: XCTestCase {
         XCTAssertEqual(legacy.writeCount, 0)
     }
 
+    func testAttendedRecoveryAssertionUsesOnlyExactPendingBKey() async throws {
+        let id = try XCTUnwrap(UUID(uuidString: "21222324-2526-2728-292A-2B2C2D2E2F30"))
+        let key = Data(97...128).base64EncodedString()
+        let legacy = MutableKeyIDStore(keyID: Data(repeating: 0x22, count: 32).base64EncodedString())
+        let service = RecordingAppAttestService(keyID: key)
+        let client = AppleAppAttestClient(service: service, keyIDStore: legacy)
+        let storage = ScopedAppAttestStore(persistence: ScopedMemoryPersistence())
+        defer { try? storage.resetAll() }
+        let pending = ScopedAppAttestPending(attemptID: id, correlation: Data(49...80),
+            registrationReference: "reg-001", siteClaim: "site-12345678-1234-1234-1234-123456789abc",
+            appClaim: AppleAppAttestRegistrationEnvelope.reviewedAppIdentifier,
+            environmentClaim: "Production", keyID: key, preparedRegistration: Data([1]))
+        try storage.stage(pending); try storage.markSubmitted(attemptID: id)
+        let root = try P256.Signing.PrivateKey(rawRepresentation: Data(repeating: 3, count: 32))
+        let transcript = AttendedRecoveryTranscriptV1(nonce: Data(1...32), operation: Data(33...48),
+            correlation: pending.correlation, reference: pending.registrationReference, site: pending.siteClaim,
+            installation: Data(81...96), appAttestKeyID: Data(97...128),
+            siteRootPublicKey: root.publicKey.compressedRepresentation, ownerTransaction: Data(161...176),
+            ownerResult: Data(177...208), endpointCommitment: Data(209...240),
+            rendezvousCommitment: Data(1...32), expiry: 2_000_000_000)
+        let der = try root.signature(for: transcript.signingMessage()).derRepresentation
+        let signature = try P256Format.rawSignature(fromStrictDER: der)
+        do {
+            _ = try await client.preparePendingAttendedRecoveryAssertion(transcript: transcript,
+                signature: signature, storage: storage, attemptID: UUID(), issuedAt: 1_999_999_990, now: 1_999_999_991)
+            XCTFail("wrong attempt signed")
+        } catch { XCTAssertNil(service.assertedKeyID) }
+        do {
+            _ = try await client.preparePendingAttendedRecoveryAssertion(transcript: transcript,
+                signature: signature, storage: storage, attemptID: id, issuedAt: 1_999_999_990, now: 2_000_000_000)
+            XCTFail("expired proof signed")
+        } catch { XCTAssertNil(service.assertedKeyID) }
+        _ = try await client.preparePendingAttendedRecoveryAssertion(transcript: transcript,
+            signature: signature, storage: storage, attemptID: id, issuedAt: 1_999_999_990, now: 1_999_999_991)
+        XCTAssertEqual(service.assertedKeyID, key)
+        XCTAssertEqual(service.assertionHash, try transcript.assertionHash(signature: signature))
+        XCTAssertEqual(legacy.readCount, 0); XCTAssertEqual(legacy.writeCount, 0)
+    }
+
     func testPendingStatusAssertionIsPurposeBoundAndNeverTouchesLegacy() async throws {
         let bKey = Data(repeating: 0x11, count: 32).base64EncodedString()
         let legacy = MutableKeyIDStore(keyID: Data(repeating: 0x22, count: 32).base64EncodedString())

@@ -1,7 +1,8 @@
 import Foundation
 
 /// In-memory interaction state only; it is not an authority or durable replay fence.
-struct AttendedRecoveryConfirmation {
+@MainActor
+final class AttendedRecoveryConfirmation {
     private enum State { case awaiting, confirmed, cancelled, consumed }
     private var state: State = .awaiting
     private let expected: Data
@@ -13,7 +14,7 @@ struct AttendedRecoveryConfirmation {
         self.expiry = expiry
     }
 
-    mutating func confirm(displayed: Data, now: UInt64) throws {
+    func confirm(displayed: Data, now: UInt64) throws {
         guard case .awaiting = state else { throw PlatformFailure.invalidConfiguration }
         guard now < expiry, displayed == expected else {
             state = .cancelled
@@ -22,9 +23,9 @@ struct AttendedRecoveryConfirmation {
         state = .confirmed
     }
 
-    mutating func cancel() { state = .cancelled }
+    func cancel() { state = .cancelled }
 
-    mutating func consume(now: UInt64) throws {
+    func consume(now: UInt64) throws {
         guard case .confirmed = state, now < expiry else {
             state = .cancelled
             throw PlatformFailure.invalidConfiguration

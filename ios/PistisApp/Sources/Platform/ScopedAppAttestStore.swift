@@ -656,6 +656,23 @@ final class ScopedAppAttestStore: @unchecked Sendable {
         }
     }
 
+    /// Write before invoking a one-use App Attest assertion. An interrupted
+    /// attempt remains reserved and cannot silently generate a replacement.
+    func reserveAttendedRecoveryAssertion(attemptID: UUID, expected: ScopedAppAttestPending) throws {
+        try withLock {
+            let account = "attended-assertion-reserved." + attemptID.uuidString
+            guard !Task.isCancelled, !Self.resetInProgress,
+                  try read(UUID.self, account: submitted(attemptID)) == attemptID,
+                  try readData(account: cancelled(attemptID)) == nil,
+                  try readData(account: completed(attemptID)) == nil,
+                  try read(ScopedAppAttestPending.self, account: staged(attemptID)) == expected,
+                  expected.attemptID == attemptID, try readData(account: account) == nil
+            else { throw PlatformFailure.invalidConfiguration }
+            try expected.validate()
+            try createOnce(attemptID, account: account)
+        }
+    }
+
     /// Inactive create-once staging only; this does not authenticate or dispatch a proof.
     func stageAttendedRecoveryProof(_ value: ScopedAttendedRecoveryProof) throws {
         try value.validate()

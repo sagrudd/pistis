@@ -1,3 +1,4 @@
+import CryptoKit
 import Foundation
 import XCTest
 @testable import Pistis
@@ -48,4 +49,64 @@ final class AttendedRecoveryQRV1Tests: XCTestCase {
         fields["app_attest_key_id_b64url"] = SiteRootBrokerPresentationV2.encode(Data(repeating: 8, count: 32))
         XCTAssertThrowsError(try AttendedRecoveryQRV1(data: JSONSerialization.data(withJSONObject: fields), now: 1_799_999_940, storage: store))
     }
+    @MainActor
+    func testSyntheticScanCompareProofAndMailboxReceipt() async throws {
+        let store = try storage(); defer { try? store.resetAll() }
+        let aID = UUID()
+        let aKey = Data(repeating: 0x22, count: 32).base64EncodedString()
+        let a = ScopedAppAttestPending(attemptID: aID, correlation: Data(repeating: 0x23, count: 32),
+            registrationReference: "site-a", siteClaim: "site-a",
+            appClaim: AppleAppAttestRegistrationEnvelope.reviewedAppIdentifier, environmentClaim: "Production",
+            keyID: aKey, preparedRegistration: Data([1]))
+        let aBinding = ScopedAppAttestBinding(attemptID: aID, installationID: Data(repeating: 0x24, count: 16),
+            site: "site-a", appIdentifier: a.appClaim, environment: "Production", keyID: aKey,
+            policyGeneration: 1, revocationGeneration: 1)
+        try store.stage(a); try store.markSubmitted(attemptID: aID); try store.commit(aBinding)
+        let harness = try AttendedRecoveryTestHarness(qr: Data(qr.utf8), storage: store, now: 1_799_999_940)
+        let comparison = Data([0x96,0xd9,0x7d,0xa8,0xe5,0x3b,0xed,0xbb])
+        try harness.confirm(comparison: comparison, now: 1_799_999_941)
+        let root = try P256.Signing.PrivateKey(rawRepresentation: Data(repeating: 0, count: 31) + Data([3]))
+        var sends = 0
+        let apple = RecoveryRecordingAppleService()
+        let legacy = RecoveryLegacyStore()
+        let client = AppleAppAttestClient(service: apple, keyIDStore: legacy)
+        let pendingID = try XCTUnwrap(UUID(uuidString: "02020202-0202-0202-0202-020202020202"))
+        try await harness.submit(now: { 1_799_999_942 }, sign: { transcript in
+            try P256Format.rawSignature(fromStrictDER: root.signature(for: transcript.signingMessage()).derRepresentation)
+        }, assertB: { transcript, signature in
+            try await client.preparePendingAttendedRecoveryAssertion(transcript: transcript, signature: signature,
+                storage: store, attemptID: pendingID, issuedAt: 1_799_999_940, now: 1_799_999_942)
+        }, send: { request in
+            sends += 1
+            XCTAssertEqual(request.url, AttendedRecoveryMailboxV1.endpoint)
+            let response = try XCTUnwrap(HTTPURLResponse(url: AttendedRecoveryMailboxV1.endpoint, statusCode: 200,
+                httpVersion: nil, headerFields: ["Content-Type": "application/json; charset=utf-8", "Cache-Control": "no-store"]))
+            return (Data(#"{"schema":"mnemosyne.monas.first-install-broker.response.v1","state":"accepted"}"#.utf8), response)
+        })
+        XCTAssertEqual(sends, 1)
+        XCTAssertEqual(apple.assertedKeyID, Data(97...128).base64EncodedString())
+        XCTAssertEqual(legacy.reads, 0); XCTAssertEqual(legacy.writes, 0)
+        XCTAssertEqual(try store.binding(installationID: aBinding.installationID), aBinding)
+        let id = try XCTUnwrap(UUID(uuidString: "02020202-0202-0202-0202-020202020202"))
+        XCTAssertNotNil(try store.attendedRecoveryProof(attemptID: id))
+        XCTAssertThrowsError(try AttendedRecoveryTestHarness(qr: Data(qr.utf8), storage: store, now: 1_799_999_940))
+    }
+
+}
+
+private final class RecoveryRecordingAppleService: AppleAppAttestServicing, @unchecked Sendable {
+    private(set) var assertedKeyID: String?
+    var isSupported: Bool { true }
+    func generateKey() async throws -> String { throw PlatformFailure.invalidConfiguration }
+    func attestKey(_ keyID: String, clientDataHash: Data) async throws -> Data { throw PlatformFailure.invalidConfiguration }
+    func generateAssertion(_ keyID: String, clientDataHash: Data) async throws -> Data {
+        assertedKeyID = keyID
+        return Data([0xa1, 1, 2, 3])
+    }
+}
+private final class RecoveryLegacyStore: AppleAppAttestKeyIDStoring, @unchecked Sendable {
+    private(set) var reads = 0
+    private(set) var writes = 0
+    func loadKeyID() -> String? { reads += 1; return nil }
+    func saveKeyID(_ keyID: String) throws { writes += 1 }
 }

@@ -637,6 +637,28 @@ final class AppleAppAttestClient: @unchecked Sendable {
         return try AppleAppAttestAssertionEnvelope(ceremonyID: challenge.ceremonyID, assertion: assertion)
     }
 
+    /// Inactive primitive: a caller must first bind an attended comparison,
+    /// validate the host and hold reset/cancellation exclusion through use.
+    func preparePendingAttendedRecoveryAssertion(
+        transcript: AttendedRecoveryTranscriptV1, signature: Data,
+        storage: ScopedAppAttestStore, attemptID: UUID, issuedAt: UInt64, now: UInt64
+    ) async throws -> Data {
+        guard service.isSupported, !Task.isCancelled, now >= issuedAt, now < transcript.expiry,
+              transcript.expiry > issuedAt, transcript.expiry - issuedAt <= 120,
+              let attempt = try storage.submittedAttempt(attemptID: attemptID),
+              attempt.matchesRecovery(transcript), attempt.environmentClaim == "Production",
+              attempt.appClaim == AppleAppAttestRegistrationEnvelope.reviewedAppIdentifier,
+              let key = PendingAppAttestReplacementKeyV1.canonicalKeyID(attempt.keyID),
+              key == transcript.appAttestKeyID else { throw PlatformFailure.appAttestInvalidInput }
+        let hash = try transcript.assertionHash(signature: signature)
+        let root = try P256.Signing.PublicKey(compressedRepresentation: transcript.siteRootPublicKey)
+        let rootSignature = try P256.Signing.ECDSASignature(rawRepresentation: signature)
+        guard root.isValidSignature(rootSignature, for: try transcript.signingMessage()) else {
+            throw PlatformFailure.appAttestInvalidInput
+        }
+        return try await generateAssertion(keyID: attempt.keyID, clientDataHash: hash)
+    }
+
     /// Produces only the status-purpose assertion for a submitted B attempt.
     /// The caller must authenticate the pinned status challenge and bind all
     /// joined facts to the same attempt. This primitive neither accepts status

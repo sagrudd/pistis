@@ -156,6 +156,12 @@ struct ScopedSubmittedAttempt: Sendable {
     var siteClaim: String { pending.siteClaim }
     var appClaim: String { pending.appClaim }
     var environmentClaim: String { pending.environmentClaim }
+    func matchesRecovery(_ transcript: AttendedRecoveryTranscriptV1) -> Bool {
+        var operation = pending.attemptID.uuid
+        let operationBytes = withUnsafeBytes(of: &operation) { Data($0) }
+        return transcript.operation == operationBytes && transcript.correlation == pending.correlation
+            && transcript.reference == pending.registrationReference && transcript.site == pending.siteClaim
+    }
     func matchesStatus(_ transcript: FirstDeviceStatusTranscriptV2) -> Bool {
         let digest = Data(SHA256.hash(
             data: Data("mnemosyne.monas.first-device.correlation.v2\0".utf8) + pending.correlation

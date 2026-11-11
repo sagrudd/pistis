@@ -131,6 +131,25 @@ struct ScopedStagedEnrollment: Codable, Equatable, Sendable {
 }
 
 /// The marker proves only local pre-send staging, never server acceptance.
+/// Unauthorising recovery material. Exact bytes are retained for reconciliation.
+struct ScopedAttendedRecoveryProof: Codable, Equatable, Sendable {
+    let attemptID: UUID
+    let correlation: Data
+    let transcriptDigest: Data
+    let nonce: Data
+    let expiresAt: UInt64
+    let relaySecret: Data
+    let proof: Data
+
+    func validate() throws {
+        guard correlation.count == 32, !correlation.allSatisfy({ $0 == 0 }),
+              transcriptDigest.count == 32, !transcriptDigest.allSatisfy({ $0 == 0 }),
+              nonce.count == 32, !nonce.allSatisfy({ $0 == 0 }), expiresAt > 0,
+              relaySecret.count == 32, !relaySecret.allSatisfy({ $0 == 0 }),
+              !proof.isEmpty, proof.count <= 16_384 else { throw PlatformFailure.invalidConfiguration }
+    }
+}
+
 struct ScopedSubmittedAttempt: Sendable {
     fileprivate let pending: ScopedAppAttestPending
     var keyID: String { pending.keyID }
@@ -627,6 +646,38 @@ final class ScopedAppAttestStore: @unchecked Sendable {
                   value == marker else { return nil }
             try value.validate()
             guard value.installationID == installationID else { throw PlatformFailure.invalidConfiguration }
+            return value
+        }
+    }
+
+    /// Inactive create-once staging only; this does not authenticate or dispatch a proof.
+    func stageAttendedRecoveryProof(_ value: ScopedAttendedRecoveryProof) throws {
+        try value.validate()
+        try withLock {
+            guard !Self.resetInProgress,
+                  try read(UUID.self, account: submitted(value.attemptID)) == value.attemptID,
+                  try readData(account: cancelled(value.attemptID)) == nil,
+                  try readData(account: completed(value.attemptID)) == nil,
+                  let pending = try read(ScopedAppAttestPending.self, account: staged(value.attemptID)),
+                  pending.attemptID == value.attemptID, pending.correlation == value.correlation
+            else { throw PlatformFailure.invalidConfiguration }
+            try pending.validate()
+            try createOnce(value, account: "attended-proof." + value.attemptID.uuidString)
+        }
+    }
+
+    /// Reopening returns only the identical stored material; expiry does not erase evidence.
+    func attendedRecoveryProof(attemptID: UUID) throws -> ScopedAttendedRecoveryProof? {
+        try withLock {
+            guard let value = try read(ScopedAttendedRecoveryProof.self, account: "attended-proof." + attemptID.uuidString)
+            else { return nil }
+            try value.validate()
+            guard value.attemptID == attemptID,
+                  try read(UUID.self, account: submitted(attemptID)) == attemptID,
+                  try readData(account: cancelled(attemptID)) == nil,
+                  let pending = try read(ScopedAppAttestPending.self, account: staged(attemptID)),
+                  pending.correlation == value.correlation else { throw PlatformFailure.invalidConfiguration }
+            try pending.validate()
             return value
         }
     }

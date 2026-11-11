@@ -56,6 +56,27 @@ final class AttendedRecoveryQRV1Tests: XCTestCase {
         XCTAssertThrowsError(try AttendedRecoveryQRV1(data: JSONSerialization.data(withJSONObject: fields), now: 1_799_999_940, storage: store))
     }
     @MainActor
+    func testCancellationWhileAssertionSuspendedPreventsProofUpload() async throws {
+        let store = try storage(); defer { try? store.resetAll() }
+        let harness = try AttendedRecoveryTestHarness(qr: Data(qr.utf8), storage: store, now: 1_799_999_940)
+        try harness.confirm(comparison: Data([0x98,0xaf,0x40,0x4a,0xb1,0x99,0x32,0x66]), now: 1_799_999_941)
+        let root = try P256.Signing.PrivateKey(rawRepresentation: Data(repeating: 0, count: 31) + Data([3]))
+        var sent = false
+        do {
+            try await harness.submit(now: { 1_799_999_942 }, sign: { transcript in
+                try P256Format.rawSignature(fromStrictDER: root.signature(for: transcript.signingMessage()).derRepresentation)
+            }, assertB: { _, _ in
+                await Task.yield()
+                harness.cancel()
+                return Data([1])
+            }, send: { _ in
+                sent = true
+                throw PlatformFailure.invalidConfiguration
+            })
+            XCTFail("Cancellation must prevent upload")
+        } catch { XCTAssertFalse(sent) }
+    }
+    @MainActor
     func testSyntheticScanCompareProofAndMailboxReceipt() async throws {
         let store = try storage(); defer { try? store.resetAll() }
         let aID = UUID()

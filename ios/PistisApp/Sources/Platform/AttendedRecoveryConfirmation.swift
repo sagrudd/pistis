@@ -25,6 +25,11 @@ final class AttendedRecoveryConfirmation {
 
     func cancel() { state = .cancelled }
 
+    /// Recheck after asynchronous work so cancellation cannot become approval.
+    func requireConsumed(now: UInt64) throws {
+        guard case .consumed = state, now < expiry else { throw PlatformFailure.invalidConfiguration }
+    }
+
     func consume(now: UInt64) throws {
         guard case .confirmed = state, now < expiry else {
             state = .cancelled

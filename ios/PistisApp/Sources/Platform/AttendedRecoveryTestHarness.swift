@@ -31,10 +31,10 @@ final class AttendedRecoveryTestHarness {
         try storage.reserveAttendedRecoveryAssertion(attemptID: parsed.pending.attemptID, expected: parsed.pending)
         let signature = try sign(parsed.transcript)
         try Task.checkCancellation()
-        guard now() < parsed.transcript.expiry else { throw PlatformFailure.invalidConfiguration }
+        try confirmation.requireConsumed(now: now())
         let assertion = try await assertB(parsed.transcript, signature)
         try Task.checkCancellation()
-        guard now() < parsed.transcript.expiry else { throw PlatformFailure.invalidConfiguration }
+        try confirmation.requireConsumed(now: now())
         let proof = try AttendedRecoveryProofWireV1.encode(transcript: parsed.transcript,
             signature: signature, assertion: assertion)
         let record = ScopedAttendedRecoveryProof(attemptID: parsed.pending.attemptID,
@@ -49,7 +49,7 @@ final class AttendedRecoveryTestHarness {
         try storage.beginAttendedRecoveryDispatch(expected: record, now: now())
         defer { storage.endDispatch() }
         try Task.checkCancellation()
-        guard now() < parsed.transcript.expiry else { throw PlatformFailure.invalidConfiguration }
+        try confirmation.requireConsumed(now: now())
         let (body, response) = try await send(request)
         try AttendedRecoveryMailboxV1.validateReceipt(body, response: response)
     }

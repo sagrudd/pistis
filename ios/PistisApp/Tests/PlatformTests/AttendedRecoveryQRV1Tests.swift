@@ -46,6 +46,12 @@ final class AttendedRecoveryQRV1Tests: XCTestCase {
         fields["phone_relay_secret_b64url"] = SiteRootBrokerPresentationV2.encode(Data(repeating: 9, count: 32))
         XCTAssertThrowsError(try AttendedRecoveryQRV1(data: JSONSerialization.data(withJSONObject: fields), now: 1_799_999_940, storage: store))
         fields["phone_relay_secret_b64url"] = SiteRootBrokerPresentationV2.encode(Data(repeating: 10, count: 32))
+        fields["phone_relay_secret_b64url"] = SiteRootBrokerPresentationV2.encode(Data(repeating: 0, count: 32))
+        XCTAssertThrowsError(try AttendedRecoveryQRV1(data: JSONSerialization.data(withJSONObject: fields), now: 1_799_999_940, storage: store))
+        fields["phone_relay_secret_b64url"] = SiteRootBrokerPresentationV2.encode(Data(repeating: 10, count: 32))
+        fields["successor_phone_secret_b64url"] = SiteRootBrokerPresentationV2.encode(Data(repeating: 0, count: 32))
+        XCTAssertThrowsError(try AttendedRecoveryQRV1(data: JSONSerialization.data(withJSONObject: fields), now: 1_799_999_940, storage: store))
+        fields["successor_phone_secret_b64url"] = SiteRootBrokerPresentationV2.encode(Data(repeating: 12, count: 32))
         fields["app_attest_key_id_b64url"] = SiteRootBrokerPresentationV2.encode(Data(repeating: 8, count: 32))
         XCTAssertThrowsError(try AttendedRecoveryQRV1(data: JSONSerialization.data(withJSONObject: fields), now: 1_799_999_940, storage: store))
     }

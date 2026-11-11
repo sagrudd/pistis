@@ -142,13 +142,17 @@ struct ScopedAttendedRecoveryProof: Codable, Equatable, Sendable {
     let proof: Data
     let successorSecret: Data?
     let successorExpiry: UInt64?
+    let requestID: Data?
+    let intentDigest: Data?
 
     init(attemptID: UUID, correlation: Data, transcriptDigest: Data, nonce: Data,
          expiresAt: UInt64, relaySecret: Data, proof: Data,
-         successorSecret: Data? = nil, successorExpiry: UInt64? = nil) {
+         successorSecret: Data? = nil, successorExpiry: UInt64? = nil,
+         requestID: Data? = nil, intentDigest: Data? = nil) {
         self.attemptID = attemptID; self.correlation = correlation; self.transcriptDigest = transcriptDigest
         self.nonce = nonce; self.expiresAt = expiresAt; self.relaySecret = relaySecret; self.proof = proof
         self.successorSecret = successorSecret; self.successorExpiry = successorExpiry
+        self.requestID = requestID; self.intentDigest = intentDigest
     }
 
     func validate() throws {
@@ -157,6 +161,12 @@ struct ScopedAttendedRecoveryProof: Codable, Equatable, Sendable {
               nonce.count == 32, !nonce.allSatisfy({ $0 == 0 }), expiresAt > 0,
               relaySecret.count == 32, !relaySecret.allSatisfy({ $0 == 0 }),
               !proof.isEmpty, proof.count <= 16_384 else { throw PlatformFailure.invalidConfiguration }
+        switch (requestID, intentDigest) {
+        case (nil, nil): break
+        case let (request?, digest?) where request.count == 16 && !request.allSatisfy({ $0 == 0 })
+            && digest.count == 32 && !digest.allSatisfy({ $0 == 0 }): break
+        default: throw PlatformFailure.invalidConfiguration
+        }
         switch (successorSecret, successorExpiry) {
         case (nil, nil): break
         case let (secret?, expiry?) where secret.count == 32 && !secret.allSatisfy({ $0 == 0 })
@@ -164,6 +174,16 @@ struct ScopedAttendedRecoveryProof: Codable, Equatable, Sendable {
         default: throw PlatformFailure.invalidConfiguration
         }
     }
+
+    #if DEBUG
+    /// Testing material only; possession does not establish successor activation.
+    func testOnlySuccessorContext(now: UInt64) throws -> (requestID: Data, intentDigest: Data, capability: Data, expiry: UInt64) {
+        try validate()
+        guard let requestID, let intentDigest, let successorSecret, let successorExpiry,
+              now < successorExpiry else { throw PlatformFailure.invalidConfiguration }
+        return (requestID, intentDigest, successorSecret, successorExpiry)
+    }
+    #endif
 }
 
 struct ScopedSubmittedAttempt: Sendable {

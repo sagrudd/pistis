@@ -115,7 +115,12 @@ final class AttendedRecoveryQRV1Tests: XCTestCase {
         XCTAssertEqual(legacy.reads, 0); XCTAssertEqual(legacy.writes, 0)
         XCTAssertEqual(try store.binding(installationID: aBinding.installationID), aBinding)
         let id = try XCTUnwrap(UUID(uuidString: "02020202-0202-0202-0202-020202020202"))
-        XCTAssertNotNil(try store.attendedRecoveryProof(attemptID: id))
+        let staged = try XCTUnwrap(store.attendedRecoveryProof(attemptID: id))
+        let context = try staged.testOnlySuccessorContext(now: 1_800_000_100)
+        XCTAssertEqual(context.requestID, Data(repeating: 7, count: 16))
+        XCTAssertEqual(context.capability, Data(repeating: 12, count: 32))
+        XCTAssertEqual(context.expiry, 1_800_000_600)
+        XCTAssertThrowsError(try staged.testOnlySuccessorContext(now: context.expiry))
         XCTAssertThrowsError(try AttendedRecoveryTestHarness(qr: Data(qr.utf8), storage: store, now: 1_799_999_940))
     }
 

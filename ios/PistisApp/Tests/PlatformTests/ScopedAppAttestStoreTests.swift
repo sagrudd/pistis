@@ -35,6 +35,7 @@ final class ScopedAppAttestStoreTests: XCTestCase {
         try store.stageAttendedRecoveryProof(proof)
         let reopened = ScopedAppAttestStore(persistence: persistence)
         XCTAssertEqual(try reopened.attendedRecoveryProof(attemptID: b), proof)
+        XCTAssertThrowsError(try proof.testOnlySuccessorContext(now: 0))
         let changed = ScopedAttendedRecoveryProof(attemptID: b, correlation: bPending.correlation,
             transcriptDigest: Data(repeating: 9, count: 32), nonce: proof.nonce,
             expiresAt: proof.expiresAt, relaySecret: proof.relaySecret, proof: proof.proof)

@@ -41,7 +41,7 @@ final class AttendedRecoveryTestHarness {
             correlation: parsed.pending.correlation, transcriptDigest: try parsed.transcript.digest(),
             nonce: parsed.transcript.nonce, expiresAt: parsed.transcript.expiry,
             relaySecret: parsed.relaySecret, proof: proof, successorSecret: parsed.successorSecret,
-            successorExpiry: parsed.successorExpiry)
+            successorExpiry: parsed.successorExpiry, requestID: parsed.requestID, intentDigest: parsed.intentDigest)
         try storage.stageAttendedRecoveryProof(record)
         let request = try AttendedRecoveryMailboxV1.request(requestID: parsed.requestID,
             relaySecret: parsed.relaySecret, intentDigest: parsed.intentDigest, proof: proof)

@@ -98,6 +98,7 @@ Architecture and operations
    adr/0042-basecamp-vault-migration-iphone-protocol
    adr/0045-phone-held-site-root-issuer-ceremony
    adr/0046-multiple-installations-app-attest-isolation
+   adr/0047-attended-pending-installation-recovery
    protocol/README
    protocol/domain-model
    protocol/action-approval

@@ -132,3 +132,5 @@ required.
 project owner’s accepted design for installation-scoped App Attest and broker
 setup isolation; cross-authority feasibility and implementation review remain
 required.
+
+[ADR 0047](0047-attended-pending-installation-recovery.md) records the owner-approved B-only attended recovery architecture; protocol feasibility and specialist review remain required.

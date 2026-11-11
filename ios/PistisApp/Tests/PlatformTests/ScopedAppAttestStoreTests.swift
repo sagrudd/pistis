@@ -103,9 +103,17 @@ final class ScopedAppAttestStoreTests: XCTestCase {
         try store.stage(secondPending); try store.markSubmitted(attemptID: second)
         let proof = ScopedAttendedRecoveryProof(attemptID: second, correlation: secondPending.correlation,
             transcriptDigest: Data(repeating: 3, count: 32), nonce: Data(repeating: 4, count: 32),
-            expiresAt: 1, relaySecret: Data(repeating: 5, count: 32), proof: Data([6, 7]))
+            expiresAt: 1, relaySecret: Data(repeating: 5, count: 32), proof: Data([6, 7]),
+            successorSecret: Data(repeating: 8, count: 32), successorExpiry: 20,
+            requestID: Data(repeating: 9, count: 16), intentDigest: Data(repeating: 10, count: 32))
         try store.stageAttendedRecoveryProof(proof)
-        XCTAssertEqual(try ScopedAppAttestStore(testService: service).attendedRecoveryProof(attemptID: second), proof)
+        let reloaded = try XCTUnwrap(ScopedAppAttestStore(testService: service).attendedRecoveryProof(attemptID: second))
+        XCTAssertEqual(reloaded, proof)
+        let context = try reloaded.testOnlySuccessorContext(now: 10)
+        XCTAssertEqual(context.requestID, Data(repeating: 9, count: 16))
+        XCTAssertEqual(context.intentDigest, Data(repeating: 10, count: 32))
+        XCTAssertEqual(context.capability, Data(repeating: 8, count: 32))
+        XCTAssertThrowsError(try reloaded.testOnlySuccessorContext(now: 20))
         try store.commit(binding(second, installation: 3))
         let restarted = try ScopedAppAttestStore(testService: service)
         XCTAssertEqual(try restarted.binding(installationID: Data(repeating: 2, count: 16)), binding(first))

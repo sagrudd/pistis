@@ -393,6 +393,7 @@ impl ProductionAppleAppAttestAcceptanceFactoryV1 {
             .map_err(|_| SiteTrustAppAttestRegistrationErrorV1::Denied)?;
         Ok(crate::AttendedRecoveryAppAttestAcceptanceV1 {
             expected_client_data_hash,
+            expires_at: binding.expires_at,
             registered_key_id: durable_key_id,
             registered_public_key_sec1,
             previous_counter,

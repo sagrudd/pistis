@@ -99,6 +99,7 @@ impl AttendedRecoveryBindingV1 {
 /// Opaque acceptance made only by the pinned registration factory.
 pub struct AttendedRecoveryAppAttestAcceptanceV1 {
     pub(crate) expected_client_data_hash: [u8; 32],
+    pub(crate) expires_at: u64,
     pub(crate) registered_key_id: [u8; 32],
     pub(crate) registered_public_key_sec1: [u8; 65],
     pub(crate) previous_counter: u32,
@@ -130,7 +131,11 @@ impl AttendedRecoveryAppAttestOutcomeV1 {
 pub fn verify_attended_recovery_app_attest_assertion_v1(
     acceptance: &AttendedRecoveryAppAttestAcceptanceV1,
     assertion: &[u8],
+    now: u64,
 ) -> Result<AttendedRecoveryAppAttestOutcomeV1, SiteTrustAppAttestAssertionIngressErrorV1> {
+    if now >= acceptance.expires_at {
+        return Err(SiteTrustAppAttestAssertionIngressErrorV1::Denied);
+    }
     let (counter, assertion_sha256) = verify_purpose_bound_app_attest_assertion_v2(
         assertion,
         acceptance.expected_client_data_hash,
@@ -246,23 +251,50 @@ mod tests {
             expected_client_data_hash: binding
                 .client_data_hash(&root_sig, binding.expires_at - 1)
                 .unwrap(),
+            expires_at: binding.expires_at,
             registered_key_id: Sha256::digest(public).into(),
             registered_public_key_sec1: public,
             previous_counter: 8,
             bundle_version: "1.0.0".into(),
         };
         assert_eq!(
-            verify_attended_recovery_app_attest_assertion_v1(&acceptance, &assertion)
-                .unwrap()
-                .counter()
-                .get(),
+            verify_attended_recovery_app_attest_assertion_v1(
+                &acceptance,
+                &assertion,
+                binding.expires_at - 1
+            )
+            .unwrap()
+            .counter()
+            .get(),
             9
         );
+        assert!(
+            verify_attended_recovery_app_attest_assertion_v1(
+                &acceptance,
+                &assertion,
+                binding.expires_at
+            )
+            .is_err()
+        );
         acceptance.previous_counter = 9;
-        assert!(verify_attended_recovery_app_attest_assertion_v1(&acceptance, &assertion).is_err());
+        assert!(
+            verify_attended_recovery_app_attest_assertion_v1(
+                &acceptance,
+                &assertion,
+                binding.expires_at - 1
+            )
+            .is_err()
+        );
         acceptance.previous_counter = 8;
         acceptance.expected_client_data_hash[0] ^= 1;
-        assert!(verify_attended_recovery_app_attest_assertion_v1(&acceptance, &assertion).is_err());
+        assert!(
+            verify_attended_recovery_app_attest_assertion_v1(
+                &acceptance,
+                &assertion,
+                binding.expires_at - 1
+            )
+            .is_err()
+        );
     }
     #[test]
     fn factory_enforces_exact_registered_b_identity() {

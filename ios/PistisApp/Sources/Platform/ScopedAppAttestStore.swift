@@ -688,6 +688,29 @@ final class ScopedAppAttestStore: @unchecked Sendable {
         }
     }
 
+    /// Final, inactive send-boundary claim. The caller must validate the exact
+    /// endpoint and body before this call, recheck cancellation before starting
+    /// a request, and retain the claim until all asynchronous work has ended.
+    /// An unknown outcome is not permission to send a second request.
+    func beginAttendedRecoveryDispatch(expected: ScopedAttendedRecoveryProof, now: UInt64) throws {
+        try expected.validate()
+        try withLock {
+            let id = expected.attemptID
+            guard !Task.isCancelled, !Self.resetInProgress, now < expected.expiresAt,
+                  try read(UUID.self, account: submitted(id)) == id,
+                  try readData(account: cancelled(id)) == nil,
+                  try readData(account: completed(id)) == nil,
+                  try readData(account: "attended-dispatched." + id.uuidString) == nil,
+                  try read(ScopedAttendedRecoveryProof.self, account: "attended-proof." + id.uuidString) == expected,
+                  let pending = try read(ScopedAppAttestPending.self, account: staged(id)),
+                  pending.attemptID == id, pending.correlation == expected.correlation
+            else { throw PlatformFailure.invalidConfiguration }
+            try pending.validate()
+            try createOnce(id, account: "attended-dispatched." + id.uuidString)
+            Self.activeDispatches += 1
+        }
+    }
+
     /// A scoped lookup never reads or falls back to the legacy primary item.
     /// The caller must establish that a legacy lookup is unambiguous.
     func reference(

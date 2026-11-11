@@ -65,6 +65,23 @@ final class ScopedAppAttestStoreTests: XCTestCase {
         XCTAssertNil(try store.attendedRecoveryProof(attemptID: id))
     }
 
+    func testAttendedDispatchBlocksResetAndRetainsUnknownOutcome() throws {
+        let store = ScopedAppAttestStore(persistence: ScopedMemoryPersistence())
+        defer { try? store.resetAll() }
+        let id = UUID(), value = pending(id)
+        try store.stage(value); try store.markSubmitted(attemptID: id)
+        let proof = ScopedAttendedRecoveryProof(attemptID: id, correlation: value.correlation,
+            transcriptDigest: Data(repeating: 3, count: 32), nonce: Data(repeating: 4, count: 32),
+            expiresAt: 10, relaySecret: Data(repeating: 5, count: 32), proof: Data([6]))
+        try store.stageAttendedRecoveryProof(proof)
+        XCTAssertThrowsError(try store.beginAttendedRecoveryDispatch(expected: proof, now: 10))
+        try store.beginAttendedRecoveryDispatch(expected: proof, now: 9)
+        XCTAssertThrowsError(try store.resetAll())
+        store.endDispatch()
+        XCTAssertThrowsError(try store.beginAttendedRecoveryDispatch(expected: proof, now: 9))
+        XCTAssertEqual(try store.attendedRecoveryProof(attemptID: id), proof)
+    }
+
     func testSignedSimulatorKeychainRetainsTwoIsolatedBindings() throws {
         let service = "org.mnemosynebiosciences.pistis.test.scoped." + UUID().uuidString
         let probe: [String: Any] = [

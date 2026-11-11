@@ -7,6 +7,8 @@ import Foundation
 struct AttendedRecoveryQRV1 {
     let requestID: Data
     let relaySecret: Data
+    let successorSecret: Data
+    let successorExpiry: UInt64
     let intentDigest: Data
     let transcript: AttendedRecoveryTranscriptV1
     let pending: ScopedAppAttestPending
@@ -14,12 +16,14 @@ struct AttendedRecoveryQRV1 {
     init(data: Data, now: UInt64, storage: ScopedAppAttestStore) throws {
         let object = try StrictJSONObject(data: data, maximumBytes: 4_096).values
         guard Set(object.keys) == ["schema", "intent_b64url", "phone_relay_secret_b64url", "reference",
-                                   "site", "app_attest_key_id_b64url", "site_root_public_key_b64url"],
+                                   "site", "app_attest_key_id_b64url", "site_root_public_key_b64url", "successor_phone_secret_b64url"],
               case .string("mnemosyne.monas.attended-recovery.qr.v1")? = object["schema"],
               case let .string(intentText)? = object["intent_b64url"],
-              let intent = SiteRootBrokerPresentationV2.base64(intentText, exact: 428),
+              let intent = SiteRootBrokerPresentationV2.base64(intentText, exact: 460),
               case let .string(relayText)? = object["phone_relay_secret_b64url"],
               let relay = SiteRootBrokerPresentationV2.base64(relayText, exact: 32),
+              case let .string(successorText)? = object["successor_phone_secret_b64url"],
+              let successorSecret = SiteRootBrokerPresentationV2.base64(successorText, exact: 32),
               case let .string(reference)? = object["reference"],
               case let .string(site)? = object["site"],
               case let .string(keyText)? = object["app_attest_key_id_b64url"],
@@ -37,21 +41,31 @@ struct AttendedRecoveryQRV1 {
         let registration = take(32), operation = take(16), correlationDigest = take(32)
         let installation = take(16), siteDigest = take(32), owner = take(16), result = take(32)
         let request = take(16), activation = take(16), nonce = take(32), relayDigest = take(32)
-        let pollDigest = take(32), verifierDigest = take(32), endpoint = take(32)
+        let pollDigest = take(32), successorDigest = take(32), verifierDigest = take(32), endpoint = take(32)
         let mailboxExpiry = take(8).reduce(UInt64(0)) { ($0 << 8) | UInt64($1) }
         let successorExpiry = take(8).reduce(UInt64(0)) { ($0 << 8) | UInt64($1) }
         let fixed = [registration, operation, correlationDigest, installation, siteDigest, owner, result,
-                     request, activation, nonce, relayDigest, pollDigest, verifierDigest, endpoint]
+                     request, activation, nonce, relayDigest, pollDigest, successorDigest, verifierDigest, endpoint]
         let endpoints = ["https://install.mnemosyne.co.uk",
             "/api/first-install/v1/attended-recovery/rendezvous",
             "/api/first-install/v1/attended-recovery/proofs",
             "/api/first-install/v1/attended-recovery/proof-polls",
             "/api/first-install/v1/attended-recovery/activations",
-            "/api/first-install/v1/attended-recovery/activation-status"]
+            "/api/first-install/v1/attended-recovery/activation-status",
+            "/api/first-install/v1/attended-recovery/redemptions",
+            "/api/first-install/v1/attended-recovery/handoffs",
+            "/api/first-install/v1/attended-recovery/host-presentations",
+            "/api/first-install/v1/attended-recovery/presentations",
+            "/api/first-install/v1/attended-recovery/submissions",
+            "/api/first-install/v1/attended-recovery/host-polls",
+            "/api/first-install/v1/attended-recovery/host-acknowledgements",
+            "/api/first-install/v1/attended-recovery/consumptions",
+            "https://install.mnemosyne.co.uk/"]
         let expectedEndpoint = Data(SHA256.hash(data: Data(
             ("mnemosyne.monas.attended-recovery.endpoints.v1\0" + endpoints.joined(separator: "\0")).utf8)))
         guard offset == intent.count, fixed.allSatisfy({ !$0.allSatisfy({ $0 == 0 }) }),
-              endpoint == expectedEndpoint, relayDigest != pollDigest,
+              endpoint == expectedEndpoint, Set([relayDigest, pollDigest, successorDigest]).count == 3,
+              Data(SHA256.hash(data: successorSecret)) == successorDigest,
               Data(SHA256.hash(data: relay)) == relayDigest,
               Data(SHA256.hash(data: Data(site.utf8))) == siteDigest,
               mailboxExpiry <= UInt64(UInt32.max), successorExpiry <= UInt64(UInt32.max),
@@ -73,7 +87,8 @@ struct AttendedRecoveryQRV1 {
             endpointCommitment: endpoint, rendezvousCommitment: Data(SHA256.hash(data: intent)), expiry: mailboxExpiry)
         guard submitted.matchesRecovery(value) else { throw PlatformFailure.qrPayloadUnsupported }
         _ = try value.bytes()
-        requestID = request; relaySecret = relay; intentDigest = Data(SHA256.hash(data: intent))
+        requestID = request; relaySecret = relay; self.successorSecret = successorSecret
+        self.successorExpiry = successorExpiry; intentDigest = Data(SHA256.hash(data: intent))
         transcript = value; self.pending = pending
     }
 }

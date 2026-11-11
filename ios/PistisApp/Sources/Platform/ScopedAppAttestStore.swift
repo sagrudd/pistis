@@ -140,6 +140,16 @@ struct ScopedAttendedRecoveryProof: Codable, Equatable, Sendable {
     let expiresAt: UInt64
     let relaySecret: Data
     let proof: Data
+    let successorSecret: Data?
+    let successorExpiry: UInt64?
+
+    init(attemptID: UUID, correlation: Data, transcriptDigest: Data, nonce: Data,
+         expiresAt: UInt64, relaySecret: Data, proof: Data,
+         successorSecret: Data? = nil, successorExpiry: UInt64? = nil) {
+        self.attemptID = attemptID; self.correlation = correlation; self.transcriptDigest = transcriptDigest
+        self.nonce = nonce; self.expiresAt = expiresAt; self.relaySecret = relaySecret; self.proof = proof
+        self.successorSecret = successorSecret; self.successorExpiry = successorExpiry
+    }
 
     func validate() throws {
         guard correlation.count == 32, !correlation.allSatisfy({ $0 == 0 }),
@@ -147,6 +157,12 @@ struct ScopedAttendedRecoveryProof: Codable, Equatable, Sendable {
               nonce.count == 32, !nonce.allSatisfy({ $0 == 0 }), expiresAt > 0,
               relaySecret.count == 32, !relaySecret.allSatisfy({ $0 == 0 }),
               !proof.isEmpty, proof.count <= 16_384 else { throw PlatformFailure.invalidConfiguration }
+        switch (successorSecret, successorExpiry) {
+        case (nil, nil): break
+        case let (secret?, expiry?) where secret.count == 32 && !secret.allSatisfy({ $0 == 0 })
+            && secret != relaySecret && expiry > expiresAt: break
+        default: throw PlatformFailure.invalidConfiguration
+        }
     }
 }
 

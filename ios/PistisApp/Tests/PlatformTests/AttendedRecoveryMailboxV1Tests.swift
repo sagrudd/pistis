@@ -17,6 +17,11 @@ final class AttendedRecoveryMailboxV1Tests: XCTestCase {
         XCTAssertThrowsError(try AttendedRecoveryMailboxV1.validateReceipt(data + Data(" ".utf8) + data, response: response))
         let wrong = try XCTUnwrap(HTTPURLResponse(url: URL(string: "https://example.com")!, statusCode: 200, httpVersion: nil, headerFields: headers))
         XCTAssertThrowsError(try AttendedRecoveryMailboxV1.validateReceipt(data, response: wrong))
+        for badCache in ["x-no-store", "no-store=false"] {
+            let invalid = try XCTUnwrap(HTTPURLResponse(url: AttendedRecoveryMailboxV1.endpoint, statusCode: 200,
+                httpVersion: nil, headerFields: ["Content-Type": "application/json", "Cache-Control": badCache]))
+            XCTAssertThrowsError(try AttendedRecoveryMailboxV1.validateReceipt(data, response: invalid))
+        }
     }
     func testRejectsOversizedProofAndInvalidCapability() {
         XCTAssertThrowsError(try AttendedRecoveryMailboxV1.request(requestID: Data(repeating: 1, count: 16), relaySecret: Data(repeating: 2, count: 32), intentDigest: Data(repeating: 3, count: 32), proof: Data(repeating: 1, count: 8_193)))

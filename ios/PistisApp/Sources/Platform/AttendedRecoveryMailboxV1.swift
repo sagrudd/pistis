@@ -29,7 +29,9 @@ enum AttendedRecoveryMailboxV1 {
         guard response.url == endpoint, response.statusCode == 200,
               ["application/json", "application/json; charset=utf-8"].contains(
                 response.value(forHTTPHeaderField: "Content-Type")?.lowercased() ?? ""),
-              response.value(forHTTPHeaderField: "Cache-Control")?.lowercased().contains("no-store") == true,
+              response.value(forHTTPHeaderField: "Cache-Control")?.split(separator: ",").contains(where: {
+                $0.trimmingCharacters(in: .whitespaces).lowercased() == "no-store"
+              }) == true,
               response.value(forHTTPHeaderField: "Set-Cookie") == nil,
               try StrictJSONObject(data: data, maximumBytes: 4_096).values == [
                 "schema": .string(responseSchema), "state": .string("accepted")

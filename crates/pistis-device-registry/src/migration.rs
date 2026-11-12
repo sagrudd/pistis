@@ -22,8 +22,8 @@ pub const CURRENT_SCHEMA_VERSION: i64 = 1;
 
 /// Failure to establish or validate the device-registry schema.
 ///
-/// Version 0.2 exposes `rusqlite` 0.39 errors. Consumers of the historical
-/// 0.1 API with `rusqlite` 0.37 must explicitly adopt this compatibility window.
+/// Version 0.3 exposes `rusqlite` 0.41 errors. Consumers of earlier registry
+/// APIs must explicitly adopt the new `SQLite` error type and dependency.
 #[derive(Debug)]
 pub enum MigrationError {
     /// `SQLite` rejected an operation or reported corrupt storage.
@@ -221,6 +221,11 @@ fn unix_time_millis() -> Result<i64, MigrationError> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn bundled_sqlite_includes_page_cache_security_fix() {
+        assert!(rusqlite::version_number() >= 3_054_000);
+    }
 
     #[test]
     fn fresh_database_migrates_and_reopen_is_a_no_op() {

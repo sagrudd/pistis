@@ -9,6 +9,7 @@
 #![deny(missing_docs)]
 
 mod app_attest_session_handoff;
+mod attended_recovery_assertion;
 mod binding;
 mod mobile_enrolment_receipt;
 mod physical_iphone_vector;
@@ -113,4 +114,9 @@ pub use thesaurophylax_api::site_x509_first_provision_offline_v2::{
     encode_site_x509_first_provision_offline_presentation_qr_text_v2,
     encode_site_x509_first_provision_offline_response_qr_text_v2,
     site_x509_first_provision_app_attest_client_data_hash_v2,
+};
+
+pub use attended_recovery_assertion::{
+    AttendedRecoveryAppAttestAcceptanceV1, AttendedRecoveryAppAttestOutcomeV1,
+    AttendedRecoveryBindingV1, verify_attended_recovery_app_attest_assertion_v1,
 };

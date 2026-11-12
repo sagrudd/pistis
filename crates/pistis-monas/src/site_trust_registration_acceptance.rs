@@ -354,6 +354,53 @@ impl ProductionAppleAppAttestAcceptanceFactoryV1 {
         })
     }
 
+    /// Constructs a purpose-specific attended-recovery verifier from protected B state.
+    ///
+    /// The caller must independently authenticate the owner, pairing, full intent,
+    /// original operation and Site Root; this method does not establish authority.
+    /// The returned counter must be consumed under the shared durable counter lock.
+    ///
+    /// # Errors
+    /// Denies mismatched durable identity, expired binding, or invalid root signature.
+    #[allow(clippy::too_many_arguments)]
+    pub fn resume_durable_registration_for_attended_recovery_v1(
+        &self,
+        binding: &crate::AttendedRecoveryBindingV1,
+        root_signature: &[u8; 64],
+        observed_at: u64,
+        durable_app_attest_application_id: &str,
+        durable_app_attest_key_id_b64url: &str,
+        registered_public_key_sec1: [u8; 65],
+        durable_manifest_sha256: [u8; 32],
+        expected_bundle_version: &str,
+        previous_counter: u32,
+    ) -> Result<crate::AttendedRecoveryAppAttestAcceptanceV1, SiteTrustAppAttestRegistrationErrorV1>
+    {
+        let durable_key_id = decode_canonical_b64url::<32>(durable_app_attest_key_id_b64url)?;
+        let registered_digest: [u8; 32] = Sha256::digest(registered_public_key_sec1).into();
+        if durable_app_attest_application_id != MONAS_PRODUCTION_APP_ATTEST_APP_IDENTIFIER_V1
+            || binding.app_attest_key_id != durable_key_id
+            || registered_digest != durable_key_id
+            || PublicKey::from_sec1_bytes(&registered_public_key_sec1).is_err()
+            || durable_manifest_sha256 != self.manifest_digest
+            || !valid_bundle_version(expected_bundle_version)
+            || previous_counter == u32::MAX
+        {
+            return Err(SiteTrustAppAttestRegistrationErrorV1::Denied);
+        }
+        let expected_client_data_hash = binding
+            .client_data_hash(root_signature, observed_at)
+            .map_err(|_| SiteTrustAppAttestRegistrationErrorV1::Denied)?;
+        Ok(crate::AttendedRecoveryAppAttestAcceptanceV1 {
+            expected_client_data_hash,
+            expires_at: binding.expires_at,
+            registered_key_id: durable_key_id,
+            registered_public_key_sec1,
+            previous_counter,
+            bundle_version: expected_bundle_version.to_owned(),
+        })
+    }
+
     /// Reconstructs an opaque assertion acceptance for one owner-approved MTGS recovery.
     ///
     /// Monas must supply a fresh server-owned request for the exact recovery

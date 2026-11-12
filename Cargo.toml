@@ -42,24 +42,24 @@ p256 = { version = "0.14.0", default-features = false, features = ["ecdsa", "sha
 pistis-assurance = { version = "0.1.0", path = "crates/pistis-assurance" }
 pistis-authentication = { version = "0.1.1", path = "crates/pistis-authentication" }
 pistis-canonical = { version = "0.1.1", path = "crates/pistis-canonical" }
-pistis-cli = { version = "0.1.0", path = "crates/pistis-cli" }
+pistis-cli = { version = "0.1.1", path = "crates/pistis-cli" }
 pistis-cose = { version = "0.1.1", path = "crates/pistis-cose" }
 pistis-crypto = { version = "0.1.1", path = "crates/pistis-crypto" }
-pistis-device-registry = { version = "0.2.0", path = "crates/pistis-device-registry" }
+pistis-device-registry = { version = "0.3.0", path = "crates/pistis-device-registry" }
 pistis-discovery = { version = "0.1.0", path = "crates/pistis-discovery" }
 pistis-domain = { version = "0.1.0", path = "crates/pistis-domain" }
 pistis-github = { version = "0.1.0", path = "crates/pistis-github" }
 pistis-google = { version = "0.1.0", path = "crates/pistis-google" }
 pistis-identity = { version = "0.1.1", path = "crates/pistis-identity" }
-pistis-monas = { version = "0.15.0", path = "crates/pistis-monas" }
-pistis-agent = { version = "0.1.2", path = "crates/pistis-agent" }
+pistis-monas = { version = "0.16.0", path = "crates/pistis-monas" }
+pistis-agent = { version = "0.1.3", path = "crates/pistis-agent" }
 pistis-protocol = { version = "0.2.2", path = "crates/pistis-protocol" }
 pistis-qr = { version = "0.1.3", path = "crates/pistis-qr" }
-pistis-recovery = { version = "0.1.0", path = "crates/pistis-recovery" }
+pistis-recovery = { version = "0.1.1", path = "crates/pistis-recovery" }
 pistis-release = { version = "0.1.0", path = "crates/pistis-release" }
-pistis-synoptikon = { version = "0.1.0", path = "crates/pistis-synoptikon" }
+pistis-synoptikon = { version = "0.2.0", path = "crates/pistis-synoptikon" }
 qrcode = { version = "0.14.1", default-features = false }
-rusqlite = { version = "=0.39.0", features = ["bundled"] }
+rusqlite = { version = "=0.41.1", features = ["bundled"] }
 serde = "1.0.228"
 serde_json = "1.0.145"
 security-framework = "=3.7.0"

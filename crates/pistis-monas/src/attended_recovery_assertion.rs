@@ -162,6 +162,11 @@ mod tests {
             .map(|b| u8::from_str_radix(std::str::from_utf8(b).unwrap(), 16).unwrap())
             .collect()
     }
+    fn take<const N: usize>(t: &[u8], pos: &mut usize) -> [u8; N] {
+        let x = t[*pos..*pos + N].try_into().unwrap();
+        *pos += N;
+        x
+    }
     fn fixture() -> (AttendedRecoveryBindingV1, [u8; 64], [u8; 32]) {
         let v: serde_json::Value = serde_json::from_str(include_str!(
             "../tests/fixtures/attended-recovery-phone-vector.json"
@@ -175,11 +180,6 @@ mod tests {
             .try_into()
             .unwrap();
         let mut pos = b"mnemosyne.monas.attended-recovery.v1\0".len();
-        fn take<const N: usize>(t: &[u8], pos: &mut usize) -> [u8; N] {
-            let x = t[*pos..*pos + N].try_into().unwrap();
-            *pos += N;
-            x
-        }
         let binding = AttendedRecoveryBindingV1 {
             nonce: take(&t, &mut pos),
             operation: take(&t, &mut pos),
@@ -221,7 +221,10 @@ mod tests {
         assert!(b.client_data_hash(&sig, b.expires_at - 1).is_err());
     }
     fn cbor_bytes(out: &mut Vec<u8>, v: &[u8]) {
-        out.extend_from_slice(&[0x58, v.len() as u8]);
+        out.extend_from_slice(&[
+            0x58,
+            u8::try_from(v.len()).expect("fixture byte string length"),
+        ]);
         out.extend_from_slice(v);
     }
     #[test]

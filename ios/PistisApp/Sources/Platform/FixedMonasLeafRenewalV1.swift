@@ -15,6 +15,9 @@ struct FixedMonasLeafRenewalV1 {
     let transaction: Data
     let correlation: Data
     let sessionDigest: Data
+    let predecessorLeafDigest: Data
+    let predecessorNotAfter: UInt64
+    let successorNotAfter: UInt64
     let issuedAt: UInt64
     let expiresAt: UInt64
 
@@ -61,12 +64,12 @@ struct FixedMonasLeafRenewalV1 {
               [7, 8, 9, 24, 25].allSatisfy({ integer(fields[$0]) != nil }),
               label(fields[10]), label(fields[11]),
               [12, 13, 14, 15, 17, 18, 21].allSatisfy({ nonzero(fields[$0], 32) }),
-              fields[14] == fields[18], integer(fields[16]) != nil,
+              fields[14] == fields[18], let oldExpiry = integer(fields[16]), oldExpiry <= now,
               nonzero(fields[19], 16), fields[19][0] & 0x80 == 0,
               fields[20].count == 16,
               let notBefore = integer(Array(fields[20][0..<8])),
               let notAfter = integer(Array(fields[20][8..<16])),
-              notAfter > notBefore, notAfter - notBefore <= 30 * 24 * 60 * 60,
+              notAfter > now, notAfter > notBefore, notAfter - notBefore <= 30 * 24 * 60 * 60,
               fields[22].count == 64,
               nonzero(Array(fields[22][0..<16]), 16),
               nonzero(Array(fields[22][16..<32]), 16),
@@ -83,6 +86,9 @@ struct FixedMonasLeafRenewalV1 {
         transaction = Data(fields[22][0..<16])
         correlation = Data(fields[22][16..<32])
         sessionDigest = Data(fields[23][0..<32])
+        predecessorLeafDigest = Data(fields[15])
+        predecessorNotAfter = oldExpiry
+        successorNotAfter = notAfter
         issuedAt = issued
         expiresAt = expiry
     }

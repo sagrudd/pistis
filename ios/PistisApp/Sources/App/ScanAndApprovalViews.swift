@@ -122,6 +122,7 @@ struct ScanView: View {
     @StateObject private var baseCampVaultMigration: BaseCampVaultMigrationCoordinatorV1
     @StateObject private var baseCampVaultSuccessor: BaseCampVaultSuccessorCoordinatorV1
     @StateObject private var siteX509Offline = SiteX509FirstProvisionOfflineCoordinator()
+    @StateObject private var fixedMonasRenewal = FixedMonasLeafRenewalCoordinatorV1()
     @StateObject private var appAttestReplacement = AppAttestKeyReplacementCoordinatorV1()
     private let siteRootTransport: any MonasSiteRootCeremonyTransport
     private let appAttestReplacementTransport: MonasAppAttestTransport?
@@ -260,7 +261,7 @@ struct ScanView: View {
                 Button {
                     importingOfflinePresentation = true
                 } label: {
-                    Label("Import first Site HTTPS challenge", systemImage: "doc.badge.plus")
+                    Label("Import Site HTTPS challenge", systemImage: "doc.badge.plus")
                 }
                 .font(.headline)
                 .frame(maxWidth: .infinity, minHeight: MnMetrics.minimumTarget)
@@ -375,6 +376,9 @@ struct ScanView: View {
         .sheet(item: siteX509OfflineReviewBinding) { review in
             SiteX509FirstProvisionOfflineReviewView(review: review, coordinator: siteX509Offline)
         }
+        .sheet(item: fixedMonasRenewalReviewBinding) { review in
+            FixedMonasLeafRenewalReviewViewV1(review: review, coordinator: fixedMonasRenewal)
+        }
         .sheet(item: appAttestReplacementReviewBinding) { review in
             AppAttestKeyReplacementReviewView(
                 review: review,
@@ -419,6 +423,13 @@ struct ScanView: View {
         switch result {
         case let .success(payload):
             scanFailure = nil
+            if payload.text.hasPrefix("PXRN1:P:") {
+                fixedMonasRenewal.accept(qrText: payload.text)
+                if case .failed = fixedMonasRenewal.phase {
+                    scanFailure = .productionEnvelopeUnavailable
+                }
+                return
+            }
             if payload.text.hasPrefix(SiteX509FirstProvisionOfflineProfileV2.presentationQRPrefix) {
                 siteX509Offline.accept(qrText: payload.text)
                 if case .failed = siteX509Offline.phase {
@@ -558,6 +569,13 @@ struct ScanView: View {
             ) ?? Data()
             guard bytes.count == size else { throw PlatformFailure.qrPayloadUnsupported }
             scanning = false
+            if bytes.starts(with: Data("PXRW/v1".utf8)) {
+                fixedMonasRenewal.accept(fileBytes: bytes)
+                if case .failed = fixedMonasRenewal.phase {
+                    scanFailure = .productionEnvelopeUnavailable
+                }
+                return
+            }
             siteX509Offline.accept(fileBytes: bytes)
             if case .failed = siteX509Offline.phase {
                 scanFailure = siteX509Offline.failure ?? .productionEnvelopeUnavailable
@@ -661,6 +679,14 @@ struct ScanView: View {
             siteOriginRelocation.presentedReview
         } set: { value in
             if value == nil { siteOriginRelocation.reset(); startScanning() }
+        }
+    }
+
+    private var fixedMonasRenewalReviewBinding: Binding<FixedMonasLeafRenewalReviewV1?> {
+        Binding {
+            fixedMonasRenewal.presentedReview
+        } set: { value in
+            if value == nil { fixedMonasRenewal.reset(); startScanning() }
         }
     }
 
@@ -890,6 +916,73 @@ private struct BaseCampVaultSuccessorReviewViewV1: View {
         .onChange(of: coordinator.phase) { _, phase in
             if phase == .completed { dismiss() }
         }
+    }
+}
+
+private struct FixedMonasLeafRenewalReviewViewV1: View {
+    let review: FixedMonasLeafRenewalReviewV1
+    @ObservedObject var coordinator: FixedMonasLeafRenewalCoordinatorV1
+    @Environment(\.dismiss) private var dismiss
+    @State private var hostDigest = ""
+
+    var body: some View {
+        NavigationStack {
+            ScrollView {
+                VStack(alignment: .leading, spacing: MnSpacing.x4) {
+                    MnSectionHeading(
+                        "Approve Monas HTTPS successor",
+                        orientation: "Verify the Site, address, existing certificate and successor before Face ID."
+                    )
+                    MnPanel {
+                        VStack(alignment: .leading, spacing: MnSpacing.x3) {
+                            MnEvidenceRow(label: "Site", value: review.site); Divider()
+                            MnEvidenceRow(label: "Service and addresses", value: "Monas · " + review.addresses); Divider()
+                            MnEvidenceRow(label: "Existing certificate", value: review.predecessor); Divider()
+                            MnEvidenceRow(label: "Successor expires", value: review.successorExpiry); Divider()
+                            MnEvidenceRow(label: "Presentation digest", value: review.digest); Divider()
+                            MnEvidenceRow(label: "Approval expires", value: review.expiry)
+                        }
+                    }
+                    switch coordinator.phase {
+                    case .review:
+                        Text("Enter the independently displayed digest from the host.")
+                        TextField("Host presentation digest", text: $hostDigest)
+                            .textInputAutocapitalization(.never)
+                            .autocorrectionDisabled()
+                        MnPrimaryButton("Approve with Face ID", systemImage: "faceid") {
+                            Task { await coordinator.approve(independentDigest: hostDigest) }
+                        }
+                    case .approving:
+                        ProgressView("Creating the one-use renewal approval…")
+                    case .completed:
+                        if let text = coordinator.responseQRText,
+                           let image = Self.qrImage(text) {
+                            MnStatusLabel(text: "Return this one-use response to Monas", kind: .success)
+                            Image(uiImage: image).interpolation(.none).resizable().scaledToFit()
+                                .accessibilityLabel("Monas HTTPS successor approval QR")
+                            ShareLink(item: text) { Label("Share response text", systemImage: "square.and.arrow.up") }
+                            Button("Done") { dismiss() }.font(.headline)
+                        }
+                    case .failed:
+                        MnStatusLabel(text: "Approval stopped safely", kind: .danger)
+                    case .idle: EmptyView()
+                    }
+                }.padding(MnMetrics.screenGutter)
+            }
+            .navigationTitle("Monas HTTPS")
+            .mnScreenBackground()
+        }
+        .interactiveDismissDisabled(coordinator.phase == .approving)
+    }
+
+    private static func qrImage(_ text: String) -> UIImage? {
+        let filter = CIFilter.qrCodeGenerator()
+        filter.message = Data(text.utf8); filter.correctionLevel = "M"
+        guard let output = filter.outputImage else { return nil }
+        let context = CIContext()
+        guard let cg = context.createCGImage(output.transformed(by: .init(scaleX: 8, y: 8)),
+            from: output.extent.applying(.init(scaleX: 8, y: 8))) else { return nil }
+        return UIImage(cgImage: cg)
     }
 }
 

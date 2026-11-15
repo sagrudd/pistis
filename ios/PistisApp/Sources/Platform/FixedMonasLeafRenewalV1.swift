@@ -84,3 +84,66 @@ struct FixedMonasLeafRenewalV1 {
         expiresAt = expiry
     }
 }
+
+/// Strict display wrapper; its address bytes must hash to the signed statement.
+/// The application must supply SHA-256, not a caller-provided digest.
+struct FixedMonasLeafRenewalPresentationV1 {
+    let exactBytes: Data
+    let statement: FixedMonasLeafRenewalV1
+    let addresses: [Data]
+
+    init(_ data: Data, now: UInt64, sha256: (Data) -> Data) throws {
+        let bytes = [UInt8](data)
+        guard bytes.count >= 8, Array(bytes[0..<7]) == Array("PXRW/v1".utf8),
+              bytes[7] == 1 else { throw FixedMonasLeafRenewalV1.Invalid.denied }
+        var cursor = 8
+        func field(_ tag: UInt8) throws -> [UInt8] {
+            guard cursor + 3 <= bytes.count, bytes[cursor] == tag else {
+                throw FixedMonasLeafRenewalV1.Invalid.denied
+            }
+            let count = Int(bytes[cursor + 1]) * 256 + Int(bytes[cursor + 2])
+            cursor += 3
+            guard count > 0, count <= bytes.count - cursor else {
+                throw FixedMonasLeafRenewalV1.Invalid.denied
+            }
+            let value = Array(bytes[cursor..<(cursor + count)])
+            cursor += count
+            return value
+        }
+        let statement = try FixedMonasLeafRenewalV1(Data(field(1)), now: now)
+        let packed = try field(2)
+        guard cursor == bytes.count, sha256(Data(packed)) == statement.ipSetDigest else {
+            throw FixedMonasLeafRenewalV1.Invalid.denied
+        }
+        var position = 0
+        var values = [[UInt8]]()
+        while position < packed.count {
+            let count = Int(packed[position])
+            position += 1
+            guard (count == 4 || count == 16), count <= packed.count - position else {
+                throw FixedMonasLeafRenewalV1.Invalid.denied
+            }
+            let address = Array(packed[position..<(position + count)])
+            position += count
+            let privateAddress: Bool
+            if count == 4 {
+                privateAddress = address[0] == 10 ||
+                    (address[0] == 172 && (16...31).contains(address[1])) ||
+                    (address[0] == 192 && address[1] == 168)
+            } else {
+                privateAddress = address[0] & 0xfe == 0xfc
+            }
+            guard privateAddress else { throw FixedMonasLeafRenewalV1.Invalid.denied }
+            if let prior = values.last {
+                guard prior.count < address.count ||
+                        (prior.count == address.count && prior.lexicographicallyPrecedes(address))
+                else { throw FixedMonasLeafRenewalV1.Invalid.denied }
+            }
+            values.append(address)
+        }
+        guard (1...16).contains(values.count) else { throw FixedMonasLeafRenewalV1.Invalid.denied }
+        exactBytes = data
+        self.statement = statement
+        addresses = values.map { Data($0) }
+    }
+}

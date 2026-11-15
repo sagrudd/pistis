@@ -34,4 +34,19 @@ final class FixedMonasLeafRenewalV1Tests: XCTestCase {
         trailing.append(0)
         XCTAssertThrowsError(try FixedMonasLeafRenewalV1(trailing, now: 150))
     }
+    func testDisplayAddressesAreBoundToTheSignedDigest() throws {
+        let wrapper = Data(base64Encoded: "UFhSVy92MQEBAm1QWFJOL3YxAQEAEAEBAQEBAQEBAQEBAQEBAQECAARzaXRlAwARc2VydmljZS1tb25hcy13ZWIEACDlD7BlWtKwL/pLsjlsx+ysr2lG44TXNH5FkXiYMx2XSgUACAAAAAAAAAABBgAQAwMDAwMDAwMDAwMDAwMDAwcAEAQEBAQEBAQEBAQEBAQEBAQIAAgAAAAAAAAAAQkACAAAAAAAAAABCgAIAAAAAAAAAAELAARyb290DAAGaXNzdWVyDQAgBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUOACAGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBg8AIAcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHEAAgCAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgRAAgAAAAAAAAAZBIAIAkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJEwAgBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcUABAKCgoKCgoKCgoKCgoKCgoKFQAQAAAAAAAAAGQAAAAAAAAAyBYAIAsLCwsLCwsLCwsLCwsLCwsLCwsLCwsLCwsLCwsLCwsLFwBADAwMDAwMDAwMDAwMDAwMDA0NDQ0NDQ0NDQ0NDQ0NDQ0ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODg4ODhgAMA8PDw8PDw8PDw8PDw8PDw8PDw8PDw8PDw8PDw8PDw8PAAAAAAAAAGQAAAAAAAABkBkACAAAAAAAAAABGgAIAAAAAAAAAAECAAUEwKgBwA==")!
+        XCTAssertEqual(SHA256.hash(data: wrapper).map { String(format: "%02x", $0) }.joined(),
+                       "e6c78c3a77c9044703acd12c4da1ffbf47c03a956e875628ad6c8b2d929609ca")
+        let presentation = try FixedMonasLeafRenewalPresentationV1(wrapper, now: 150) {
+            Data(SHA256.hash(data: $0))
+        }
+        XCTAssertEqual(presentation.addresses, [Data([192, 168, 1, 192])])
+        var changed = wrapper
+        changed[changed.count - 1] ^= 1
+        XCTAssertThrowsError(try FixedMonasLeafRenewalPresentationV1(changed, now: 150) {
+            Data(SHA256.hash(data: $0))
+        })
+    }
+
 }

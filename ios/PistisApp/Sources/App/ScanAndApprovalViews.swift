@@ -939,6 +939,8 @@ private struct FixedMonasLeafRenewalReviewViewV1: View {
                             MnEvidenceRow(label: "Service and addresses", value: "Monas · " + review.addresses); Divider()
                             MnEvidenceRow(label: "Existing certificate", value: review.predecessor); Divider()
                             MnEvidenceRow(label: "Successor expires", value: review.successorExpiry); Divider()
+                            MnEvidenceRow(label: "External revocation", value: "Current status unknown"); Divider()
+                            MnEvidenceRow(label: "Device proof", value: "Enrolled key and Face ID; no fresh App Attest"); Divider()
                             MnEvidenceRow(label: "Presentation digest", value: review.digest); Divider()
                             MnEvidenceRow(label: "Approval expires", value: review.expiry)
                         }

@@ -1,4 +1,7 @@
 import Foundation
+#if canImport(CryptoKit)
+import CryptoKit
+#endif
 
 /// Parsing is not approval: callers must also validate current enrolled trust,
 /// compare displayed addresses with the signed digest, and require Face ID.
@@ -86,11 +89,18 @@ struct FixedMonasLeafRenewalV1 {
 }
 
 /// Strict display wrapper; its address bytes must hash to the signed statement.
-/// The application must supply SHA-256, not a caller-provided digest.
+/// The iOS entry point computes SHA-256 itself; the injected helper supports
+/// portable parser fixtures only and is not an approval or signing interface.
 struct FixedMonasLeafRenewalPresentationV1 {
     let exactBytes: Data
     let statement: FixedMonasLeafRenewalV1
     let addresses: [Data]
+
+    #if canImport(CryptoKit)
+    init(_ data: Data, now: UInt64) throws {
+        try self.init(data, now: now) { Data(SHA256.hash(data: $0)) }
+    }
+    #endif
 
     init(_ data: Data, now: UInt64, sha256: (Data) -> Data) throws {
         let bytes = [UInt8](data)

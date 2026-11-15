@@ -1,3 +1,10 @@
+## Pistis iOS 0.29.0+76 — Fixed Monas renewal (in development)
+
+- Add a separately parsed fixed-service renewal statement and current ACK
+  binding. This checkpoint does not enable phone approval, transport or signing.
+- Native iOS, Face ID, UI and cross-owner conformance remain required before
+  this candidate can be released or used.
+
 ## Pending maintained SDK cryptography patches — source candidate
 
 - Use the merged Thesaurophylax API 0.94.5 source revision already selected by

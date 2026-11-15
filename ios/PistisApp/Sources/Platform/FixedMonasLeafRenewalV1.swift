@@ -1,0 +1,86 @@
+import Foundation
+
+/// Parsing is not approval: callers must also validate current enrolled trust,
+/// compare displayed addresses with the signed digest, and require Face ID.
+struct FixedMonasLeafRenewalV1 {
+    enum Invalid: Error { case denied }
+    static let contentType = "application/vnd.mnemosyne.pxrn.v1"
+    let exactBytes: Data
+    let siteUUID: Data
+    let ipSetDigest: Data
+    let acknowledgementGeneration: UInt64
+    let transaction: Data
+    let correlation: Data
+    let sessionDigest: Data
+    let issuedAt: UInt64
+    let expiresAt: UInt64
+
+    func validateCurrentSigner(_ record: SiteRootConvergenceAckRecordV2) throws {
+        let site = record.siteUUID.replacingOccurrences(of: "-", with: "").lowercased()
+        let actual = siteUUID.map { String(format: "%02x", $0) }.joined()
+        guard UUID(uuidString: record.siteUUID) != nil,
+              site == actual, record.generation == acknowledgementGeneration else {
+            throw Invalid.denied
+        }
+    }
+
+    init(_ data: Data, now: UInt64) throws {
+        let bytes = [UInt8](data)
+        guard bytes.count >= 8, Array(bytes[0..<7]) == Array("PXRN/v1".utf8),
+              bytes[7] == 1 else { throw Invalid.denied }
+        var cursor = 8
+        var fields = [[UInt8]]()
+        for tag in 1...26 {
+            guard cursor + 3 <= bytes.count, bytes[cursor] == UInt8(tag) else {
+                throw Invalid.denied
+            }
+            let length = Int(bytes[cursor + 1]) * 256 + Int(bytes[cursor + 2])
+            cursor += 3
+            guard length > 0, length <= bytes.count - cursor else { throw Invalid.denied }
+            fields.append(Array(bytes[cursor..<(cursor + length)]))
+            cursor += length
+        }
+        func nonzero(_ field: [UInt8], _ count: Int) -> Bool {
+            field.count == count && field.contains(where: { $0 != 0 })
+        }
+        func integer(_ field: [UInt8]) -> UInt64? {
+            guard field.count == 8 else { return nil }
+            return field.reduce(UInt64(0)) { ($0 << 8) | UInt64($1) }
+        }
+        func label(_ field: [UInt8]) -> Bool {
+            !field.isEmpty && field.count <= 128 && String(bytes: field, encoding: .utf8) != nil
+        }
+        guard cursor == bytes.count,
+              nonzero(fields[0], 16), label(fields[1]),
+              fields[2] == Array("service-monas-web".utf8),
+              nonzero(fields[3], 32), let ack = integer(fields[4]), ack > 0,
+              nonzero(fields[5], 16), nonzero(fields[6], 16),
+              [7, 8, 9, 24, 25].allSatisfy({ integer(fields[$0]) != nil }),
+              label(fields[10]), label(fields[11]),
+              [12, 13, 14, 15, 17, 18, 21].allSatisfy({ nonzero(fields[$0], 32) }),
+              fields[14] == fields[18], integer(fields[16]) != nil,
+              nonzero(fields[19], 16), fields[19][0] & 0x80 == 0,
+              fields[20].count == 16,
+              let notBefore = integer(Array(fields[20][0..<8])),
+              let notAfter = integer(Array(fields[20][8..<16])),
+              notAfter > notBefore, notAfter - notBefore <= 30 * 24 * 60 * 60,
+              fields[22].count == 64,
+              nonzero(Array(fields[22][0..<16]), 16),
+              nonzero(Array(fields[22][16..<32]), 16),
+              nonzero(Array(fields[22][32..<64]), 32),
+              fields[23].count == 48, nonzero(Array(fields[23][0..<32]), 32),
+              let issued = integer(Array(fields[23][32..<40])),
+              let expiry = integer(Array(fields[23][40..<48])),
+              issued > 0, issued <= now, expiry > now, expiry > issued,
+              expiry - issued <= 300 else { throw Invalid.denied }
+        exactBytes = data
+        siteUUID = Data(fields[0])
+        ipSetDigest = Data(fields[3])
+        acknowledgementGeneration = ack
+        transaction = Data(fields[22][0..<16])
+        correlation = Data(fields[22][16..<32])
+        sessionDigest = Data(fields[23][0..<32])
+        issuedAt = issued
+        expiresAt = expiry
+    }
+}

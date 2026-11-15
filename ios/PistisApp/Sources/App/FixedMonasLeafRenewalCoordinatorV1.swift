@@ -64,7 +64,7 @@ final class FixedMonasLeafRenewalCoordinatorV1: ObservableObject {
     }
 
     func approve(independentDigest: String) async {
-        guard let pending else { phase = .failed; return }
+        guard case .review = phase, let pending else { return }
         phase = .approving
         do {
             let proof = try await FixedMonasLeafRenewalProducerV1()

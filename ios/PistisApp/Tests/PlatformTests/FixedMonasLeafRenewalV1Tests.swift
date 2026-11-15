@@ -40,6 +40,13 @@ final class FixedMonasLeafRenewalV1Tests: XCTestCase {
                        "e6c78c3a77c9044703acd12c4da1ffbf47c03a956e875628ad6c8b2d929609ca")
         let presentation = try FixedMonasLeafRenewalPresentationV1(wrapper, now: 150)
         XCTAssertEqual(presentation.addresses, [Data([192, 168, 1, 192])])
+        XCTAssertTrue(FixedMonasLeafRenewalProducerV1.matchesIndependentDigest(
+            "e6c78c3a77c9044703acd12c4da1ffbf47c03a956e875628ad6c8b2d929609ca",
+            presentation: presentation
+        ))
+        XCTAssertFalse(FixedMonasLeafRenewalProducerV1.matchesIndependentDigest(
+            "different", presentation: presentation
+        ))
         var changed = wrapper
         changed[changed.count - 1] ^= 1
         XCTAssertThrowsError(try FixedMonasLeafRenewalPresentationV1(changed, now: 150))

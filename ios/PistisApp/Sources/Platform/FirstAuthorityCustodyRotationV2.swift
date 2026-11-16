@@ -176,7 +176,36 @@ protocol FirstAuthorityRecoveryEnvelopeStoring: Sendable {
 final class KeychainFirstAuthorityRecoveryEnvelopeStore:
     FirstAuthorityRecoveryEnvelopeStoring, @unchecked Sendable
 {
-    private let service = "org.mnemosyne.pistis.first-authority-recovery-envelope.v2"
+    private let service: String
+    private let account: String
+
+    init() {
+        service = "org.mnemosyne.pistis.first-authority-recovery-envelope.v2"
+        account = "site-root-v2"
+    }
+
+    init(site: String, attemptID: UUID) throws {
+        guard SiteRootBrokerPresentationV2.identifier(site, maximum: 255) else { throw PlatformFailure.invalidConfiguration }
+        service = "org.mnemosyne.pistis.first-authority-recovery-envelope.v2"
+        account = Self.siteAccount(site, attemptID: attemptID)
+    }
+
+#if DEBUG
+    init(testService: String, site: String?, attemptID: UUID? = nil) throws {
+        let prefix = "org.mnemosyne.pistis.test.recovery."
+        guard testService.hasPrefix(prefix), UUID(uuidString: String(testService.dropFirst(prefix.count))) != nil,
+              (site == nil && attemptID == nil) || (site != nil && attemptID != nil && SiteRootBrokerPresentationV2.identifier(site!, maximum: 255))
+        else { throw PlatformFailure.invalidConfiguration }
+        service = testService
+        if let site, let attemptID { account = Self.siteAccount(site, attemptID: attemptID) }
+        else { account = "site-root-v2" }
+    }
+#endif
+
+    private static func siteAccount(_ site: String, attemptID: UUID) -> String {
+        "site." + SHA256.hash(data: Data("pistis:recovery-site:v2\0".utf8) + Data(site.utf8) + Data(attemptID.uuidString.utf8))
+            .map { String(format: "%02x", $0) }.joined()
+    }
 
     func load() throws -> Data? {
         var query = baseQuery()
@@ -206,7 +235,8 @@ final class KeychainFirstAuthorityRecoveryEnvelopeStore:
     /// Delete only this phone's retained recovery envelope. The authority's
     /// custody and audit records are not contacted or modified.
     func resetLocalEnvelope() throws {
-        let status = SecItemDelete(baseQuery() as CFDictionary)
+        let query: [String: Any] = [kSecClass as String: kSecClassGenericPassword, kSecAttrService as String: service]
+        let status = SecItemDelete(query as CFDictionary)
         guard status == errSecSuccess || status == errSecItemNotFound else {
             throw PlatformFailure.custodyRewrapUnavailable
         }
@@ -215,7 +245,7 @@ final class KeychainFirstAuthorityRecoveryEnvelopeStore:
     private func baseQuery() -> [String: Any] {
         [kSecClass as String: kSecClassGenericPassword,
          kSecAttrService as String: service,
-         kSecAttrAccount as String: "site-root-v2"]
+         kSecAttrAccount as String: account]
     }
 }
 
@@ -228,6 +258,15 @@ private struct FirstAuthorityRecoverySeedEnvelopeV2: Codable {
     let ciphertextB64URL: String
 }
 
+protocol FirstAuthorityCustodyKeyOperations: Sendable {
+    func create() throws -> DevicePublicKey
+    func publicKey() throws -> DevicePublicKey
+    func sign(message: Data) throws -> Data
+    func deriveECDHSharedSecret(peerPublicCompressedSEC1: Data) throws -> Data
+}
+
+extension SecureEnclaveSigner: FirstAuthorityCustodyKeyOperations {}
+
 final class SecureEnclaveFirstAuthorityCustodyProducerV2: @unchecked Sendable {
     private static let localEnvelopeInfo = Data("pistis:first-authority-recovery-envelope:v2".utf8)
     /// The accepted portable ECDH key-wrap profile shared with Thesaurophylax.
@@ -235,7 +274,7 @@ final class SecureEnclaveFirstAuthorityCustodyProducerV2: @unchecked Sendable {
     static let hostEnvelopeInfo = Data(
         "mnemosyne:thesaurophylax:portable-wrap:v1".utf8
     )
-    private let signer: SecureEnclaveSigner
+    private let signer: any FirstAuthorityCustodyKeyOperations
     private let store: any FirstAuthorityRecoveryEnvelopeStoring
 
     init(
@@ -247,6 +286,13 @@ final class SecureEnclaveFirstAuthorityCustodyProducerV2: @unchecked Sendable {
         )
         self.store = store
     }
+
+#if DEBUG
+    init(testSigner: any FirstAuthorityCustodyKeyOperations, store: any FirstAuthorityRecoveryEnvelopeStoring) {
+        signer = testSigner
+        self.store = store
+    }
+#endif
 
     func prepareInitialRotation() throws -> FirstAuthorityCustodySeedCommitmentV2 {
         let device = try signer.create()

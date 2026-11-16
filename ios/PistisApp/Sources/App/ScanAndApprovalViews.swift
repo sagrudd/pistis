@@ -122,18 +122,20 @@ struct ScanView: View {
     @StateObject private var baseCampVaultMigration: BaseCampVaultMigrationCoordinatorV1
     @StateObject private var baseCampVaultSuccessor: BaseCampVaultSuccessorCoordinatorV1
     @StateObject private var siteX509Offline = SiteX509FirstProvisionOfflineCoordinator()
+    @StateObject private var fixedMonasRenewal = FixedMonasLeafRenewalCoordinatorV1()
     @StateObject private var appAttestReplacement = AppAttestKeyReplacementCoordinatorV1()
     private let siteRootTransport: any MonasSiteRootCeremonyTransport
     private let appAttestReplacementTransport: MonasAppAttestTransport?
     private let expectedSiteRootAuthorityHost: String?
     private let showInstallations: () -> Void
-    private let prepareOrdinaryLogin: () async throws -> Void
+    private let prepareOrdinaryLogin: (AuthenticatedEnrollmentOutput) async throws -> Void
     private let ordinaryLoginCompleted: () -> Void
     @State private var scanning = true
     @State private var importingOfflinePresentation = false
     @State private var importingAppAttestReplacement = false
     @State private var firstDeviceScanRequest: FirstDeviceScanRequest?
     @State private var scanFailure: PlatformFailure?
+    @AccessibilityFocusState private var scanFailureFocused: Bool
     @State private var readiness = PasswordlessReadiness.checking
 
     init(
@@ -141,7 +143,7 @@ struct ScanView: View {
         expectedSiteRootAuthorityHost: String? = nil,
         authorityCustodyMode: FirstAuthorityCustodyModeV2 = .rotation,
         showInstallations: @escaping () -> Void = {},
-        prepareOrdinaryLogin: @escaping () async throws -> Void = {},
+        prepareOrdinaryLogin: @escaping (AuthenticatedEnrollmentOutput) async throws -> Void = { _ in },
         ordinaryLoginCompleted: @escaping () -> Void = {}
     ) {
         self.siteRootTransport = siteRootTransport
@@ -206,117 +208,132 @@ struct ScanView: View {
     }
 
     var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: MnSpacing.x6) {
-                MnSectionHeading(
-                    "Scan a Pistis or Monas request",
-                    orientation: "Point the camera at a supported QR code. Captured frames are not saved."
-                )
-
-                ZStack {
-                    RoundedRectangle(cornerRadius: MnRadius.large)
-                        .fill(MnColor.textPrimary)
-                        .aspectRatio(1, contentMode: .fit)
-                    if scanning {
-                        QRScannerCameraView(
-                            profile: .pistisAuthenticationOrMonasSiteRoot,
-                            onResult: handleScan
-                        )
-                            .clipShape(RoundedRectangle(cornerRadius: MnRadius.large))
-                            .aspectRatio(1, contentMode: .fill)
-                        Image(systemName: "viewfinder")
-                            .resizable()
-                            .scaledToFit()
-                            .frame(width: 160, height: 160)
-                            .foregroundStyle(MnColor.onBrand)
-                            .accessibilityHidden(true)
-                    } else {
-                        Image(systemName: "qrcode.viewfinder")
-                            .resizable()
-                            .scaledToFit()
-                            .frame(width: 112, height: 112)
-                            .foregroundStyle(MnColor.onBrand)
-                            .accessibilityHidden(true)
-                    }
-                }
-                .accessibilityElement(children: .ignore)
-                .accessibilityLabel(scanning ? "Scanning for a supported QR code" : "Pistis camera unavailable")
-
-                MnPanel {
-                    VStack(alignment: .leading, spacing: MnSpacing.x2) {
-                        MnStatusLabel(
-                            text: statusText,
-                            kind: statusKind
-                        )
-                        Text("Only bounded Pistis and purpose-separated Monas envelopes are acquired. Base Camp migration and successor rotation always require their own review and fresh Face ID; ordinary sign-in cannot approve them. After acceptance, Pistis returns to Identities instead of reopening the camera.")
-                            .font(.footnote)
-                            .foregroundStyle(MnColor.textPrimary)
-                            .background(MnColor.raised)
-                            .accessibilityIdentifier("basecamp-governed-scan-policy")
-                            .fixedSize(horizontal: false, vertical: true)
-                    }
-                }
-
-                Button {
-                    importingOfflinePresentation = true
-                } label: {
-                    Label("Import first Site HTTPS challenge", systemImage: "doc.badge.plus")
-                }
-                .font(.headline)
-                .frame(maxWidth: .infinity, minHeight: MnMetrics.minimumTarget)
-                .buttonStyle(.borderedProminent)
-                .tint(MnColor.action)
-                .foregroundStyle(MnColor.onBrand)
-
-                Button {
-                    importingAppAttestReplacement = true
-                } label: {
-                    Label("Import App Attest replacement file", systemImage: "key.horizontal")
-                }
-                .font(.headline)
-                .frame(maxWidth: .infinity, minHeight: MnMetrics.minimumTarget)
-                .buttonStyle(.bordered)
-                .disabled(appAttestReplacementTransport == nil)
-
-                MnPanel {
-                    VStack(alignment: .leading, spacing: MnSpacing.x4) {
-                        MnStatusLabel(
-                            text: readiness.approvalEnabled
-                                ? "Passwordless approval ready"
-                                : "Passwordless approval unavailable",
-                            kind: readiness.approvalEnabled ? .success : .warning
-                        )
-                        ForEach(readiness.items) { item in
-                            ReadinessRow(item: item)
-                        }
-                        if !readiness.approvalEnabled {
-                            Text("Approve remains disabled until every capability and trust check is ready.")
-                                .font(.footnote.weight(.semibold))
-                                .foregroundStyle(MnColor.textPrimary)
-                                .background(MnColor.raised)
-                        }
-                    }
-                }
-
-                if let scanFailure {
-                    MnPanel {
-                        VStack(alignment: .leading, spacing: MnSpacing.x3) {
-                            MnStatusLabel(text: "Scan failed", kind: .danger)
-                            Text(scanFailure.safeUserMessage)
-                                .foregroundStyle(MnColor.textPrimary)
-                                .background(MnColor.raised)
-                            if scanFailure == .cameraPermissionDenied {
-                                Button("Open Settings") { openCameraSettings() }
+        ScrollViewReader { proxy in
+            ScrollView {
+                VStack(alignment: .leading, spacing: MnSpacing.x6) {
+                    if let scanFailure {
+                        MnPanel {
+                            VStack(alignment: .leading, spacing: MnSpacing.x3) {
+                                MnStatusLabel(text: "Scan failed", kind: .danger)
+                                    .accessibilityFocused($scanFailureFocused)
+                                Text(scanFailure.safeUserMessage)
+                                    .foregroundStyle(MnColor.textPrimary)
+                                    .background(MnColor.raised)
+                                    .fixedSize(horizontal: false, vertical: true)
+                                if scanFailure == .cameraPermissionDenied {
+                                    Button("Open Settings") { openCameraSettings() }
+                                        .font(.headline)
+                                        .frame(minHeight: MnMetrics.minimumTarget)
+                                }
+                                Button("Scan again") { startScanning() }
                                     .font(.headline)
                                     .frame(minHeight: MnMetrics.minimumTarget)
                             }
                         }
+                        .id("scan-failure")
                     }
-                }
 
+                    MnSectionHeading(
+                        "Scan a Pistis or Monas request",
+                        orientation: "Point the camera at a supported QR code. Captured frames are not saved."
+                    )
+
+                    ZStack {
+                        RoundedRectangle(cornerRadius: MnRadius.large)
+                            .fill(MnColor.textPrimary)
+                            .aspectRatio(1, contentMode: .fit)
+                        if scanning {
+                            QRScannerCameraView(
+                                profile: .pistisAuthenticationOrMonasSiteRoot,
+                                onResult: handleScan
+                            )
+                                .clipShape(RoundedRectangle(cornerRadius: MnRadius.large))
+                                .aspectRatio(1, contentMode: .fill)
+                            Image(systemName: "viewfinder")
+                                .resizable()
+                                .scaledToFit()
+                                .frame(width: 160, height: 160)
+                                .foregroundStyle(MnColor.onBrand)
+                                .accessibilityHidden(true)
+                        } else {
+                            Image(systemName: "qrcode.viewfinder")
+                                .resizable()
+                                .scaledToFit()
+                                .frame(width: 112, height: 112)
+                                .foregroundStyle(MnColor.onBrand)
+                                .accessibilityHidden(true)
+                        }
+                    }
+                    .accessibilityElement(children: .ignore)
+                    .accessibilityLabel(scanning ? "Scanning for a supported QR code" : "Pistis camera unavailable")
+
+                    MnPanel {
+                        VStack(alignment: .leading, spacing: MnSpacing.x2) {
+                            MnStatusLabel(
+                                text: statusText,
+                                kind: statusKind
+                            )
+                            Text("Only bounded Pistis and purpose-separated Monas envelopes are acquired. Base Camp migration and successor rotation always require their own review and fresh Face ID; ordinary sign-in cannot approve them. After acceptance, Pistis returns to Identities instead of reopening the camera.")
+                                .font(.footnote)
+                                .foregroundStyle(MnColor.textPrimary)
+                                .background(MnColor.raised)
+                                .accessibilityIdentifier("basecamp-governed-scan-policy")
+                                .fixedSize(horizontal: false, vertical: true)
+                        }
+                    }
+
+                    Button {
+                        importingOfflinePresentation = true
+                    } label: {
+                        Label("Import Site HTTPS challenge", systemImage: "doc.badge.plus")
+                    }
+                    .font(.headline)
+                    .frame(maxWidth: .infinity, minHeight: MnMetrics.minimumTarget)
+                    .buttonStyle(.borderedProminent)
+                    .tint(MnColor.action)
+                    .foregroundStyle(MnColor.onBrand)
+
+                    Button {
+                        importingAppAttestReplacement = true
+                    } label: {
+                        Label("Import App Attest replacement file", systemImage: "key.horizontal")
+                    }
+                    .font(.headline)
+                    .frame(maxWidth: .infinity, minHeight: MnMetrics.minimumTarget)
+                    .buttonStyle(.bordered)
+                    .disabled(appAttestReplacementTransport == nil)
+
+                    MnPanel {
+                        VStack(alignment: .leading, spacing: MnSpacing.x4) {
+                            MnStatusLabel(
+                                text: readiness.approvalEnabled
+                                    ? "Passwordless approval ready"
+                                    : "Passwordless approval unavailable",
+                                kind: readiness.approvalEnabled ? .success : .warning
+                            )
+                            ForEach(readiness.items) { item in
+                                ReadinessRow(item: item)
+                            }
+                            if !readiness.approvalEnabled {
+                                Text("Approve remains disabled until every capability and trust check is ready.")
+                                    .font(.footnote.weight(.semibold))
+                                    .foregroundStyle(MnColor.textPrimary)
+                                    .background(MnColor.raised)
+                            }
+                        }
+                    }
+
+
+                }
+                .padding(MnMetrics.screenGutter)
+                .padding(.bottom, MnSpacing.x8 * 3)
             }
-            .padding(MnMetrics.screenGutter)
-            .padding(.bottom, MnSpacing.x8 * 3)
+            .onChange(of: scanFailure) { _, failure in
+                if failure != nil {
+                    proxy.scrollTo("scan-failure", anchor: .top)
+                    scanFailureFocused = true
+                }
+            }
         }
         .navigationTitle("Scan")
         .mnScreenBackground()
@@ -375,6 +392,9 @@ struct ScanView: View {
         .sheet(item: siteX509OfflineReviewBinding) { review in
             SiteX509FirstProvisionOfflineReviewView(review: review, coordinator: siteX509Offline)
         }
+        .sheet(item: fixedMonasRenewalReviewBinding) { review in
+            FixedMonasLeafRenewalReviewViewV1(review: review, coordinator: fixedMonasRenewal)
+        }
         .sheet(item: appAttestReplacementReviewBinding) { review in
             AppAttestKeyReplacementReviewView(
                 review: review,
@@ -419,6 +439,13 @@ struct ScanView: View {
         switch result {
         case let .success(payload):
             scanFailure = nil
+            if payload.text.hasPrefix("PXRN1:P:") {
+                fixedMonasRenewal.accept(qrText: payload.text)
+                if case .failed = fixedMonasRenewal.phase {
+                    scanFailure = .productionEnvelopeUnavailable
+                }
+                return
+            }
             if payload.text.hasPrefix(SiteX509FirstProvisionOfflineProfileV2.presentationQRPrefix) {
                 siteX509Offline.accept(qrText: payload.text)
                 if case .failed = siteX509Offline.phase {
@@ -474,6 +501,7 @@ struct ScanView: View {
                 case .siteRootDelegation:
                     siteRootCeremony.accept(qrText: payload.text)
                     if let review = siteRootCeremony.presentedReview,
+                       !siteRootCeremony.isValidatedBrokerFirstDevice,
                        let pinned = siteRootTransport as? MonasSiteRootDelegationTransport,
                        !pinned.isConfiguredAuthorityHost(review.destination)
                     {
@@ -558,6 +586,13 @@ struct ScanView: View {
             ) ?? Data()
             guard bytes.count == size else { throw PlatformFailure.qrPayloadUnsupported }
             scanning = false
+            if bytes.starts(with: Data("PXRW/v1".utf8)) {
+                fixedMonasRenewal.accept(fileBytes: bytes)
+                if case .failed = fixedMonasRenewal.phase {
+                    scanFailure = .productionEnvelopeUnavailable
+                }
+                return
+            }
             siteX509Offline.accept(fileBytes: bytes)
             if case .failed = siteX509Offline.phase {
                 scanFailure = siteX509Offline.failure ?? .productionEnvelopeUnavailable
@@ -661,6 +696,14 @@ struct ScanView: View {
             siteOriginRelocation.presentedReview
         } set: { value in
             if value == nil { siteOriginRelocation.reset(); startScanning() }
+        }
+    }
+
+    private var fixedMonasRenewalReviewBinding: Binding<FixedMonasLeafRenewalReviewV1?> {
+        Binding {
+            fixedMonasRenewal.presentedReview
+        } set: { value in
+            if value == nil { fixedMonasRenewal.reset(); startScanning() }
         }
     }
 
@@ -890,6 +933,75 @@ private struct BaseCampVaultSuccessorReviewViewV1: View {
         .onChange(of: coordinator.phase) { _, phase in
             if phase == .completed { dismiss() }
         }
+    }
+}
+
+private struct FixedMonasLeafRenewalReviewViewV1: View {
+    let review: FixedMonasLeafRenewalReviewV1
+    @ObservedObject var coordinator: FixedMonasLeafRenewalCoordinatorV1
+    @Environment(\.dismiss) private var dismiss
+    @State private var hostDigest = ""
+
+    var body: some View {
+        NavigationStack {
+            ScrollView {
+                VStack(alignment: .leading, spacing: MnSpacing.x4) {
+                    MnSectionHeading(
+                        "Approve Monas HTTPS successor",
+                        orientation: "Verify the Site, address, existing certificate and successor before Face ID."
+                    )
+                    MnPanel {
+                        VStack(alignment: .leading, spacing: MnSpacing.x3) {
+                            MnEvidenceRow(label: "Site", value: review.site); Divider()
+                            MnEvidenceRow(label: "Service and addresses", value: "Monas · " + review.addresses); Divider()
+                            MnEvidenceRow(label: "Existing certificate", value: review.predecessor); Divider()
+                            MnEvidenceRow(label: "Successor expires", value: review.successorExpiry); Divider()
+                            MnEvidenceRow(label: "External revocation", value: "Current status unknown"); Divider()
+                            MnEvidenceRow(label: "Device proof", value: "Enrolled key and Face ID; no fresh App Attest"); Divider()
+                            MnEvidenceRow(label: "Presentation digest", value: review.digest); Divider()
+                            MnEvidenceRow(label: "Approval expires", value: review.expiry)
+                        }
+                    }
+                    switch coordinator.phase {
+                    case .review:
+                        Text("Enter the independently displayed digest from the host.")
+                        TextField("Host presentation digest", text: $hostDigest)
+                            .textInputAutocapitalization(.never)
+                            .autocorrectionDisabled()
+                        MnPrimaryButton("Approve with Face ID", systemImage: "faceid") {
+                            Task { await coordinator.approve(independentDigest: hostDigest) }
+                        }
+                    case .approving:
+                        ProgressView("Creating the one-use renewal approval…")
+                    case .completed:
+                        if let text = coordinator.responseQRText,
+                           let image = Self.qrImage(text) {
+                            MnStatusLabel(text: "Return this one-use response to Monas", kind: .success)
+                            Image(uiImage: image).interpolation(.none).resizable().scaledToFit()
+                                .accessibilityLabel("Monas HTTPS successor approval QR")
+                            ShareLink(item: text) { Label("Share response text", systemImage: "square.and.arrow.up") }
+                            Button("Done") { dismiss() }.font(.headline)
+                        }
+                    case .failed:
+                        MnStatusLabel(text: "Approval stopped safely", kind: .danger)
+                    case .idle: EmptyView()
+                    }
+                }.padding(MnMetrics.screenGutter)
+            }
+            .navigationTitle("Monas HTTPS")
+            .mnScreenBackground()
+        }
+        .interactiveDismissDisabled(coordinator.phase == .approving)
+    }
+
+    private static func qrImage(_ text: String) -> UIImage? {
+        let filter = CIFilter.qrCodeGenerator()
+        filter.message = Data(text.utf8); filter.correctionLevel = "M"
+        guard let output = filter.outputImage else { return nil }
+        let context = CIContext()
+        guard let cg = context.createCGImage(output.transformed(by: .init(scaleX: 8, y: 8)),
+            from: output.extent.applying(.init(scaleX: 8, y: 8))) else { return nil }
+        return UIImage(cgImage: cg)
     }
 }
 
@@ -1381,6 +1493,7 @@ private struct SiteRootFirstDeviceProgressView: View {
 extension SiteRootDelegationCoordinator.Completion {
     var heading: String {
         switch self {
+        case .proofQueued: "Proof submitted"
         case .siteTrustEstablished: "Site Trust established"
         case .sessionEstablished: "Site Root ceremony complete"
         }
@@ -1388,6 +1501,8 @@ extension SiteRootDelegationCoordinator.Completion {
 
     var orientation: String {
         switch self {
+        case .proofQueued:
+            "The install service received the proof. Continue setup when Monas provides the next invitation."
         case .siteTrustEstablished:
             "Monas accepted this first-device proof and created Site Trust and custody. This installation is recorded as setup in progress; identity enrolment is the next ceremony."
         case .sessionEstablished:
@@ -1397,6 +1512,7 @@ extension SiteRootDelegationCoordinator.Completion {
 
     var evidenceLabel: String {
         switch self {
+        case .proofQueued: "Setup state"
         case .siteTrustEstablished: "Setup state"
         case .sessionEstablished: "Custody rewrap"
         }
@@ -1404,6 +1520,7 @@ extension SiteRootDelegationCoordinator.Completion {
 
     var evidenceValue: String {
         switch self {
+        case .proofQueued: "Awaiting Monas"
         case .siteTrustEstablished: "Setup in progress"
         case .sessionEstablished: "Submitted"
         }
@@ -1411,6 +1528,8 @@ extension SiteRootDelegationCoordinator.Completion {
 
     var detail: String {
         switch self {
+        case .proofQueued:
+            "The installation remains pending until Monas verifies this ceremony."
         case .siteTrustEstablished:
             "The installation’s Monas audit remains authoritative. Pistis stores only a redacted setup observation and cannot authenticate or approve work until identity enrolment completes."
         case .sessionEstablished:
@@ -1420,6 +1539,7 @@ extension SiteRootDelegationCoordinator.Completion {
 
     var actionTitle: String {
         switch self {
+        case .proofQueued: "Continue"
         case .siteTrustEstablished: "View setup progress"
         case .sessionEstablished: "View installation"
         }

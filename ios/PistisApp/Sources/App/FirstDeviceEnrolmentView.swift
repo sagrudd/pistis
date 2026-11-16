@@ -39,6 +39,14 @@ struct FirstDeviceEnrolmentView: View {
                     )
                     .font(.footnote)
                 } else {
+                    if flow.awaitingAuthorityBinding {
+                        Button("Verify installation authority") {
+                            Task { await flow.retryAuthorityBinding() }
+                        }
+                        .buttonStyle(.borderedProminent)
+                        .tint(MnColor.action)
+                        .disabled(flow.busy)
+                    }
                     MnPanel {
                         VStack(alignment: .leading, spacing: MnSpacing.x3) {
                             MnEvidenceRow(
@@ -49,7 +57,10 @@ struct FirstDeviceEnrolmentView: View {
                                 label: "Authority",
                                 value: flow.presentation?.httpsOrigin.host ?? ""
                             )
-                            if flow.prompt == nil && flow.verifiedSubject == nil {
+                            if flow.awaitingAuthorityBinding {
+                                Text("The receipt is retained while the installation authority binding is verified.")
+                                    .font(.footnote)
+                            } else if flow.prompt == nil && flow.verifiedSubject == nil {
                                 Text("Cryptographic host identity verified")
                                     .font(.headline)
                                 if flow.canRetryProviderStatus {
@@ -109,10 +120,12 @@ struct FirstDeviceEnrolmentView: View {
                                 Text(
                                     flow.enrolmentComplete
                                         ? "The purpose-separated authority receipt and exact device binding were verified before installation trust was stored."
-                                        : "Check this immutable GitHub identity before allowing Face ID to create the device registration."
+                                        : (flow.awaitingAuthorityBinding
+                                            ? "The receipt is retained while the installation authority binding is verified."
+                                            : "Check this immutable GitHub identity before allowing Face ID to create the device registration.")
                                 )
                                 .font(.footnote)
-                                if !flow.enrolmentComplete {
+                                if !flow.enrolmentComplete && !flow.awaitingAuthorityBinding {
                                     Button("Confirm account and enrol with Face ID") {
                                         Task { await flow.confirmVerifiedAccount() }
                                     }
@@ -123,7 +136,7 @@ struct FirstDeviceEnrolmentView: View {
                             }
                         }
                     }
-                    if flow.enrolmentComplete {
+                    if flow.enrolmentComplete || flow.awaitingAuthorityBinding {
                         Button("Done") { dismiss() }
                             .buttonStyle(.borderedProminent)
                             .tint(MnColor.action)
@@ -140,11 +153,67 @@ struct FirstDeviceEnrolmentView: View {
         .navigationTitle("Enrol first device")
         .mnScreenBackground()
         .task {
-            guard let initialQRText else { return }
-            await flow.handleInitialScanAndBegin(initialQRText)
+            if let initialQRText { await flow.handleInitialScanAndBegin(initialQRText) }
+            else { flow.restorePendingAuthorityBinding() }
         }
     }
 
+}
+
+/// A provisional local association permits receipt staging only. The later
+/// authority handoff must bind the exact attempt and V4 before activation.
+struct AdditionalEnrolmentAdmission: Equatable {
+    let attemptID: UUID
+    let installationID: Data
+    let presentationDigest: Data
+
+    private init(attemptID: UUID, installationID: Data, presentationDigest: Data) {
+        self.attemptID = attemptID
+        self.installationID = installationID
+        self.presentationDigest = presentationDigest
+    }
+    static func provisional(attemptID: UUID, installationID: Data, presentationDigest: Data) -> Self {
+        Self(attemptID: attemptID, installationID: installationID, presentationDigest: presentationDigest)
+    }
+#if DEBUG
+    static func testOnly(attemptID: UUID, installationID: Data, presentationDigest: Data) -> Self {
+        Self(attemptID: attemptID, installationID: installationID, presentationDigest: presentationDigest)
+    }
+#endif
+}
+
+enum ProvisionalPresentationRecovery {
+    /// Reverify the exact previously attended frame at its recorded validation
+    /// time. Current authority is established later by fresh pinned status.
+    static func verify(_ stored: ProvisionalBrokerPresentation,
+                       expectedAppConfigurationDigest: Data) throws -> VerifiedFirstDevicePresentation {
+        let value = try FirstDevicePresentationV4.verify(
+            qrText: stored.qrText, expectedAppConfigurationDigest: expectedAppConfigurationDigest,
+            now: Date(timeIntervalSince1970: Double(stored.verifiedAtMillis) / 1_000))
+        guard value.installationID == stored.installationID,
+              value.presentationDigest == stored.presentationDigest else {
+            throw PlatformFailure.invalidConfiguration
+        }
+        return value
+    }
+}
+
+enum FirstDeviceAdmissionPolicy {
+    /// A duplicate installation never reaches key creation; an additional
+    /// installation needs a provisional exact pending-operation association.
+    static func additionalAttempt(
+        installationID: Data, presentationDigest: Data, existingIDs: [Data],
+        admission: AdditionalEnrolmentAdmission?, pendingIsSubmitted: Bool
+    ) throws -> UUID? {
+        guard installationID.count == 16, presentationDigest.count == 32,
+              !existingIDs.contains(installationID) else { throw PlatformFailure.siteRootBindingUnavailable }
+        if admission == nil && existingIDs.isEmpty { return nil }
+        guard let admission, pendingIsSubmitted,
+              admission.installationID == installationID,
+              admission.presentationDigest == presentationDigest
+        else { throw PlatformFailure.siteRootBindingUnavailable }
+        return admission.attemptID
+    }
 }
 
 @MainActor
@@ -154,11 +223,20 @@ final class FirstDeviceEnrolmentFlow: ObservableObject {
     @Published private(set) var verifiedSubject: UInt64?
     @Published private(set) var displayLogin: String?
     @Published private(set) var enrolmentComplete = false
+    @Published private(set) var awaitingAuthorityBinding = false
     @Published private(set) var status = "Ready to scan"
     @Published private(set) var failure: PlatformFailure?
     @Published private(set) var busy = false
 
     private let eventRecorder: any OnboardingEventRecording
+    private let now: () -> Date
+    private let scopedStore: ScopedAppAttestStore
+    private let additionalAdmission: (VerifiedFirstDevicePresentation) async throws -> AdditionalEnrolmentAdmission?
+    private var stagedAttemptID: UUID?
+    private var verifiedScan: (text: String, atMillis: UInt64)?
+#if DEBUG
+    private let testingV2Staging: Bool?
+#endif
     private var transport: ServerDrivenEnrolmentTransport?
     private var handle: ProviderVerificationHandle?
     private var devicePublicKey: Data?
@@ -178,11 +256,79 @@ final class FirstDeviceEnrolmentFlow: ObservableObject {
             && prompt == nil && verifiedSubject == nil
     }
 
+    func restorePendingAuthorityBinding() {
+        guard BrokerV2Feature.enabled, presentation == nil else { return }
+        do {
+            guard let stored = try scopedStore.soleRecoverablePresentation() else { return }
+            presentation = try ProvisionalPresentationRecovery.verify(stored,
+                expectedAppConfigurationDigest: GitHubEnrolmentConfiguration.reviewedAppConfigurationDigest)
+            stagedAttemptID = stored.attemptID
+            awaitingAuthorityBinding = true
+            status = "Receipt retained; verify installation authority"
+        } catch { fail(error) }
+    }
+
+    func retryAuthorityBinding() async {
+        guard BrokerV2Feature.enabled, !busy, awaitingAuthorityBinding,
+              let presentation, let attempt = stagedAttemptID else { return }
+        busy = true
+        defer { busy = false }
+        do {
+            guard let pending = try scopedStore.statusPending(attemptID: attempt),
+                  let staged = try scopedStore.stagedEnrollment(attemptID: attempt)
+            else { throw PlatformFailure.invalidConfiguration }
+            let client = try FirstDeviceStatusClientV2(presentation: presentation)
+            let binding = try await client.verify(attemptID: attempt, storage: scopedStore,
+                nowSeconds: { UInt64(max(0, Date().timeIntervalSince1970)) })
+            try scopedStore.beginSubmittedPoll(attemptID: attempt, expected: pending)
+            defer { scopedStore.endDispatch() }
+            guard try scopedStore.stagedEnrollment(attemptID: attempt) == staged else {
+                throw PlatformFailure.invalidConfiguration
+            }
+            let inventory = try await InstallationTrustKeychain.shared.enrollmentInventoryRecords()
+            for record in inventory where record.installationID == binding.installationID {
+                guard case let .current(existing) = record, existing == staged.output else {
+                    throw PlatformFailure.invalidConfiguration
+                }
+            }
+            try scopedStore.commit(binding, retainPending: true)
+            try await InstallationTrustKeychain.shared.installAdditionalAuthenticated(staged.output)
+            try scopedStore.commit(binding)
+            awaitingAuthorityBinding = false
+            enrolmentComplete = true
+            failure = nil
+            status = "Device enrolled and authority binding verified"
+        } catch { fail(error) }
+    }
+
     init(
         eventRecorder: any OnboardingEventRecording = OnboardingEventJournal.shared
     ) {
         self.eventRecorder = eventRecorder
+        now = Date.init
+        let storage = ScopedAppAttestStore()
+        scopedStore = storage
+        additionalAdmission = { _ in nil }
+#if DEBUG
+        testingV2Staging = nil
+#endif
     }
+#if DEBUG
+    /// Test-only seam; no production admission adapter is enabled.
+    init(
+        testingScopedStore: ScopedAppAttestStore,
+        additionalAdmission: @escaping (VerifiedFirstDevicePresentation) async throws -> AdditionalEnrolmentAdmission?,
+        enableV2Staging: Bool = false,
+        now: @escaping () -> Date = Date.init,
+        eventRecorder: any OnboardingEventRecording = OnboardingEventJournal.shared
+    ) {
+        self.eventRecorder = eventRecorder
+        self.now = now
+        scopedStore = testingScopedStore
+        self.additionalAdmission = additionalAdmission
+        testingV2Staging = enableV2Staging
+    }
+#endif
 
     func handleScan(_ result: Result<ScannedQRPayload, PlatformFailure>) {
         guard presentation == nil else { return }
@@ -193,12 +339,14 @@ final class FirstDeviceEnrolmentFlow: ObservableObject {
         eventAttemptStartedNanoseconds = DispatchTime.now().uptimeNanoseconds
         do {
             let payload = try result.get()
+            let verifiedAt = now()
             let verified = try FirstDevicePresentationV4.verify(
                 qrText: payload.text,
                 expectedAppConfigurationDigest:
                     GitHubEnrolmentConfiguration.reviewedAppConfigurationDigest,
-                now: Date()
+                now: verifiedAt
             )
+            verifiedScan = (payload.text, UInt64(verifiedAt.timeIntervalSince1970 * 1_000))
             eventReferenceDigest = verified.presentationDigest
             recordEvent(kind: .qrValidated, outcome: .accepted)
             presentation = verified
@@ -215,9 +363,59 @@ final class FirstDeviceEnrolmentFlow: ObservableObject {
     func handleInitialScanAndBegin(_ qrText: String) async {
         guard presentation == nil else { return }
         handleScan(.success(ScannedQRPayload(text: qrText)))
-        guard presentation != nil else { return }
+        guard let presentation else { return }
+        if BrokerV2Feature.enabled {
+            do {
+                if let stored = try scopedStore.soleRecoverablePresentation() {
+                    guard stored.installationID == presentation.installationID,
+                          stored.presentationDigest == presentation.presentationDigest,
+                          stored.qrText == qrText else { throw PlatformFailure.siteRootBindingUnavailable }
+                    stagedAttemptID = stored.attemptID
+                    awaitingAuthorityBinding = true
+                    status = "Receipt retained; verify installation authority"
+                    return
+                }
+            } catch { fail(error); return }
+        }
         await begin()
     }
+
+    private func resolveAdmission(
+        presentation: VerifiedFirstDevicePresentation, existingIDs: [Data]
+    ) async throws -> UUID? {
+        guard !existingIDs.contains(presentation.installationID) else {
+            throw PlatformFailure.siteRootBindingUnavailable
+        }
+        let admission: AdditionalEnrolmentAdmission?
+        if provisionalStagingEnabled, let scan = verifiedScan, try scopedStore.hasSubmittedBrokerAttempt() {
+            let attempt = try scopedStore.stageProvisionalPresentation(
+                installationID: presentation.installationID, digest: presentation.presentationDigest,
+                qrText: scan.text, verifiedAtMillis: scan.atMillis)
+            admission = .provisional(attemptID: attempt, installationID: presentation.installationID,
+                                     presentationDigest: presentation.presentationDigest)
+        } else { admission = existingIDs.isEmpty ? nil : try await additionalAdmission(presentation) }
+        let pending = try admission.flatMap { try scopedStore.submittedAttempt(attemptID: $0.attemptID) }
+        return try FirstDeviceAdmissionPolicy.additionalAttempt(
+            installationID: presentation.installationID,
+            presentationDigest: presentation.presentationDigest,
+            existingIDs: existingIDs, admission: admission, pendingIsSubmitted: pending != nil
+        )
+    }
+
+    private var provisionalStagingEnabled: Bool {
+#if DEBUG
+        testingV2Staging ?? BrokerV2Feature.enabled
+#else
+        BrokerV2Feature.enabled
+#endif
+    }
+#if DEBUG
+    /// Exercises the same post-scan admission gate with a controlled inventory.
+    func testOnlyResolveScannedAdmission(existingIDs: [Data]) async throws -> UUID? {
+        guard let presentation else { throw PlatformFailure.invalidConfiguration }
+        return try await resolveAdmission(presentation: presentation, existingIDs: existingIDs)
+    }
+#endif
 
     func begin() async {
         guard !busy, let presentation, let transport else {
@@ -232,9 +430,10 @@ final class FirstDeviceEnrolmentFlow: ObservableObject {
         var retainExactAttempt = false
         do {
             enterStage(.deviceRegistration)
-            guard try await !InstallationTrustKeychain.shared
-                .hasStoredEnrollment()
-            else { throw PlatformFailure.existingEnrolmentMustBeRemoved }
+            let inventory = try await InstallationTrustKeychain.shared.enrollmentInventoryRecords()
+            stagedAttemptID = try await resolveAdmission(
+                presentation: presentation, existingIDs: inventory.map(\.installationID)
+            )
             let signer = try SecureEnclaveSigner(
                 namespace: presentation.installationID.hexadecimal,
                 authenticationReason: "Create this Pistis device identity"
@@ -405,13 +604,18 @@ final class FirstDeviceEnrolmentFlow: ObservableObject {
                 challengeExpiry: approval.challengeExpiry
             )
             approvalGate.markInstalled()
-            enrolmentComplete = true
-            status = "Device enrolled and authority receipt verified"
-            if let authorityHost = presentation?.httpsOrigin.host {
-                try? SiteRootInstallationRepository.shared
-                    .recordIdentityEnrolmentCompleted(authorityHost: authorityHost)
+            if stagedAttemptID != nil {
+                awaitingAuthorityBinding = true
+                status = "Receipt verified; awaiting installation authority binding"
+            } else {
+                enrolmentComplete = true
+                status = "Device enrolled and authority receipt verified"
+                if let authorityHost = presentation?.httpsOrigin.host {
+                    try? SiteRootInstallationRepository.shared
+                        .recordIdentityEnrolmentCompleted(authorityHost: authorityHost)
+                }
+                recordEvent(kind: .completed, outcome: .succeeded)
             }
-            recordEvent(kind: .completed, outcome: .succeeded)
         } catch {
             if mayRetry {
                 approvalGate.restoreAfterFailedConfirmation()
@@ -438,6 +642,8 @@ final class FirstDeviceEnrolmentFlow: ObservableObject {
         verifiedSubject = nil
         displayLogin = nil
         enrolmentComplete = false
+        awaitingAuthorityBinding = false
+        stagedAttemptID = nil
         pendingRegistration = nil
         beginRetry.reset()
         providerContinuation.reset()
@@ -518,7 +724,11 @@ final class FirstDeviceEnrolmentFlow: ObservableObject {
             tlsSPKISHA256: presentation.tlsSPKISHA256
         )
         do {
-            try await InstallationTrustKeychain.shared.installAuthenticated(output)
+            if let attemptID = stagedAttemptID {
+                try scopedStore.stageEnrollment(ScopedStagedEnrollment(attemptID: attemptID, output: output))
+            } else {
+                try await InstallationTrustKeychain.shared.installAuthenticated(output)
+            }
         } catch {
             throw PlatformFailure.enrolmentStorageFailed
         }

@@ -1032,6 +1032,7 @@ struct SiteRootConvergenceServiceV2: Sendable {
     private let transport: any MonasSiteRootConvergenceSubmitting
     private let continuationTransport: (any MonasSiteX509BrokerContinuing)?
     private let store: SiteRootConvergenceAckStoreV2
+    private let scopedStorage: ScopedAppAttestStore
     private let brokerAuthorizationFactory: @Sendable (
         SiteX509FirstProvisionBrokerPresentationV1
     ) async throws -> BrokerSiteX509AuthorizationV1
@@ -1045,6 +1046,7 @@ struct SiteRootConvergenceServiceV2: Sendable {
         self.continuationTransport = continuationTransport
             ?? (transport as? any MonasSiteX509BrokerContinuing)
         self.store = store
+        scopedStorage = ScopedAppAttestStore()
         brokerAuthorizationFactory = SiteRootConvergenceServiceV2.makeBrokerAuthorization
     }
 
@@ -1052,6 +1054,7 @@ struct SiteRootConvergenceServiceV2: Sendable {
         transport: any MonasSiteRootConvergenceSubmitting,
         continuationTransport: (any MonasSiteX509BrokerContinuing)? = nil,
         store: SiteRootConvergenceAckStoreV2 = SiteRootConvergenceAckStoreV2(),
+        scopedStorage: ScopedAppAttestStore = ScopedAppAttestStore(),
         brokerProofFactory: @escaping @Sendable (
             SiteX509FirstProvisionBrokerPresentationV1
         ) async throws -> Data
@@ -1060,6 +1063,7 @@ struct SiteRootConvergenceServiceV2: Sendable {
         self.continuationTransport = continuationTransport
             ?? (transport as? any MonasSiteX509BrokerContinuing)
         self.store = store
+        self.scopedStorage = scopedStorage
         brokerAuthorizationFactory = { presentation in
             BrokerSiteX509AuthorizationV1(
                 detachedCOSE: try await brokerProofFactory(presentation), ceremony: nil
@@ -1196,7 +1200,7 @@ struct SiteRootConvergenceServiceV2: Sendable {
         _ presentation: SiteX509FirstProvisionBrokerPresentationV1,
         progress: (SiteX509BrokerApprovalStageV1) -> Void = { _ in }
     ) async throws {
-        let scopedStorage = ScopedAppAttestStore()
+        let scopedStorage = self.scopedStorage
         let pending = try BrokerV2Feature.enabled
             ? scopedStorage.submittedBrokerAttempt(correlation: presentation.correlation, siteUUID: presentation.siteUUID) : nil
         if let pending { try scopedStorage.beginSubmittedPoll(attemptID: pending.attemptID, expected: pending) }
@@ -1237,7 +1241,7 @@ struct SiteRootConvergenceServiceV2: Sendable {
         guard let continuation = continuationTransport else {
             throw PlatformFailure.siteRootAuthorityUnavailable
         }
-        let scopedStorage = ScopedAppAttestStore()
+        let scopedStorage = self.scopedStorage
         let pending = try BrokerV2Feature.enabled
             ? scopedStorage.submittedBrokerAttempt(correlation: presentation.correlation, siteUUID: presentation.siteUUID) : nil
         if let pending { try scopedStorage.beginSubmittedPoll(attemptID: pending.attemptID, expected: pending) }

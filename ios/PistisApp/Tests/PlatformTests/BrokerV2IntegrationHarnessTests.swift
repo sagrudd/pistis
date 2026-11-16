@@ -18,12 +18,12 @@ final class BrokerV2IntegrationHarnessTests: XCTestCase {
         XCTAssertTrue(QRPayloadProfile.pistisAuthenticationOrMonasSiteRoot.accepts(text))
         XCTAssertEqual(MonasJSONScanRoute.classify(text), .siteRootDelegation)
         let presentation = try SiteRootBrokerPresentationV2(qrText: text, nowMillis: 1_900_000_000_000)
-        let coordinator = SiteRootDelegationCoordinator(nowMillis: { 1_900_000_000_000 })
+        let coordinator = SiteRootDelegationCoordinator(testV2Storage: ScopedAppAttestStore(persistence: ScopedMemoryPersistence()), nowMillis: { 1_900_000_000_000 })
         coordinator.accept(qrText: text)
         guard case .review = coordinator.phase else { return XCTFail("V2 did not reach review") }
-        // Production approval remains deliberately blocked.
+        // The simulator lacks the protected hardware required for approval.
         await coordinator.approve()
-        XCTAssertEqual(coordinator.phase, .failed(.siteRootBindingUnavailable))
+        XCTAssertEqual(coordinator.phase, .failed(.secureHardwareUnavailable))
 
         let operationID = Data(1...16)
         let attempt = try XCTUnwrap(UUID(uuidString: "01020304-0506-0708-090A-0B0C0D0E0F10"))

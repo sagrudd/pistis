@@ -114,6 +114,7 @@ final class SiteRootDelegationCoordinator: ObservableObject {
 #if DEBUG
     private let testV2Producer: (any BrokerV2SiteRootProducing)?
     private let testV2Storage: ScopedAppAttestStore?
+    private let testLegacyInventoryCount: (() async throws -> Int)?
 #endif
     private var pending: PendingPresentation?
     private var eventAttemptID = UUID()
@@ -147,10 +148,27 @@ final class SiteRootDelegationCoordinator: ObservableObject {
 #if DEBUG
         testV2Producer = nil
         testV2Storage = nil
+        testLegacyInventoryCount = nil
 #endif
     }
 
 #if DEBUG
+    init(testTransport: any MonasSiteRootCeremonyTransport = UnavailableMonasSiteRootDelegationTransport(),
+         testV2Storage: ScopedAppAttestStore,
+         testLegacyInventoryCount: (() async throws -> Int)? = nil,
+         nowMillis: @escaping () throws -> UInt64) {
+        transport = testTransport
+        brokerTransport = (testTransport as? MonasSiteRootGenesisBrokerTransport)
+            ?? (try? MonasSiteRootGenesisBrokerTransport())
+        appAttestClient = AppleAppAttestClient()
+        authorityCustodyMode = .rotation
+        eventRecorder = OnboardingEventJournal.shared
+        self.nowMillis = nowMillis
+        testV2Producer = nil
+        self.testV2Storage = testV2Storage
+        self.testLegacyInventoryCount = testLegacyInventoryCount
+    }
+
     init(testBroker: MonasSiteRootGenesisBrokerTransport, appAttestClient: AppleAppAttestClient,
          producer: any BrokerV2SiteRootProducing, storage: ScopedAppAttestStore,
          eventRecorder: any OnboardingEventRecording, nowMillis: @escaping () throws -> UInt64) {
@@ -162,6 +180,7 @@ final class SiteRootDelegationCoordinator: ObservableObject {
         self.nowMillis = nowMillis
         testV2Producer = producer
         testV2Storage = storage
+        testLegacyInventoryCount = nil
     }
 #endif
 
@@ -254,7 +273,7 @@ final class SiteRootDelegationCoordinator: ObservableObject {
             switch pending {
             case let .delegation(qrPresentation):
                 let claimed = try await beginLegacyRegistration()
-                defer { if claimed { ScopedAppAttestStore().endLegacyGlobalWrite() } }
+                defer { if claimed { legacyStorage.endLegacyGlobalWrite() } }
                 let producer = try SecureEnclaveSiteRootProofProducer(
                     authenticationReason: "Sign this exact Monas Site Root delegation"
                 )
@@ -271,7 +290,7 @@ final class SiteRootDelegationCoordinator: ObservableObject {
             case let .firstDevice(firstDevice):
                 guard let firstDeviceTransport else { throw PlatformFailure.invalidConfiguration }
                 let claimed = try await beginLegacyRegistration()
-                defer { if claimed { ScopedAppAttestStore().endLegacyGlobalWrite() } }
+                defer { if claimed { legacyStorage.endLegacyGlobalWrite() } }
                 // A retained native authority still uses a singleton App Attest
                 // reference and broker setup projection. Until those are
                 // installation-scoped, a second ceremony could overwrite or
@@ -332,13 +351,27 @@ final class SiteRootDelegationCoordinator: ObservableObject {
 
     /// Hold the legacy singleton exclusive while preserving the old one-host
     /// ceremony. V2 reservation cannot start before the legacy write ends.
+    private var legacyStorage: ScopedAppAttestStore {
+#if DEBUG
+        testV2Storage ?? ScopedAppAttestStore()
+#else
+        ScopedAppAttestStore()
+#endif
+    }
+
     private func beginLegacyRegistration() async throws -> Bool {
         guard BrokerV2Feature.enabled else { return false }
-        let storage = ScopedAppAttestStore()
+        let storage = legacyStorage
         try storage.beginLegacyGlobalWrite()
         do {
-            let inventory = try await InstallationTrustKeychain.shared.enrollmentInventoryRecords()
-            guard inventory.count <= 1 else { throw PlatformFailure.siteRootBindingUnavailable }
+            let count: Int
+#if DEBUG
+            if let testLegacyInventoryCount { count = try await testLegacyInventoryCount() }
+            else { count = try await InstallationTrustKeychain.shared.enrollmentInventoryRecords().count }
+#else
+            count = try await InstallationTrustKeychain.shared.enrollmentInventoryRecords().count
+#endif
+            guard count <= 1 else { throw PlatformFailure.siteRootBindingUnavailable }
             return true
         } catch { storage.endLegacyGlobalWrite(); throw error }
     }

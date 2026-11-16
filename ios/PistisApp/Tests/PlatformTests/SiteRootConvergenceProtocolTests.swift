@@ -340,6 +340,7 @@ final class SiteRootConvergenceProtocolTests: XCTestCase {
         let transport = RecordingBrokerTransport(recorder: recorder)
         let service = SiteRootConvergenceServiceV2(
             transport: transport,
+            scopedStorage: ScopedAppAttestStore(persistence: ScopedMemoryPersistence()),
             brokerProofFactory: { value in
                 try SiteRootConvergenceServiceV2.validateBrokerEnrolledSiteRootPublicKeyID(
                     value.enrolledSiteRootPublicKeyID,
@@ -608,6 +609,7 @@ final class SiteRootConvergenceProtocolTests: XCTestCase {
         let transport = RecordingBrokerTransport(recorder: recorder)
         let service = SiteRootConvergenceServiceV2(
             transport: transport,
+            scopedStorage: ScopedAppAttestStore(persistence: ScopedMemoryPersistence()),
             brokerProofFactory: { _ in
                 await recorder.record("proof")
                 return Data([0x01])

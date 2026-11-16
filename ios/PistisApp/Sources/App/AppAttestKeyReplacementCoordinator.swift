@@ -45,6 +45,8 @@ final class AppAttestKeyReplacementCoordinatorV1: ObservableObject {
     @Published private(set) var responseFileBytes: Data?
     private let producer: any AppAttestKeyReplacementProducingV1
     private let committer: any AppAttestKeyReplacementCommittingV1
+    private let scopedStorage: ScopedAppAttestStore
+    private let inventoryCount: @Sendable () async throws -> Int
     private var presentation: AppAttestKeyReplacementPresentationV1?
     private var staged: PendingAppAttestReplacementKeyV1?
 
@@ -55,7 +57,21 @@ final class AppAttestKeyReplacementCoordinatorV1: ObservableObject {
     ) {
         self.producer = producer
         self.committer = committer
+        scopedStorage = ScopedAppAttestStore()
+        inventoryCount = { try await InstallationTrustKeychain.shared.enrollmentInventoryRecords().count }
     }
+
+#if DEBUG
+    init(testProducer: any AppAttestKeyReplacementProducingV1,
+         testCommitter: any AppAttestKeyReplacementCommittingV1,
+         testStorage: ScopedAppAttestStore,
+         testInventoryCount: @escaping @Sendable () async throws -> Int) {
+        producer = testProducer
+        committer = testCommitter
+        scopedStorage = testStorage
+        inventoryCount = testInventoryCount
+    }
+#endif
 
     func accept(
         qrText: String,
@@ -96,7 +112,7 @@ final class AppAttestKeyReplacementCoordinatorV1: ObservableObject {
         }
         do {
             let claimed = try beginLegacyWrite()
-            defer { if claimed { ScopedAppAttestStore().endLegacyGlobalWrite() } }
+            defer { if claimed { scopedStorage.endLegacyGlobalWrite() } }
             try await requireLegacyReplacementSafe()
             phase = .producing
             let response = try await producer.produce(
@@ -127,7 +143,7 @@ final class AppAttestKeyReplacementCoordinatorV1: ObservableObject {
     ) async {
         do {
             let claimed = try beginLegacyWrite()
-            defer { if claimed { ScopedAppAttestStore().endLegacyGlobalWrite() } }
+            defer { if claimed { scopedStorage.endLegacyGlobalWrite() } }
             try await requireLegacyReplacementSafe()
             try commitGuarded(authenticated)
         } catch { phase = .failed }
@@ -140,7 +156,7 @@ final class AppAttestKeyReplacementCoordinatorV1: ObservableObject {
         }
         do {
             let claimed = try beginLegacyWrite()
-            defer { if claimed { ScopedAppAttestStore().endLegacyGlobalWrite() } }
+            defer { if claimed { scopedStorage.endLegacyGlobalWrite() } }
             try await requireLegacyReplacementSafe()
             phase = .submitting
             let authenticated = try await transport.submitAppAttestReplacement(
@@ -162,7 +178,7 @@ final class AppAttestKeyReplacementCoordinatorV1: ObservableObject {
 
     private func beginLegacyWrite() throws -> Bool {
         guard BrokerV2Feature.enabled else { return false }
-        try ScopedAppAttestStore().beginLegacyGlobalWrite()
+        try scopedStorage.beginLegacyGlobalWrite()
         return true
     }
 
@@ -184,10 +200,9 @@ final class AppAttestKeyReplacementCoordinatorV1: ObservableObject {
 
     private func requireLegacyReplacementSafe() async throws {
         guard BrokerV2Feature.enabled else { return }
-        let inventory = try await InstallationTrustKeychain.shared.enrollmentInventoryRecords()
-        let scoped = ScopedAppAttestStore()
-        guard inventory.count <= 1, try !scoped.hasAnyScopedBinding(),
-              try !scoped.hasSubmittedBrokerAttempt() else { throw PlatformFailure.siteRootBindingUnavailable }
+        let count = try await inventoryCount()
+        guard count <= 1, try !scopedStorage.hasAnyScopedBinding(),
+              try !scopedStorage.hasSubmittedBrokerAttempt() else { throw PlatformFailure.siteRootBindingUnavailable }
     }
 
     func restoreRetainedSubmission() {

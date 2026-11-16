@@ -121,7 +121,7 @@ final class RetainedSiteRootAcknowledgementTests: XCTestCase {
         let start = try XCTUnwrap(text.range(of: "    func acknowledge(_ presentation:"))
         let end = try XCTUnwrap(text.range(of: "    private static func siteRootDeviceKeyID", range: start.upperBound..<text.endIndex))
         let route = String(text[start.lowerBound..<end.lowerBound])
-        XCTAssertTrue(route.contains("try store.current()"))
+        XCTAssertTrue(route.contains("store.current(siteUUID: presentation.assertion.siteUUID)"))
         XCTAssertTrue(route.contains("try siteRoot.hasExistingKey(), try ack.hasExistingKey()"))
         XCTAssertTrue(route.contains("FaceIDCeremonyContext.authenticate"))
         for forbidden in [".create(", "registerAckKey(", "store.retain("] {

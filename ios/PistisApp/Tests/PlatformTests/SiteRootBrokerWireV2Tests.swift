@@ -88,7 +88,7 @@ final class SiteRootBrokerWireV2Tests: XCTestCase {
         let qr = try XCTUnwrap(String(data: fixture("qr"), encoding: .utf8))
         XCTAssertTrue(QRPayloadProfile.pistisAuthenticationOrMonasSiteRoot.accepts(qr))
         XCTAssertEqual(MonasJSONScanRoute.classify(qr), .siteRootDelegation)
-        let coordinator = SiteRootDelegationCoordinator(nowMillis: { self.now })
+        let coordinator = SiteRootDelegationCoordinator(testV2Storage: ScopedAppAttestStore(persistence: ScopedMemoryPersistence()), nowMillis: { self.now })
         coordinator.accept(qrText: qr)
         guard case .review = coordinator.phase else { return XCTFail("expected V2 review") }
         XCTAssertTrue(coordinator.isValidatedBrokerFirstDevice)

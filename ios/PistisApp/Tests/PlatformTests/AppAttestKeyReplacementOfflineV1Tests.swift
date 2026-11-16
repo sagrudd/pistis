@@ -209,6 +209,22 @@ final class AppAttestKeyReplacementOfflineV1Tests: XCTestCase {
     }
 
     @MainActor
+    func testMultipleInstallationsDenyLegacyReplacementBeforeProducing() async throws {
+        let producer = GuardedReplacementProducer()
+        let coordinator = AppAttestKeyReplacementCoordinatorV1(
+            testProducer: producer, testCommitter: RecordingCommitter(),
+            testStorage: ScopedAppAttestStore(persistence: ScopedMemoryPersistence()),
+            testInventoryCount: { 2 }
+        )
+        coordinator.accept(fileBytes: try presentation(), nowUnixMillis: 1_001)
+        await coordinator.approve(nowUnixMillis: 1_001)
+        XCTAssertEqual(coordinator.phase, .failed)
+        XCTAssertNil(coordinator.responseFileBytes)
+        let calls = await producer.calls
+        XCTAssertEqual(calls, 0)
+    }
+
+    @MainActor
     func testCoordinatorPromotesOnlyExactCanonicalAcceptedResult() async throws {
         let old = Data(repeating: 2, count: 32).base64EncodedString()
         let replacement = Data(repeating: 3, count: 32).base64EncodedString()
@@ -221,10 +237,12 @@ final class AppAttestKeyReplacementOfflineV1Tests: XCTestCase {
         let committer = RecordingCommitter()
         let submission = try canonicalSubmission()
         let coordinator = AppAttestKeyReplacementCoordinatorV1(
-            producer: FixedReplacementProducer(
+            testProducer: FixedReplacementProducer(
                 pending: pending, canonicalResponse: submission
             ),
-            committer: committer
+            testCommitter: committer,
+            testStorage: ScopedAppAttestStore(persistence: ScopedMemoryPersistence()),
+            testInventoryCount: { 0 }
         )
         coordinator.accept(fileBytes: try presentation(), nowUnixMillis: 1_001)
         await coordinator.approve(nowUnixMillis: 1_001)
@@ -245,10 +263,12 @@ final class AppAttestKeyReplacementOfflineV1Tests: XCTestCase {
 
         PXARAcceptanceURLProtocol.setResponse(try canonicalObject(acceptedObject()))
         let exact = AppAttestKeyReplacementCoordinatorV1(
-            producer: FixedReplacementProducer(
+            testProducer: FixedReplacementProducer(
                 pending: pending, canonicalResponse: submission
             ),
-            committer: committer
+            testCommitter: committer,
+            testStorage: ScopedAppAttestStore(persistence: ScopedMemoryPersistence()),
+            testInventoryCount: { 0 }
         )
         exact.accept(fileBytes: try presentation(), nowUnixMillis: 1_001)
         await exact.approve(nowUnixMillis: 1_001)
@@ -271,10 +291,12 @@ final class AppAttestKeyReplacementOfflineV1Tests: XCTestCase {
         )
         let committer = RecordingCommitter()
         let first = AppAttestKeyReplacementCoordinatorV1(
-            producer: FixedReplacementProducer(
+            testProducer: FixedReplacementProducer(
                 pending: pending, canonicalResponse: submission
             ),
-            committer: committer
+            testCommitter: committer,
+            testStorage: ScopedAppAttestStore(persistence: ScopedMemoryPersistence()),
+            testInventoryCount: { 0 }
         )
         first.accept(fileBytes: try presentation(), nowUnixMillis: 1_001)
         await first.approve(nowUnixMillis: 1_001)
@@ -290,7 +312,9 @@ final class AppAttestKeyReplacementOfflineV1Tests: XCTestCase {
         // At real relaunch time the presentation is expired. Reconciliation
         // still resubmits only the already-generated durable bytes.
         let relaunched = AppAttestKeyReplacementCoordinatorV1(
-            producer: FailingReplacementProducer(), committer: committer
+            testProducer: FailingReplacementProducer(), testCommitter: committer,
+            testStorage: ScopedAppAttestStore(persistence: ScopedMemoryPersistence()),
+            testInventoryCount: { 0 }
         )
         relaunched.restoreRetainedSubmission()
         XCTAssertEqual(relaunched.phase, .responseReady)
@@ -313,10 +337,12 @@ final class AppAttestKeyReplacementOfflineV1Tests: XCTestCase {
         )
         let committer = RecordingCommitter()
         let coordinator = AppAttestKeyReplacementCoordinatorV1(
-            producer: FixedReplacementProducer(
+            testProducer: FixedReplacementProducer(
                 pending: pending, canonicalResponse: submission
             ),
-            committer: committer
+            testCommitter: committer,
+            testStorage: ScopedAppAttestStore(persistence: ScopedMemoryPersistence()),
+            testInventoryCount: { 0 }
         )
         coordinator.accept(fileBytes: try presentation(), nowUnixMillis: 1_001)
         await coordinator.approve(nowUnixMillis: 1_001)
@@ -475,6 +501,16 @@ private final class ReplacementAppAttestService: AppleAppAttestServicing, @unche
         return Data(repeating: 6, count: 64)
     }
     func generateAssertion(_: String, clientDataHash _: Data) async throws -> Data { Data() }
+}
+
+private actor GuardedReplacementProducer: AppAttestKeyReplacementProducingV1 {
+    private(set) var calls = 0
+    func produce(
+        _: AppAttestKeyReplacementPresentationV1, nowUnixMillis _: UInt64
+    ) async throws -> StagedAppAttestKeyReplacementResponseV1 {
+        calls += 1
+        throw PlatformFailure.appAttestInvalidInput
+    }
 }
 
 private struct FixedReplacementProducer: AppAttestKeyReplacementProducingV1 {

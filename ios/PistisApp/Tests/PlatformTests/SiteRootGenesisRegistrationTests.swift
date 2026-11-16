@@ -84,7 +84,8 @@ final class SiteRootGenesisRegistrationTests: XCTestCase {
         let transport = ProductionMonasSiteRootTransportFactory.make(verifiedRuntimeProfile: profile)
         XCTAssertTrue(transport is MonasSiteRootDelegationTransport)
         let coordinator = SiteRootDelegationCoordinator(
-            transport: transport, nowMillis: { 1_794_221_500_013 }
+            testTransport: transport, testV2Storage: ScopedAppAttestStore(persistence: ScopedMemoryPersistence()),
+            testLegacyInventoryCount: { 0 }, nowMillis: { 1_794_221_500_013 }
         )
         coordinator.accept(qrText: text)
         guard case .review = coordinator.phase else {

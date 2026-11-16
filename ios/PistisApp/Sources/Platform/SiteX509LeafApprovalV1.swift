@@ -34,6 +34,8 @@ struct SiteX509LeafApprovalPresentationV1: Sendable {
     let delegationSerial: String
     let delegationExpiresAt: UInt64
     let siteUUID: Data
+    let monasLeafSPKISHA256: Data
+    let monasIPSetSHA256: Data
 
     init(data: Data, nowUnixSeconds: UInt64) throws {
         let wire: Wire
@@ -63,6 +65,8 @@ struct SiteX509LeafApprovalPresentationV1: Sendable {
         delegationSerial = wire.delegationSerial
         delegationExpiresAt = wire.delegationExpiresAt
         siteUUID = parsed.siteUUID
+        monasLeafSPKISHA256 = parsed.monasLeafSPKISHA256
+        monasIPSetSHA256 = parsed.monasIPSetSHA256
     }
 
     func validateCurrentSigner(_ record: SiteRootConvergenceAckRecordV2) throws {
@@ -114,6 +118,8 @@ struct SiteX509LeafApprovalPresentationV1: Sendable {
         let deviceKeyGeneration: UInt64
         let issuedAt: UInt64
         let expiresAt: UInt64
+        let monasLeafSPKISHA256: Data
+        let monasIPSetSHA256: Data
 
         init(_ data: Data) throws {
             guard data.count >= 8, data.prefix(7) == Data("PXLA/v1".utf8), data[7] == 1 else {
@@ -162,6 +168,8 @@ struct SiteX509LeafApprovalPresentationV1: Sendable {
             deviceKeyGeneration = generation
             issuedAt = issued
             expiresAt = expires
+            monasLeafSPKISHA256 = fields[18]
+            monasIPSetSHA256 = fields[19]
         }
 
         private static func identifier(_ value: Data) -> Bool {
@@ -292,7 +300,7 @@ final class SecureEnclaveSiteX509LeafApprovalProducerV1: @unchecked Sendable {
         _ presentation: SiteX509LeafApprovalPresentationV1,
         using ceremony: FaceIDCeremonyContext
     ) throws -> SiteX509LeafApprovalSubmissionV1 {
-        let record = try store.current()
+        let record = try BrokerV2Feature.enabled ? store.current(siteUUID: presentation.siteUUID) : store.current()
         try presentation.validateCurrentSigner(record)
         let signer = try SecureEnclaveSigner(
             namespace: "site-root-convergence-ack-v2",

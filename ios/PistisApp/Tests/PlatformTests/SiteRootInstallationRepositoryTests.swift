@@ -178,32 +178,20 @@ final class SiteRootInstallationRepositoryTests: XCTestCase {
         XCTAssertEqual(records[0].setupPhase, .authorityCustodyRequired)
     }
 
-    func testSignedNativeProfileRebindsBrokerSetupAndRestoresCustodyPhase() throws {
-        let suite = "pistis-site-root-native-rebind-tests-\(UUID().uuidString)"
+    func testNativeRecoveryDoesNotRelabelBrokerSetup() throws {
+        let suite = "pistis-site-root-no-global-rebind-" + UUID().uuidString
         let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
         defer { defaults.removePersistentDomain(forName: suite) }
         let repository = SiteRootInstallationRepository(defaults: defaults)
         try repository.recordRecoveredFirstCeremony(
-            authorityHost: "install.mnemosyne.co.uk",
-            redactedReference: "abc123…def4",
-            registeredAt: Date(timeIntervalSince1970: 1_000)
-        )
-        try repository.recordBrokeredSiteX509Completed()
-        // 0.22.1--0.22.7 incorrectly projected brokered X.509 completion as
-        // identity-ready. A signed native profile must not trust that local
-        // projection as proof that host authority custody completed.
-        try repository.recordAuthorityCustodyCompleted(
-            authorityHost: "install.mnemosyne.co.uk"
-        )
-
-        try repository.bindBrokeredSetup(toNativeAuthorityHost: "192.168.0.193")
-        try repository.bindBrokeredSetup(toNativeAuthorityHost: "192.168.0.193")
-
+            authorityHost: "install.mnemosyne.co.uk", redactedReference: "abc123…def4",
+            registeredAt: Date(timeIntervalSince1970: 1_000))
+        try repository.recordRecoveredFirstCeremony(
+            authorityHost: "host-a.example.test", redactedReference: "hostaa…0001",
+            registeredAt: Date(timeIntervalSince1970: 2_000))
         let records = try repository.records()
-        let record = try XCTUnwrap(records.first)
-        XCTAssertEqual(records.count, 1)
-        XCTAssertEqual(record.authorityHost, "192.168.0.193")
-        XCTAssertEqual(record.setupPhase, .authorityCustodyRequired)
+        XCTAssertEqual(Set(records.map(\.authorityHost)), ["install.mnemosyne.co.uk", "host-a.example.test"])
+        XCTAssertEqual(records.count, 2)
     }
 
     func testReconciliationResponseAcceptsOnlyProofConsumedOrCompleted() throws {

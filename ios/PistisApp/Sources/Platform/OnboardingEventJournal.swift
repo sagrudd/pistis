@@ -553,7 +553,7 @@ extension PlatformFailure {
             .secureHardware
         case .appAttestUnavailable, .appAttestInvalidInput,
              .appAttestKeyCreationFailed, .appAttestAttestationFailed,
-             .appAttestAssertionFailed:
+             .appAttestAssertionFailed, .siteRootGenesisRegistrationPreparationFailed:
             .appAttest
         case .siteRootGenesisDelegationTimedOut:
             .timeout

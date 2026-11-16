@@ -463,7 +463,7 @@ final class MonasFirstWebLoginIPhoneSimulatorTests: XCTestCase {
         }
 
         var custodyWasChecked = false
-        await coordinator.approveVerifiedLoginIntent {
+        await coordinator.approveVerifiedLoginIntent { _ in
             custodyWasChecked = true
             throw PlatformFailure.siteRootAuthorityUnavailable
         }
@@ -839,13 +839,16 @@ struct SimulatorAuthenticationFixture {
         audience: String,
         authorisedAudiences: Set<String>,
         challengeInstallationID: Data? = nil,
+        installationKeyID: Data = Data(repeating: 0x21, count: 32),
+        deviceKeyID: Data = Data(repeating: 0x92, count: 32),
+        origin: String = "https://192.168.0.193:8443",
         issuedAtMilliseconds: UInt64 = 1_700_000_000_000,
         expiresAtMilliseconds: UInt64 = 1_700_000_120_000,
         submitEndpoint: String =
             "https://192.168.0.193:8443/auth/pistis/v2/submit"
     ) throws {
         let key = P256.Signing.PrivateKey()
-        let keyID = Data(repeating: 0x21, count: 32)
+        let keyID = installationKeyID
         let fingerprint = Data(repeating: 0x31, count: 32)
         let payload = Self.challenge(
             installationID: challengeInstallationID ?? installationID,
@@ -885,12 +888,12 @@ struct SimulatorAuthenticationFixture {
             trust: trust,
             responseContext: DeviceResponseContext(
                 deviceID: Data(repeating: 0x91, count: 16),
-                deviceKeyID: Data(repeating: 0x92, count: 32),
+                deviceKeyID: deviceKeyID,
                 userID: trust.userID,
                 externalIdentityID: trust.externalIdentityID
             ),
-            allowedHosts: ["192.168.0.193"],
-            httpsOrigin: "https://192.168.0.193:8443",
+            allowedHosts: [URL(string: origin)!.host!],
+            httpsOrigin: origin,
             tlsSPKISHA256: Data(repeating: 0x93, count: 32)
         )
     }

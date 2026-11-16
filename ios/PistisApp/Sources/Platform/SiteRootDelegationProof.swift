@@ -281,6 +281,14 @@ final class SecureEnclaveSiteRootProofProducer: @unchecked Sendable {
         )
     }
 
+    func signFirstDeviceStatus(_ transcript: FirstDeviceStatusTranscriptV2) throws -> Data {
+        guard let registration = try existingRegistration(),
+              Data(SHA256.hash(data: registration.publicKeyCompressedSEC1)) == transcript.siteRootKeyDigest
+        else { throw PlatformFailure.invalidConfiguration }
+        let message = try FirstDeviceStatusProofV2.messages(statusHash: transcript.clientDataHash()).siteRoot
+        return try signer.sign(message: message)
+    }
+
     func prove(_ presentation: SiteRootDelegationPresentationV1) throws
         -> SiteRootDelegationSubmissionV1
     {

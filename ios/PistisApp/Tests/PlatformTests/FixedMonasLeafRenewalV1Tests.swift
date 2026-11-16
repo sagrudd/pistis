@@ -18,6 +18,11 @@ final class FixedMonasLeafRenewalV1Tests: XCTestCase {
             targetIDB64URL: "public", ackPublicKeyB64URL: "public", generation: 1
         )
         XCTAssertNoThrow(try statement.validateCurrentSigner(current))
+        let otherSite = SiteRootConvergenceAckRecordV2(
+            siteUUID: "02020202-0202-0202-0202-020202020202",
+            targetIDB64URL: "public", ackPublicKeyB64URL: "public", generation: 1
+        )
+        XCTAssertThrowsError(try statement.validateCurrentSigner(otherSite))
         let stale = SiteRootConvergenceAckRecordV2(
             siteUUID: current.siteUUID, targetIDB64URL: "public",
             ackPublicKeyB64URL: "public", generation: 2

@@ -10,6 +10,7 @@
 
 mod app_attest_session_handoff;
 mod binding;
+mod first_device_status_app_attest;
 mod mobile_enrolment_receipt;
 mod physical_iphone_vector;
 mod readiness;
@@ -28,6 +29,11 @@ pub use app_attest_session_handoff::{
 pub use binding::{
     BindingExpectation, BindingFailure, BindingResolver, BindingState, Generation,
     OperationPurpose, ResolvedBinding,
+};
+pub use first_device_status_app_attest::{
+    FirstDeviceStatusAppAttestAcceptanceV2, FirstDeviceStatusAppAttestBindingV2,
+    FirstDeviceStatusAppAttestOutcomeV2, FirstDeviceStatusAppAttestRequestV2,
+    first_device_status_client_data_hash_v2, verify_first_device_status_app_attest_assertion_v2,
 };
 pub use mobile_enrolment_receipt::{
     ExpectedProviderEnrolmentConfirmationV2, MobileEnrolmentReceiptErrorV2,

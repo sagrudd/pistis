@@ -97,6 +97,7 @@ Architecture and operations
    adr/0041-explicit-local-device-reset
    adr/0042-basecamp-vault-migration-iphone-protocol
    adr/0045-phone-held-site-root-issuer-ceremony
+   adr/0046-multiple-installations-app-attest-isolation
    protocol/README
    protocol/domain-model
    protocol/action-approval

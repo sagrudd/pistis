@@ -908,8 +908,18 @@ struct SiteRootConvergenceAckRecordV2: Codable, Equatable, Sendable {
 }
 
 final class SiteRootConvergenceAckStoreV2: @unchecked Sendable {
-    private let service = "org.mnemosyne.pistis.site-root-convergence-ack-v2"
+    private let service: String
     private let account = "registration"
+
+    init() { service = "org.mnemosyne.pistis.site-root-convergence-ack-v2" }
+#if DEBUG
+    init(testService: String) throws {
+        let prefix = "org.mnemosyne.pistis.test.ack."
+        guard testService.hasPrefix(prefix), UUID(uuidString: String(testService.dropFirst(prefix.count))) != nil
+        else { throw PlatformFailure.invalidConfiguration }
+        service = testService
+    }
+#endif
 
     func retain(_ record: SiteRootConvergenceAckRecordV2) throws {
         if let existing = try load() {
@@ -929,6 +939,45 @@ final class SiteRootConvergenceAckStoreV2: @unchecked Sendable {
         }
     }
 
+    /// Keeps a separate create-once projection per site, without modifying
+    /// the legacy registration or the shared Secure Enclave signer.
+    func retainScoped(_ record: SiteRootConvergenceAckRecordV2) throws {
+        guard let site = SiteRootConvergenceEncoding.uuidBytes(record.siteUUID) else { throw PlatformFailure.invalidConfiguration }
+        let scopedAccount = "site." + site.map { String(format: "%02x", $0) }.joined()
+        if let legacy = try load(), SiteRootConvergenceEncoding.uuidBytes(legacy.siteUUID) == site {
+            guard legacy == record else { throw PlatformFailure.invalidConfiguration }
+            return
+        }
+        if let existing = try load(account: scopedAccount) {
+            guard existing == record else { throw PlatformFailure.invalidConfiguration }
+            return
+        }
+        let data = try JSONEncoder().encode(record)
+        let query: [CFString: Any] = [kSecClass: kSecClassGenericPassword, kSecAttrService: service,
+            kSecAttrAccount: scopedAccount, kSecAttrAccessible: kSecAttrAccessibleWhenUnlockedThisDeviceOnly,
+            kSecValueData: data]
+        let status = SecItemAdd(query as CFDictionary, nil)
+        if status == errSecDuplicateItem {
+            guard try load(account: scopedAccount) == record else { throw PlatformFailure.invalidConfiguration }
+        } else if status != errSecSuccess { throw PlatformFailure.enrolmentStorageFailed }
+    }
+
+    func current(siteUUID: Data) throws -> SiteRootConvergenceAckRecordV2 {
+        guard siteUUID.count == 16 else { throw PlatformFailure.invalidConfiguration }
+        let scopedAccount = "site." + siteUUID.map { String(format: "%02x", $0) }.joined()
+        if let value = try load(account: scopedAccount) {
+            guard SiteRootConvergenceEncoding.uuidBytes(value.siteUUID) == siteUUID, value.generation > 0
+            else { throw PlatformFailure.invalidConfiguration }
+            if let legacy = try load(), SiteRootConvergenceEncoding.uuidBytes(legacy.siteUUID) == siteUUID {
+                guard legacy == value else { throw PlatformFailure.invalidConfiguration }
+            }
+            return value
+        }
+        guard let legacy = try load(), SiteRootConvergenceEncoding.uuidBytes(legacy.siteUUID) == siteUUID,
+              legacy.generation > 0 else { throw PlatformFailure.siteRootAuthorityUnavailable }
+        return legacy
+    }
+
     /// Loads the exact enrolled acknowledgement signer binding. This exposes
     /// public identifiers only and never creates or repairs a signer.
     func current() throws -> SiteRootConvergenceAckRecordV2 {
@@ -945,7 +994,6 @@ final class SiteRootConvergenceAckStoreV2: @unchecked Sendable {
         let query: [CFString: Any] = [
             kSecClass: kSecClassGenericPassword,
             kSecAttrService: service,
-            kSecAttrAccount: account,
         ]
         let status = SecItemDelete(query as CFDictionary)
         guard status == errSecSuccess || status == errSecItemNotFound else {
@@ -953,11 +1001,11 @@ final class SiteRootConvergenceAckStoreV2: @unchecked Sendable {
         }
     }
 
-    private func load() throws -> SiteRootConvergenceAckRecordV2? {
+    private func load(account requestedAccount: String? = nil) throws -> SiteRootConvergenceAckRecordV2? {
         let query: [CFString: Any] = [
             kSecClass: kSecClassGenericPassword,
             kSecAttrService: service,
-            kSecAttrAccount: account,
+            kSecAttrAccount: requestedAccount ?? account,
             kSecReturnData: true,
             kSecMatchLimit: kSecMatchLimitOne,
         ]
@@ -1148,6 +1196,11 @@ struct SiteRootConvergenceServiceV2: Sendable {
         _ presentation: SiteX509FirstProvisionBrokerPresentationV1,
         progress: (SiteX509BrokerApprovalStageV1) -> Void = { _ in }
     ) async throws {
+        let scopedStorage = ScopedAppAttestStore()
+        let pending = try BrokerV2Feature.enabled
+            ? scopedStorage.submittedBrokerAttempt(correlation: presentation.correlation, siteUUID: presentation.siteUUID) : nil
+        if let pending { try scopedStorage.beginSubmittedPoll(attemptID: pending.attemptID, expected: pending) }
+        defer { if pending != nil { scopedStorage.endDispatch() } }
         // The fixed broker reservation is deliberately the first side effect.
         // It consumes the QR even when Face ID, App Attest, signing, or the
         // later proof submission fails; a failed authorization must not make
@@ -1168,10 +1221,11 @@ struct SiteRootConvergenceServiceV2: Sendable {
                 expectedSiteUUID: presentation.siteUUID,
                 transport: continuation,
                 authorizer: SecureEnclaveSiteX509BrokerContinuationAuthorizerV2(
-                    ceremony: ceremony, store: store
+                    ceremony: ceremony, store: store, pendingBrokerAttempt: pending, scopedStorage: scopedStorage
                 ),
                 progress: progress
             )
+            if let pending { try await continueProvisionalBrokerCustody(pending, storage: scopedStorage) }
         }
     }
 
@@ -1183,6 +1237,11 @@ struct SiteRootConvergenceServiceV2: Sendable {
         guard let continuation = continuationTransport else {
             throw PlatformFailure.siteRootAuthorityUnavailable
         }
+        let scopedStorage = ScopedAppAttestStore()
+        let pending = try BrokerV2Feature.enabled
+            ? scopedStorage.submittedBrokerAttempt(correlation: presentation.correlation, siteUUID: presentation.siteUUID) : nil
+        if let pending { try scopedStorage.beginSubmittedPoll(attemptID: pending.attemptID, expected: pending) }
+        defer { if pending != nil { scopedStorage.endDispatch() } }
         progress(.awaitingFaceID)
         let ceremony = try await FaceIDCeremonyContext.authenticate(
             reason: "Resume accepted Site X.509 custody and certificate approval"
@@ -1192,10 +1251,77 @@ struct SiteRootConvergenceServiceV2: Sendable {
             expectedSiteUUID: presentation.siteUUID,
             transport: continuation,
             authorizer: SecureEnclaveSiteX509BrokerContinuationAuthorizerV2(
-                ceremony: ceremony, store: store
+                ceremony: ceremony, store: store, pendingBrokerAttempt: pending, scopedStorage: scopedStorage
             ),
             progress: progress
         )
+        if let pending { try await continueProvisionalBrokerCustody(pending, storage: scopedStorage) }
+    }
+
+    /// A lost assertion/begin/complete response stays pending and is never
+    /// replayed automatically. The pinned host must later reconcile it.
+    private func continueProvisionalBrokerCustody(_ pending: ScopedAppAttestPending,
+                                                  storage: ScopedAppAttestStore) async throws {
+        try storage.requireFreshCustodyStep("assertion", pending: pending)
+        guard pending.siteClaim.hasPrefix("site-"),
+              let site = SiteRootConvergenceEncoding.uuidBytes(String(pending.siteClaim.dropFirst(5))),
+              let leaf = try storage.provisionalLeaf(attemptID: pending.attemptID),
+              leaf.attemptID == pending.attemptID else { throw PlatformFailure.siteRootBindingUnavailable }
+        var uuid = pending.attemptID.uuid
+        let operation = withUnsafeBytes(of: &uuid) { Data($0) }
+        let digest = Data(SHA256.hash(data: Data("mnemosyne.monas.first-device.correlation.v2\0".utf8) + pending.correlation))
+        let handoff = try SiteX509LeafHandoffV2(data: leaf.wrapper, operationID: operation,
+            correlationDigest: digest, expectedSiteUUID: site, nowUnixSeconds: leaf.verifiedAtSeconds)
+        let native = try MonasAppAttestTransport(authorityOrigin: handoff.nativeOrigin,
+            expectedSPKISHA256: handoff.presentation.monasLeafSPKISHA256)
+        let recovery = try KeychainFirstAuthorityRecoveryEnvelopeStore(site: pending.siteClaim, attemptID: pending.attemptID)
+        let producer = try SecureEnclaveFirstAuthorityCustodyProducerV2(
+            authenticationReason: "Approve this exact first-authority custody rotation", store: recovery)
+        try await driveProvisionalBrokerCustody(pending, storage: storage, native: native,
+            appAttest: AppleAppAttestClient(), producer: producer, now: Self.nowUnixSeconds)
+    }
+
+    private func driveProvisionalBrokerCustody(_ pending: ScopedAppAttestPending, storage: ScopedAppAttestStore,
+        native: MonasAppAttestTransport, appAttest: AppleAppAttestClient,
+        producer: SecureEnclaveFirstAuthorityCustodyProducerV2, now: @Sendable () throws -> UInt64) async throws {
+        try storage.requireFreshCustodyStep("assertion", pending: pending)
+        let challenge = try await native.fetchBrokerCustodyChallengeV2(pending: pending,
+            now: now).challenge
+        let assertion = try await appAttest.preparePendingCustodyRotationAssertion(
+            challenge: challenge, storage: storage, attemptID: pending.attemptID,
+            verifiedInstallationID: challenge.installationID)
+        try storage.markCustodyStep("assertion", pending: pending)
+        try await native.submitAssertion(assertion)
+        let commitment = try producer.prepareInitialRotation()
+        try storage.markCustodyStep("begin", pending: pending)
+        let presentation = try await native.beginFirstAuthorityCustodyRotationV2(
+            commitment, nowUnixSeconds: now())
+        let submission = try producer.completeInitialRotation(presentation)
+        try storage.markCustodyStep("complete", pending: pending)
+        _ = try await native.completeFirstAuthorityCustodyRotationV2(submission)
+    }
+
+#if DEBUG
+    func testOnlyDriveProvisionalCustody(_ pending: ScopedAppAttestPending, storage: ScopedAppAttestStore,
+        native: MonasAppAttestTransport, appAttest: AppleAppAttestClient,
+        producer: SecureEnclaveFirstAuthorityCustodyProducerV2, now: @Sendable () throws -> UInt64) async throws {
+        try await driveProvisionalBrokerCustody(pending, storage: storage, native: native,
+                                                appAttest: appAttest, producer: producer, now: now)
+    }
+#endif
+
+    /// Retry only the unsent native transition, never the earlier broker or
+    /// leaf submissions. Durable step markers deny ambiguous replays.
+    func retryProvisionalBrokerCustody(correlation: Data, siteUUID: String) async throws {
+        let storage = ScopedAppAttestStore()
+        guard let pending = try storage.submittedBrokerAttempt(correlation: correlation, siteUUID: siteUUID),
+              try storage.provisionalLeaf(attemptID: pending.attemptID) != nil else {
+            throw PlatformFailure.siteRootBindingUnavailable
+        }
+        try storage.requireFreshCustodyStep("assertion", pending: pending)
+        try storage.beginSubmittedPoll(attemptID: pending.attemptID, expected: pending)
+        defer { storage.endDispatch() }
+        try await continueProvisionalBrokerCustody(pending, storage: storage)
     }
 
     static func validateBrokerEnrolledSiteRootPublicKeyID(
@@ -1293,7 +1419,7 @@ struct SiteRootConvergenceServiceV2: Sendable {
     }
 
     func acknowledge(_ presentation: SiteRootConvergenceAckPresentationV2) async throws {
-        let record = try store.current()
+        let record = try BrokerV2Feature.enabled ? store.current(siteUUID: presentation.assertion.siteUUID) : store.current()
         let ceremony = try await FaceIDCeremonyContext.authenticate(
             reason: "Approve this exact Site Root HTTPS convergence"
         )

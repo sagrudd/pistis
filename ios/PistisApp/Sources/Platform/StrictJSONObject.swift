@@ -14,17 +14,18 @@ struct StrictJSONObject {
 
     let values: [String: Value]
 
-    init(data: Data, maximumBytes: Int) throws {
-        guard !data.isEmpty, data.count <= maximumBytes else {
+    init(data: Data, maximumBytes: Int, maximumStringBytes: Int = 4_096) throws {
+        guard !data.isEmpty, data.count <= maximumBytes, maximumStringBytes > 0 else {
             throw GitHubDeviceFlowFailure.malformedResponse
         }
-        var parser = Parser(bytes: Array(data))
+        var parser = Parser(bytes: Array(data), maximumStringBytes: min(maximumStringBytes, maximumBytes))
         values = try parser.parse()
     }
 }
 
 private struct Parser {
     let bytes: [UInt8]
+    let maximumStringBytes: Int
     var index = 0
 
     mutating func parse() throws -> [String: StrictJSONObject.Value] {
@@ -122,7 +123,7 @@ private struct Parser {
         try consume(0x22)
         var escaped = false
         while let byte = current {
-            guard index - start <= 4_096 else {
+            guard index - start <= maximumStringBytes else {
                 throw GitHubDeviceFlowFailure.malformedResponse
             }
             if escaped {

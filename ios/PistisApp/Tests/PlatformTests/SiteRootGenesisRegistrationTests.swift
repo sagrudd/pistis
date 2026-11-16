@@ -1,4 +1,5 @@
 import Foundation
+import CoreImage
 import XCTest
 
 @testable import Pistis
@@ -60,6 +61,69 @@ final class SiteRootGenesisRegistrationTests: XCTestCase {
         let current = UInt64(Date().timeIntervalSince1970 * 1_000)
         coordinator.accept(qrText: brokerQR(expiry: current - 1))
         XCTAssertEqual(coordinator.phase, .failed(.siteRootGenesisPresentationExpired))
+    }
+
+    @MainActor
+    func testMonasBrokerPNGWithExistingAuthority() async throws {
+        let fixture = URL(fileURLWithPath: #filePath).deletingLastPathComponent()
+            .deletingLastPathComponent().appendingPathComponent("Fixtures/monas-broker-genesis-synthetic.png")
+        let image = try XCTUnwrap(CIImage(contentsOf: fixture))
+        let detector = try XCTUnwrap(CIDetector(ofType: CIDetectorTypeQRCode, context: nil,
+                                               options: [CIDetectorAccuracy: CIDetectorAccuracyHigh]))
+        let feature = try XCTUnwrap(detector.features(in: image).first as? CIQRCodeFeature)
+        let text = try XCTUnwrap(feature.messageString)
+        XCTAssertTrue(QRPayloadProfile.pistisAuthenticationOrMonasSiteRoot.accepts(text))
+        XCTAssertEqual(MonasJSONScanRoute.classify(text), .siteRootDelegation)
+        let profile: [String: Any] = [
+            MonasSiteRootAuthorityConfiguration.infoDictionaryKey: "https://monas.example.test",
+            MonasSiteRootAuthorityConfiguration.trustModeInfoDictionaryKey:
+                MonasSiteRootAuthorityConfiguration.bootstrapTrustMode,
+            MonasSiteRootAuthorityConfiguration.spkiInfoDictionaryKey:
+                "ERERERERERERERERERERERERERERERERERERERERERE",
+        ]
+        let transport = ProductionMonasSiteRootTransportFactory.make(verifiedRuntimeProfile: profile)
+        XCTAssertTrue(transport is MonasSiteRootDelegationTransport)
+        let coordinator = SiteRootDelegationCoordinator(
+            transport: transport, nowMillis: { 1_794_221_500_013 }
+        )
+        coordinator.accept(qrText: text)
+        guard case .review = coordinator.phase else {
+            return XCTFail("Expected broker review with an existing authority")
+        }
+        XCTAssertTrue(coordinator.isValidatedBrokerFirstDevice)
+        await coordinator.approve()
+        XCTAssertEqual(coordinator.phase, .failed(.siteRootBindingUnavailable))
+        coordinator.accept(qrText: genesisQR(expiry: 1_794_221_560_013))
+        guard case .review = coordinator.phase else {
+            return XCTFail("Expected retained native authority review")
+        }
+        XCTAssertFalse(coordinator.isValidatedBrokerFirstDevice)
+        coordinator.accept(qrText: brokerQR(
+            registrationURL: "https://other.example.test/api/first-install/v1/pistis/site-root-genesis/registration",
+            expiry: 1_794_221_560_013
+        ))
+        XCTAssertEqual(coordinator.phase, .failed(.invalidFirstDevicePresentation))
+        XCTAssertFalse(coordinator.isValidatedBrokerFirstDevice)
+        XCTAssertNil(coordinator.presentedReview)
+    }
+
+    @MainActor
+    func testExistingAuthorityAcceptsFixedBrokerGenesisInvitation() throws {
+        let profile: [String: Any] = [
+            MonasSiteRootAuthorityConfiguration.infoDictionaryKey: "https://monas.example.test",
+            MonasSiteRootAuthorityConfiguration.trustModeInfoDictionaryKey:
+                MonasSiteRootAuthorityConfiguration.bootstrapTrustMode,
+            MonasSiteRootAuthorityConfiguration.spkiInfoDictionaryKey:
+                "ERERERERERERERERERERERERERERERERERERERERERE",
+        ]
+        let transport = ProductionMonasSiteRootTransportFactory.make(verifiedRuntimeProfile: profile)
+        XCTAssertTrue(transport is MonasSiteRootDelegationTransport)
+        let coordinator = SiteRootDelegationCoordinator(transport: transport)
+        let current = UInt64(Date().timeIntervalSince1970 * 1_000)
+        coordinator.accept(qrText: brokerQR(expiry: current + 60_000))
+        guard case .review = coordinator.phase else {
+            return XCTFail("Expected fixed broker invitation review, got \(coordinator.phase)")
+        }
     }
 
     func testGenesisResultMustBindTheReturnedDelegationToTheSubmittedPublicKey() throws {
@@ -513,7 +577,7 @@ private final class RegistrationProgressRecorder: @unchecked Sendable {
     }
 }
 
-private final class GenesisBrokerURLProtocol: URLProtocol, @unchecked Sendable {
+final class GenesisBrokerURLProtocol: URLProtocol, @unchecked Sendable {
     enum ResponseMode {
         case ready
         case pending
@@ -523,11 +587,13 @@ private final class GenesisBrokerURLProtocol: URLProtocol, @unchecked Sendable {
     private static let lock = NSLock()
     nonisolated(unsafe) private static var capturedRequests: [URLRequest] = []
     nonisolated(unsafe) static var mode: ResponseMode = .ready
+    nonisolated(unsafe) static var delegationOverride: String?
 
     static func reset() {
         lock.lock()
         capturedRequests = []
         mode = .ready
+        delegationOverride = nil
         lock.unlock()
     }
 
@@ -566,7 +632,7 @@ private final class GenesisBrokerURLProtocol: URLProtocol, @unchecked Sendable {
                 body = Data("{\"schema\":\"\(MonasSiteRootGenesisBrokerEndpointV1.responseSchema)\",\"state\":\"pending\"}".utf8)
             } else {
                 let canonical = "{\"device_key_id\":\"site-root-1234\",\"proof_profile\":\"pistis-secure-enclave-es256-cose-v1\",\"schema\":\"monas.site-root-delegation.v1\",\"secure_enclave_attestation\":\"not-asserted\",\"site_trust_domain\":\"site-demo-1\"}"
-                let result = "{\"schema\":\"monas.site-root-genesis-registration-result.v1\",\"canonical_delegation_base64url\":\"\(Self.base64URL(Data(canonical.utf8)))\",\"device_key_id\":\"site-root-1234\",\"site_trust_domain\":\"site-demo-1\",\"submit_url\":\"https://customer.example.test/auth/pistis/site-root-delegations/v1/submit\",\"reference\":\"genesis-reference-1\"}"
+                let result = Self.delegationOverride ?? "{\"schema\":\"monas.site-root-genesis-registration-result.v1\",\"canonical_delegation_base64url\":\"\(Self.base64URL(Data(canonical.utf8)))\",\"device_key_id\":\"site-root-1234\",\"site_trust_domain\":\"site-demo-1\",\"submit_url\":\"https://customer.example.test/auth/pistis/site-root-delegations/v1/submit\",\"reference\":\"genesis-reference-1\"}"
                 body = Data("{\"schema\":\"\(MonasSiteRootGenesisBrokerEndpointV1.responseSchema)\",\"state\":\"ready\",\"delegation_b64url\":\"\(Self.base64URL(Data(result.utf8)))\"}".utf8)
             }
             status = 200

@@ -21,12 +21,12 @@ final class FixedMonasLeafRenewalProducerV1: @unchecked Sendable {
         guard Self.matchesIndependentDigest(independentlyReadDigest, presentation: presentation) else {
             throw PlatformFailure.siteRootAuthorityUnavailable
         }
-        let first = try store.current()
+        let first = try store.current(siteUUID: presentation.statement.siteUUID)
         try presentation.statement.validateCurrentSigner(first)
         let ceremony = try await FaceIDCeremonyContext.authenticate(
             reason: "Approve the displayed Monas HTTPS certificate successor"
         )
-        let current = try store.current()
+        let current = try store.current(siteUUID: presentation.statement.siteUUID)
         guard current == first else { throw PlatformFailure.siteRootAuthorityUnavailable }
         try presentation.statement.validateCurrentSigner(current)
         let time = Date().timeIntervalSince1970
@@ -38,6 +38,10 @@ final class FixedMonasLeafRenewalProducerV1: @unchecked Sendable {
             authenticationReason: "Approve this exact Monas HTTPS certificate successor"
         )
         guard try signer.hasExistingKey() else { throw PlatformFailure.keyNotFound }
+        let publicKey = try signer.publicKey(using: ceremony).compressedSEC1
+        guard SiteRootConvergenceEncoding.base64URL(current.ackPublicKeyB64URL) == publicKey else {
+            throw PlatformFailure.siteRootAuthorityUnavailable
+        }
         let protected = try DetachedES256Cose.protectedHeaders(
             kid: current.generation.bigEndianData,
             contentType: FixedMonasLeafRenewalV1.contentType
@@ -46,7 +50,7 @@ final class FixedMonasLeafRenewalProducerV1: @unchecked Sendable {
             protected: protected, payload: presentation.statement.exactBytes
         )
         let signature = try signer.sign(message: structure, using: ceremony)
-        guard try store.current() == current,
+        guard try store.current(siteUUID: presentation.statement.siteUUID) == current,
               Date().timeIntervalSince1970 < Double(presentation.statement.expiresAt) else {
             throw PlatformFailure.siteRootAuthorityUnavailable
         }

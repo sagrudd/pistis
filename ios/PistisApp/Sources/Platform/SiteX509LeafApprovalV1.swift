@@ -335,6 +335,6 @@ private struct LeafDynamicKey: CodingKey {
     init?(intValue: Int) { return nil }
 }
 
-private extension FixedWidthInteger {
+extension FixedWidthInteger {
     var bigEndianData: Data { withUnsafeBytes(of: bigEndian) { Data($0) } }
 }

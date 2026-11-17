@@ -20,7 +20,11 @@ final class FixedMonasLeafRenewalCoordinatorV1: ObservableObject {
     @Published private(set) var phase: Phase = .idle
     @Published private(set) var presentedReview: FixedMonasLeafRenewalReviewV1?
     @Published private(set) var responseQRText: String?
-    private var pending: FixedMonasLeafRenewalPresentationV1?
+    private enum Pending {
+        case v1(FixedMonasLeafRenewalPresentationV1)
+        case v2(FixedMonasLeafRenewalPresentationV2)
+    }
+    private var pending: Pending?
 
     func accept(qrText: String) {
         reset()
@@ -45,19 +49,26 @@ final class FixedMonasLeafRenewalCoordinatorV1: ObservableObject {
             let clock = Date().timeIntervalSince1970
             guard clock >= 0 else { throw FixedMonasLeafRenewalV1.Invalid.denied }
             let now = UInt64(clock)
-            let value = try FixedMonasLeafRenewalPresentationV1(data, now: now)
-            let addresses = try value.addresses.map(Self.addressText).joined(separator: ", ")
+            let statement: FixedMonasLeafRenewalV1
+            let addressBytes: [Data]
+            if data.starts(with: Data("PXRW/v2\u{1}".utf8)) {
+                let value = try FixedMonasLeafRenewalPresentationV2(data, now: now)
+                pending = .v2(value); statement = value.statement.prior; addressBytes = value.addresses
+            } else {
+                let value = try FixedMonasLeafRenewalPresentationV1(data, now: now)
+                pending = .v1(value); statement = value.statement; addressBytes = value.addresses
+            }
+            let addresses = try addressBytes.map(Self.addressText).joined(separator: ", ")
             let digest = Data(SHA256.hash(data: data))
-            pending = value
             presentedReview = FixedMonasLeafRenewalReviewV1(
                 id: digest,
-                site: value.statement.siteUUID.map { String(format: "%02x", $0) }.joined(),
+                site: statement.siteUUID.map { String(format: "%02x", $0) }.joined(),
                 addresses: addresses,
                 digest: digest.map { String(format: "%02x", $0) }.joined(),
-                predecessor: value.statement.predecessorLeafDigest.map { String(format: "%02x", $0) }.joined()
-                    + " · expired " + Date(timeIntervalSince1970: TimeInterval(value.statement.predecessorNotAfter)).formatted(),
-                successorExpiry: Date(timeIntervalSince1970: TimeInterval(value.statement.successorNotAfter)).formatted(),
-                expiry: Date(timeIntervalSince1970: TimeInterval(value.statement.expiresAt)).formatted()
+                predecessor: statement.predecessorLeafDigest.map { String(format: "%02x", $0) }.joined()
+                    + " · expired " + Date(timeIntervalSince1970: TimeInterval(statement.predecessorNotAfter)).formatted(),
+                successorExpiry: Date(timeIntervalSince1970: TimeInterval(statement.successorNotAfter)).formatted(),
+                expiry: Date(timeIntervalSince1970: TimeInterval(statement.expiresAt)).formatted()
             )
             phase = .review
         } catch { phase = .failed }
@@ -67,8 +78,13 @@ final class FixedMonasLeafRenewalCoordinatorV1: ObservableObject {
         guard case .review = phase, let pending else { return }
         phase = .approving
         do {
-            let proof = try await FixedMonasLeafRenewalProducerV1()
-                .produce(pending, independentlyReadDigest: independentDigest)
+            let proof: Data
+            switch pending {
+            case .v1(let value):
+                proof = try await FixedMonasLeafRenewalProducerV1().produce(value, independentlyReadDigest: independentDigest)
+            case .v2(let value):
+                proof = try await FixedMonasLeafRenewalProducerV2().produce(value, independentlyReadDigest: independentDigest)
+            }
             responseQRText = "PXRN1:R:" + Self.base64url(proof)
             phase = .completed
         } catch { responseQRText = nil; phase = .failed }

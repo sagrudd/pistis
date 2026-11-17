@@ -1,3 +1,11 @@
+## Pistis iOS 0.31.0+79 — Joint fixed Monas renewal (in development)
+
+- Add one-use, purpose-separated approval with the existing device, Site Root
+  and acknowledgement keys over the same fixed renewal transcript.
+- Native hardware timing, process interruption, reviewed artifact provenance
+  and the attended target ceremony remain required; this source does not create
+  or replace an enrolled key.
+
 ## Pistis iOS 0.30.0+78 — Fixed Monas renewal (in development)
 
 - Add a separately parsed fixed-service renewal statement and current ACK

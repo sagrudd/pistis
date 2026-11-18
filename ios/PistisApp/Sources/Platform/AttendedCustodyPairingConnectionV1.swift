@@ -22,7 +22,7 @@ final class AttendedCustodyPairingConnectionV1: @unchecked Sendable {
     func cancel() { connection.cancel() }
 
     func start() async throws {
-        try await bounded { finish in
+        let _: Void = try await bounded { finish in
             self.connection.stateUpdateHandler = { state in
                 switch state {
                 case .ready: finish(.success(()))
@@ -36,7 +36,7 @@ final class AttendedCustodyPairingConnectionV1: @unchecked Sendable {
 
     func send(_ data: Data) async throws {
         guard !data.isEmpty, data.count <= 32_802 else { throw PlatformFailure.custodyRewrapUnavailable }
-        try await bounded { finish in
+        let _: Void = try await bounded { finish in
             self.connection.send(content: data, completion: .contentProcessed { error in
                 if error != nil { finish(.failure(PlatformFailure.custodyRewrapUnavailable)) }
                 else { finish(.success(())) }

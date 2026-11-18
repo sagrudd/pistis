@@ -15,6 +15,8 @@ final class AttendedCustodyPairingV1Tests: XCTestCase {
             session: Data(repeating: 1, count: 16),
             installation: Data(repeating: 2, count: 16),
             installationKeySHA256: Data(repeating: 3, count: 32),
+            deviceID: Data(repeating: 8, count: 16),
+            devicePublic: Data(base64Encoded: "A2sX0fLhLEJH+Lzm5WOkQPJ3A32BLeszoPShOUXYmMKW")!,
             hostPublic: Data(repeating: 4, count: 32),
             phonePublic: Data(repeating: 5, count: 32),
             hostNonce: Data(repeating: 6, count: 32),
@@ -23,11 +25,21 @@ final class AttendedCustodyPairingV1Tests: XCTestCase {
         )
     }
 
+    func testOfferMatchesRustVectorAndRejectsExpiry() throws {
+        let qr = "MCP1:TUNQMQEBAQEBAQEBAQEBAQEBAQEBAgICAgICAgICAgICAgICAgMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDCAgICAgICAgICAgICAgICANrF9Hy4SxCR_i85uVjpEDydwN9gS3rM6D0oTlF2JjClgQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYAAAAAAAAAZAAAAAAAAADIwKgAwSD7AAxzaXRlLmV4YW1wbGU"
+        let offer = try AttendedCustodyPairingOfferV1(qrText: qr, now: 150)
+        XCTAssertEqual(offer.address, Data([192, 168, 0, 193]))
+        XCTAssertEqual(offer.port, 8443)
+        XCTAssertEqual(offer.deviceID, Data(repeating: 8, count: 16))
+        XCTAssertThrowsError(try AttendedCustodyPairingOfferV1(qrText: qr, now: 200))
+        XCTAssertThrowsError(try AttendedCustodyPairingOfferV1(qrText: qr + "=", now: 150))
+    }
+
     func testTranscriptMatchesRustVectorAndRejectsExpiry() throws {
         let value = example()
-        XCTAssertEqual(try value.encode(now: 150).count, 270)
+        XCTAssertEqual(try value.encode(now: 150).count, 319)
         XCTAssertEqual(try value.digest(now: 150).map { String(format: "%02x", $0) }.joined(),
-                       "59c7dfd2055a27a56a918f64d8aa6c3a56f27dbe24bd4779d70f590b6409acc8")
+                       "79cdbf529cae3788dcb8a39cfd6b3b951ef71a6a14ff37716d0b38eef90e3c9a")
         XCTAssertThrowsError(try value.encode(now: 200))
         XCTAssertThrowsError(try value.encode(now: 99))
     }
@@ -38,6 +50,8 @@ final class AttendedCustodyPairingV1Tests: XCTestCase {
         let transcript = AttendedCustodyPairingTranscriptV1(
             session: Data(repeating: 1, count: 16), installation: Data(repeating: 2, count: 16),
             installationKeySHA256: Data(repeating: 3, count: 32),
+            deviceID: Data(repeating: 8, count: 16),
+            devicePublic: Data(base64Encoded: "A2sX0fLhLEJH+Lzm5WOkQPJ3A32BLeszoPShOUXYmMKW")!,
             hostPublic: host.publicKey.rawRepresentation, phonePublic: phone.publicKey.rawRepresentation,
             hostNonce: Data(repeating: 6, count: 32), phoneNonce: Data(repeating: 7, count: 32),
             issuedAt: 100, expiresAt: 200, siteDomain: "site.example"
@@ -49,10 +63,10 @@ final class AttendedCustodyPairingV1Tests: XCTestCase {
         let p = try phoneEphemeral.derive(
             peerPublic: host.publicKey.rawRepresentation, transcript: transcript, localIsHost: false, now: 150)
         XCTAssertEqual(h.shortAuthenticationString, p.shortAuthenticationString)
-        XCTAssertEqual(h.shortAuthenticationString, "5678323698")
+        XCTAssertEqual(h.shortAuthenticationString, "7615599324")
         XCTAssertEqual(h.hostToPhone.withUnsafeBytes { Data($0) }.map { String(format: "%02x", $0) }.joined(),
-                       "69415cb10470035de9b854fdef8516ce623a5c36fcb70850412b14a37584f0f8")
-        XCTAssertEqual(h.hostNoncePrefix.map { String(format: "%02x", $0) }.joined(), "5a359db2")
+                       "5fdfce44c07a64b2cd1a5fd4fa43ef6af2a423382345b2fd77dfb186f25a9658")
+        XCTAssertEqual(h.hostNoncePrefix.map { String(format: "%02x", $0) }.joined(), "10cc29c7")
         XCTAssertEqual(h.hostToPhone.withUnsafeBytes { Data($0) }, p.hostToPhone.withUnsafeBytes { Data($0) })
         XCTAssertNotEqual(h.hostToPhone.withUnsafeBytes { Data($0) }, h.phoneToHost.withUnsafeBytes { Data($0) })
         XCTAssertThrowsError(try hostEphemeral.derive(
@@ -60,7 +74,8 @@ final class AttendedCustodyPairingV1Tests: XCTestCase {
         let lowOrder = Data([1] + Array(repeating: UInt8(0), count: 31))
         let invalid = AttendedCustodyPairingTranscriptV1(
             session: transcript.session, installation: transcript.installation,
-            installationKeySHA256: transcript.installationKeySHA256, hostPublic: transcript.hostPublic,
+            installationKeySHA256: transcript.installationKeySHA256, deviceID: transcript.deviceID,
+            devicePublic: transcript.devicePublic, hostPublic: transcript.hostPublic,
             phonePublic: lowOrder, hostNonce: transcript.hostNonce, phoneNonce: transcript.phoneNonce,
             issuedAt: 100, expiresAt: 200, siteDomain: "site.example")
         XCTAssertThrowsError(try AttendedCustodyPairingEphemeralV1(testPrivateKey: host).derive(
@@ -81,7 +96,7 @@ final class AttendedCustodyPairingV1Tests: XCTestCase {
             nonce: AES.GCM.Nonce(data: nonce), authenticating: digest + header)
         let confirmation = header + box.ciphertext + box.tag
         XCTAssertEqual(confirmation.map { String(format: "%02x", $0) }.joined(),
-                       "0100000000000000000000000000703bdc24833e9672d1c01a6f5eb7f7be")
+                       "01000000000000000000000000009c3af0f444747215ec1cd6304301ee90")
         XCTAssertEqual(try exchange.receive(confirmation).0, 0)
         let results = Results()
         DispatchQueue.concurrentPerform(iterations: 16) { _ in

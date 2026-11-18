@@ -113,6 +113,8 @@ final class PlatformPolicyTests: XCTestCase {
             .siteRootConvergence
         )
         XCTAssertTrue(compatibility.accepts("PXFP2:P:bounded-presentation"))
+        XCTAssertTrue(compatibility.accepts("MCP1:bounded-pairing-offer"))
+        XCTAssertFalse(QRPayloadProfile.pistisAuthenticationV2.accepts("MCP1:bounded-pairing-offer"))
         XCTAssertTrue(compatibility.accepts("PISTIS1:bounded-frame.0123456789abcdef"))
         XCTAssertFalse(compatibility.accepts("https://install.mnemosyne.co.uk"))
         XCTAssertFalse(

@@ -3,6 +3,78 @@ import Foundation
 import CryptoKit
 #endif
 
+/// Joint-authority transcript; parsing does not establish current ownership.
+struct FixedMonasLeafRenewalV2 {
+    let exactBytes: Data
+    let prior: FixedMonasLeafRenewalV1
+    let installationUUID: Data
+    let devicePoint: Data
+    let rootPoint: Data
+    let ackPoint: Data
+
+    init(_ data: Data, now: UInt64) throws {
+        let bytes = [UInt8](data)
+        guard bytes.count >= 8, Array(bytes[0..<8]) == Array("PXRN/v2\u{1}".utf8),
+              bytes.count <= 8192 else { throw FixedMonasLeafRenewalV1.Invalid.denied }
+        var offset = 8
+        func field(_ tag: UInt8) throws -> Data {
+            guard offset + 3 <= bytes.count, bytes[offset] == tag else { throw FixedMonasLeafRenewalV1.Invalid.denied }
+            let count = Int(bytes[offset + 1]) * 256 + Int(bytes[offset + 2])
+            offset += 3
+            guard count > 0, count <= bytes.count - offset else { throw FixedMonasLeafRenewalV1.Invalid.denied }
+            let result = Data(bytes[offset..<(offset + count)])
+            offset += count
+            return result
+        }
+        let prior = try FixedMonasLeafRenewalV1(field(1), now: now)
+        let installation = try field(2)
+        let device = try field(3), root = try field(4), ack = try field(5)
+        func point(_ value: Data) -> Bool { value.count == 33 && (value.first == 2 || value.first == 3) }
+        guard offset == bytes.count, prior.ownerGenerations.count == 5,
+              prior.ownerGenerations.allSatisfy({ $0 > 0 }), installation.count == 16,
+              installation.contains(where: { $0 != 0 }), point(device), point(root), point(ack)
+        else { throw FixedMonasLeafRenewalV1.Invalid.denied }
+        exactBytes = data; self.prior = prior; installationUUID = installation
+        devicePoint = device; rootPoint = root; ackPoint = ack
+    }
+
+    enum Role: String { case device, root, ack }
+    func rolePayload(_ role: Role) -> Data {
+        Data("mnemosyne.fixed-monas-renewal.\(role.rawValue).v2\u{0}".utf8) + exactBytes
+    }
+}
+
+struct FixedMonasLeafRenewalPresentationV2 {
+    let exactBytes: Data
+    let statement: FixedMonasLeafRenewalV2
+    let addresses: [Data]
+
+    init(_ data: Data, now: UInt64) throws {
+        let bytes = [UInt8](data)
+        guard bytes.count >= 8, Array(bytes[0..<8]) == Array("PXRW/v2\u{1}".utf8) else {
+            throw FixedMonasLeafRenewalV1.Invalid.denied
+        }
+        var offset = 8
+        func field(_ tag: UInt8) throws -> Data {
+            guard offset + 3 <= bytes.count, bytes[offset] == tag else { throw FixedMonasLeafRenewalV1.Invalid.denied }
+            let count = Int(bytes[offset + 1]) * 256 + Int(bytes[offset + 2]); offset += 3
+            guard count > 0, count <= bytes.count - offset else { throw FixedMonasLeafRenewalV1.Invalid.denied }
+            let value = Data(bytes[offset..<(offset + count)]); offset += count
+            return value
+        }
+        let joint = try FixedMonasLeafRenewalV2(field(1), now: now)
+        let packed = try field(2)
+        guard offset == bytes.count else { throw FixedMonasLeafRenewalV1.Invalid.denied }
+        var prior = Data("PXRW/v1\u{1}".utf8)
+        for (index, value) in [joint.prior.exactBytes, packed].enumerated() {
+            guard value.count <= Int(UInt16.max) else { throw FixedMonasLeafRenewalV1.Invalid.denied }
+            prior.append(UInt8(index + 1)); prior.append(UInt8(value.count >> 8)); prior.append(UInt8(value.count & 255)); prior.append(value)
+        }
+        let verified = try FixedMonasLeafRenewalPresentationV1(prior, now: now)
+        exactBytes = data; statement = joint; addresses = verified.addresses
+    }
+}
+
 /// Parsing is not approval: callers must also validate current enrolled trust,
 /// compare displayed addresses with the signed digest, and require Face ID.
 struct FixedMonasLeafRenewalV1 {
@@ -10,6 +82,9 @@ struct FixedMonasLeafRenewalV1 {
     static let contentType = "application/vnd.mnemosyne.pxrn.v1"
     let exactBytes: Data
     let siteUUID: Data
+    let subjectUUID: Data
+    let deviceUUID: Data
+    let ownerGenerations: [UInt64]
     let ipSetDigest: Data
     let acknowledgementGeneration: UInt64
     let transaction: Data
@@ -81,6 +156,9 @@ struct FixedMonasLeafRenewalV1 {
               expiry - issued <= 300 else { throw Invalid.denied }
         exactBytes = data
         siteUUID = Data(fields[0])
+        subjectUUID = Data(fields[5])
+        deviceUUID = Data(fields[6])
+        ownerGenerations = [7, 8, 9, 24, 25].compactMap { integer(fields[$0]) }
         ipSetDigest = Data(fields[3])
         acknowledgementGeneration = ack
         transaction = Data(fields[22][0..<16])

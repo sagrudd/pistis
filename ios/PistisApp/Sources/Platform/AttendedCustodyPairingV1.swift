@@ -6,7 +6,7 @@ import Foundation
 struct AttendedCustodyPairingTranscriptV1 {
     let session: Data
     let installation: Data
-    let targetIdentitySHA256: Data
+    let installationKeySHA256: Data
     let hostPublic: Data
     let phonePublic: Data
     let hostNonce: Data
@@ -17,7 +17,7 @@ struct AttendedCustodyPairingTranscriptV1 {
 
     func encode(now: UInt64) throws -> Data {
         let domain = Data(siteDomain.utf8)
-        let fixed = [session, installation, targetIdentitySHA256, hostPublic,
+        let fixed = [session, installation, installationKeySHA256, hostPublic,
                      phonePublic, hostNonce, phoneNonce]
         guard fixed.map(\.count) == [16, 16, 32, 32, 32, 32, 32],
               fixed.allSatisfy({ $0.contains(where: { $0 != 0 }) }),

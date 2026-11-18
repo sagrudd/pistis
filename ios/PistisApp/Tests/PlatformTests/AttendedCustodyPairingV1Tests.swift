@@ -14,7 +14,7 @@ final class AttendedCustodyPairingV1Tests: XCTestCase {
         AttendedCustodyPairingTranscriptV1(
             session: Data(repeating: 1, count: 16),
             installation: Data(repeating: 2, count: 16),
-            targetIdentitySHA256: Data(repeating: 3, count: 32),
+            installationKeySHA256: Data(repeating: 3, count: 32),
             hostPublic: Data(repeating: 4, count: 32),
             phonePublic: Data(repeating: 5, count: 32),
             hostNonce: Data(repeating: 6, count: 32),
@@ -37,7 +37,7 @@ final class AttendedCustodyPairingV1Tests: XCTestCase {
         let phone = try Curve25519.KeyAgreement.PrivateKey(rawRepresentation: Data(repeating: 9, count: 32))
         let transcript = AttendedCustodyPairingTranscriptV1(
             session: Data(repeating: 1, count: 16), installation: Data(repeating: 2, count: 16),
-            targetIdentitySHA256: Data(repeating: 3, count: 32),
+            installationKeySHA256: Data(repeating: 3, count: 32),
             hostPublic: host.publicKey.rawRepresentation, phonePublic: phone.publicKey.rawRepresentation,
             hostNonce: Data(repeating: 6, count: 32), phoneNonce: Data(repeating: 7, count: 32),
             issuedAt: 100, expiresAt: 200, siteDomain: "site.example"
@@ -60,7 +60,7 @@ final class AttendedCustodyPairingV1Tests: XCTestCase {
         let lowOrder = Data([1] + Array(repeating: UInt8(0), count: 31))
         let invalid = AttendedCustodyPairingTranscriptV1(
             session: transcript.session, installation: transcript.installation,
-            targetIdentitySHA256: transcript.targetIdentitySHA256, hostPublic: transcript.hostPublic,
+            installationKeySHA256: transcript.installationKeySHA256, hostPublic: transcript.hostPublic,
             phonePublic: lowOrder, hostNonce: transcript.hostNonce, phoneNonce: transcript.phoneNonce,
             issuedAt: 100, expiresAt: 200, siteDomain: "site.example")
         XCTAssertThrowsError(try AttendedCustodyPairingEphemeralV1(testPrivateKey: host).derive(

@@ -135,6 +135,14 @@ struct ScanView: View {
     @State private var importingAppAttestReplacement = false
     @State private var firstDeviceScanRequest: FirstDeviceScanRequest?
     @State private var scanFailure: PlatformFailure?
+    @State private var custodyPairing: AttendedCustodyPairingSessionV1?
+    @State private var custodyPairingPresented = false
+    @State private var custodyPairingWorking = false
+    @State private var custodyPairingResult: String?
+    @State private var custodyPairingPreparation: Task<Void, Never>?
+    @State private var custodyPairingPreparationID: UUID?
+    @State private var custodyPairingRecovery: Task<Void, Never>?
+    @State private var custodyRecoveryNeedsReconciliation = false
     @AccessibilityFocusState private var scanFailureFocused: Bool
     @State private var readiness = PasswordlessReadiness.checking
 
@@ -211,6 +219,10 @@ struct ScanView: View {
         ScrollViewReader { proxy in
             ScrollView {
                 VStack(alignment: .leading, spacing: MnSpacing.x6) {
+                    if custodyRecoveryNeedsReconciliation {
+                        Text("Recovery could not be confirmed. Do not retry; check the Monas terminal.")
+                            .foregroundStyle(MnColor.textPrimary)
+                    }
                     if let scanFailure {
                         MnPanel {
                             VStack(alignment: .leading, spacing: MnSpacing.x3) {
@@ -370,6 +382,59 @@ struct ScanView: View {
                 startScanning()
             }
         }
+        .onDisappear {
+            custodyPairingPreparation?.cancel()
+            custodyPairingPreparation = nil
+            custodyPairingPreparationID = nil
+        }
+        .sheet(isPresented: $custodyPairingPresented, onDismiss: {
+            if custodyPairingRecovery != nil { custodyRecoveryNeedsReconciliation = true }
+            custodyPairingRecovery?.cancel()
+            custodyPairingRecovery = nil
+            custodyPairing?.cancel()
+            custodyPairing = nil
+            custodyPairingResult = nil
+            startScanning()
+        }) {
+            NavigationStack {
+                VStack(spacing: 20) {
+                    Text("Compare this code with the code on the trusted Monas terminal.")
+                    Text(custodyPairing?.sas ?? "").font(.largeTitle.monospacedDigit())
+                    if let result = custodyPairingResult { Text(result) }
+                    if custodyPairingWorking {
+                        ProgressView("Recovering custody…")
+                    } else if custodyPairingResult == nil {
+                        Button("The codes match") {
+                            custodyPairingWorking = true
+                            custodyPairingRecovery = Task {
+                                do {
+                                    guard let custodyPairing else { throw AttendedCustodyPairingErrorV1.denied }
+                                    try await custodyPairing.approveAndRecover()
+                                    custodyPairingResult = "Custody recovery confirmed."
+                                } catch AttendedCustodyPairingErrorV1.unconfirmed {
+                                    custodyRecoveryNeedsReconciliation = true
+                                    custodyPairingResult = "Recovery could not be confirmed. Do not retry; check the Monas terminal."
+                                } catch {
+                                    custodyPairingResult = "Recovery stopped safely."
+                                }
+                                custodyPairingWorking = false
+                                custodyPairingRecovery = nil
+                            }
+                        }
+                    }
+                    Button("Close") { custodyPairingPresented = false }
+                        .disabled(custodyPairingWorking)
+                }.padding()
+                .navigationTitle("Recover custody")
+            }
+            .interactiveDismissDisabled(custodyPairingWorking)
+            .onDisappear {
+                if custodyPairingRecovery != nil { custodyRecoveryNeedsReconciliation = true }
+                custodyPairingRecovery?.cancel()
+                custodyPairingRecovery = nil
+                custodyPairing?.cancel()
+            }
+        }
         .sheet(item: reviewBinding) { request in
             ApprovalView(request: request, coordinator: ceremony)
         }
@@ -439,6 +504,34 @@ struct ScanView: View {
         switch result {
         case let .success(payload):
             scanFailure = nil
+            if payload.text.hasPrefix("MCP1:") {
+                guard !custodyRecoveryNeedsReconciliation else {
+                    scanFailure = .custodyRewrapUnavailable
+                    return
+                }
+                guard custodyPairingPreparation == nil, !custodyPairingPresented else { return }
+                let preparationID = UUID()
+                custodyPairingPreparationID = preparationID
+                custodyPairingPreparation = Task {
+                    do {
+                        let prepared = try await AttendedCustodyPairingSessionV1.prepare(qrText: payload.text)
+                        guard !Task.isCancelled, custodyPairingPreparationID == preparationID else {
+                            prepared.cancel()
+                            return
+                        }
+                        custodyPairingPreparation = nil
+                        custodyPairingPreparationID = nil
+                        custodyPairing = prepared
+                        custodyPairingPresented = true
+                    } catch {
+                        guard !Task.isCancelled, custodyPairingPreparationID == preparationID else { return }
+                        custodyPairingPreparation = nil
+                        custodyPairingPreparationID = nil
+                        scanFailure = .custodyRewrapUnavailable
+                    }
+                }
+                return
+            }
             if payload.text.hasPrefix("PXRN1:P:") {
                 fixedMonasRenewal.accept(qrText: payload.text)
                 if case .failed = fixedMonasRenewal.phase {

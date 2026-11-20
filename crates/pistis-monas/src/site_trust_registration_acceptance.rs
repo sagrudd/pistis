@@ -145,7 +145,7 @@ struct RegistrationEnvelopeV1 {
 /// a mobile request or runtime configuration.
 #[derive(Clone, Debug)]
 pub struct ProductionAppleAppAttestAcceptanceFactoryV1 {
-    manifest_digest: [u8; 32],
+    pub(crate) manifest_digest: [u8; 32],
     root_pem: &'static [u8],
 }
 

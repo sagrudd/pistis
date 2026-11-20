@@ -1,3 +1,4 @@
+import CryptoKit
 import Foundation
 
 /// Immutable values accepted only after the Monas ceremony bootstrap has been
@@ -38,6 +39,9 @@ struct MonasAppAttestCeremonyBootstrap: Sendable {
 
 struct CustodyRotationAppAttestChallengeV2: Sendable {
     static let schema = "monas.first-authority-custody-app-attest-challenge.v2"
+    let installationID: Data
+    let siteTrustDomain: String
+    let appIdentifier: String
     let ceremonyID: Data
     let clientDataHash: Data
     let keyID: Data
@@ -57,7 +61,7 @@ struct CustodyRotationAppAttestChallengeV2: Sendable {
         guard wire.schema == Self.schema,
               wire.appIdentifier == AppleAppAttestRegistrationEnvelope.reviewedAppIdentifier,
               !wire.siteTrustDomain.isEmpty, wire.siteTrustDomain.utf8.count <= 255,
-              Self.decode(wire.installationIDB64URL, count: 16) != nil,
+              let installationID = Self.decode(wire.installationIDB64URL, count: 16),
               let ceremony = Self.decode(wire.ceremonyIDB64URL, count: 16),
               let hash = Self.decode(wire.clientDataHashB64URL, count: 32),
               let key = Self.decode(wire.keyIDB64URL, count: 32),
@@ -65,10 +69,22 @@ struct CustodyRotationAppAttestChallengeV2: Sendable {
               nowUnixSeconds < wire.expiresAtUnixSeconds,
               wire.expiresAtUnixSeconds - wire.issuedAtUnixSeconds <= 900
         else { throw PlatformFailure.productionEnvelopeUnavailable }
+        self.installationID = installationID
+        siteTrustDomain = wire.siteTrustDomain
+        appIdentifier = wire.appIdentifier
         ceremonyID = ceremony
         clientDataHash = hash
         keyID = key
         expiresAtUnixSeconds = wire.expiresAtUnixSeconds
+    }
+
+    /// Compare all challenge fields that identify the intended installation
+    /// and registered Apple key. A successful match is not authority acceptance.
+    func matchesBinding(
+        installationID: Data, siteTrustDomain: String, appIdentifier: String, keyID: Data
+    ) -> Bool {
+        self.installationID == installationID && self.siteTrustDomain == siteTrustDomain
+            && self.appIdentifier == appIdentifier && self.keyID == keyID
     }
 
     private struct Wire: Decodable {
@@ -353,6 +369,44 @@ struct MonasAppAttestTransport: Sendable {
             path: Self.assertionPath,
             maximumRequestBytes: 32_768
         )
+    }
+
+    /// V2 bootstrap challenge is scoped by the host ledger to the previously
+    /// attended leaf handoff. Call only on its exact single pinned origin.
+    func fetchBrokerCustodyChallengeV2(pending: ScopedAppAttestPending,
+                                        now: @Sendable () throws -> UInt64) async throws -> BrokerCustodyChallengeV2 {
+        var uuid = pending.attemptID.uuid
+        let operation = withUnsafeBytes(of: &uuid) { Data($0) }
+        let digest = Data(SHA256.hash(data: Data("mnemosyne.monas.first-device.correlation.v2\0".utf8) + pending.correlation))
+        let body = try JSONSerialization.data(withJSONObject: [
+            "schema": "monas.first-device.custody-challenge-request.v2",
+            "operation_id_b64url": SiteRootBrokerPresentationV2.encode(operation),
+            "correlation_digest_b64url": SiteRootBrokerPresentationV2.encode(digest)
+        ], options: [.sortedKeys])
+        let endpoints = candidateEndpoints("/v1/pistis/site-trust/authority-custody-rotation/v2/broker-assertion-challenge")
+        guard endpoints.count == 1, let endpoint = endpoints.first else { throw PlatformFailure.invalidConfiguration }
+        var request = URLRequest(url: endpoint)
+        request.httpMethod = "POST"; request.httpBody = body; request.timeoutInterval = 2
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.setValue("application/json", forHTTPHeaderField: "Accept")
+        request.setValue("no-store", forHTTPHeaderField: "Cache-Control")
+        for attempt in 0..<6 {
+            do {
+                let (data, response) = try await originData(for: request)
+                guard let http = response as? HTTPURLResponse, http.url == endpoint,
+                      http.value(forHTTPHeaderField: "Set-Cookie") == nil,
+                      http.value(forHTTPHeaderField: "Cache-Control")?.lowercased().contains("no-store") == true
+                else { throw PlatformFailure.siteRootAuthorityUnavailable }
+                if http.statusCode == 200 {
+                    return try BrokerCustodyChallengeV2(data: data, pending: pending, nowUnixSeconds: now())
+                }
+                guard http.statusCode == 503 else { throw PlatformFailure.siteRootAuthorityUnavailable }
+            } catch OriginAttemptFailure.unreachable {
+                // Only pre-assertion connection readiness is retried.
+            }
+            if attempt < 5 { try await Task.sleep(nanoseconds: 400_000_000) }
+        }
+        throw PlatformFailure.siteRootAuthorityUnavailable
     }
 
     /// Submits one recovery assertion to the fixed, purpose-separated Monas route.

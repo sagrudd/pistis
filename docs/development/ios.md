@@ -375,12 +375,104 @@ not physically qualified until a reviewed iPhone run demonstrates one Face ID
 prompt for each requested signature and Jenkins retains the resulting
 non-secret evidence for the exact revision.
 
+## Fixed broker with a retained authority
+
+A validated first Site Root broker invitation is recognised against the fixed
+install origin, independently of the retained native authority. Its selected
+broker transport is retained for registration, polling and initial proof;
+native authority requests retain their pinned transport. Approval of the broker
+invitation while a native authority is retained remains blocked before key
+creation while per-installation App Attest and setup bindings are unresolved.
+ADR 0046 records the accepted design; implementation and cross-authority
+qualification are still required before adding a second installation.
+
+The simulator regression fixture `monas-broker-genesis-synthetic.png` was
+rendered by Monas source `881e0514` using
+`broker_presentation_png_from_state`, an isolated synthetic database and a
+synthetic correlation. Its fixed time is injected by the test; it is not a live
+invitation. The image is decoded before entering the normal scan classifier.
+
+## Scoped App Attest storage foundation
+
+The local scoped store stages an exact operation and prepared registration in a
+separate device-only Keychain service; it does not activate an installation or
+replace the existing primary reference. A submitted marker is persisted before
+network delivery. Once marked, local cancellation cannot erase an ambiguous
+attempt; authority reconciliation is required. An unsubmitted attempt can be
+cancelled only by its exact ID, and cleanup retains an opaque cancellation
+marker while erasing pending material. Binding writes are create-once and
+conflicts fail closed. A partially written binding remains unavailable until
+its matching completion marker is durable; an exact retry completes it. Scoped
+lookup never falls back to the legacy primary. Explicit local reset includes
+the new service. These primitives are not connected to production enrolment
+or assertion handling; the reviewed authority handoff remains required.
+A separately verified enrolment output may also be staged against a submitted
+attempt without inserting it into the active inventory or selecting it. Staging
+alone does not bind its installation to that broker operation or establish
+current generations.
+The broker V2 transcript helper has a shared host/phone test vector. A pending
+custody assertion helper requires the durable submitted marker and checks the
+installation, site, app and key against the challenge; the caller must supply
+an independently authenticated installation binding. It never reads or writes
+the legacy primary. No production caller is enabled until that authority
+handoff, the closed V2 wire and in-flight reset coordination are reviewed.
+
+## Broker V2 wire candidate
+
+The Scan tab strictly parses the fixed-origin V2 broker invitation and can show
+its review, but cannot approve it until the authority handoff and protected
+storage integration are complete. The paired request encoder emits the closed
+no-escape canonical grammar and checks the transcript and Site Root public-key
+binding. The shared Monas fixtures are wire-only synthetic data; the request
+fixture contains an invalid public key and must fail semantic validation. The
+mobile checks do not replace Monas verification of real Apple attestation.
+
+The test-target V2 interruption harness joins the production scanner classifier,
+QR parser, transcript and request encoder with the scoped staging primitives and
+a synthetic authority. It exercises loss of a response after the submitted
+marker and verifies the exact pending attempt remains without changing the
+synthetic legacy reference. A controlled suspended delivery also exercises
+actual task cancellation and late response without clearing the pending attempt.
+It does not test a real host, authenticated
+acceptance, activation, signed Keychain access or an A → B → A login.
+
+## Additional enrolment admission
+
+The first-device flow checks for a duplicate installation before creating a
+device key. A distinct additional installation can enter the staged-receipt
+path only through an exact verified presentation and submitted-operation
+admission. The production admission adapter is not yet enabled; the controlled
+adapter exists only in debug tests. A staged receipt is shown as waiting for
+authority binding and is not inserted into the active inventory or selected.
+
+Broker setup projections are no longer automatically rebound to whichever
+native installation happens to be selected. Until exact authenticated
+operation-to-installation reconciliation is available, a legacy setup record
+may remain labelled with the broker and require explicit recovery; this is a
+progress-display limitation and does not delete or change retained trust.
+
+## Selected installation and ordinary sign-in
+
+The scanned authentication challenge must name the selected installation,
+even when another retained installation has the same external identity. The
+coordinator rechecks the retained selection around custody preparation and
+before response delivery; a failed scan clears its prior challenge. Custody
+preparation receives the exact retained enrolment instead of choosing another
+installation from a later UI selection. A synthetic two-host proxy regression
+verifies signed challenges and signed responses in A → B → A order with two
+software keys. It does not establish live host enrolment, Keychain durability,
+physical Face ID or production A → B → A qualification.
+
 ## QR acquisition boundary
 
 The native scanner uses AVFoundation metadata capture and accepts at most one
 2,331-byte ASCII `PISTIS1` value. It installs no photo or sample-buffer output,
 retains no camera frame, stops after one result, cancels on backgrounding, and
-offers accessible permission, unsupported-code, oversize, and retry states.
+offers accessible permission, unsupported-code, oversize, and retry states. On
+failure the scanner returns to the top of the screen, focuses the failure for
+assistive technology, and shows the safe recovery guidance and Scan again action.
+Camera permission failures also provide Open Settings. Readiness diagnostics
+remain available further down the screen.
 
 Acquisition is not verification. The production coordinator loads only an
 authenticated enrolment output from the device-only Keychain, verifies the

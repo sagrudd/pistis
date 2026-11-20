@@ -127,3 +127,8 @@ unused successor generation.
 maintained-cryptography correction behind the existing byte-facing SDK verifier.
 It preserves strict signature and key encodings; actual qualification remains
 required.
+
+[ADR 0046](0046-multiple-installations-app-attest-isolation.md) records the
+project owner’s accepted design for installation-scoped App Attest and broker
+setup isolation; cross-authority feasibility and implementation review remain
+required.

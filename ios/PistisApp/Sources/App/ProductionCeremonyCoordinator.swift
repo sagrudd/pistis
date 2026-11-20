@@ -100,6 +100,8 @@ final class ProductionCeremonyCoordinator: ObservableObject {
     func accept(qrText: String) async {
         phase = .verifying
         retainedRequest = nil
+        challenge = nil
+        enrollment = nil
         failureStage = nil
         do {
             guard let enrollment = try await trustStore.activeEnrollment() else {
@@ -111,6 +113,10 @@ final class ProductionCeremonyCoordinator: ObservableObject {
                 expectedExternalIdentityID: enrollment.trust.externalIdentityID,
                 now: now()
             )
+            guard verified.installationID == enrollment.trust.installationID else {
+                throw ProductionCeremonyError.keyMismatch
+            }
+            try await requireSelectedEnrollment(enrollment)
             self.enrollment = enrollment
             challenge = verified
             let request = Self.request(from: verified, trust: enrollment.trust, now: now())
@@ -130,10 +136,17 @@ final class ProductionCeremonyCoordinator: ObservableObject {
             fail(.invalidConfiguration, at: .responsePreparation)
             return
         }
+        switch phase {
+        case .review, .preparing: break
+        default:
+            fail(.invalidConfiguration, at: .responsePreparation)
+            return
+        }
         phase = .submitting(decision)
         failureStage = nil
         var stage = ProductionCeremonyStage.responsePreparation
         do {
+            try await requireSelectedEnrollment(enrollment)
             let timestamp = UInt64(now().timeIntervalSince1970 * 1_000)
             let payload = try AuthenticationResponseEncoder.payload(
                 challenge: challenge,
@@ -145,6 +158,8 @@ final class ProductionCeremonyCoordinator: ObservableObject {
             stage = .deviceSignature
             let producer = try makeEnvelopeProducer(enrollment, decision)
             let envelope = try await producer.produceEnvelope(canonicalPayload: payload)
+            try await requireSelectedEnrollment(enrollment)
+            guard phase == .submitting(decision) else { throw PlatformFailure.operationCancelled }
             guard envelope.count <= AuthenticationResponseTransport.maximumEnvelopeBytes,
                   let submitEndpoint = challenge.endpointHints.first
             else { throw PlatformFailure.invalidConfiguration }
@@ -177,16 +192,18 @@ final class ProductionCeremonyCoordinator: ObservableObject {
     /// arbitrary authority changes, and other governed actions do not use this
     /// entry point.
     func approveVerifiedLoginIntent(
-        prepareCustody: () async throws -> Void
+        prepareCustody: (AuthenticatedEnrollmentOutput) async throws -> Void
     ) async {
-        guard case .review = phase, retainedRequest != nil else {
+        guard case .review = phase, retainedRequest != nil, let enrollment else {
             fail(.invalidConfiguration, at: .responsePreparation)
             return
         }
         phase = .preparing
         failureStage = nil
         do {
-            try await prepareCustody()
+            try await requireSelectedEnrollment(enrollment)
+            try await prepareCustody(enrollment)
+            try await requireSelectedEnrollment(enrollment)
         } catch let failure as PlatformFailure {
             fail(failure, at: .custodyReadiness)
             return
@@ -195,6 +212,14 @@ final class ProductionCeremonyCoordinator: ObservableObject {
             return
         }
         await decide(.approved)
+    }
+
+    private func requireSelectedEnrollment(_ expected: AuthenticatedEnrollmentOutput) async throws {
+        guard !Task.isCancelled else { throw PlatformFailure.operationCancelled }
+        guard try await trustStore.activeEnrollment() == expected else {
+            throw PlatformFailure.siteRootBindingUnavailable
+        }
+        guard !Task.isCancelled else { throw PlatformFailure.operationCancelled }
     }
 
     func reset() {
@@ -206,6 +231,8 @@ final class ProductionCeremonyCoordinator: ObservableObject {
     }
 
     private func fail(_ failure: PlatformFailure, at stage: ProductionCeremonyStage) {
+        challenge = nil
+        enrollment = nil
         failureStage = stage
         phase = .failed(failure)
         guard let request = presentedRequest else { return }

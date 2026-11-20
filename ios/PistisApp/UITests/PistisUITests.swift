@@ -193,6 +193,35 @@ final class PistisUITests: XCTestCase {
         XCTAssertFalse(application.buttons["Deny"].exists)
     }
 
+    func testScannerFailureAndRetryAreVisibleWithoutScrolling() {
+        let application = XCUIApplication()
+        application.launch()
+        if application.buttons["Continue to Pistis"].exists {
+            application.buttons["Continue to Pistis"].tap()
+        }
+        application.tabBars.buttons["Scan"].tap()
+
+        // The simulator reports a permission or capture-device failure without a QR.
+        let failure = application.staticTexts["Scan failed"]
+        XCTAssertTrue(failure.waitForExistence(timeout: 10))
+        XCTAssertTrue(failure.isHittable)
+        let unavailable = application.staticTexts[
+            "No supported camera is available. Try again on an iPhone with a working camera."
+        ]
+        let permissionDenied = application.staticTexts[
+            "Camera access is disabled. Allow camera access in Settings, then try again."
+        ]
+        XCTAssertTrue(unavailable.isHittable || permissionDenied.isHittable)
+        if permissionDenied.exists {
+            XCTAssertTrue(application.buttons["Open Settings"].isHittable)
+        }
+        let retry = application.buttons["Scan again"]
+        XCTAssertTrue(retry.isHittable)
+        retry.tap()
+        XCTAssertTrue(failure.waitForExistence(timeout: 10))
+        XCTAssertTrue(retry.isHittable)
+    }
+
     func testScannerRoutesSiteRootWithoutASeparateCameraEntryPoint() {
         let application = XCUIApplication()
         application.launch()

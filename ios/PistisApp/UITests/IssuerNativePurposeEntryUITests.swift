@@ -16,7 +16,7 @@ final class IssuerNativePurposeEntryUITests: XCTestCase {
         for _ in 0..<4 where !entry.isHittable { application.swipeUp() }
         XCTAssertTrue(entry.isHittable)
         entry.tap()
-        XCTAssertTrue(application.staticTexts["Setup unavailable"].waitForExistence(timeout: 5))
+        XCTAssertTrue(application.staticTexts["Installation plan setup unavailable"].waitForExistence(timeout: 5))
         XCTAssertFalse(application.buttons["Approve installation with Face ID"].exists)
         let review = application.buttons["native-purpose-review-plan"]
         XCTAssertTrue(review.exists)

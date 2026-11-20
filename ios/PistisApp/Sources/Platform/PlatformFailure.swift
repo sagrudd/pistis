@@ -64,6 +64,7 @@ enum PlatformFailure: Error, Equatable, Sendable {
     /// The fixed broker rejected the first-device registration before Monas
     /// could issue a delegation. A fresh QR is required.
     case siteRootGenesisRegistrationRejected
+    case siteRootGenesisRegistrationPreparationFailed
     /// The fixed broker could not return a valid first-device delegation.
     case siteRootGenesisDelegationUnavailable
     /// The fixed broker remained pending until the bounded first-device wait
@@ -159,6 +160,8 @@ extension PlatformFailure {
             "Receipt submission was rejected locally before sending. No proof was sent."
         case .siteRootGenesisRegistrationRejected:
             "Monas rejected this first-device registration. Return to the install window and request a newly issued QR. No proof was submitted."
+        case .siteRootGenesisRegistrationPreparationFailed:
+            "Pistis could not prepare this first-device registration. No registration was sent. Return to Monas for a newly issued QR."
         case .siteRootGenesisDelegationUnavailable:
             "Monas did not provide the protected first-device delegation. Return to the install window and request a newly issued QR. No proof was submitted."
         case .siteRootGenesisDelegationTimedOut:

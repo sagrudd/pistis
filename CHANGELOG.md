@@ -1,3 +1,14 @@
+## Pending SQLite dependency transition — source candidate
+
+- Update bundled rusqlite to 0.41.1 for the SQLite page-cache advisory. Agent
+  0.1.3 retains its opaque error boundary; device registry 0.3.0 reflects the
+  public error type change.
+- Allocate Monas 0.16.0 and Synoptikon 0.2.0 for their public registry type
+  origin change, preserving the attended verifier; update CLI and recovery
+  patch versions for their direct dependencies.
+- No historical lock or installed package is changed. Dependent source and
+  package qualification remain required.
+
 ## Pending pistis-monas 0.15.0 — attended recovery verifier
 
 - Add an inactive, purpose-specific Apple App Attest verifier for the accepted

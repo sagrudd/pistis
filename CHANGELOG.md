@@ -1,3 +1,11 @@
+## Pending pistis-monas 0.15.0 — attended recovery verifier
+
+- Add an inactive, purpose-specific Apple App Attest verifier for the accepted
+  B-only attended recovery architecture (Monas decision #604). The verifier
+  binds a reconstructed host transcript and low-S Site Root signature to the
+  existing production Apple verification and returns only counter and digest.
+  Host authority, user presence, shared counter consumption and live routing
+  remain separate integration and review gates.
 ## Pistis iOS 0.31.0+79 — Joint fixed Monas renewal (in development)
 
 - Add one-use, purpose-separated approval with the existing device, Site Root

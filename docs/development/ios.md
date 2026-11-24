@@ -679,3 +679,44 @@ Changes to tokens or product presentation must be reconciled with
 `../grammateus`. Do not invent missing dark-mode, native mark, App Icon, or
 motion rules inside Pistis. Submit those decisions to the design-language
 repository first, then update ADR 0007 and this application.
+
+When **Continue pending setup** finds more than one retained setup, enter
+the last six hexadecimal characters of the retained host's SHA-256 SPKI
+fingerprint, or paste the full fingerprint. Pistis continues only with a
+unique match. Use the full fingerprint if the suffix matches multiple records.
+TLS and custody still verify the complete pin from the retained handoff.
+
+After Pistis verifies broker custody, tap **Scan final QR** and scan the signed
+identity QR from the same Monas install page. Pistis opens the existing identity
+enrolment scanner and still requires its separate approvals.
+
+### Onboarding support codes
+
+If the accepted enrolment cannot verify GitHub status, use **Retry provider
+status**. The same enrolment operation is checked whether or not the GitHub
+code is still shown. The redacted support code is
+`PST-ONBOARD/provider-status/verification-unavailable`.
+
+Pistis shows `PST-ONBOARD/<stage>/<category>` when the certificate approval
+or retained-custody flow stops. Copy the code and, if present, Monas's redacted
+support reference, stage and error. These codes contain neither ceremony inputs
+nor credentials. They do not authorize a retry.
+
+| Stage | Boundary |
+| --- | --- |
+| `reserve`, `face-id`, `initial-proof` | Approval reservation, biometric review, initial proof |
+| `root-unlock-*`, `issuer-unlock-*`, `ack-registration-*`, `leaf-approval-*` | Waiting for, authorizing, or submitting the named broker phase |
+| `custody-challenge` | Pinned native authority, exact pending handoff and challenge |
+| `custody-assertion` | App Attest preparation and submission |
+| `custody-rotation` | Protected custody rotation after the assertion |
+| `route` | Failure before a specific boundary was recorded |
+
+Native custody challenge categories distinguish TLS trust (`tls_trust`),
+an unreachable endpoint (`unreachable`), an authenticated endpoint returning
+503 (`route_unavailable`), an invalid response (`response_rejected`), and
+a mismatch with the retained operation or device binding (`binding_rejected`).
+
+The category uses the existing closed onboarding failure catalogue. In
+particular, `authority_unavailable` reports an unavailable authority step, not
+a diagnosis of expiry or certificate failure. Use the native redacted record
+to distinguish the underlying cause.

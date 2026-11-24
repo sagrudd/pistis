@@ -3,6 +3,7 @@ import SwiftUI
 struct SiteRootConvergenceReviewView: View {
     let review: SiteRootConvergenceReview
     @ObservedObject var coordinator: SiteRootConvergenceCoordinator
+    let scanFinalIdentityQR: () -> Void
     @Environment(\.dismiss) private var dismiss
 
     var body: some View {
@@ -63,6 +64,17 @@ struct SiteRootConvergenceReviewView: View {
                 ProgressView()
                 Text(phaseLabel)
             }
+        case .awaitingFinalIdentityQR:
+            MnPanel {
+                VStack(alignment: .leading, spacing: MnSpacing.x3) {
+                    MnStatusLabel(text: "Custody verified", kind: .success)
+                    Text("Scan the final signed identity QR on the same Monas install page.")
+                    MnPrimaryButton("Scan final QR", systemImage: "qrcode.viewfinder") {
+                        scanFinalIdentityQR()
+                        dismiss()
+                    }
+                }
+            }
         case .completed:
             MnPanel {
                 VStack(alignment: .leading, spacing: MnSpacing.x3) {
@@ -75,6 +87,9 @@ struct SiteRootConvergenceReviewView: View {
                 VStack(alignment: .leading, spacing: MnSpacing.x3) {
                     MnStatusLabel(text: "Stopped safely", kind: .danger)
                     Text(failure.safeUserMessage)
+                    if let code = coordinator.supportCode {
+                        Text(code).font(.footnote.monospaced()).textSelection(.enabled)
+                    }
                     if coordinator.canRetryBrokerCustody {
                         MnPrimaryButton("Retry Monas connection", systemImage: "arrow.clockwise") {
                             Task { await coordinator.retryBrokerCustody() }
@@ -137,7 +152,7 @@ struct SiteRootConvergenceReviewView: View {
     }
 }
 
-private extension SiteX509BrokerApprovalStageV1 {
+extension SiteX509BrokerApprovalStageV1 {
     var label: String {
         switch self {
         case .reservingApproval:
@@ -146,6 +161,9 @@ private extension SiteX509BrokerApprovalStageV1 {
             "Waiting for Face ID"
         case .submittingInitialProof:
             "Face ID accepted · submitting the Site X.509 approval"
+        case .custodyChallenge: "Connecting to the retained custody authority"
+        case .custodyAssertion: "Verifying this iPhone with App Attest"
+        case .custodyRotation: "Completing authority custody"
         case let .awaitingContinuation(phase):
             "Face ID accepted · waiting for \(phase.userLabel)"
         case let .authorizingContinuation(phase):

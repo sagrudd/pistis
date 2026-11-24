@@ -128,12 +128,14 @@ struct ScanView: View {
     private let appAttestReplacementTransport: MonasAppAttestTransport?
     private let expectedSiteRootAuthorityHost: String?
     private let showInstallations: () -> Void
+    private let routeToProviderEnrolment: () -> Void
     private let prepareOrdinaryLogin: (AuthenticatedEnrollmentOutput) async throws -> Void
     private let ordinaryLoginCompleted: () -> Void
     @State private var scanning = true
     @State private var importingOfflinePresentation = false
     @State private var importingAppAttestReplacement = false
     @State private var firstDeviceScanRequest: FirstDeviceScanRequest?
+    @State private var finalIdentityQRRequested = false
     @State private var scanFailure: PlatformFailure?
     @State private var custodyPairing: AttendedCustodyPairingSessionV1?
     @State private var custodyPairingPresented = false
@@ -151,12 +153,14 @@ struct ScanView: View {
         expectedSiteRootAuthorityHost: String? = nil,
         authorityCustodyMode: FirstAuthorityCustodyModeV2 = .rotation,
         showInstallations: @escaping () -> Void = {},
+        routeToProviderEnrolment: @escaping () -> Void,
         prepareOrdinaryLogin: @escaping (AuthenticatedEnrollmentOutput) async throws -> Void = { _ in },
         ordinaryLoginCompleted: @escaping () -> Void = {}
     ) {
         self.siteRootTransport = siteRootTransport
         self.expectedSiteRootAuthorityHost = expectedSiteRootAuthorityHost
         self.showInstallations = showInstallations
+        self.routeToProviderEnrolment = routeToProviderEnrolment
         self.prepareOrdinaryLogin = prepareOrdinaryLogin
         self.ordinaryLoginCompleted = ordinaryLoginCompleted
         let retainedTransport: MonasAppAttestTransport?
@@ -448,8 +452,15 @@ struct ScanView: View {
         .sheet(item: mtgsRecoveryReviewBinding) { review in
             MTGSRecoveryReviewView(review: review, coordinator: mtgsRecovery)
         }
-        .sheet(item: siteRootConvergenceReviewBinding) { review in
-            SiteRootConvergenceReviewView(review: review, coordinator: siteRootConvergence)
+        .sheet(item: siteRootConvergenceReviewBinding, onDismiss: {
+            if finalIdentityQRRequested {
+                finalIdentityQRRequested = false
+                routeToProviderEnrolment()
+            }
+        }) { review in
+            SiteRootConvergenceReviewView(review: review, coordinator: siteRootConvergence) {
+                finalIdentityQRRequested = true
+            }
         }
         .sheet(item: siteOriginRelocationReviewBinding) { review in
             SiteOriginRelocationReviewView(review: review, coordinator: siteOriginRelocation)
@@ -1507,9 +1518,14 @@ private struct SiteRootDelegationReviewView: View {
                         Text(completion.detail)
                             .font(.footnote)
                         MnPrimaryButton(completion.actionTitle) {
-                            coordinator.reset()
-                            dismiss()
-                            showInstallations()
+                            if completion.scansNextQR {
+                                // Dismissing this sheet runs the existing scanner reset.
+                                dismiss()
+                            } else {
+                                coordinator.reset()
+                                dismiss()
+                                showInstallations()
+                            }
                         }
                     case let .failed(failure):
                         MnStatusLabel(text: "Site Root ceremony stopped safely", kind: .danger)
@@ -1595,7 +1611,7 @@ extension SiteRootDelegationCoordinator.Completion {
     var orientation: String {
         switch self {
         case .proofQueued:
-            "The install service received the proof. Continue setup when Monas provides the next invitation."
+            "The install service received the proof. When the same Monas install window shows the next protected QR, choose Scan next QR."
         case .siteTrustEstablished:
             "Monas accepted this first-device proof and created Site Trust and custody. This installation is recorded as setup in progress; identity enrolment is the next ceremony."
         case .sessionEstablished:
@@ -1630,9 +1646,11 @@ extension SiteRootDelegationCoordinator.Completion {
         }
     }
 
+    var scansNextQR: Bool { self == .proofQueued }
+
     var actionTitle: String {
         switch self {
-        case .proofQueued: "Continue"
+        case .proofQueued: "Scan next QR"
         case .siteTrustEstablished: "View setup progress"
         case .sessionEstablished: "View installation"
         }

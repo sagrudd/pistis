@@ -6,6 +6,15 @@ import XCTest
 final class SiteRootConvergenceProtocolTests: XCTestCase {
     private let nowSeconds: UInt64 = 1_900_000_000
 
+    func testSupportCodesDistinguishLeafAndNativeCustodyWithoutPayloads() {
+        XCTAssertEqual(SiteX509BrokerApprovalStageV1.supportCode(
+            stage: .awaitingContinuation(.leafApproval), error: PlatformFailure.siteRootAuthorityUnavailable),
+            "PST-ONBOARD/leaf-approval-await/authority_unavailable")
+        XCTAssertEqual(SiteX509BrokerApprovalStageV1.supportCode(
+            stage: .custodyAssertion, error: PlatformFailure.appAttestAssertionFailed),
+            "PST-ONBOARD/custody-assertion/app_attest")
+    }
+
     func testBundleReceiptPresentationBindsExactPurposeSiteGenerationAndDevice() throws {
         let deviceKeyID = "site-root-" + String(repeating: "a9", count: 32)
         let challenge = provisionChallenge(
@@ -352,7 +361,7 @@ final class SiteRootConvergenceProtocolTests: XCTestCase {
         )
 
         do {
-            try await service.provisionSiteX509Broker(presentation)
+            _ = try await service.provisionSiteX509Broker(presentation)
             XCTFail("a mismatched enrolled Site Root key ID must deny the proof")
         } catch let failure as PlatformFailure {
             XCTAssertEqual(failure, .siteRootAuthorityKeyMismatch)
@@ -617,9 +626,10 @@ final class SiteRootConvergenceProtocolTests: XCTestCase {
         )
         let presentation = try brokerPresentation()
 
-        try await service.provisionSiteX509Broker(
+        let custodyVerified = try await service.provisionSiteX509Broker(
             presentation, progress: { progress.append($0) }
         )
+        XCTAssertFalse(custodyVerified, "Initial proof alone must not offer the final identity QR")
         let firstEvents = await recorder.events()
         XCTAssertEqual(firstEvents, ["reserve", "proof", "submit"])
         XCTAssertEqual(progress, [
@@ -627,7 +637,7 @@ final class SiteRootConvergenceProtocolTests: XCTestCase {
         ])
 
         do {
-            try await service.provisionSiteX509Broker(
+            _ = try await service.provisionSiteX509Broker(
                 presentation, progress: { progress.append($0) }
             )
             XCTFail("a reserved broker presentation must not be reusable")

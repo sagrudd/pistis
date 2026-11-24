@@ -1121,6 +1121,24 @@ final class PlatformPolicyTests: XCTestCase {
         XCTAssertEqual(state.nextAction, .begin)
     }
 
+    func testAcceptedProviderStatusFailureOffersSameRetryWithOrWithoutPrompt() {
+        var state = EnrolmentProviderContinuationState()
+        XCTAssertNil(state.statusSupportCode(failure: .providerStatusRetryRequired))
+
+        state.markBeginAccepted()
+        XCTAssertEqual(state.statusButtonTitle(hasPrompt: true, failure: nil), "I approved this code")
+        XCTAssertNil(state.statusSupportCode(failure: .oauthDenied))
+        for hasPrompt in [true, false] {
+            XCTAssertEqual(
+                state.statusButtonTitle(hasPrompt: hasPrompt, failure: .providerStatusRetryRequired),
+                "Retry provider status"
+            )
+        }
+        XCTAssertEqual(state.statusSupportCode(failure: .providerStatusRetryRequired),
+                       "PST-ONBOARD/provider-status/verification-unavailable")
+        XCTAssertEqual(state.nextAction, .status)
+    }
+
     func testVerifiedAccountRequiresSeparateExplicitConfirmation() throws {
         let approval = VerifiedProviderApproval(
             subject: 123_456_789,

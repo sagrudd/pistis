@@ -441,6 +441,38 @@ final class AppAttestAssertionTransportTests: XCTestCase {
         XCTAssertEqual(AssertionURLProtocol.brokerRequestCount, 3)
     }
 
+    func testBrokerCustodyChallengeClassifiesFailureWithoutChangingRetries() async throws {
+        let configuration = URLSessionConfiguration.ephemeral
+        configuration.protocolClasses = [AssertionURLProtocol.self]
+        let pending = ScopedAppAttestPending(attemptID: UUID(), correlation: Data(repeating: 4, count: 32),
+            registrationReference: "reference-b", siteClaim: "site-demo",
+            appClaim: AppleAppAttestRegistrationEnvelope.reviewedAppIdentifier, environmentClaim: "Production",
+            keyID: Data(repeating: 0x11, count: 32).base64EncodedString(), preparedRegistration: Data([1]))
+        for (networkError, status, wrongBinding, expected, requests) in [
+            (URLError.Code.serverCertificateUntrusted, 200, false, BrokerCustodyChallengeFailure.tlsTrust, 1),
+            (.cannotConnectToHost, 200, false, .unreachable, 6),
+            (nil, 503, false, .routeUnavailable, 6),
+            (nil, 404, false, .responseRejected, 1),
+            (nil, 200, true, .bindingRejected, 1),
+        ] {
+            AssertionURLProtocol.reset()
+            AssertionURLProtocol.brokerNetworkError = networkError
+            AssertionURLProtocol.brokerStatusOverride = status
+            if wrongBinding { AssertionURLProtocol.challengeSite = "site-other" }
+            let transport = try MonasAppAttestTransport(authorityOrigin: XCTUnwrap(URL(string: "https://10.0.2.15:8443")),
+                expectedSPKISHA256: Data(repeating: 4, count: 32), configuration: configuration)
+            do {
+                _ = try await transport.fetchBrokerCustodyChallengeV2(pending: pending, now: { 150 })
+                XCTFail("unexpected challenge")
+            } catch {
+                XCTAssertEqual(error as? BrokerCustodyChallengeFailure, expected)
+                XCTAssertEqual(SiteX509BrokerApprovalStageV1.supportCode(stage: .custodyChallenge, error: error),
+                               "PST-ONBOARD/custody-challenge/\(expected.rawValue)")
+            }
+            XCTAssertEqual(AssertionURLProtocol.brokerRequestCount, requests)
+        }
+    }
+
     func testUnavailableServerRegisteredKeyDoesNotChangeTheLocalReference() async throws {
         let unacceptedRetryKeyID = Data(repeating: 0x22, count: 32).base64EncodedString()
         let store = MutableKeyIDStore(keyID: unacceptedRetryKeyID)
@@ -700,6 +732,8 @@ final class AssertionURLProtocol: URLProtocol, @unchecked Sendable {
     nonisolated(unsafe) static var rotationCompleteResponse: Data?
     nonisolated(unsafe) static var brokerUnavailableRemaining = 0
     nonisolated(unsafe) static var brokerRequestCount = 0
+    nonisolated(unsafe) static var brokerNetworkError: URLError.Code?
+    nonisolated(unsafe) static var brokerStatusOverride: Int?
 
     override class func canInit(with _: URLRequest) -> Bool { true }
     override class func canonicalRequest(for request: URLRequest) -> URLRequest { request }
@@ -719,14 +753,20 @@ final class AssertionURLProtocol: URLProtocol, @unchecked Sendable {
             if Self.brokerUnavailableRemaining > 0 { Self.brokerUnavailableRemaining -= 1; unavailable = true }
             Self.lock.unlock()
         }
+        if isBroker, let code = Self.brokerNetworkError {
+            client?.urlProtocol(self, didFailWithError: URLError(code))
+            return
+        }
         let rotation = request.url?.path.hasSuffix("/authority-custody-rotation/v2/begin") == true ? Self.rotationBeginResponse
             : (request.url?.path.hasSuffix("/authority-custody-rotation/v2/complete") == true ? Self.rotationCompleteResponse : nil)
+        let statusCode = (isBroker ? Self.brokerStatusOverride : nil)
+            ?? (unavailable ? 503 : (isChallenge || rotation != nil ? 200 : 202))
         let response = HTTPURLResponse(
-            url: request.url!, statusCode: unavailable ? 503 : (isChallenge || rotation != nil ? 200 : 202), httpVersion: "HTTP/1.1",
+            url: request.url!, statusCode: statusCode, httpVersion: "HTTP/1.1",
             headerFields: ["Cache-Control": "no-store"]
         )!
         client?.urlProtocol(self, didReceive: response, cacheStoragePolicy: .notAllowed)
-        if unavailable { }
+        if statusCode == 503 { }
         else if let rotation { client?.urlProtocol(self, didLoad: rotation) }
         else if isChallenge {
             if request.url?.path.hasSuffix("/broker-assertion-challenge") == true,
@@ -765,6 +805,8 @@ final class AssertionURLProtocol: URLProtocol, @unchecked Sendable {
         rotationCompleteResponse = nil
         brokerUnavailableRemaining = 0
         brokerRequestCount = 0
+        brokerNetworkError = nil
+        brokerStatusOverride = nil
     }
 
     static func challengeData(expires: UInt64) -> Data {

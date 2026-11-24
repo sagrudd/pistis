@@ -1,3 +1,4 @@
+import CryptoKit
 import Foundation
 import XCTest
 import PistisCore
@@ -18,6 +19,24 @@ final class ScopedAppAttestStoreTests: XCTestCase {
         ScopedAppAttestBinding(attemptID: id, installationID: Data(repeating: installation, count: 16),
                                site: "site-b", appIdentifier: AppleAppAttestRegistrationEnvelope.reviewedAppIdentifier,
                                environment: "Production", keyID: key, policyGeneration: 1, revocationGeneration: 1)
+    }
+
+    func testPendingFingerprintSuffixSelectsOnlyOneCandidate() {
+        let tail = Data([0xab, 0xcd, 0xef])
+        let first = Data(repeating: 0x11, count: 29) + tail
+        let collision = Data(repeating: 0x22, count: 29) + tail
+        let other = Data(repeating: 0x33, count: 32)
+        XCTAssertEqual(PendingLeafFingerprintSelector.uniqueMatch("AB:CD:EF ",
+            candidates: [("first", first), ("other", other)]), "first")
+        XCTAssertNil(PendingLeafFingerprintSelector.uniqueMatch("abcdef",
+            candidates: [("first", first), ("collision", collision)]))
+        XCTAssertEqual(PendingLeafFingerprintSelector.uniqueMatch(String(repeating: "11", count: 29) + "abcdef",
+            candidates: [("first", first), ("collision", collision)]), "first")
+        for value in ["", "abcde", "1abcdef", "abcdeg", "bcdef0"] {
+            XCTAssertNil(PendingLeafFingerprintSelector.uniqueMatch(value, candidates: [("first", first)]))
+        }
+        XCTAssertNil(PendingLeafFingerprintSelector.uniqueMatch(String(repeating: "11", count: 29) + "abcdef",
+            candidates: [("first", first), ("duplicate", first)]))
     }
 
     func testSignedSimulatorKeychainRetainsTwoIsolatedBindings() throws {
@@ -43,6 +62,60 @@ final class ScopedAppAttestStoreTests: XCTestCase {
         XCTAssertEqual(try restarted.binding(installationID: Data(repeating: 3, count: 16)), binding(second, installation: 3))
         XCTAssertThrowsError(try restarted.commit(binding(second)))
         XCTAssertEqual(try restarted.binding(installationID: Data(repeating: 2, count: 16)), binding(first))
+    }
+
+    func testPendingCustodySurvivesRestartWithoutSelectingInstalledA() throws {
+        let persistence = ScopedMemoryPersistence()
+        let store = ScopedAppAttestStore(persistence: persistence)
+        let a = UUID()
+        try store.stage(pending(a))
+        try store.markSubmitted(attemptID: a)
+        try store.commit(binding(a))
+        let b = UUID()
+        let setup = pending(b, site: "site-02020202-0202-0202-0202-020202020202")
+        try store.stage(setup)
+        try store.markSubmitted(attemptID: b)
+        XCTAssertTrue(try store.recoverableBrokerCustodyAttempts().isEmpty)
+        try store.stageProvisionalLeaf(ProvisionalLeafHandoff(
+            attemptID: b, wrapper: Data([1]), verifiedAtSeconds: 1
+        ), pending: setup)
+        let restarted = ScopedAppAttestStore(persistence: persistence)
+        XCTAssertEqual(try restarted.recoverableBrokerCustodyAttempts(), [setup])
+        try restarted.markCustodyStep("assertion", pending: setup)
+        XCTAssertTrue(try restarted.recoverableBrokerCustodyAttempts().isEmpty)
+        XCTAssertEqual(try restarted.binding(installationID: Data(repeating: 2, count: 16)), binding(a))
+    }
+
+    func testTwoSubmittedSetupsRequireExactOriginAndLeafPin() throws {
+        let store = ScopedAppAttestStore(persistence: ScopedMemoryPersistence())
+        let selectedID = try XCTUnwrap(UUID(uuidString: "01010101-0101-0101-0101-010101010101"))
+        let selected = pending(selectedID, site: "site-cb5fc980-8a52-427a-83d1-a5e6a54b6642")
+        let stale = pending(UUID(), site: "site-02020202-0202-0202-0202-020202020202")
+        for setup in [selected, stale] {
+            try store.stage(setup)
+            try store.markSubmitted(attemptID: setup.attemptID)
+        }
+        let fixture = URL(fileURLWithPath: #filePath).deletingLastPathComponent()
+            .deletingLastPathComponent().appendingPathComponent("Fixtures/leaf-v2-ipv4.json")
+        var bytes = try XCTUnwrap(JSONSerialization.jsonObject(with: Data(contentsOf: fixture)) as? [String: Any])
+        bytes["correlation_digest_b64url"] = SiteRootBrokerPresentationV2.encode(Data(SHA256.hash(
+            data: Data("mnemosyne.monas.first-device.correlation.v2\0".utf8) + selected.correlation
+        )))
+        try store.stageProvisionalLeaf(ProvisionalLeafHandoff(
+            attemptID: selectedID, wrapper: JSONSerialization.data(withJSONObject: bytes),
+            verifiedAtSeconds: 1_900_000_000
+        ), pending: selected)
+        let handoff = try store.retainedLeafHandoff(for: selected)
+        let installation = Data(repeating: 3, count: 16)
+        let digest = Data(repeating: 4, count: 32)
+        XCTAssertThrowsError(try store.stageProvisionalPresentation(installationID: installation,
+            digest: digest, qrText: "PISTIS1:test", verifiedAtMillis: 1))
+        XCTAssertThrowsError(try store.stageProvisionalPresentation(installationID: installation,
+            digest: digest, qrText: "PISTIS1:test", verifiedAtMillis: 1,
+            nativeOrigin: handoff.nativeOrigin, leafSPKI: Data(repeating: 0, count: 32)))
+        XCTAssertEqual(try store.stageProvisionalPresentation(installationID: installation,
+            digest: digest, qrText: "PISTIS1:test", verifiedAtMillis: 1,
+            nativeOrigin: handoff.nativeOrigin, leafSPKI: handoff.presentation.monasLeafSPKISHA256), selectedID)
     }
 
     func testRetryRestartConflictAndDistinctInstallation() throws {

@@ -30,10 +30,12 @@ final class SiteRootConvergenceCoordinator: ObservableObject {
         case unlockingBundleReceipt
         case submitting
         case completed
+        case awaitingFinalIdentityQR
         case failed(PlatformFailure)
     }
 
     @Published private(set) var phase: Phase = .idle
+    @Published private(set) var supportCode: String?
     @Published private(set) var presentedReview: SiteRootConvergenceReview?
     private let service: SiteRootConvergenceServiceV2?
     private let brokerService: SiteRootConvergenceServiceV2?
@@ -220,8 +222,9 @@ final class SiteRootConvergenceCoordinator: ObservableObject {
         else { return }
         let operation = operationID
         phase = .authenticating
+        supportCode = nil
         do {
-            let completedBrokeredSiteX509: Bool
+            let custodyVerified: Bool
             switch pending {
             case let .unlock(value):
                 try await service.unlockBundleReceipt(value) {
@@ -229,30 +232,28 @@ final class SiteRootConvergenceCoordinator: ObservableObject {
                         throw PlatformFailure.custodyRewrapUnavailable
                     }
                 }
-                completedBrokeredSiteX509 = false
+                custodyVerified = false
             case let .provision(value):
                 try await service.provisionBundleReceipt(value) {
                     self.phase = .unlockingBundleReceipt
                 }
-                completedBrokeredSiteX509 = false
+                custodyVerified = false
             case let .siteX509(value):
                 try await service.provisionSiteX509(value)
-                completedBrokeredSiteX509 = false
+                custodyVerified = false
             case let .siteX509Broker(value):
-                try await service.provisionSiteX509Broker(value) {
+                custodyVerified = try await service.provisionSiteX509Broker(value) {
                     self.phase = .siteX509Progress($0)
                 }
-                completedBrokeredSiteX509 = true
             case let .siteX509ContinuationRecovery(value):
-                try await service.continueRecoveredSiteX509(value) {
+                custodyVerified = try await service.continueRecoveredSiteX509(value) {
                     self.phase = .siteX509Progress($0)
                 }
-                completedBrokeredSiteX509 = true
             case let .acknowledgement(value):
                 try await service.acknowledge(value)
-                completedBrokeredSiteX509 = false
+                custodyVerified = false
             }
-            if completedBrokeredSiteX509 && shouldRecordLegacyProgress(for: pending) {
+            if pending.requiresBroker && shouldRecordLegacyProgress(for: pending) {
                 // Remote acceptance is already authoritative at this point.
                 // Local progress is deliberately best-effort and can never
                 // turn an accepted protected transaction into a false failure.
@@ -261,18 +262,26 @@ final class SiteRootConvergenceCoordinator: ObservableObject {
             }
             guard operationID == operation else { return }
             self.pending = nil
-            phase = .completed
+            phase = custodyVerified ? .awaitingFinalIdentityQR : .completed
         } catch let failure as PlatformFailure {
             guard operationID == operation else { return }
+            recordSupportCode(failure)
             retainSafeBrokerRetry(for: pending)
             self.pending = nil
             phase = .failed(failure)
         } catch {
             guard operationID == operation else { return }
+            recordSupportCode(error)
             retainSafeBrokerRetry(for: pending)
             self.pending = nil
             phase = .failed(.siteRootAuthorityUnavailable)
         }
+    }
+
+    private func recordSupportCode(_ error: Error) {
+        let stage: SiteX509BrokerApprovalStageV1?
+        if case let .siteX509Progress(value) = phase { stage = value } else { stage = nil }
+        supportCode = SiteX509BrokerApprovalStageV1.supportCode(stage: stage, error: error)
     }
 
     private func shouldRecordLegacyProgress(for pending: Pending) -> Bool {
@@ -305,12 +314,20 @@ final class SiteRootConvergenceCoordinator: ObservableObject {
 
     func retryBrokerCustody() async {
         guard let context = brokerCustodyRetry, let service = brokerService else { return }
-        phase = .authenticating
+        let operation = operationID
+        supportCode = nil
+        phase = .siteX509Progress(.custodyChallenge)
         do {
-            try await service.retryProvisionalBrokerCustody(correlation: context.correlation, siteUUID: context.siteUUID)
+            try await service.retryProvisionalBrokerCustody(correlation: context.correlation, siteUUID: context.siteUUID) {
+                guard self.operationID == operation else { return }
+                self.phase = .siteX509Progress($0)
+            }
+            guard operationID == operation else { return }
             brokerCustodyRetry = nil
-            phase = .completed
+            phase = .awaitingFinalIdentityQR
         } catch {
+            guard operationID == operation else { return }
+            recordSupportCode(error)
             let storage = ScopedAppAttestStore()
             if let pending = try? storage.submittedBrokerAttempt(correlation: context.correlation, siteUUID: context.siteUUID) {
                 if (try? storage.requireFreshCustodyStep("assertion", pending: pending)) == nil { brokerCustodyRetry = nil }

@@ -84,6 +84,12 @@ struct RootTabView: View {
     @State private var reconciliationMessage: String?
     @State private var selectedTab = Tab.scan
     @State private var providerEnrolmentRequested = false
+    @State private var pendingBrokerCustodyCount = 0
+    @State private var pendingBrokerFingerprint = ""
+    @State private var pendingBrokerFingerprintRequested = false
+    @State private var pendingBrokerCustodyBusy = false
+    @State private var pendingBrokerCustodyMessage: String?
+    @State private var pendingBrokerFinalQRAvailable = false
     @State private var authorityCustodyContinuationHost: String?
     @State private var authorityCustodyMode: FirstAuthorityCustodyModeV2 = .rotation
   @State private var authorityCustodyAttempt: UUID?
@@ -123,7 +129,22 @@ struct RootTabView: View {
                     authorityCustodyBusy: authorityCustodyAttempt != nil,
                     continueBrokeredSiteX509: continueBrokeredSiteX509,
                     continueAuthorityCustody: continueAuthorityCustody,
-                    selectInstallation: selectInstallation
+                    selectInstallation: selectInstallation,
+                    pendingCustodyAvailable: pendingBrokerCustodyCount > 0,
+                    pendingCustodyBusy: pendingBrokerCustodyBusy,
+                    pendingCustodyMessage: pendingBrokerCustodyMessage,
+                    scanFinalIdentityQR: pendingBrokerFinalQRAvailable ? {
+                        pendingBrokerFinalQRAvailable = false
+                        pendingBrokerCustodyMessage = nil
+                        routeToProviderEnrolment()
+                    } : nil,
+                    continuePendingCustody: {
+                        if pendingBrokerCustodyCount > 1 {
+                            pendingBrokerFingerprintRequested = true
+                        } else {
+                            Task { await resumePendingBrokerCustody() }
+                        }
+                    }
                 )
                 .toolbar {
                     ToolbarItem(placement: .topBarTrailing) {
@@ -135,7 +156,23 @@ struct RootTabView: View {
             .tabItem {
                 Label("Installations", systemImage: "building.2")
             }
+            .alert("Match the retained public key", isPresented: $pendingBrokerFingerprintRequested) {
+                TextField("Last 6 characters or full fingerprint", text: $pendingBrokerFingerprint)
+                    .textInputAutocapitalization(.never)
+                    .autocorrectionDisabled()
+                Button("Continue") {
+                    let fingerprint = pendingBrokerFingerprint
+                    pendingBrokerFingerprint = ""
+                    Task { await resumePendingBrokerCustody(fingerprint: fingerprint) }
+                }
+                Button("Cancel", role: .cancel) { pendingBrokerFingerprint = "" }
+            } message: {
+                Text("Enter the last 6 characters of the SHA-256 SPKI fingerprint shown in the retained Monas terminal. You can also paste the full fingerprint.")
+            }
             .tag(Tab.installations)
+            .onChange(of: selectedTab, initial: true) { _, value in
+                if value == .installations { refreshPendingBrokerCustody() }
+            }
 
             NavigationStack {
                 ScanView(
@@ -147,6 +184,7 @@ struct RootTabView: View {
                         authorityCustodyMode = .rotation
                         selectedTab = .installations
                     },
+                    routeToProviderEnrolment: routeToProviderEnrolment,
                     prepareOrdinaryLogin: prepareOrdinaryLogin,
                     ordinaryLoginCompleted: {
                         selectedTab = .identities
@@ -214,6 +252,54 @@ struct RootTabView: View {
             return projection
         }
         return .empty
+    }
+
+    private func refreshPendingBrokerCustody() {
+        pendingBrokerCustodyCount = BrokerV2Feature.enabled
+            ? ((try? ScopedAppAttestStore().recoverableBrokerCustodyAttempts().count) ?? 0) : 0
+    }
+
+    private func resumePendingBrokerCustody(fingerprint: String? = nil) async {
+        guard !pendingBrokerCustodyBusy, BrokerV2Feature.enabled else { return }
+        pendingBrokerCustodyBusy = true
+        pendingBrokerFinalQRAvailable = false
+        pendingBrokerCustodyMessage = nil
+        var stage: SiteX509BrokerApprovalStageV1?
+        defer {
+            pendingBrokerCustodyBusy = false
+            refreshPendingBrokerCustody()
+        }
+        do {
+            let store = ScopedAppAttestStore()
+            let attempts = try store.recoverableBrokerCustodyAttempts()
+            let pending: ScopedAppAttestPending?
+            if let fingerprint {
+                let candidates = attempts.compactMap { attempt -> (ScopedAppAttestPending, Data)? in
+                    guard let handoff = try? store.retainedLeafHandoff(for: attempt) else { return nil }
+                    return (attempt, handoff.presentation.monasLeafSPKISHA256)
+                }
+                pending = PendingLeafFingerprintSelector.uniqueMatch(fingerprint, candidates: candidates)
+            } else {
+                pending = attempts.count == 1 ? attempts.first : nil
+            }
+            guard let pending else {
+                pendingBrokerCustodyMessage = "No single pending setup matches the retained certificate."
+                return
+            }
+            let broker = try MonasSiteX509FirstProvisionBrokerTransport()
+            let service = SiteRootConvergenceServiceV2(transport: broker, continuationTransport: broker)
+            try await service.retryProvisionalBrokerCustody(pending: pending) {
+                stage = $0
+                pendingBrokerCustodyMessage = $0.label
+            }
+            pendingBrokerCustodyMessage = "Custody verified. Scan the final signed identity QR on the same Monas install page."
+            pendingBrokerFinalQRAvailable = true
+        } catch {
+            let code = SiteX509BrokerApprovalStageV1.supportCode(stage: stage, error: error)
+            let message = (error as? PlatformFailure)?.safeUserMessage
+                ?? "Pistis could not continue this pending setup safely."
+            pendingBrokerCustodyMessage = message + "\n" + code
+        }
     }
 
     private func recoverSiteRootInstallation() {

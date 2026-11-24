@@ -26,6 +26,11 @@ struct FirstDeviceEnrolmentView: View {
                     text: flow.status,
                     kind: flow.failure == nil ? .warning : .danger
                 )
+                if let code = flow.providerStatusSupportCode {
+                    Text(code)
+                        .font(.footnote.monospaced())
+                        .textSelection(.enabled)
+                }
 
                 if flow.presentation == nil {
                     QRScannerCameraView(
@@ -68,7 +73,7 @@ struct FirstDeviceEnrolmentView: View {
                                         "The host accepted this exact device operation. Retry only its provider status; a second begin request is prohibited."
                                     )
                                     .font(.footnote)
-                                    Button("Retry provider status") {
+                                    Button(flow.providerStatusButtonTitle) {
                                         Task { await flow.checkVerification() }
                                     }
                                     .buttonStyle(.borderedProminent)
@@ -103,7 +108,7 @@ struct FirstDeviceEnrolmentView: View {
                                 }
                                 .buttonStyle(.borderedProminent)
                                 .tint(MnColor.action)
-                                Button("I approved this code") {
+                                Button(flow.providerStatusButtonTitle) {
                                     Task { await flow.checkVerification() }
                                 }
                                 .buttonStyle(.bordered)
@@ -256,6 +261,16 @@ final class FirstDeviceEnrolmentFlow: ObservableObject {
             && prompt == nil && verifiedSubject == nil
     }
 
+    var providerStatusButtonTitle: String {
+        providerContinuation.statusButtonTitle(
+            hasPrompt: prompt != nil, failure: failure
+        )
+    }
+
+    var providerStatusSupportCode: String? {
+        providerContinuation.statusSupportCode(failure: failure)
+    }
+
     func restorePendingAuthorityBinding() {
         guard BrokerV2Feature.enabled, presentation == nil else { return }
         do {
@@ -390,7 +405,8 @@ final class FirstDeviceEnrolmentFlow: ObservableObject {
         if provisionalStagingEnabled, let scan = verifiedScan, try scopedStore.hasSubmittedBrokerAttempt() {
             let attempt = try scopedStore.stageProvisionalPresentation(
                 installationID: presentation.installationID, digest: presentation.presentationDigest,
-                qrText: scan.text, verifiedAtMillis: scan.atMillis)
+                qrText: scan.text, verifiedAtMillis: scan.atMillis,
+                nativeOrigin: presentation.httpsOrigin, leafSPKI: presentation.tlsSPKISHA256)
             admission = .provisional(attemptID: attempt, installationID: presentation.installationID,
                                      presentationDigest: presentation.presentationDigest)
         } else { admission = existingIDs.isEmpty ? nil : try await additionalAdmission(presentation) }
@@ -880,6 +896,16 @@ struct EnrolmentProviderContinuationState {
         nextAction == .status && hasDisplayablePrompt
             ? .continueWithPrompt
             : .retryStatus
+    }
+
+    func statusButtonTitle(hasPrompt: Bool, failure: PlatformFailure?) -> String {
+        hasPrompt && statusSupportCode(failure: failure) == nil
+            ? "I approved this code" : "Retry provider status"
+    }
+
+    func statusSupportCode(failure: PlatformFailure?) -> String? {
+        nextAction == .status && failure == .providerStatusRetryRequired
+            ? "PST-ONBOARD/provider-status/verification-unavailable" : nil
     }
 
     mutating func reset() {

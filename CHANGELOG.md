@@ -1,3 +1,28 @@
+## Pistis iOS 0.32.6 (86)
+
+- Match the provider-status retry button to its failure message and show a redacted support code.
+
+## Pistis iOS 0.32.5 (85)
+
+- Open the final signed identity scanner directly from verified broker custody.
+
+## Pistis iOS 0.32.4 (84)
+
+- Offer Scan next QR after submitting the brokered Site Root proof.
+
+## Pistis iOS 0.32.3 (83)
+
+- Show redacted stage and failure codes for certificate approval and retained custody.
+- Show Monas connection and App Attest progress when retrying retained custody.
+
+## Pistis iOS 0.32.2 (82)
+
+- Put the pending custody continuation in the Installations list.
+
+## Pistis iOS 0.32.1 (81)
+
+- Continue an eligible pending custody setup from Installations after closing the approval screen.
+
 ## Pistis iOS 0.31.0+79 — Joint fixed Monas renewal (in development)
 
 - Add one-use, purpose-separated approval with the existing device, Site Root

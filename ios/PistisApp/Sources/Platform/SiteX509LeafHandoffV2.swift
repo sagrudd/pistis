@@ -64,3 +64,22 @@ struct SiteX509LeafHandoffV2 {
         return b[0] == 10 || (b[0] == 172 && (16...31).contains(b[1])) || (b[0] == 192 && b[1] == 168)
     }
 }
+
+/// Selects one local record by its public pin. The caller still verifies and
+/// uses the complete authenticated handoff for TLS and custody.
+enum PendingLeafFingerprintSelector {
+    static func uniqueMatch<Value>(
+        _ input: String, candidates: [(value: Value, fullPin: Data)]
+    ) -> Value? {
+        let text = input.lowercased().filter { !$0.isWhitespace && $0 != ":" }
+        guard text.count == 6 || text.count == 64,
+              text.utf8.allSatisfy({ (48...57).contains($0) || (97...102).contains($0) })
+        else { return nil }
+        var matches: [Value] = []
+        for candidate in candidates where candidate.fullPin.count == 32 {
+            let hex = candidate.fullPin.map { String(format: "%02x", $0) }.joined()
+            if hex.hasSuffix(text) { matches.append(candidate.value) }
+        }
+        return matches.count == 1 ? matches.first : nil
+    }
+}

@@ -680,6 +680,12 @@ Changes to tokens or product presentation must be reconciled with
 motion rules inside Pistis. Submit those decisions to the design-language
 repository first, then update ADR 0007 and this application.
 
+When **Continue pending setup** finds more than one retained setup, enter
+the last six hexadecimal characters of the retained host's SHA-256 SPKI
+fingerprint, or paste the full fingerprint. Pistis continues only with a
+unique match. Use the full fingerprint if the suffix matches multiple records.
+TLS and custody still verify the complete pin from the retained handoff.
+
 ### Onboarding support codes
 
 Pistis shows `PST-ONBOARD/<stage>/<category>` when the certificate approval

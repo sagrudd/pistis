@@ -151,18 +151,17 @@ struct RootTabView: View {
                 Label("Installations", systemImage: "building.2")
             }
             .alert("Match the retained public key", isPresented: $pendingBrokerFingerprintRequested) {
-                TextField("SHA-256 fingerprint", text: $pendingBrokerFingerprint)
+                TextField("Last 6 characters or full fingerprint", text: $pendingBrokerFingerprint)
                     .textInputAutocapitalization(.never)
                     .autocorrectionDisabled()
                 Button("Continue") {
-                    let fingerprint = pendingBrokerFingerprint.lowercased()
-                        .filter { !$0.isWhitespace && $0 != ":" }
+                    let fingerprint = pendingBrokerFingerprint
                     pendingBrokerFingerprint = ""
                     Task { await resumePendingBrokerCustody(fingerprint: fingerprint) }
                 }
                 Button("Cancel", role: .cancel) { pendingBrokerFingerprint = "" }
             } message: {
-                Text("Enter the SHA-256 SPKI fingerprint shown in the retained Monas terminal.")
+                Text("Enter the last 6 characters of the SHA-256 SPKI fingerprint shown in the retained Monas terminal. You can also paste the full fingerprint.")
             }
             .tag(Tab.installations)
             .onChange(of: selectedTab, initial: true) { _, value in
@@ -264,15 +263,18 @@ struct RootTabView: View {
         }
         do {
             let store = ScopedAppAttestStore()
-            var attempts = try store.recoverableBrokerCustodyAttempts()
+            let attempts = try store.recoverableBrokerCustodyAttempts()
+            let pending: ScopedAppAttestPending?
             if let fingerprint {
-                attempts = attempts.filter { attempt in
-                    guard let handoff = try? store.retainedLeafHandoff(for: attempt) else { return false }
-                    return handoff.presentation.monasLeafSPKISHA256
-                        .map { String(format: "%02x", $0) }.joined() == fingerprint
+                let candidates = attempts.compactMap { attempt -> (ScopedAppAttestPending, Data)? in
+                    guard let handoff = try? store.retainedLeafHandoff(for: attempt) else { return nil }
+                    return (attempt, handoff.presentation.monasLeafSPKISHA256)
                 }
+                pending = PendingLeafFingerprintSelector.uniqueMatch(fingerprint, candidates: candidates)
+            } else {
+                pending = attempts.count == 1 ? attempts.first : nil
             }
-            guard attempts.count == 1, let pending = attempts.first else {
+            guard let pending else {
                 pendingBrokerCustodyMessage = "No single pending setup matches the retained certificate."
                 return
             }

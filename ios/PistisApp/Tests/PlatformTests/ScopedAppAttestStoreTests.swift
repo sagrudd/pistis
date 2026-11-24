@@ -21,6 +21,24 @@ final class ScopedAppAttestStoreTests: XCTestCase {
                                environment: "Production", keyID: key, policyGeneration: 1, revocationGeneration: 1)
     }
 
+    func testPendingFingerprintSuffixSelectsOnlyOneCandidate() {
+        let tail = Data([0xab, 0xcd, 0xef])
+        let first = Data(repeating: 0x11, count: 29) + tail
+        let collision = Data(repeating: 0x22, count: 29) + tail
+        let other = Data(repeating: 0x33, count: 32)
+        XCTAssertEqual(PendingLeafFingerprintSelector.uniqueMatch("AB:CD:EF ",
+            candidates: [("first", first), ("other", other)]), "first")
+        XCTAssertNil(PendingLeafFingerprintSelector.uniqueMatch("abcdef",
+            candidates: [("first", first), ("collision", collision)]))
+        XCTAssertEqual(PendingLeafFingerprintSelector.uniqueMatch(String(repeating: "11", count: 29) + "abcdef",
+            candidates: [("first", first), ("collision", collision)]), "first")
+        for value in ["", "abcde", "1abcdef", "abcdeg", "bcdef0"] {
+            XCTAssertNil(PendingLeafFingerprintSelector.uniqueMatch(value, candidates: [("first", first)]))
+        }
+        XCTAssertNil(PendingLeafFingerprintSelector.uniqueMatch(String(repeating: "11", count: 29) + "abcdef",
+            candidates: [("first", first), ("duplicate", first)]))
+    }
+
     func testSignedSimulatorKeychainRetainsTwoIsolatedBindings() throws {
         let service = "org.mnemosynebiosciences.pistis.test.scoped." + UUID().uuidString
         let probe: [String: Any] = [

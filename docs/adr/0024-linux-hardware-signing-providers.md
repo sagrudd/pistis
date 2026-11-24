@@ -52,6 +52,90 @@ must never cause automatic provider fallback. A software signer may exist only
 inside explicitly test-only construction and cannot satisfy production,
 packaging, deployment, or physical-host evidence.
 
+### Signing purpose and authority separation
+
+This provider key is a machine-held installation-signing key. It is distinct
+from the human Pistis signer on the physical iPhone, App Attest or Secure
+Enclave keys, Site Root or certificate-issuer keys, package-release signing
+keys, and Thesaurophylax custody keys. It must never be reused as any of those
+keys or represented as proof of human presence, user approval, Site Trust, or
+certificate issuance.
+
+The signer is a cryptographic primitive called by Monas inside the Prosopikon
+host-authority boundary. Prosopikon's durable host authority owns
+authorization and the current key-generation and revocation records. Its
+`HostCompletionPort`, described by ADR 0017, rechecks those records and owns
+one-use consumption, session issuance, and audit commits. Monas may transport
+the exact request and result but cannot create sessions, select or restore a
+key generation, or grant installation or trust changes. A request may reach
+the signer only after the `HostCompletionPort` has validated an allowed
+installation-signing purpose and its complete bindings. Callers must not be
+able to submit arbitrary bytes from a CLI, browser, worker, or network
+interface. The production conformance suite must prove that invalid or
+unapproved purposes cannot reach the provider and that a signature alone
+cannot create authority.
+
+Provider-object creation and enrollment are not performed by the
+`HostCompletionPort`. They require a separate governed provisioning and
+enrollment operation that records the exact provider object and public
+identity. The Prosopikon durable host authority must then authorize activation
+of that identity as a new current generation. This ADR does not define that
+operation's interface or operator roles; those remain design and qualification
+gates.
+
+The provider signing call occurs outside any SQLite transaction. Before it,
+the Prosopikon `HostCompletionPort` durably records a one-use reservation
+bound to the exact operation, payload digest, purpose, audience, target,
+current key generation, expiry, and idempotency reference. The provider
+receives only the exact validated `Sig_structure` for that reservation. After
+the call, the `HostCompletionPort` opens a separate transaction and rechecks
+the reservation, current generation, revocation, expiry, cancellation, and
+one-use state before committing the result, session/authority outcome, and
+audit record. A provider timeout or crash leaves the reservation pending or
+ambiguous and grants no authority; recovery reconciles only that exact
+reservation, and no changed request or second reservation may replace it.
+The production suite must test process failure before the provider call,
+during or after the call, and before or after final commit.
+
+### Key identity lifecycle and rollback
+
+The enrolled public key, key identifier, provider type, exact provider object
+locator, and monotonically increasing authority generation form one identity
+record. Every signing request is bound to the current generation. The
+generation and revocation authority remain exclusively with the durable
+Prosopikon host authority; the `HostCompletionPort` described by ADR 0017
+rechecks the current generation and revocation state before consuming a
+result. Monas readiness and local provider state cannot select or restore an
+identity.
+
+Provider key creation and authority enrollment are separate staged operations.
+A newly created key is unusable until its exact public identity is committed
+as current by the host authority. A crash before that commit leaves no signing
+authority; recovery may resume only the exact staged provider object and
+matching public identity. It must not discover or silently choose another key.
+The governed enrollment operation stages a successor identity. The design
+does not yet establish an atomic boundary between making the successor current,
+revoking the predecessor, invalidating predecessor-bound sessions and pending
+work, and recording the audit event. These effects must not be treated as
+atomic merely because the host authority owns them. Before this lifecycle is
+accepted, the implementation must specify either one shared durable commit
+boundary covering all of them, or a staged transition protocol with durable
+phase markers, idempotent completion, fail-closed signing/session checks, and
+crash recovery that prevents mixed state from granting authority. Recovery
+must select one committed generation and derive session validity from that
+outcome, with no stale session authorized; intermediate states must grant
+neither generation signing or session authority until reconciled.
+Audit evidence must identify the committed outcome and any recovered
+transition. The selected protocol and its transaction ownership remain open
+design decisions, not solved behavior in this ADR.
+
+Restoring an older database or configuration must not make a revoked
+generation current again. The implementation must select and qualify an
+anti-rollback source for the committed generation; a restorable local database
+copy alone does not establish that property. Until that source and the
+crash/recovery transition are defined, key rotation and production recovery
+remain blocked.
+
 ### Provider order
 
 The first production provider is **TPM2**. It is used when the authority host
@@ -65,6 +149,25 @@ mechanism, slot/token identity, and key identity are explicitly pinned.
 This order is an implementation priority, not an automatic preference chain.
 A deployment names one provider. If that provider fails, the authority fails
 closed; it does not attempt the other provider.
+
+### Initial candidate scope proposal
+
+The first implementation candidate is proposed to be one physical TPM 2.0 on
+the NUC running Ubuntu 26.04 x86_64. This is a bounded qualification target,
+not a supported-host declaration, package coordinate, release, or permission
+to activate the authority. Before implementation, read-only inventory must
+confirm that the selected device is a physical TPM 2.0 rather than a vTPM and
+record the exact model, firmware, host, kernel, TPM stack and interface. The
+candidate remains blocked until that inventory and the hardware-specific
+qualification plan are reviewed.
+
+Acceptance of this ADR would authorize no vTPM, PKCS#11 device, network HSM,
+other host, package format, or production deployment. Each requires a separate
+owner-selected candidate and its own provider, transport, hardware and
+host-qualification review. In particular, a PKCS#11 module must not be loaded
+into the authority process or treated as trusted solely because its digest or
+token identity is pinned; module isolation and its residual process-compromise
+risk require a separate accepted design.
 
 ### Deployment topology
 

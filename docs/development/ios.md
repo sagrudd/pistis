@@ -692,6 +692,11 @@ enrolment scanner and still requires its separate approvals.
 
 ### Onboarding support codes
 
+If the accepted enrolment cannot verify GitHub status, use **Retry provider
+status**. The same enrolment operation is checked whether or not the GitHub
+code is still shown. The redacted support code is
+`PST-ONBOARD/provider-status/verification-unavailable`.
+
 Pistis shows `PST-ONBOARD/<stage>/<category>` when the certificate approval
 or retained-custody flow stops. Copy the code and, if present, Monas's redacted
 support reference, stage and error. These codes contain neither ceremony inputs

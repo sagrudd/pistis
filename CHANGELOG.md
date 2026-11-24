@@ -1,3 +1,7 @@
+## Pistis iOS 0.32.6 (86)
+
+- Match the provider-status retry button to its failure message and show a redacted support code.
+
 ## Pistis iOS 0.32.5 (85)
 
 - Open the final signed identity scanner directly from verified broker custody.

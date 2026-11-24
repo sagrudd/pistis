@@ -1,6 +1,7 @@
 ## Pistis iOS 0.32.3 (83)
 
 - Show redacted stage and failure codes for certificate approval and retained custody.
+- Show Monas connection and App Attest progress when retrying retained custody.
 
 ## Pistis iOS 0.32.2 (82)
 

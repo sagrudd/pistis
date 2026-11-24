@@ -1346,13 +1346,15 @@ struct SiteRootConvergenceServiceV2: Sendable {
 
     /// Retry only the unsent native transition, never the earlier broker or
     /// leaf submissions. Durable step markers deny ambiguous replays.
-    func retryProvisionalBrokerCustody(correlation: Data, siteUUID: String) async throws {
+    @MainActor
+    func retryProvisionalBrokerCustody(correlation: Data, siteUUID: String,
+                                      progress: (SiteX509BrokerApprovalStageV1) -> Void) async throws {
         let storage = ScopedAppAttestStore()
         guard let pending = try storage.submittedBrokerAttempt(correlation: correlation, siteUUID: siteUUID),
               try storage.provisionalLeaf(attemptID: pending.attemptID) != nil else {
             throw PlatformFailure.siteRootBindingUnavailable
         }
-        try await retryProvisionalBrokerCustody(pending: pending)
+        try await retryProvisionalBrokerCustody(pending: pending, progress: progress)
     }
 
     @MainActor

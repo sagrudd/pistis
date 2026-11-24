@@ -315,12 +315,20 @@ final class SiteRootConvergenceCoordinator: ObservableObject {
 
     func retryBrokerCustody() async {
         guard let context = brokerCustodyRetry, let service = brokerService else { return }
-        phase = .authenticating
+        let operation = operationID
+        supportCode = nil
+        phase = .siteX509Progress(.custodyChallenge)
         do {
-            try await service.retryProvisionalBrokerCustody(correlation: context.correlation, siteUUID: context.siteUUID)
+            try await service.retryProvisionalBrokerCustody(correlation: context.correlation, siteUUID: context.siteUUID) {
+                guard self.operationID == operation else { return }
+                self.phase = .siteX509Progress($0)
+            }
+            guard operationID == operation else { return }
             brokerCustodyRetry = nil
             phase = .completed
         } catch {
+            guard operationID == operation else { return }
+            recordSupportCode(error)
             let storage = ScopedAppAttestStore()
             if let pending = try? storage.submittedBrokerAttempt(correlation: context.correlation, siteUUID: context.siteUUID) {
                 if (try? storage.requireFreshCustodyStep("assertion", pending: pending)) == nil { brokerCustodyRetry = nil }

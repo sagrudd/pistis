@@ -77,9 +77,13 @@ final class FirstDeviceAdmissionPolicyTests: XCTestCase {
             additionalAdmission: { _ in XCTFail("V2 must not use legacy admission"); return nil },
             enableV2Staging: true, now: { now }, eventRecorder: AdmissionEventSink())
         freshFlow.handleScan(.success(ScannedQRPayload(text: qr)))
-        let freshDecision = try await freshFlow.testOnlyResolveScannedAdmission(existingIDs: [])
-        XCTAssertEqual(freshDecision, attempt)
-        XCTAssertEqual(try storage.provisionalPresentation(attemptID: attempt)?.installationID, presentation.installationID)
+        do {
+            _ = try await freshFlow.testOnlyResolveScannedAdmission(existingIDs: [])
+            XCTFail("V2 accepted the provider QR without its retained leaf")
+        } catch {
+            XCTAssertEqual(error as? PlatformFailure, .siteRootBindingUnavailable)
+        }
+        XCTAssertNil(try storage.provisionalPresentation(attemptID: attempt))
     }
 
 }

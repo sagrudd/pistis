@@ -1322,6 +1322,14 @@ struct SiteRootConvergenceServiceV2: Sendable {
               try storage.provisionalLeaf(attemptID: pending.attemptID) != nil else {
             throw PlatformFailure.siteRootBindingUnavailable
         }
+        try await retryProvisionalBrokerCustody(pending: pending)
+    }
+
+    func retryProvisionalBrokerCustody(pending: ScopedAppAttestPending) async throws {
+        let storage = ScopedAppAttestStore()
+        guard try storage.recoverableBrokerCustodyAttempts().contains(pending) else {
+            throw PlatformFailure.siteRootBindingUnavailable
+        }
         try storage.requireFreshCustodyStep("assertion", pending: pending)
         try storage.beginSubmittedPoll(attemptID: pending.attemptID, expected: pending)
         defer { storage.endDispatch() }

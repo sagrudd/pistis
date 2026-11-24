@@ -568,7 +568,7 @@ final class ScopedAppAttestStore: @unchecked Sendable {
                     candidates.append(value)
                 }
             }
-            if candidates.count > 1, let nativeOrigin, let leafSPKI {
+            if let nativeOrigin, let leafSPKI {
                 candidates = candidates.filter { candidate in
                     guard let handoff = try? readRetainedLeafHandoff(for: candidate) else { return false }
                     return handoff.nativeOrigin == nativeOrigin

@@ -159,7 +159,7 @@ struct RootTabView: View {
             .tabItem {
                 Label("Installations", systemImage: "building.2")
             }
-            .alert("Match the retained certificate", isPresented: $pendingBrokerFingerprintRequested) {
+            .alert("Match the retained public key", isPresented: $pendingBrokerFingerprintRequested) {
                 TextField("SHA-256 fingerprint", text: $pendingBrokerFingerprint)
                     .textInputAutocapitalization(.never)
                     .autocorrectionDisabled()
@@ -171,7 +171,7 @@ struct RootTabView: View {
                 }
                 Button("Cancel", role: .cancel) { pendingBrokerFingerprint = "" }
             } message: {
-                Text("Enter the certificate fingerprint shown in the retained Monas terminal.")
+                Text("Enter the SHA-256 SPKI fingerprint shown in the retained Monas terminal.")
             }
             .tag(Tab.installations)
             .onChange(of: selectedTab, initial: true) { _, value in
@@ -286,10 +286,7 @@ struct RootTabView: View {
             }
             let broker = try MonasSiteX509FirstProvisionBrokerTransport()
             let service = SiteRootConvergenceServiceV2(transport: broker, continuationTransport: broker)
-            try await service.retryProvisionalBrokerCustody(
-                correlation: pending.correlation,
-                siteUUID: String(pending.siteClaim.dropFirst(5))
-            )
+            try await service.retryProvisionalBrokerCustody(pending: pending)
             pendingBrokerCustodyMessage = "Custody verified. Continue with the signed identity setup in the terminal."
         } catch {
             pendingBrokerCustodyMessage = "Pistis could not continue this pending setup safely."

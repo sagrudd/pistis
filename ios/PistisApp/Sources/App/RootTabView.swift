@@ -84,7 +84,9 @@ struct RootTabView: View {
     @State private var reconciliationMessage: String?
     @State private var selectedTab = Tab.scan
     @State private var providerEnrolmentRequested = false
-    @State private var pendingBrokerCustodyAvailable = false
+    @State private var pendingBrokerCustodyCount = 0
+    @State private var pendingBrokerFingerprint = ""
+    @State private var pendingBrokerFingerprintRequested = false
     @State private var pendingBrokerCustodyBusy = false
     @State private var pendingBrokerCustodyMessage: String?
     @State private var authorityCustodyContinuationHost: String?
@@ -136,9 +138,15 @@ struct RootTabView: View {
                     }
                 }
                 .toolbar {
-                    if pendingBrokerCustodyAvailable {
+                    if pendingBrokerCustodyCount > 0 {
                         ToolbarItem(placement: .bottomBar) {
-                            Button("Continue pending setup") { Task { await resumePendingBrokerCustody() } }
+                            Button("Continue pending setup") {
+                                if pendingBrokerCustodyCount > 1 {
+                                    pendingBrokerFingerprintRequested = true
+                                } else {
+                                    Task { await resumePendingBrokerCustody() }
+                                }
+                            }
                                 .disabled(pendingBrokerCustodyBusy)
                         }
                     }
@@ -150,6 +158,20 @@ struct RootTabView: View {
             }
             .tabItem {
                 Label("Installations", systemImage: "building.2")
+            }
+            .alert("Match the retained certificate", isPresented: $pendingBrokerFingerprintRequested) {
+                TextField("SHA-256 fingerprint", text: $pendingBrokerFingerprint)
+                    .textInputAutocapitalization(.never)
+                    .autocorrectionDisabled()
+                Button("Continue") {
+                    let fingerprint = pendingBrokerFingerprint.lowercased()
+                        .filter { !$0.isWhitespace && $0 != ":" }
+                    pendingBrokerFingerprint = ""
+                    Task { await resumePendingBrokerCustody(fingerprint: fingerprint) }
+                }
+                Button("Cancel", role: .cancel) { pendingBrokerFingerprint = "" }
+            } message: {
+                Text("Enter the certificate fingerprint shown in the retained Monas terminal.")
             }
             .tag(Tab.installations)
             .onChange(of: selectedTab, initial: true) { _, value in
@@ -236,11 +258,11 @@ struct RootTabView: View {
     }
 
     private func refreshPendingBrokerCustody() {
-        pendingBrokerCustodyAvailable = BrokerV2Feature.enabled
-            && (try? ScopedAppAttestStore().recoverableBrokerCustodyAttempt()) != nil
+        pendingBrokerCustodyCount = BrokerV2Feature.enabled
+            ? ((try? ScopedAppAttestStore().recoverableBrokerCustodyAttempts().count) ?? 0) : 0
     }
 
-    private func resumePendingBrokerCustody() async {
+    private func resumePendingBrokerCustody(fingerprint: String? = nil) async {
         guard !pendingBrokerCustodyBusy, BrokerV2Feature.enabled else { return }
         pendingBrokerCustodyBusy = true
         pendingBrokerCustodyMessage = nil
@@ -249,7 +271,19 @@ struct RootTabView: View {
             refreshPendingBrokerCustody()
         }
         do {
-            guard let pending = try ScopedAppAttestStore().recoverableBrokerCustodyAttempt() else { return }
+            let store = ScopedAppAttestStore()
+            var attempts = try store.recoverableBrokerCustodyAttempts()
+            if let fingerprint {
+                attempts = attempts.filter { attempt in
+                    guard let handoff = try? store.retainedLeafHandoff(for: attempt) else { return false }
+                    return handoff.presentation.monasLeafSPKISHA256
+                        .map { String(format: "%02x", $0) }.joined() == fingerprint
+                }
+            }
+            guard attempts.count == 1, let pending = attempts.first else {
+                pendingBrokerCustodyMessage = "No single pending setup matches the retained certificate."
+                return
+            }
             let broker = try MonasSiteX509FirstProvisionBrokerTransport()
             let service = SiteRootConvergenceServiceV2(transport: broker, continuationTransport: broker)
             try await service.retryProvisionalBrokerCustody(

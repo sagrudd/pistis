@@ -390,7 +390,8 @@ final class FirstDeviceEnrolmentFlow: ObservableObject {
         if provisionalStagingEnabled, let scan = verifiedScan, try scopedStore.hasSubmittedBrokerAttempt() {
             let attempt = try scopedStore.stageProvisionalPresentation(
                 installationID: presentation.installationID, digest: presentation.presentationDigest,
-                qrText: scan.text, verifiedAtMillis: scan.atMillis)
+                qrText: scan.text, verifiedAtMillis: scan.atMillis,
+                nativeOrigin: presentation.httpsOrigin, leafSPKI: presentation.tlsSPKISHA256)
             admission = .provisional(attemptID: attempt, installationID: presentation.installationID,
                                      presentationDigest: presentation.presentationDigest)
         } else { admission = existingIDs.isEmpty ? nil : try await additionalAdmission(presentation) }

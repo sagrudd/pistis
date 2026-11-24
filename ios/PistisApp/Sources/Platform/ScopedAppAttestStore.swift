@@ -365,12 +365,12 @@ final class ScopedAppAttestStore: @unchecked Sendable {
         }
     }
 
-    /// Returns the only submitted, leaf-bound setup whose native custody
+    /// Returns submitted, leaf-bound setups whose native custody
     /// assertion has never been dispatched. Installed identities are excluded.
-    func recoverableBrokerCustodyAttempt() throws -> ScopedAppAttestPending? {
+    func recoverableBrokerCustodyAttempts() throws -> [ScopedAppAttestPending] {
         try withLock {
-            guard !Self.resetInProgress else { return nil }
-            var candidate: ScopedAppAttestPending?
+            guard !Self.resetInProgress else { return [] }
+            var candidates: [ScopedAppAttestPending] = []
             for (account, data) in try persistence.entries() where account.hasPrefix("pending.") {
                 let pending = try JSONDecoder().decode(ScopedAppAttestPending.self, from: data)
                 try pending.validate()
@@ -382,11 +382,29 @@ final class ScopedAppAttestStore: @unchecked Sendable {
                       try readData(account: "custody.assertion." + id.uuidString) == nil,
                       let leaf = try read(ProvisionalLeafHandoff.self, account: "leaf." + id.uuidString),
                       leaf.attemptID == id else { continue }
-                guard candidate == nil else { throw PlatformFailure.siteRootBindingUnavailable }
-                candidate = pending
+                candidates.append(pending)
             }
-            return candidate
+            return candidates
         }
+    }
+
+    func retainedLeafHandoff(for pending: ScopedAppAttestPending) throws -> SiteX509LeafHandoffV2 {
+        try withLock { try readRetainedLeafHandoff(for: pending) }
+    }
+
+    private func readRetainedLeafHandoff(for pending: ScopedAppAttestPending) throws -> SiteX509LeafHandoffV2 {
+        guard pending.siteClaim.hasPrefix("site-"),
+              let site = SiteRootConvergenceEncoding.uuidBytes(String(pending.siteClaim.dropFirst(5))),
+              let leaf = try read(ProvisionalLeafHandoff.self, account: "leaf." + pending.attemptID.uuidString),
+              leaf.attemptID == pending.attemptID else { throw PlatformFailure.siteRootBindingUnavailable }
+        var uuid = pending.attemptID.uuid
+        let operation = withUnsafeBytes(of: &uuid) { Data($0) }
+        let correlationDigest = Data(SHA256.hash(
+            data: Data("mnemosyne.monas.first-device.correlation.v2\0".utf8) + pending.correlation
+        ))
+        return try SiteX509LeafHandoffV2(data: leaf.wrapper, operationID: operation,
+            correlationDigest: correlationDigest, expectedSiteUUID: site,
+            nowUnixSeconds: leaf.verifiedAtSeconds)
     }
 
     func hasSubmittedBrokerAttempt() throws -> Bool {
@@ -531,7 +549,8 @@ final class ScopedAppAttestStore: @unchecked Sendable {
     /// Associates an attended, independently verified V4 scan with the only
     /// pending operation for receipt staging. This is not authority evidence.
     func stageProvisionalPresentation(installationID: Data, digest: Data,
-                                      qrText: String, verifiedAtMillis: UInt64) throws -> UUID {
+                                      qrText: String, verifiedAtMillis: UInt64,
+                                      nativeOrigin: URL? = nil, leafSPKI: Data? = nil) throws -> UUID {
         guard installationID.count == 16, !installationID.allSatisfy({ $0 == 0 }),
               digest.count == 32, !digest.allSatisfy({ $0 == 0 }),
               qrText.hasPrefix("PISTIS1:"), qrText.utf8.count <= 8_192, verifiedAtMillis > 0
@@ -547,6 +566,13 @@ final class ScopedAppAttestStore: @unchecked Sendable {
                    try readData(account: cancelled(value.attemptID)) == nil,
                    try readData(account: completed(value.attemptID)) == nil {
                     candidates.append(value)
+                }
+            }
+            if candidates.count > 1, let nativeOrigin, let leafSPKI {
+                candidates = candidates.filter { candidate in
+                    guard let handoff = try? readRetainedLeafHandoff(for: candidate) else { return false }
+                    return handoff.nativeOrigin == nativeOrigin
+                        && handoff.presentation.monasLeafSPKISHA256 == leafSPKI
                 }
             }
             guard candidates.count == 1, let pending = candidates.first else {

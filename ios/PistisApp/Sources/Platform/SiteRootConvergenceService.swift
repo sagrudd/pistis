@@ -60,6 +60,28 @@ enum SiteX509BrokerApprovalStageV1: Equatable, Sendable {
     case awaitingContinuation(SiteX509BrokerContinuationPhaseV1)
     case authorizingContinuation(SiteX509BrokerContinuationPhaseV1)
     case submittingContinuation(SiteX509BrokerContinuationPhaseV1)
+    case custodyChallenge
+    case custodyAssertion
+    case custodyRotation
+
+    var supportStage: String {
+        switch self {
+        case .reservingApproval: "reserve"
+        case .awaitingFaceID: "face-id"
+        case .submittingInitialProof: "initial-proof"
+        case let .awaitingContinuation(phase): "\(phase.rawValue)-await"
+        case let .authorizingContinuation(phase): "\(phase.rawValue)-authorize"
+        case let .submittingContinuation(phase): "\(phase.rawValue)-submit"
+        case .custodyChallenge: "custody-challenge"
+        case .custodyAssertion: "custody-assertion"
+        case .custodyRotation: "custody-rotation"
+        }
+    }
+
+    static func supportCode(stage: Self?, error: Error) -> String {
+        let failure = (error as? PlatformFailure)?.onboardingEventFailureCode ?? .unknown
+        return "PST-ONBOARD/\(stage?.supportStage ?? "route")/\(failure.rawValue)"
+    }
 }
 
 struct SiteX509BrokerContinuationPresentationV1: Sendable {
@@ -1229,7 +1251,7 @@ struct SiteRootConvergenceServiceV2: Sendable {
                 ),
                 progress: progress
             )
-            if let pending { try await continueProvisionalBrokerCustody(pending, storage: scopedStorage) }
+            if let pending { try await continueProvisionalBrokerCustody(pending, storage: scopedStorage, progress: progress) }
         }
     }
 
@@ -1259,13 +1281,16 @@ struct SiteRootConvergenceServiceV2: Sendable {
             ),
             progress: progress
         )
-        if let pending { try await continueProvisionalBrokerCustody(pending, storage: scopedStorage) }
+        if let pending { try await continueProvisionalBrokerCustody(pending, storage: scopedStorage, progress: progress) }
     }
 
     /// A lost assertion/begin/complete response stays pending and is never
     /// replayed automatically. The pinned host must later reconcile it.
+    @MainActor
     private func continueProvisionalBrokerCustody(_ pending: ScopedAppAttestPending,
-                                                  storage: ScopedAppAttestStore) async throws {
+                                                  storage: ScopedAppAttestStore,
+                                                  progress: (SiteX509BrokerApprovalStageV1) -> Void) async throws {
+        progress(.custodyChallenge)
         try storage.requireFreshCustodyStep("assertion", pending: pending)
         guard pending.siteClaim.hasPrefix("site-"),
               let site = SiteRootConvergenceEncoding.uuidBytes(String(pending.siteClaim.dropFirst(5))),
@@ -1282,20 +1307,24 @@ struct SiteRootConvergenceServiceV2: Sendable {
         let producer = try SecureEnclaveFirstAuthorityCustodyProducerV2(
             authenticationReason: "Approve this exact first-authority custody rotation", store: recovery)
         try await driveProvisionalBrokerCustody(pending, storage: storage, native: native,
-            appAttest: AppleAppAttestClient(), producer: producer, now: Self.nowUnixSeconds)
+            appAttest: AppleAppAttestClient(), producer: producer, now: Self.nowUnixSeconds, progress: progress)
     }
 
+    @MainActor
     private func driveProvisionalBrokerCustody(_ pending: ScopedAppAttestPending, storage: ScopedAppAttestStore,
         native: MonasAppAttestTransport, appAttest: AppleAppAttestClient,
-        producer: SecureEnclaveFirstAuthorityCustodyProducerV2, now: @Sendable () throws -> UInt64) async throws {
+        producer: SecureEnclaveFirstAuthorityCustodyProducerV2, now: @Sendable () throws -> UInt64,
+        progress: (SiteX509BrokerApprovalStageV1) -> Void = { _ in }) async throws {
         try storage.requireFreshCustodyStep("assertion", pending: pending)
         let challenge = try await native.fetchBrokerCustodyChallengeV2(pending: pending,
             now: now).challenge
+        progress(.custodyAssertion)
         let assertion = try await appAttest.preparePendingCustodyRotationAssertion(
             challenge: challenge, storage: storage, attemptID: pending.attemptID,
             verifiedInstallationID: challenge.installationID)
         try storage.markCustodyStep("assertion", pending: pending)
         try await native.submitAssertion(assertion)
+        progress(.custodyRotation)
         let commitment = try producer.prepareInitialRotation()
         try storage.markCustodyStep("begin", pending: pending)
         let presentation = try await native.beginFirstAuthorityCustodyRotationV2(
@@ -1306,6 +1335,7 @@ struct SiteRootConvergenceServiceV2: Sendable {
     }
 
 #if DEBUG
+    @MainActor
     func testOnlyDriveProvisionalCustody(_ pending: ScopedAppAttestPending, storage: ScopedAppAttestStore,
         native: MonasAppAttestTransport, appAttest: AppleAppAttestClient,
         producer: SecureEnclaveFirstAuthorityCustodyProducerV2, now: @Sendable () throws -> UInt64) async throws {
@@ -1325,7 +1355,9 @@ struct SiteRootConvergenceServiceV2: Sendable {
         try await retryProvisionalBrokerCustody(pending: pending)
     }
 
-    func retryProvisionalBrokerCustody(pending: ScopedAppAttestPending) async throws {
+    @MainActor
+    func retryProvisionalBrokerCustody(pending: ScopedAppAttestPending,
+                                      progress: (SiteX509BrokerApprovalStageV1) -> Void = { _ in }) async throws {
         let storage = ScopedAppAttestStore()
         guard try storage.recoverableBrokerCustodyAttempts().contains(pending) else {
             throw PlatformFailure.siteRootBindingUnavailable
@@ -1333,7 +1365,7 @@ struct SiteRootConvergenceServiceV2: Sendable {
         try storage.requireFreshCustodyStep("assertion", pending: pending)
         try storage.beginSubmittedPoll(attemptID: pending.attemptID, expected: pending)
         defer { storage.endDispatch() }
-        try await continueProvisionalBrokerCustody(pending, storage: storage)
+        try await continueProvisionalBrokerCustody(pending, storage: storage, progress: progress)
     }
 
     static func validateBrokerEnrolledSiteRootPublicKeyID(

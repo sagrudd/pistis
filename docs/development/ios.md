@@ -679,3 +679,24 @@ Changes to tokens or product presentation must be reconciled with
 `../grammateus`. Do not invent missing dark-mode, native mark, App Icon, or
 motion rules inside Pistis. Submit those decisions to the design-language
 repository first, then update ADR 0007 and this application.
+
+### Onboarding support codes
+
+Pistis shows `PST-ONBOARD/<stage>/<category>` when the certificate approval
+or retained-custody flow stops. Copy the code and, if present, Monas's redacted
+support reference, stage and error. These codes contain neither ceremony inputs
+nor credentials. They do not authorize a retry.
+
+| Stage | Boundary |
+| --- | --- |
+| `reserve`, `face-id`, `initial-proof` | Approval reservation, biometric review, initial proof |
+| `root-unlock-*`, `issuer-unlock-*`, `ack-registration-*`, `leaf-approval-*` | Waiting for, authorizing, or submitting the named broker phase |
+| `custody-challenge` | Pinned native authority, exact pending handoff and challenge |
+| `custody-assertion` | App Attest preparation and submission |
+| `custody-rotation` | Protected custody rotation after the assertion |
+| `route` | Failure before a specific boundary was recorded |
+
+The category uses the existing closed onboarding failure catalogue. In
+particular, `authority_unavailable` reports an unavailable authority step, not
+a diagnosis of expiry or certificate failure. Use the native redacted record
+to distinguish the underlying cause.

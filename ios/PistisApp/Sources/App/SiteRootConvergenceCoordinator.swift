@@ -34,6 +34,7 @@ final class SiteRootConvergenceCoordinator: ObservableObject {
     }
 
     @Published private(set) var phase: Phase = .idle
+    @Published private(set) var supportCode: String?
     @Published private(set) var presentedReview: SiteRootConvergenceReview?
     private let service: SiteRootConvergenceServiceV2?
     private let brokerService: SiteRootConvergenceServiceV2?
@@ -220,6 +221,7 @@ final class SiteRootConvergenceCoordinator: ObservableObject {
         else { return }
         let operation = operationID
         phase = .authenticating
+        supportCode = nil
         do {
             let completedBrokeredSiteX509: Bool
             switch pending {
@@ -264,15 +266,23 @@ final class SiteRootConvergenceCoordinator: ObservableObject {
             phase = .completed
         } catch let failure as PlatformFailure {
             guard operationID == operation else { return }
+            recordSupportCode(failure)
             retainSafeBrokerRetry(for: pending)
             self.pending = nil
             phase = .failed(failure)
         } catch {
             guard operationID == operation else { return }
+            recordSupportCode(error)
             retainSafeBrokerRetry(for: pending)
             self.pending = nil
             phase = .failed(.siteRootAuthorityUnavailable)
         }
+    }
+
+    private func recordSupportCode(_ error: Error) {
+        let stage: SiteX509BrokerApprovalStageV1?
+        if case let .siteX509Progress(value) = phase { stage = value } else { stage = nil }
+        supportCode = SiteX509BrokerApprovalStageV1.supportCode(stage: stage, error: error)
     }
 
     private func shouldRecordLegacyProgress(for pending: Pending) -> Bool {

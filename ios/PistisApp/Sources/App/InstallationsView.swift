@@ -61,7 +61,7 @@ struct InstallationsView: View {
                     .disabled(pendingCustodyBusy)
             }
             if let pendingCustodyMessage {
-                Text(pendingCustodyMessage)
+                Text(pendingCustodyMessage).textSelection(.enabled)
             }
             ForEach(installations) { installation in
                 NavigationLink {

@@ -257,6 +257,7 @@ struct RootTabView: View {
         guard !pendingBrokerCustodyBusy, BrokerV2Feature.enabled else { return }
         pendingBrokerCustodyBusy = true
         pendingBrokerCustodyMessage = nil
+        var stage: SiteX509BrokerApprovalStageV1?
         defer {
             pendingBrokerCustodyBusy = false
             refreshPendingBrokerCustody()
@@ -277,10 +278,13 @@ struct RootTabView: View {
             }
             let broker = try MonasSiteX509FirstProvisionBrokerTransport()
             let service = SiteRootConvergenceServiceV2(transport: broker, continuationTransport: broker)
-            try await service.retryProvisionalBrokerCustody(pending: pending)
+            try await service.retryProvisionalBrokerCustody(pending: pending) { stage = $0 }
             pendingBrokerCustodyMessage = "Custody verified. Continue with the signed identity setup in the terminal."
         } catch {
-            pendingBrokerCustodyMessage = "Pistis could not continue this pending setup safely."
+            let code = SiteX509BrokerApprovalStageV1.supportCode(stage: stage, error: error)
+            let message = (error as? PlatformFailure)?.safeUserMessage
+                ?? "Pistis could not continue this pending setup safely."
+            pendingBrokerCustodyMessage = message + "\n" + code
         }
     }
 

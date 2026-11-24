@@ -1,3 +1,7 @@
+## Pistis iOS 0.32.3 (83)
+
+- Show redacted stage and failure codes for certificate approval and retained custody.
+
 ## Pistis iOS 0.32.2 (82)
 
 - Put the pending custody continuation in the Installations list.

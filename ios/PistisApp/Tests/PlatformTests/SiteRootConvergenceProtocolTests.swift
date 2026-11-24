@@ -6,6 +6,15 @@ import XCTest
 final class SiteRootConvergenceProtocolTests: XCTestCase {
     private let nowSeconds: UInt64 = 1_900_000_000
 
+    func testSupportCodesDistinguishLeafAndNativeCustodyWithoutPayloads() {
+        XCTAssertEqual(SiteX509BrokerApprovalStageV1.supportCode(
+            stage: .awaitingContinuation(.leafApproval), error: PlatformFailure.siteRootAuthorityUnavailable),
+            "PST-ONBOARD/leaf-approval-await/authority_unavailable")
+        XCTAssertEqual(SiteX509BrokerApprovalStageV1.supportCode(
+            stage: .custodyAssertion, error: PlatformFailure.appAttestAssertionFailed),
+            "PST-ONBOARD/custody-assertion/app_attest")
+    }
+
     func testBundleReceiptPresentationBindsExactPurposeSiteGenerationAndDevice() throws {
         let deviceKeyID = "site-root-" + String(repeating: "a9", count: 32)
         let challenge = provisionChallenge(

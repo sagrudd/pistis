@@ -75,6 +75,9 @@ struct SiteRootConvergenceReviewView: View {
                 VStack(alignment: .leading, spacing: MnSpacing.x3) {
                     MnStatusLabel(text: "Stopped safely", kind: .danger)
                     Text(failure.safeUserMessage)
+                    if let code = coordinator.supportCode {
+                        Text(code).font(.footnote.monospaced()).textSelection(.enabled)
+                    }
                     if coordinator.canRetryBrokerCustody {
                         MnPrimaryButton("Retry Monas connection", systemImage: "arrow.clockwise") {
                             Task { await coordinator.retryBrokerCustody() }
@@ -146,6 +149,9 @@ private extension SiteX509BrokerApprovalStageV1 {
             "Waiting for Face ID"
         case .submittingInitialProof:
             "Face ID accepted · submitting the Site X.509 approval"
+        case .custodyChallenge: "Connecting to the retained custody authority"
+        case .custodyAssertion: "Verifying this iPhone with App Attest"
+        case .custodyRotation: "Completing authority custody"
         case let .awaitingContinuation(phase):
             "Face ID accepted · waiting for \(phase.userLabel)"
         case let .authorizingContinuation(phase):

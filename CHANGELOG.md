@@ -1,3 +1,7 @@
+## Pistis iOS 0.32.7 (87)
+
+- Open fixed Monas renewal presentations from the Scan tab and return the existing response QR.
+
 ## Pistis iOS 0.32.6 (86)
 
 - Match the provider-status retry button to its failure message and show a redacted support code.

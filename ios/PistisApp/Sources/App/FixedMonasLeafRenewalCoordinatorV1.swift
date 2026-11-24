@@ -28,9 +28,11 @@ final class FixedMonasLeafRenewalCoordinatorV1: ObservableObject {
 
     func accept(qrText: String) {
         reset()
-        guard qrText.hasPrefix("PXRN1:P:") else { phase = .failed; return }
-        let raw = String(qrText.dropFirst("PXRN1:P:".count))
-        guard !raw.isEmpty, raw.utf8.count <= 4096,
+        let prefix = FixedMonasLeafRenewalWireProfile.presentationQRPrefix
+        guard qrText.hasPrefix(prefix) else { phase = .failed; return }
+        let raw = String(qrText.dropFirst(prefix.count))
+        guard !raw.isEmpty,
+              raw.utf8.count <= FixedMonasLeafRenewalWireProfile.maximumEncodedPresentationBytes,
               raw.utf8.allSatisfy({ (48...57).contains($0) || (65...90).contains($0) ||
                   (97...122).contains($0) || $0 == 45 || $0 == 95 }) else {
             phase = .failed; return
@@ -51,12 +53,15 @@ final class FixedMonasLeafRenewalCoordinatorV1: ObservableObject {
             let now = UInt64(clock)
             let statement: FixedMonasLeafRenewalV1
             let addressBytes: [Data]
-            if data.starts(with: Data("PXRW/v2\u{1}".utf8)) {
+            switch FixedMonasLeafRenewalWireProfile.presentationVersion(for: data) {
+            case .v2:
                 let value = try FixedMonasLeafRenewalPresentationV2(data, now: now)
                 pending = .v2(value); statement = value.statement.prior; addressBytes = value.addresses
-            } else {
+            case .v1:
                 let value = try FixedMonasLeafRenewalPresentationV1(data, now: now)
                 pending = .v1(value); statement = value.statement; addressBytes = value.addresses
+            case nil:
+                throw FixedMonasLeafRenewalV1.Invalid.denied
             }
             let addresses = try addressBytes.map(Self.addressText).joined(separator: ", ")
             let digest = Data(SHA256.hash(data: data))
@@ -85,7 +90,7 @@ final class FixedMonasLeafRenewalCoordinatorV1: ObservableObject {
             case .v2(let value):
                 proof = try await FixedMonasLeafRenewalProducerV2().produce(value, independentlyReadDigest: independentDigest)
             }
-            responseQRText = "PXRN1:R:" + Self.base64url(proof)
+            responseQRText = FixedMonasLeafRenewalWireProfile.responseQRPrefix + Self.base64url(proof)
             phase = .completed
         } catch { responseQRText = nil; phase = .failed }
     }

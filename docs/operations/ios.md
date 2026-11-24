@@ -4,6 +4,12 @@ This page describes the intended EPIC-7 reference application and the
 prerequisites that remain external to the repository. It is not evidence that
 a signed or TestFlight build exists.
 
+## Fixed Monas certificate renewal
+
+Open **Scan** in Pistis and scan the renewal presentation shown by Monas.
+Check the independently displayed digest and approve the exact presentation.
+Pistis then shows the response QR for the requesting Monas workflow.
+
 ## Keeper-assisted GitHub authentication
 
 Pistis opens the GitHub Device Flow verification URI in an Apple system

@@ -450,7 +450,7 @@ struct ScanView: View {
         switch result {
         case let .success(payload):
             scanFailure = nil
-            if payload.text.hasPrefix("PXRN1:P:") {
+            if payload.text.hasPrefix(FixedMonasLeafRenewalWireProfile.presentationQRPrefix) {
                 fixedMonasRenewal.accept(qrText: payload.text)
                 if case .failed = fixedMonasRenewal.phase {
                     scanFailure = .productionEnvelopeUnavailable
@@ -597,7 +597,7 @@ struct ScanView: View {
             ) ?? Data()
             guard bytes.count == size else { throw PlatformFailure.qrPayloadUnsupported }
             scanning = false
-            if bytes.starts(with: Data("PXRW/v1".utf8)) {
+            if FixedMonasLeafRenewalWireProfile.presentationVersion(for: bytes) != nil {
                 fixedMonasRenewal.accept(fileBytes: bytes)
                 if case .failed = fixedMonasRenewal.phase {
                     scanFailure = .productionEnvelopeUnavailable

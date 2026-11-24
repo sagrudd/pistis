@@ -76,6 +76,22 @@ final class FixedMonasLeafRenewalV1Tests: XCTestCase {
         add(1, joint, to: &jointWrapper); jointWrapper.append(addressField)
         XCTAssertEqual(try FixedMonasLeafRenewalPresentationV2(jointWrapper, now: 150).addresses,
                        presentation.addresses)
+        // The attended CLI emits the public wrapper as unpadded Base64URL.
+        let encoded = jointWrapper.base64EncodedString()
+            .replacingOccurrences(of: "+", with: "-")
+            .replacingOccurrences(of: "/", with: "_")
+            .replacingOccurrences(of: "=", with: "")
+        let qr = "PXRN1:P:" + encoded
+        let scan = QRPayloadProfile.pistisAuthenticationOrMonasSiteRoot
+        XCTAssertNil(scan.rejection(for: qr))
+        XCTAssertEqual(
+            QRPayloadProfile.pistisAuthenticationV2.rejection(for: qr),
+            .monasRequestRequiresScanTab
+        )
+        XCTAssertEqual(FixedMonasLeafRenewalWireProfile.presentationVersion(for: jointWrapper), .v2)
+        XCTAssertEqual(FixedMonasLeafRenewalWireProfile.presentationVersion(for: wrapper), .v1)
+        XCTAssertFalse(scan.accepts("PXRN1:R:" + encoded))
+        XCTAssertFalse(scan.accepts("PXRN1:P:" + String(repeating: "A", count: 4097)))
         var invalidJoint = jointWrapper; invalidJoint[invalidJoint.count - 1] ^= 1
         XCTAssertThrowsError(try FixedMonasLeafRenewalPresentationV2(invalidJoint, now: 150))
         XCTAssertTrue(FixedMonasLeafRenewalProducerV1.matchesIndependentDigest(

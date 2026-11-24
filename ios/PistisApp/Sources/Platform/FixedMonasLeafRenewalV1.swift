@@ -3,6 +3,24 @@ import Foundation
 import CryptoKit
 #endif
 
+enum FixedMonasLeafRenewalWireProfile {
+    static let presentationQRPrefix = "PXRN1:P:"
+    static let responseQRPrefix = "PXRN1:R:"
+    static let maximumEncodedPresentationBytes = 4096
+    static let presentationV1Header = Data("PXRW/v1\u{1}".utf8)
+    static let presentationV2Header = Data("PXRW/v2\u{1}".utf8)
+
+    enum PresentationVersion {
+        case v1, v2
+    }
+
+    static func presentationVersion(for bytes: Data) -> PresentationVersion? {
+        if bytes.starts(with: presentationV1Header) { return .v1 }
+        if bytes.starts(with: presentationV2Header) { return .v2 }
+        return nil
+    }
+}
+
 /// Joint-authority transcript; parsing does not establish current ownership.
 struct FixedMonasLeafRenewalV2 {
     let exactBytes: Data
@@ -51,7 +69,7 @@ struct FixedMonasLeafRenewalPresentationV2 {
 
     init(_ data: Data, now: UInt64) throws {
         let bytes = [UInt8](data)
-        guard bytes.count >= 8, Array(bytes[0..<8]) == Array("PXRW/v2\u{1}".utf8) else {
+        guard data.starts(with: FixedMonasLeafRenewalWireProfile.presentationV2Header) else {
             throw FixedMonasLeafRenewalV1.Invalid.denied
         }
         var offset = 8
@@ -65,7 +83,7 @@ struct FixedMonasLeafRenewalPresentationV2 {
         let joint = try FixedMonasLeafRenewalV2(field(1), now: now)
         let packed = try field(2)
         guard offset == bytes.count else { throw FixedMonasLeafRenewalV1.Invalid.denied }
-        var prior = Data("PXRW/v1\u{1}".utf8)
+        var prior = FixedMonasLeafRenewalWireProfile.presentationV1Header
         for (index, value) in [joint.prior.exactBytes, packed].enumerated() {
             guard value.count <= Int(UInt16.max) else { throw FixedMonasLeafRenewalV1.Invalid.denied }
             prior.append(UInt8(index + 1)); prior.append(UInt8(value.count >> 8)); prior.append(UInt8(value.count & 255)); prior.append(value)
@@ -188,8 +206,7 @@ struct FixedMonasLeafRenewalPresentationV1 {
 
     init(_ data: Data, now: UInt64, sha256: (Data) -> Data) throws {
         let bytes = [UInt8](data)
-        guard bytes.count >= 8, Array(bytes[0..<7]) == Array("PXRW/v1".utf8),
-              bytes[7] == 1 else { throw FixedMonasLeafRenewalV1.Invalid.denied }
+        guard data.starts(with: FixedMonasLeafRenewalWireProfile.presentationV1Header) else { throw FixedMonasLeafRenewalV1.Invalid.denied }
         var cursor = 8
         func field(_ tag: UInt8) throws -> [UInt8] {
             guard cursor + 3 <= bytes.count, bytes[cursor] == tag else {

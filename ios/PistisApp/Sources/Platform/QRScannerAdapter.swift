@@ -29,7 +29,14 @@ enum QRPayloadProfile: Sendable {
         case .monasSiteRootDelegationV1: text.hasPrefix("{")
         case .pistisAuthenticationOrMonasSiteRoot:
             text.hasPrefix("PISTIS1:") || text.hasPrefix("{") || text.hasPrefix("PXFP2:P:")
+                || (isFixedRenewalPresentation(text)
+                    && text.utf8.count <= FixedMonasLeafRenewalWireProfile.presentationQRPrefix.utf8.count
+                        + FixedMonasLeafRenewalWireProfile.maximumEncodedPresentationBytes)
         }
+    }
+
+    private func isFixedRenewalPresentation(_ text: String) -> Bool {
+        text.hasPrefix(FixedMonasLeafRenewalWireProfile.presentationQRPrefix)
     }
 
     /// Return a bounded acquisition failure with enough context to recover
@@ -38,7 +45,7 @@ enum QRPayloadProfile: Sendable {
         guard !accepts(text) else { return nil }
         switch self {
         case .pistisAuthenticationV2
-            where text.hasPrefix("{") || text.hasPrefix("PXFP2:P:"):
+            where text.hasPrefix("{") || text.hasPrefix("PXFP2:P:") || isFixedRenewalPresentation(text):
             return .monasRequestRequiresScanTab
         default:
             return .qrPayloadUnsupported

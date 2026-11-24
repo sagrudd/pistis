@@ -1,3 +1,7 @@
+## Pistis iOS 0.32.8 (88)
+
+- Accept fixed Monas renewal presentations in the Scan tab and retain the response QR.
+
 ## Pistis iOS 0.31.0+79 — Joint fixed Monas renewal (in development)
 
 - Add one-use, purpose-separated approval with the existing device, Site Root

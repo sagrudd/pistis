@@ -128,28 +128,19 @@ struct RootTabView: View {
                     authorityCustodyBusy: authorityCustodyAttempt != nil,
                     continueBrokeredSiteX509: continueBrokeredSiteX509,
                     continueAuthorityCustody: continueAuthorityCustody,
-                    selectInstallation: selectInstallation
-                )
-                .safeAreaInset(edge: .bottom) {
-                    if let pendingBrokerCustodyMessage {
-                        Text(pendingBrokerCustodyMessage)
-                            .padding()
-                            .background(MnColor.canvas)
-                    }
-                }
-                .toolbar {
-                    if pendingBrokerCustodyCount > 0 {
-                        ToolbarItem(placement: .bottomBar) {
-                            Button("Continue pending setup") {
-                                if pendingBrokerCustodyCount > 1 {
-                                    pendingBrokerFingerprintRequested = true
-                                } else {
-                                    Task { await resumePendingBrokerCustody() }
-                                }
-                            }
-                                .disabled(pendingBrokerCustodyBusy)
+                    selectInstallation: selectInstallation,
+                    pendingCustodyAvailable: pendingBrokerCustodyCount > 0,
+                    pendingCustodyBusy: pendingBrokerCustodyBusy,
+                    pendingCustodyMessage: pendingBrokerCustodyMessage,
+                    continuePendingCustody: {
+                        if pendingBrokerCustodyCount > 1 {
+                            pendingBrokerFingerprintRequested = true
+                        } else {
+                            Task { await resumePendingBrokerCustody() }
                         }
                     }
+                )
+                .toolbar {
                     ToolbarItem(placement: .topBarTrailing) {
                         NavigationLink("Review permission") { IssuerJointRootApprovalView() }
                         NavigationLink("Current issuer check") { IssuerSiteRootCurrentView() }

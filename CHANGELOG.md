@@ -1,3 +1,7 @@
+## Pistis iOS 0.32.2 (82)
+
+- Put the pending custody continuation in the Installations list.
+
 ## Pistis iOS 0.32.1 (81)
 
 - Continue an eligible pending custody setup from Installations after closing the approval screen.

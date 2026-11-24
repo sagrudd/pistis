@@ -49,40 +49,54 @@ struct InstallationsView: View {
     let continueAuthorityCustody: (InstallationSummary) -> Void
     let selectInstallation: (UUID) async throws -> Void
 
+    let pendingCustodyAvailable: Bool
+    let pendingCustodyBusy: Bool
+    let pendingCustodyMessage: String?
+    let continuePendingCustody: () -> Void
+
     var body: some View {
-        List(installations) { installation in
-            NavigationLink {
-                InstallationDetailView(
-                    installation: installation,
-                    reconciliationMessage: reconciliationMessage,
-                    authorityCustodyBusy: authorityCustodyBusy,
-                    forgetExpired: forgetExpired,
-                    continueBrokeredSiteX509: continueBrokeredSiteX509,
-                    continueAuthorityCustody: continueAuthorityCustody,
-                    selectInstallation: selectInstallation
-                )
-            } label: {
-                VStack(alignment: .leading, spacing: MnSpacing.x2) {
-                    Text(installation.name)
-                        .font(.headline)
-                    Text(installation.localAlias)
-                        .font(.subheadline)
-                    MnStatusLabel(
-                        text: installation.status,
-                        kind: installation.status == "Trusted" ? .success : .warning
-                    )
-                        Text("Last used \(installation.lastUsed)")
-                            .font(.caption)
-                            .foregroundStyle(MnColor.textPrimary)
-                }
-                .padding(.vertical, MnSpacing.x2)
+        List {
+            if pendingCustodyAvailable {
+                Button("Continue pending setup", action: continuePendingCustody)
+                    .disabled(pendingCustodyBusy)
             }
-            .accessibilityElement(children: .combine)
-            .accessibilityLabel(
-                "\(installation.name), \(installation.status), last used \(installation.lastUsed)"
-            )
-            .accessibilityHint("Shows installation trust evidence")
-            .listRowBackground(MnColor.raised)
+            if let pendingCustodyMessage {
+                Text(pendingCustodyMessage)
+            }
+            ForEach(installations) { installation in
+                NavigationLink {
+                    InstallationDetailView(
+                        installation: installation,
+                        reconciliationMessage: reconciliationMessage,
+                        authorityCustodyBusy: authorityCustodyBusy,
+                        forgetExpired: forgetExpired,
+                        continueBrokeredSiteX509: continueBrokeredSiteX509,
+                        continueAuthorityCustody: continueAuthorityCustody,
+                        selectInstallation: selectInstallation
+                    )
+                } label: {
+                    VStack(alignment: .leading, spacing: MnSpacing.x2) {
+                        Text(installation.name)
+                            .font(.headline)
+                        Text(installation.localAlias)
+                            .font(.subheadline)
+                        MnStatusLabel(
+                            text: installation.status,
+                            kind: installation.status == "Trusted" ? .success : .warning
+                        )
+                            Text("Last used \(installation.lastUsed)")
+                                .font(.caption)
+                                .foregroundStyle(MnColor.textPrimary)
+                    }
+                    .padding(.vertical, MnSpacing.x2)
+                }
+                .accessibilityElement(children: .combine)
+                .accessibilityLabel(
+                    "\(installation.name), \(installation.status), last used \(installation.lastUsed)"
+                )
+                .accessibilityHint("Shows installation trust evidence")
+                .listRowBackground(MnColor.raised)
+            }
         }
         .scrollContentBackground(.hidden)
         .navigationTitle("Installations")
@@ -103,7 +117,7 @@ struct InstallationsView: View {
                     actionTitle: nil
                 )
                 .padding(MnMetrics.screenGutter)
-            } else if installations.isEmpty {
+            } else if installations.isEmpty && !pendingCustodyAvailable && pendingCustodyMessage == nil {
                 MnEmptyState(
                     title: "No paired installations",
           explanation: reconciliationMessage

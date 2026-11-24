@@ -365,6 +365,30 @@ final class ScopedAppAttestStore: @unchecked Sendable {
         }
     }
 
+    /// Returns the only submitted, leaf-bound setup whose native custody
+    /// assertion has never been dispatched. Installed identities are excluded.
+    func recoverableBrokerCustodyAttempt() throws -> ScopedAppAttestPending? {
+        try withLock {
+            guard !Self.resetInProgress else { return nil }
+            var candidate: ScopedAppAttestPending?
+            for (account, data) in try persistence.entries() where account.hasPrefix("pending.") {
+                let pending = try JSONDecoder().decode(ScopedAppAttestPending.self, from: data)
+                try pending.validate()
+                let id = pending.attemptID
+                guard account == staged(id) else { throw PlatformFailure.invalidConfiguration }
+                guard try read(UUID.self, account: submitted(id)) == id,
+                      try readData(account: cancelled(id)) == nil,
+                      try readData(account: completed(id)) == nil,
+                      try readData(account: "custody.assertion." + id.uuidString) == nil,
+                      let leaf = try read(ProvisionalLeafHandoff.self, account: "leaf." + id.uuidString),
+                      leaf.attemptID == id else { continue }
+                guard candidate == nil else { throw PlatformFailure.siteRootBindingUnavailable }
+                candidate = pending
+            }
+            return candidate
+        }
+    }
+
     func hasSubmittedBrokerAttempt() throws -> Bool {
         try withLock {
             for (account, data) in try persistence.entries() where account.hasPrefix("pending.") {

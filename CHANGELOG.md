@@ -1,3 +1,7 @@
+## Pistis iOS 0.32.1 (81)
+
+- Continue an eligible pending custody setup from Installations after closing the approval screen.
+
 ## Pistis iOS 0.31.0+79 — Joint fixed Monas renewal (in development)
 
 - Add one-use, purpose-separated approval with the existing device, Site Root

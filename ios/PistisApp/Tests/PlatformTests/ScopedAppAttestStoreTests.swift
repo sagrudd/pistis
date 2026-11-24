@@ -45,6 +45,28 @@ final class ScopedAppAttestStoreTests: XCTestCase {
         XCTAssertEqual(try restarted.binding(installationID: Data(repeating: 2, count: 16)), binding(first))
     }
 
+    func testPendingCustodySurvivesRestartWithoutSelectingInstalledA() throws {
+        let persistence = ScopedMemoryPersistence()
+        let store = ScopedAppAttestStore(persistence: persistence)
+        let a = UUID()
+        try store.stage(pending(a))
+        try store.markSubmitted(attemptID: a)
+        try store.commit(binding(a))
+        let b = UUID()
+        let setup = pending(b, site: "site-02020202-0202-0202-0202-020202020202")
+        try store.stage(setup)
+        try store.markSubmitted(attemptID: b)
+        XCTAssertNil(try store.recoverableBrokerCustodyAttempt())
+        try store.stageProvisionalLeaf(ProvisionalLeafHandoff(
+            attemptID: b, wrapper: Data([1]), verifiedAtSeconds: 1
+        ), pending: setup)
+        let restarted = ScopedAppAttestStore(persistence: persistence)
+        XCTAssertEqual(try restarted.recoverableBrokerCustodyAttempt(), setup)
+        try restarted.markCustodyStep("assertion", pending: setup)
+        XCTAssertNil(try restarted.recoverableBrokerCustodyAttempt())
+        XCTAssertEqual(try restarted.binding(installationID: Data(repeating: 2, count: 16)), binding(a))
+    }
+
     func testRetryRestartConflictAndDistinctInstallation() throws {
         let persistence = ScopedMemoryPersistence()
         let first = ScopedAppAttestStore(persistence: persistence)

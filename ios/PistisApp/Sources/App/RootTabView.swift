@@ -84,6 +84,9 @@ struct RootTabView: View {
     @State private var reconciliationMessage: String?
     @State private var selectedTab = Tab.scan
     @State private var providerEnrolmentRequested = false
+    @State private var pendingBrokerCustodyAvailable = false
+    @State private var pendingBrokerCustodyBusy = false
+    @State private var pendingBrokerCustodyMessage: String?
     @State private var authorityCustodyContinuationHost: String?
     @State private var authorityCustodyMode: FirstAuthorityCustodyModeV2 = .rotation
   @State private var authorityCustodyAttempt: UUID?
@@ -125,7 +128,20 @@ struct RootTabView: View {
                     continueAuthorityCustody: continueAuthorityCustody,
                     selectInstallation: selectInstallation
                 )
+                .safeAreaInset(edge: .bottom) {
+                    if let pendingBrokerCustodyMessage {
+                        Text(pendingBrokerCustodyMessage)
+                            .padding()
+                            .background(MnColor.canvas)
+                    }
+                }
                 .toolbar {
+                    if pendingBrokerCustodyAvailable {
+                        ToolbarItem(placement: .bottomBar) {
+                            Button("Continue pending setup") { Task { await resumePendingBrokerCustody() } }
+                                .disabled(pendingBrokerCustodyBusy)
+                        }
+                    }
                     ToolbarItem(placement: .topBarTrailing) {
                         NavigationLink("Review permission") { IssuerJointRootApprovalView() }
                         NavigationLink("Current issuer check") { IssuerSiteRootCurrentView() }
@@ -136,6 +152,9 @@ struct RootTabView: View {
                 Label("Installations", systemImage: "building.2")
             }
             .tag(Tab.installations)
+            .onChange(of: selectedTab, initial: true) { _, value in
+                if value == .installations { refreshPendingBrokerCustody() }
+            }
 
             NavigationStack {
                 ScanView(
@@ -214,6 +233,33 @@ struct RootTabView: View {
             return projection
         }
         return .empty
+    }
+
+    private func refreshPendingBrokerCustody() {
+        pendingBrokerCustodyAvailable = BrokerV2Feature.enabled
+            && (try? ScopedAppAttestStore().recoverableBrokerCustodyAttempt()) != nil
+    }
+
+    private func resumePendingBrokerCustody() async {
+        guard !pendingBrokerCustodyBusy, BrokerV2Feature.enabled else { return }
+        pendingBrokerCustodyBusy = true
+        pendingBrokerCustodyMessage = nil
+        defer {
+            pendingBrokerCustodyBusy = false
+            refreshPendingBrokerCustody()
+        }
+        do {
+            guard let pending = try ScopedAppAttestStore().recoverableBrokerCustodyAttempt() else { return }
+            let broker = try MonasSiteX509FirstProvisionBrokerTransport()
+            let service = SiteRootConvergenceServiceV2(transport: broker, continuationTransport: broker)
+            try await service.retryProvisionalBrokerCustody(
+                correlation: pending.correlation,
+                siteUUID: String(pending.siteClaim.dropFirst(5))
+            )
+            pendingBrokerCustodyMessage = "Custody verified. Continue with the signed identity setup in the terminal."
+        } catch {
+            pendingBrokerCustodyMessage = "Pistis could not continue this pending setup safely."
+        }
     }
 
     private func recoverSiteRootInstallation() {

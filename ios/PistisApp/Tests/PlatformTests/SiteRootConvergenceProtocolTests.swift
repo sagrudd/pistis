@@ -361,7 +361,7 @@ final class SiteRootConvergenceProtocolTests: XCTestCase {
         )
 
         do {
-            try await service.provisionSiteX509Broker(presentation)
+            _ = try await service.provisionSiteX509Broker(presentation)
             XCTFail("a mismatched enrolled Site Root key ID must deny the proof")
         } catch let failure as PlatformFailure {
             XCTAssertEqual(failure, .siteRootAuthorityKeyMismatch)
@@ -626,9 +626,10 @@ final class SiteRootConvergenceProtocolTests: XCTestCase {
         )
         let presentation = try brokerPresentation()
 
-        try await service.provisionSiteX509Broker(
+        let custodyVerified = try await service.provisionSiteX509Broker(
             presentation, progress: { progress.append($0) }
         )
+        XCTAssertFalse(custodyVerified, "Initial proof alone must not offer the final identity QR")
         let firstEvents = await recorder.events()
         XCTAssertEqual(firstEvents, ["reserve", "proof", "submit"])
         XCTAssertEqual(progress, [
@@ -636,7 +637,7 @@ final class SiteRootConvergenceProtocolTests: XCTestCase {
         ])
 
         do {
-            try await service.provisionSiteX509Broker(
+            _ = try await service.provisionSiteX509Broker(
                 presentation, progress: { progress.append($0) }
             )
             XCTFail("a reserved broker presentation must not be reusable")

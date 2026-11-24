@@ -52,6 +52,7 @@ struct InstallationsView: View {
     let pendingCustodyAvailable: Bool
     let pendingCustodyBusy: Bool
     let pendingCustodyMessage: String?
+    let scanFinalIdentityQR: (() -> Void)?
     let continuePendingCustody: () -> Void
 
     var body: some View {
@@ -62,6 +63,9 @@ struct InstallationsView: View {
             }
             if let pendingCustodyMessage {
                 Text(pendingCustodyMessage).textSelection(.enabled)
+            }
+            if let scanFinalIdentityQR {
+                Button("Scan final QR", action: scanFinalIdentityQR)
             }
             ForEach(installations) { installation in
                 NavigationLink {

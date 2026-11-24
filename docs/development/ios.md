@@ -686,6 +686,10 @@ fingerprint, or paste the full fingerprint. Pistis continues only with a
 unique match. Use the full fingerprint if the suffix matches multiple records.
 TLS and custody still verify the complete pin from the retained handoff.
 
+After Pistis verifies broker custody, tap **Scan final QR** and scan the signed
+identity QR from the same Monas install page. Pistis opens the existing identity
+enrolment scanner and still requires its separate approvals.
+
 ### Onboarding support codes
 
 Pistis shows `PST-ONBOARD/<stage>/<category>` when the certificate approval

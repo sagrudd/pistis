@@ -3,6 +3,7 @@ import SwiftUI
 struct SiteRootConvergenceReviewView: View {
     let review: SiteRootConvergenceReview
     @ObservedObject var coordinator: SiteRootConvergenceCoordinator
+    let scanFinalIdentityQR: () -> Void
     @Environment(\.dismiss) private var dismiss
 
     var body: some View {
@@ -62,6 +63,17 @@ struct SiteRootConvergenceReviewView: View {
             HStack(spacing: MnSpacing.x3) {
                 ProgressView()
                 Text(phaseLabel)
+            }
+        case .awaitingFinalIdentityQR:
+            MnPanel {
+                VStack(alignment: .leading, spacing: MnSpacing.x3) {
+                    MnStatusLabel(text: "Custody verified", kind: .success)
+                    Text("Scan the final signed identity QR on the same Monas install page.")
+                    MnPrimaryButton("Scan final QR", systemImage: "qrcode.viewfinder") {
+                        scanFinalIdentityQR()
+                        dismiss()
+                    }
+                }
             }
         case .completed:
             MnPanel {

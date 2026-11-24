@@ -89,6 +89,7 @@ struct RootTabView: View {
     @State private var pendingBrokerFingerprintRequested = false
     @State private var pendingBrokerCustodyBusy = false
     @State private var pendingBrokerCustodyMessage: String?
+    @State private var pendingBrokerFinalQRAvailable = false
     @State private var authorityCustodyContinuationHost: String?
     @State private var authorityCustodyMode: FirstAuthorityCustodyModeV2 = .rotation
   @State private var authorityCustodyAttempt: UUID?
@@ -132,6 +133,11 @@ struct RootTabView: View {
                     pendingCustodyAvailable: pendingBrokerCustodyCount > 0,
                     pendingCustodyBusy: pendingBrokerCustodyBusy,
                     pendingCustodyMessage: pendingBrokerCustodyMessage,
+                    scanFinalIdentityQR: pendingBrokerFinalQRAvailable ? {
+                        pendingBrokerFinalQRAvailable = false
+                        pendingBrokerCustodyMessage = nil
+                        routeToProviderEnrolment()
+                    } : nil,
                     continuePendingCustody: {
                         if pendingBrokerCustodyCount > 1 {
                             pendingBrokerFingerprintRequested = true
@@ -178,6 +184,7 @@ struct RootTabView: View {
                         authorityCustodyMode = .rotation
                         selectedTab = .installations
                     },
+                    routeToProviderEnrolment: routeToProviderEnrolment,
                     prepareOrdinaryLogin: prepareOrdinaryLogin,
                     ordinaryLoginCompleted: {
                         selectedTab = .identities
@@ -255,6 +262,7 @@ struct RootTabView: View {
     private func resumePendingBrokerCustody(fingerprint: String? = nil) async {
         guard !pendingBrokerCustodyBusy, BrokerV2Feature.enabled else { return }
         pendingBrokerCustodyBusy = true
+        pendingBrokerFinalQRAvailable = false
         pendingBrokerCustodyMessage = nil
         var stage: SiteX509BrokerApprovalStageV1?
         defer {
@@ -284,7 +292,8 @@ struct RootTabView: View {
                 stage = $0
                 pendingBrokerCustodyMessage = $0.label
             }
-            pendingBrokerCustodyMessage = "Custody verified. Continue with the signed identity setup in the terminal."
+            pendingBrokerCustodyMessage = "Custody verified. Scan the final signed identity QR on the same Monas install page."
+            pendingBrokerFinalQRAvailable = true
         } catch {
             let code = SiteX509BrokerApprovalStageV1.supportCode(stage: stage, error: error)
             let message = (error as? PlatformFailure)?.safeUserMessage

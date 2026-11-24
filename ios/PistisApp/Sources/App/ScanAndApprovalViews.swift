@@ -128,12 +128,14 @@ struct ScanView: View {
     private let appAttestReplacementTransport: MonasAppAttestTransport?
     private let expectedSiteRootAuthorityHost: String?
     private let showInstallations: () -> Void
+    private let routeToProviderEnrolment: () -> Void
     private let prepareOrdinaryLogin: (AuthenticatedEnrollmentOutput) async throws -> Void
     private let ordinaryLoginCompleted: () -> Void
     @State private var scanning = true
     @State private var importingOfflinePresentation = false
     @State private var importingAppAttestReplacement = false
     @State private var firstDeviceScanRequest: FirstDeviceScanRequest?
+    @State private var finalIdentityQRRequested = false
     @State private var scanFailure: PlatformFailure?
     @AccessibilityFocusState private var scanFailureFocused: Bool
     @State private var readiness = PasswordlessReadiness.checking
@@ -143,12 +145,14 @@ struct ScanView: View {
         expectedSiteRootAuthorityHost: String? = nil,
         authorityCustodyMode: FirstAuthorityCustodyModeV2 = .rotation,
         showInstallations: @escaping () -> Void = {},
+        routeToProviderEnrolment: @escaping () -> Void,
         prepareOrdinaryLogin: @escaping (AuthenticatedEnrollmentOutput) async throws -> Void = { _ in },
         ordinaryLoginCompleted: @escaping () -> Void = {}
     ) {
         self.siteRootTransport = siteRootTransport
         self.expectedSiteRootAuthorityHost = expectedSiteRootAuthorityHost
         self.showInstallations = showInstallations
+        self.routeToProviderEnrolment = routeToProviderEnrolment
         self.prepareOrdinaryLogin = prepareOrdinaryLogin
         self.ordinaryLoginCompleted = ordinaryLoginCompleted
         let retainedTransport: MonasAppAttestTransport?
@@ -383,8 +387,15 @@ struct ScanView: View {
         .sheet(item: mtgsRecoveryReviewBinding) { review in
             MTGSRecoveryReviewView(review: review, coordinator: mtgsRecovery)
         }
-        .sheet(item: siteRootConvergenceReviewBinding) { review in
-            SiteRootConvergenceReviewView(review: review, coordinator: siteRootConvergence)
+        .sheet(item: siteRootConvergenceReviewBinding, onDismiss: {
+            if finalIdentityQRRequested {
+                finalIdentityQRRequested = false
+                routeToProviderEnrolment()
+            }
+        }) { review in
+            SiteRootConvergenceReviewView(review: review, coordinator: siteRootConvergence) {
+                finalIdentityQRRequested = true
+            }
         }
         .sheet(item: siteOriginRelocationReviewBinding) { review in
             SiteOriginRelocationReviewView(review: review, coordinator: siteOriginRelocation)

@@ -1223,7 +1223,7 @@ struct SiteRootConvergenceServiceV2: Sendable {
     func provisionSiteX509Broker(
         _ presentation: SiteX509FirstProvisionBrokerPresentationV1,
         progress: (SiteX509BrokerApprovalStageV1) -> Void = { _ in }
-    ) async throws {
+    ) async throws -> Bool {
         let scopedStorage = self.scopedStorage
         let pending = try BrokerV2Feature.enabled
             ? scopedStorage.submittedBrokerAttempt(correlation: presentation.correlation, siteUUID: presentation.siteUUID) : nil
@@ -1253,15 +1253,18 @@ struct SiteRootConvergenceServiceV2: Sendable {
                 ),
                 progress: progress
             )
-            if let pending { try await continueProvisionalBrokerCustody(pending, storage: scopedStorage, progress: progress) }
+            guard let pending else { return false }
+            try await continueProvisionalBrokerCustody(pending, storage: scopedStorage, progress: progress)
+            return true
         }
+        return false
     }
 
     @MainActor
     func continueRecoveredSiteX509(
         _ presentation: SiteX509ContinuationRecoveryPresentationV1,
         progress: (SiteX509BrokerApprovalStageV1) -> Void = { _ in }
-    ) async throws {
+    ) async throws -> Bool {
         guard let continuation = continuationTransport else {
             throw PlatformFailure.siteRootAuthorityUnavailable
         }
@@ -1283,7 +1286,9 @@ struct SiteRootConvergenceServiceV2: Sendable {
             ),
             progress: progress
         )
-        if let pending { try await continueProvisionalBrokerCustody(pending, storage: scopedStorage, progress: progress) }
+        guard let pending else { return false }
+        try await continueProvisionalBrokerCustody(pending, storage: scopedStorage, progress: progress)
+        return true
     }
 
     /// A lost assertion/begin/complete response stays pending and is never

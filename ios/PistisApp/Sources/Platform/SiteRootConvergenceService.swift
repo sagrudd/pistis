@@ -79,8 +79,10 @@ enum SiteX509BrokerApprovalStageV1: Equatable, Sendable {
     }
 
     static func supportCode(stage: Self?, error: Error) -> String {
-        let failure = (error as? PlatformFailure)?.onboardingEventFailureCode ?? .unknown
-        return "PST-ONBOARD/\(stage?.supportStage ?? "route")/\(failure.rawValue)"
+        let category = (error as? BrokerCustodyChallengeFailure)?.rawValue
+            ?? (error as? PlatformFailure)?.onboardingEventFailureCode.rawValue
+            ?? OnboardingEventFailureCode.unknown.rawValue
+        return "PST-ONBOARD/\(stage?.supportStage ?? "route")/\(category)"
     }
 }
 

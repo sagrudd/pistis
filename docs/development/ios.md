@@ -696,6 +696,11 @@ nor credentials. They do not authorize a retry.
 | `custody-rotation` | Protected custody rotation after the assertion |
 | `route` | Failure before a specific boundary was recorded |
 
+Native custody challenge categories distinguish TLS trust (`tls_trust`),
+an unreachable endpoint (`unreachable`), an authenticated endpoint returning
+503 (`route_unavailable`), an invalid response (`response_rejected`), and
+a mismatch with the retained operation or device binding (`binding_rejected`).
+
 The category uses the existing closed onboarding failure catalogue. In
 particular, `authority_unavailable` reports an unavailable authority step, not
 a diagnosis of expiry or certificate failure. Use the native redacted record

@@ -140,7 +140,7 @@ struct SiteRootConvergenceReviewView: View {
     }
 }
 
-private extension SiteX509BrokerApprovalStageV1 {
+extension SiteX509BrokerApprovalStageV1 {
     var label: String {
         switch self {
         case .reservingApproval:

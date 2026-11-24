@@ -175,6 +175,7 @@ struct MonasAppAttestTransport: Sendable {
         DasReplacementReceiptAttendedProfileV1.submissionPath
     private let authorityOrigins: [URL]
     private let session: URLSession
+    private let sessionDelegate: PinnedEnrolmentSessionDelegate
 
     init(
         bootstrap: MonasAppAttestCeremonyBootstrap,
@@ -239,14 +240,8 @@ struct MonasAppAttestTransport: Sendable {
         configuration.httpShouldSetCookies = false
         configuration.urlCache = nil
         configuration.requestCachePolicy = .reloadIgnoringLocalCacheData
-        session = URLSession(
-            configuration: configuration,
-            delegate: try PinnedEnrolmentSessionDelegate(
-                origins: authorityOrigins,
-                trustPolicy: trustPolicy
-            ),
-            delegateQueue: nil
-        )
+        sessionDelegate = try PinnedEnrolmentSessionDelegate(origins: authorityOrigins, trustPolicy: trustPolicy)
+        session = URLSession(configuration: configuration, delegate: sessionDelegate, delegateQueue: nil)
     }
 
     private static func isValidOrigin(_ origin: URL) -> Bool {
@@ -275,14 +270,17 @@ struct MonasAppAttestTransport: Sendable {
             guard let urlError = error as? URLError else {
                 throw OriginAttemptFailure.rejected
             }
-            switch urlError.code {
-            case .cannotConnectToHost, .cannotFindHost, .dnsLookupFailed,
-                 .networkConnectionLost, .notConnectedToInternet, .resourceUnavailable,
-                 .timedOut:
-                throw OriginAttemptFailure.unreachable
-            default:
-                throw OriginAttemptFailure.rejected
-            }
+            throw Self.isUnreachable(urlError.code) ? OriginAttemptFailure.unreachable : OriginAttemptFailure.rejected
+        }
+    }
+
+    private static func isUnreachable(_ code: URLError.Code) -> Bool {
+        switch code {
+        case .cannotConnectToHost, .cannotFindHost, .dnsLookupFailed,
+             .networkConnectionLost, .notConnectedToInternet, .resourceUnavailable, .timedOut:
+            true
+        default:
+            false
         }
     }
 
@@ -390,23 +388,46 @@ struct MonasAppAttestTransport: Sendable {
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.setValue("application/json", forHTTPHeaderField: "Accept")
         request.setValue("no-store", forHTTPHeaderField: "Cache-Control")
+        var lastRetryableFailure = BrokerCustodyChallengeFailure.unreachable
         for attempt in 0..<6 {
+            _ = sessionDelegate.takeServerTrustRejection()
             do {
-                let (data, response) = try await originData(for: request)
+                let (data, response) = try await session.data(for: request)
                 guard let http = response as? HTTPURLResponse, http.url == endpoint,
                       http.value(forHTTPHeaderField: "Set-Cookie") == nil,
                       http.value(forHTTPHeaderField: "Cache-Control")?.lowercased().contains("no-store") == true
-                else { throw PlatformFailure.siteRootAuthorityUnavailable }
+                else { throw BrokerCustodyChallengeFailure.responseRejected }
                 if http.statusCode == 200 {
-                    return try BrokerCustodyChallengeV2(data: data, pending: pending, nowUnixSeconds: now())
+                    do {
+                        return try BrokerCustodyChallengeV2(data: data, pending: pending, nowUnixSeconds: now())
+                    } catch let failure as BrokerCustodyChallengeFailure {
+                        throw failure
+                    } catch {
+                        throw BrokerCustodyChallengeFailure.responseRejected
+                    }
                 }
-                guard http.statusCode == 503 else { throw PlatformFailure.siteRootAuthorityUnavailable }
-            } catch OriginAttemptFailure.unreachable {
-                // Only pre-assertion connection readiness is retried.
+                guard http.statusCode == 503 else { throw BrokerCustodyChallengeFailure.responseRejected }
+                lastRetryableFailure = .routeUnavailable
+            } catch let error as URLError {
+                try Task.checkCancellation()
+                if sessionDelegate.takeServerTrustRejection() {
+                    throw BrokerCustodyChallengeFailure.tlsTrust
+                }
+                switch error.code {
+                case .secureConnectionFailed, .serverCertificateHasBadDate,
+                     .serverCertificateUntrusted, .serverCertificateHasUnknownRoot,
+                     .serverCertificateNotYetValid:
+                    throw BrokerCustodyChallengeFailure.tlsTrust
+                case .cancelled:
+                    throw PlatformFailure.operationCancelled
+                default:
+                    guard Self.isUnreachable(error.code) else { throw BrokerCustodyChallengeFailure.responseRejected }
+                    lastRetryableFailure = .unreachable
+                }
             }
             if attempt < 5 { try await Task.sleep(nanoseconds: 400_000_000) }
         }
-        throw PlatformFailure.siteRootAuthorityUnavailable
+        throw lastRetryableFailure
     }
 
     /// Submits one recovery assertion to the fixed, purpose-separated Monas route.

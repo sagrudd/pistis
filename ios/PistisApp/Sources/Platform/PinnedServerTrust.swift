@@ -131,6 +131,16 @@ final class PinnedEnrolmentSessionDelegate:
 {
     private let authorities: Set<String>
     private let trustPolicy: MonasServerTrustPolicy
+    private let rejectionLock = NSLock()
+    private var rejectedServerTrust = false
+
+    func takeServerTrustRejection() -> Bool {
+        rejectionLock.lock()
+        defer { rejectionLock.unlock() }
+        let rejected = rejectedServerTrust
+        rejectedServerTrust = false
+        return rejected
+    }
 
     convenience init(origin: URL, expectedSPKISHA256: Data) throws {
         guard expectedSPKISHA256.count == 32,
@@ -191,6 +201,11 @@ final class PinnedEnrolmentSessionDelegate:
                   trustPolicy: trustPolicy
               )
         else {
+            if challenge.protectionSpace.authenticationMethod == NSURLAuthenticationMethodServerTrust {
+                rejectionLock.lock()
+                rejectedServerTrust = true
+                rejectionLock.unlock()
+            }
             completionHandler(.cancelAuthenticationChallenge, nil)
             return
         }

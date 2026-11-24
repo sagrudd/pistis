@@ -278,7 +278,10 @@ struct RootTabView: View {
             }
             let broker = try MonasSiteX509FirstProvisionBrokerTransport()
             let service = SiteRootConvergenceServiceV2(transport: broker, continuationTransport: broker)
-            try await service.retryProvisionalBrokerCustody(pending: pending) { stage = $0 }
+            try await service.retryProvisionalBrokerCustody(pending: pending) {
+                stage = $0
+                pendingBrokerCustodyMessage = $0.label
+            }
             pendingBrokerCustodyMessage = "Custody verified. Continue with the signed identity setup in the terminal."
         } catch {
             let code = SiteX509BrokerApprovalStageV1.supportCode(stage: stage, error: error)

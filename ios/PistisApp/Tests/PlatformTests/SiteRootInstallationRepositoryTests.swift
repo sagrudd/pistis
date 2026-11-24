@@ -5,6 +5,14 @@ import XCTest
 
 @MainActor
 final class SiteRootInstallationRepositoryTests: XCTestCase {
+    func testOnlyQueuedProofOffersTheNextScan() {
+        let completion = SiteRootDelegationCoordinator.Completion.proofQueued
+        XCTAssertTrue(completion.scansNextQR)
+        XCTAssertEqual(completion.actionTitle, "Scan next QR")
+        XCTAssertFalse(SiteRootDelegationCoordinator.Completion.siteTrustEstablished.scansNextQR)
+        XCTAssertFalse(SiteRootDelegationCoordinator.Completion.sessionEstablished.scansNextQR)
+    }
+
     func testInitialSiteTrustCompletionRoutesToRecordedSetupProgress() {
         let completion = SiteRootDelegationCoordinator.Completion.siteTrustEstablished
 

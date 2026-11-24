@@ -1,3 +1,7 @@
+## Pistis iOS 0.32.4 (84)
+
+- Offer Scan next QR after submitting the brokered Site Root proof.
+
 ## Pistis iOS 0.32.3 (83)
 
 - Show redacted stage and failure codes for certificate approval and retained custody.

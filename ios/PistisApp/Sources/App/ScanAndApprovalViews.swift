@@ -1414,9 +1414,14 @@ private struct SiteRootDelegationReviewView: View {
                         Text(completion.detail)
                             .font(.footnote)
                         MnPrimaryButton(completion.actionTitle) {
-                            coordinator.reset()
-                            dismiss()
-                            showInstallations()
+                            if completion.scansNextQR {
+                                // Dismissing this sheet runs the existing scanner reset.
+                                dismiss()
+                            } else {
+                                coordinator.reset()
+                                dismiss()
+                                showInstallations()
+                            }
                         }
                     case let .failed(failure):
                         MnStatusLabel(text: "Site Root ceremony stopped safely", kind: .danger)
@@ -1502,7 +1507,7 @@ extension SiteRootDelegationCoordinator.Completion {
     var orientation: String {
         switch self {
         case .proofQueued:
-            "The install service received the proof. Continue setup when Monas provides the next invitation."
+            "The install service received the proof. When the same Monas install window shows the next protected QR, choose Scan next QR."
         case .siteTrustEstablished:
             "Monas accepted this first-device proof and created Site Trust and custody. This installation is recorded as setup in progress; identity enrolment is the next ceremony."
         case .sessionEstablished:
@@ -1537,9 +1542,11 @@ extension SiteRootDelegationCoordinator.Completion {
         }
     }
 
+    var scansNextQR: Bool { self == .proofQueued }
+
     var actionTitle: String {
         switch self {
-        case .proofQueued: "Continue"
+        case .proofQueued: "Scan next QR"
         case .siteTrustEstablished: "View setup progress"
         case .sessionEstablished: "View installation"
         }

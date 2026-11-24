@@ -38,6 +38,26 @@ final class SiteRootAppAttestBootstrapTransportTests: XCTestCase {
         )
     }
 
+    func testCompletedCustodyDoesNotReenterEitherAttendedClientPath() {
+        let status = MonasSiteRootDelegationTransport.AuthorityCustodyStatusV2
+            .custodyCompleted
+
+        XCTAssertEqual(
+            AuthorityCustodyEntryDecisionV2.ordinaryLogin(status: status),
+            .awaitAuthorityActivation
+        )
+        XCTAssertEqual(
+            AuthorityCustodyEntryDecisionV2.installationContinuation(status: status),
+            .awaitAuthorityActivation
+        )
+        XCTAssertEqual(
+            AuthorityCustodyEntryDecisionV2.ordinaryLogin(
+                status: .appAttestAssertionRequired
+            ),
+            .attendCustody
+        )
+    }
+
     override func tearDown() {
         BootstrapURLProtocol.reset()
         super.tearDown()
@@ -110,7 +130,7 @@ final class SiteRootAppAttestBootstrapTransportTests: XCTestCase {
         try await assertSubmissionDenied(response: extended)
     }
 
-    func testAuthorityCustodyStatusUsesOnlyFixedNoStoreState() async throws {
+    func testAuthorityCustodyStatusDistinguishesCompletedFromAssertionRequired() async throws {
         let response = Data(
             #"{"schema":"monas.first-authority-custody-status.v2","state":"recovery-required"}"#.utf8
         )
@@ -131,6 +151,15 @@ final class SiteRootAppAttestBootstrapTransportTests: XCTestCase {
         XCTAssertEqual(request.httpMethod, "GET")
         XCTAssertNil(request.value(forHTTPHeaderField: "Cookie"))
         XCTAssertNil(request.value(forHTTPHeaderField: "Authorization"))
+
+        BootstrapURLProtocol.configure(
+            response: Data(
+                #"{"schema":"monas.first-authority-custody-status.v2","state":"completed"}"#.utf8
+            ), status: 200
+        )
+        let completed = try await transport.authorityCustodyStatusV2()
+        XCTAssertEqual(completed, .custodyCompleted)
+        XCTAssertNotEqual(completed, .appAttestAssertionRequired)
 
         BootstrapURLProtocol.configure(
             response: Data(

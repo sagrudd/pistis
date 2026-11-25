@@ -269,7 +269,7 @@ struct MonasSiteX509FirstProvisionBrokerTransport: MonasSiteRootConvergenceSubmi
                 guard Set(object.keys) == ["schema", "state"] else {
                     throw PlatformFailure.siteRootAuthorityUnavailable
                 }
-                try await Task.sleep(for: .seconds(2))
+                try await Task.sleep(for: .milliseconds(500))
             case "accepted":
                 guard Set(object.keys) == ["schema", "state"] else {
                     throw PlatformFailure.siteRootAuthorityUnavailable

@@ -438,16 +438,18 @@ final class SiteRootConvergenceProtocolTests: XCTestCase {
     func testBrokerContinuationBindsExactPhasePresentationDigestAndSubmission() async throws {
         BrokerTransportURLProtocol.reset()
         let payload = Data("exact-root-presentation".utf8)
-        BrokerTransportURLProtocol.setContinuationPresentation(payload)
+        BrokerTransportURLProtocol.setContinuationPresentation(payload, pendingFirst: true)
         let configuration = URLSessionConfiguration.ephemeral
         configuration.protocolClasses = [BrokerTransportURLProtocol.self]
         let transport = try MonasSiteX509FirstProvisionBrokerTransport(
             session: URLSession(configuration: configuration)
         )
         let correlation = Data(repeating: 0x41, count: 32)
+        let started = ContinuousClock.now
         let polled = try await transport.awaitSiteX509Continuation(
             correlation: correlation, phase: .rootUnlock
         )
+        XCTAssertLessThan(started.duration(to: .now), .seconds(2))
         let ready = try XCTUnwrap(polled)
         XCTAssertEqual(ready.payload, payload)
         XCTAssertEqual(ready.sha256, Data(SHA256.hash(data: payload)))
@@ -458,9 +460,10 @@ final class SiteRootConvergenceProtocolTests: XCTestCase {
         let requests = BrokerTransportURLProtocol.requests()
         XCTAssertEqual(requests.map { $0.url?.path }, [
             SiteRootConvergenceProfileV2.x509BrokerContinuationPresentationPath,
+            SiteRootConvergenceProfileV2.x509BrokerContinuationPresentationPath,
             SiteRootConvergenceProfileV2.x509BrokerContinuationSubmissionPath,
         ])
-        let submission = try XCTUnwrap(jsonObject(requests[1]))
+        let submission = try XCTUnwrap(jsonObject(requests[2]))
         XCTAssertEqual(submission["phase"] as? String, "root-unlock")
         XCTAssertEqual(
             submission["presentation_sha256_b64url"] as? String,
@@ -966,17 +969,20 @@ private final class BrokerTransportURLProtocol: URLProtocol, @unchecked Sendable
     private static let lock = NSLock()
     nonisolated(unsafe) private static var capturedRequests: [URLRequest] = []
     nonisolated(unsafe) private static var continuationPresentation: Data?
+    nonisolated(unsafe) private static var continuationPending = false
 
     static func reset() {
         lock.lock()
         capturedRequests = []
         continuationPresentation = nil
+        continuationPending = false
         lock.unlock()
     }
 
-    static func setContinuationPresentation(_ data: Data) {
+    static func setContinuationPresentation(_ data: Data, pendingFirst: Bool) {
         lock.lock()
         continuationPresentation = data
+        continuationPending = pendingFirst
         lock.unlock()
     }
 
@@ -1005,12 +1011,16 @@ private final class BrokerTransportURLProtocol: URLProtocol, @unchecked Sendable
 
         Self.lock.lock()
         let continuation = Self.continuationPresentation
+        let isContinuation = url.path == SiteRootConvergenceProfileV2.x509BrokerContinuationPresentationPath
+        let pending = isContinuation && Self.continuationPending
+        if pending { Self.continuationPending = false }
         Self.lock.unlock()
         let status: Int
         let body: Data
-        if url.path == SiteRootConvergenceProfileV2.x509BrokerContinuationPresentationPath,
-           let continuation
-        {
+        if pending {
+            status = 200
+            body = Data("{\"schema\":\"\(SiteRootConvergenceProfileV2.x509BrokerResponseSchema)\",\"state\":\"pending\"}".utf8)
+        } else if isContinuation, let continuation {
             status = 200
             body = Data(
                 "{\"presentation_b64url\":\"\(SiteRootConvergenceEncoding.encode(continuation))\",\"presentation_sha256_b64url\":\"\(SiteRootConvergenceEncoding.encode(Data(SHA256.hash(data: continuation))))\",\"schema\":\"\(SiteRootConvergenceProfileV2.x509BrokerResponseSchema)\",\"state\":\"ready\"}".utf8

@@ -29,6 +29,21 @@ enum ProviderVerificationStatus: Equatable, Sendable {
     case consumed
 }
 
+/// Bounded support details for the provider status request.
+enum ProviderStatusRequestFailure: Error, Equatable {
+    case transport
+    case http(Int)
+    case response
+
+    var supportSuffix: String {
+        switch self {
+        case .transport: "transport"
+        case let .http(status): "http-\(status)"
+        case .response: "response"
+        }
+    }
+}
+
 /// Closed ADR 0027 mobile port to the enrolment-only Monas process.
 ///
 /// The adapter handle, GitHub token, refresh token, raw provider response and
@@ -312,21 +327,33 @@ struct ServerDrivenEnrolmentTransport: Sendable {
         )
         request.setValue("application/json", forHTTPHeaderField: "Accept")
         request.setValue("no-store", forHTTPHeaderField: "Cache-Control")
+        let isProviderStatus = path == Self.statusPath
+        let data: Data
+        let response: URLResponse
         do {
-            let (data, response) = try await session.data(for: request)
-            guard let http = response as? HTTPURLResponse,
-                  http.url == endpoint,
-                  (200 ... 299).contains(http.statusCode),
-                  data.count <= maximumResponseBytes,
-                  http.value(forHTTPHeaderField: "Cache-Control")?
-                      .lowercased().contains("no-store") == true
-            else { throw PlatformFailure.productionEnvelopeUnavailable }
-            return data
-        } catch let error as PlatformFailure {
-            throw error
+            (data, response) = try await session.data(for: request)
         } catch {
+            if isProviderStatus { throw ProviderStatusRequestFailure.transport }
             throw PlatformFailure.productionEnvelopeUnavailable
         }
+        guard let http = response as? HTTPURLResponse, http.url == endpoint else {
+            if isProviderStatus { throw ProviderStatusRequestFailure.response }
+            throw PlatformFailure.productionEnvelopeUnavailable
+        }
+        guard (200 ... 299).contains(http.statusCode) else {
+            if isProviderStatus, (100 ... 599).contains(http.statusCode) {
+                throw ProviderStatusRequestFailure.http(http.statusCode)
+            }
+            throw PlatformFailure.productionEnvelopeUnavailable
+        }
+        guard data.count <= maximumResponseBytes,
+              http.value(forHTTPHeaderField: "Cache-Control")?
+                  .lowercased().contains("no-store") == true
+        else {
+            if isProviderStatus { throw ProviderStatusRequestFailure.response }
+            throw PlatformFailure.productionEnvelopeUnavailable
+        }
+        return data
     }
 
     private func encode(_ object: [String: Any]) throws -> Data {

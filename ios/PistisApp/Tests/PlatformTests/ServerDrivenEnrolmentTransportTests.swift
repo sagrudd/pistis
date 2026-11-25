@@ -67,6 +67,29 @@ final class ServerDrivenEnrolmentTransportTests: XCTestCase {
         }
     }
 
+    func testProviderStatusKeepsOnlyTheHTTPStatusForSupport() async throws {
+        let configuration = URLSessionConfiguration.ephemeral
+        configuration.protocolClasses = [UnavailableProviderStatusURLProtocol.self]
+        let transport = try ServerDrivenEnrolmentTransport(
+            presentation: try sharedPresentation(), configuration: configuration
+        )
+        let handle = ProviderVerificationHandle(
+            operationID: Data(repeating: 1, count: 16),
+            providerVerificationID: Data(repeating: 2, count: 16),
+            pollingCapability: Data(repeating: 3, count: 32),
+            prompt: nil,
+            expiresAtMilliseconds: 1_700_000_300_000,
+            pollAfterMilliseconds: 5_000
+        )
+        do {
+            _ = try await transport.status(handle)
+            XCTFail("HTTP 503 cannot produce an accepted status")
+        } catch let failure as ProviderStatusRequestFailure {
+            XCTAssertEqual(failure, .http(503))
+            XCTAssertEqual(failure.supportSuffix, "http-503")
+        }
+    }
+
     func testRetainedVerifiedBeginNeverExposesRecoverySentinelAsPrompt() async throws {
         let configuration = URLSessionConfiguration.ephemeral
         configuration.protocolClasses = [RetainedEnrolmentURLProtocol.self]
@@ -380,4 +403,22 @@ private final class RetainedEnrolmentURLProtocol: URLProtocol, @unchecked Sendab
             .replacingOccurrences(of: "/", with: "_")
             .replacingOccurrences(of: "=", with: "")
     }
+}
+
+private final class UnavailableProviderStatusURLProtocol: URLProtocol, @unchecked Sendable {
+    override class func canInit(with request: URLRequest) -> Bool { true }
+
+    override class func canonicalRequest(for request: URLRequest) -> URLRequest { request }
+
+    override func startLoading() {
+        let response = HTTPURLResponse(
+            url: request.url!, statusCode: 503, httpVersion: "HTTP/1.1",
+            headerFields: ["Cache-Control": "no-store"]
+        )!
+        client?.urlProtocol(self, didReceive: response, cacheStoragePolicy: .notAllowed)
+        client?.urlProtocol(self, didLoad: Data("untrusted response text".utf8))
+        client?.urlProtocolDidFinishLoading(self)
+    }
+
+    override func stopLoading() {}
 }

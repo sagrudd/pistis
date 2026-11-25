@@ -248,6 +248,7 @@ final class FirstDeviceEnrolmentFlow: ObservableObject {
     private var deviceKeyID: Data?
     private var pendingRegistration: Data?
     private var beginRetry = EnrolmentBeginRetryState()
+    private var providerStatusFailure: ProviderStatusRequestFailure?
     private var providerContinuation = EnrolmentProviderContinuationState()
     private var approvalGate = AttendedEnrolmentGate()
     private var eventAttemptID = UUID()
@@ -268,7 +269,9 @@ final class FirstDeviceEnrolmentFlow: ObservableObject {
     }
 
     var providerStatusSupportCode: String? {
-        providerContinuation.statusSupportCode(failure: failure)
+        guard let code = providerContinuation.statusSupportCode(failure: failure) else { return nil }
+        guard let providerStatusFailure else { return code }
+        return "\(code)/\(providerStatusFailure.supportSuffix)"
     }
 
     func restorePendingAuthorityBinding() {
@@ -510,7 +513,7 @@ final class FirstDeviceEnrolmentFlow: ObservableObject {
                     status = "Open GitHub and approve the displayed code"
                     failure = nil
                 } else {
-                    fail(PlatformFailure.providerStatusRetryRequired)
+                    failProviderStatus(error)
                 }
             }
         } catch {
@@ -540,8 +543,13 @@ final class FirstDeviceEnrolmentFlow: ObservableObject {
             )
             failure = nil
         } catch {
-            fail(PlatformFailure.providerStatusRetryRequired)
+            failProviderStatus(error)
         }
+    }
+
+    private func failProviderStatus(_ error: Error) {
+        providerStatusFailure = (error as? ProviderStatusRequestFailure) ?? .response
+        fail(PlatformFailure.providerStatusRetryRequired)
     }
 
     func applyProviderStatus(

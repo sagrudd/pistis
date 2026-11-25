@@ -24,6 +24,25 @@ final class OnboardingEventJournalTests: XCTestCase {
         XCTAssertEqual(event.failure, nil)
     }
 
+    func testQueuedRecordingKeepsOrderAndResetClearsPendingWrites() throws {
+        let suite = "pistis-onboarding-queue-tests-\(UUID().uuidString)"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
+        defer { defaults.removePersistentDomain(forName: suite) }
+        let journal = OnboardingEventJournal(
+            defaults: defaults,
+            nowUnixMillis: { 1_700_000_000_000 + 10_000 }
+        )
+        let first = try makeEvent(id: UUID())
+        let second = try makeEvent(id: UUID())
+        journal.record(first)
+        journal.record(second)
+        XCTAssertEqual(try journal.events(), [first, second])
+
+        journal.record(try makeEvent(id: UUID()))
+        journal.resetAllLocalEvents()
+        XCTAssertEqual(try journal.events(), [])
+    }
+
     func testJournalIsBoundedAppendOnlyAndRejectsConflictingIDs() throws {
         let suite = "pistis-onboarding-journal-tests-\(UUID().uuidString)"
         let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))

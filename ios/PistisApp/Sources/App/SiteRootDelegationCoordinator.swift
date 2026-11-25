@@ -404,12 +404,12 @@ final class SiteRootDelegationCoordinator: ObservableObject {
         storage = ScopedAppAttestStore()
         producer = try SecureEnclaveSiteRootProofProducer(authenticationReason: "Sign this exact Monas Site Root delegation")
 #endif
-        let attempt = try storage.reserveBrokerAttempt(presentation)
         phase = .registeringFirstDevice
         enterStage(.siteRootKey)
         setFirstDeviceStage(.creatingSiteRootKey)
-        let root = try await Task.detached(priority: .userInitiated) {
-            try producer.register()
+        let (attempt, root) = try await Task.detached(priority: .userInitiated) {
+            let attempt = try storage.reserveBrokerAttempt(presentation)
+            return (attempt, try producer.register())
         }.value
         enterStage(.appAttest)
         setFirstDeviceStage(.preparingAppAttest)
@@ -755,7 +755,7 @@ final class SiteRootDelegationCoordinator: ObservableObject {
             occurredAtUnixMillis: Self.nowUnixMillisForEvent()
         ) else { return }
         eventSequence += 1
-        try? eventRecorder.append(event)
+        eventRecorder.record(event)
         if let correlation = pendingCorrelation() {
             Task {
                 try? await (firstDeviceTransport ?? transport)

@@ -27,7 +27,9 @@ final class LocalHistoryRepository {
     }
 
     func record(_ event: HistoryEvent) throws {
-        var retained = try records().filter { $0.id != event.id }
+        let records = try records()
+        guard !records.contains(event) else { return }
+        var retained = records.filter { $0.id != event.id }
         retained.append(event)
         retained = Array(retained.suffix(maximumRecords))
         let encoded = try JSONEncoder().encode(retained)

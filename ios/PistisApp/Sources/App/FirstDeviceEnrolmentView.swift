@@ -819,7 +819,7 @@ final class FirstDeviceEnrolmentFlow: ObservableObject {
             occurredAtUnixMillis: Self.nowUnixMillisForEvent()
         ) else { return }
         eventSequence += 1
-        try? eventRecorder.append(event)
+        eventRecorder.record(event)
     }
 
     private static func nowUnixMillisForEvent() -> UInt64 {

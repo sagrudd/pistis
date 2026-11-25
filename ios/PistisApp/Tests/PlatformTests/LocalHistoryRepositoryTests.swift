@@ -20,11 +20,32 @@ final class LocalHistoryRepositoryTests: XCTestCase {
             verification: "Authority receipt verified"
         )
 
+        var changes = 0
+        let observation = NotificationCenter.default.publisher(
+            for: LocalHistoryRepository.historyDidChangeNotification
+        ).sink { _ in changes += 1 }
+        defer { observation.cancel() }
+
+        let anotherEvent = HistoryEvent(
+            id: UUID(),
+            action: event.action,
+            installation: "Another installation",
+            occurredAt: event.occurredAt,
+            decision: event.decision,
+            signature: event.signature,
+            transfer: event.transfer,
+            verification: event.verification
+        )
         try repository.record(event)
-        try repository.record(event)
+        try repository.record(anotherEvent)
+        for _ in 0..<100 {
+            try repository.record(event)
+            try repository.record(anotherEvent)
+        }
+        XCTAssertEqual(changes, 2, "Duplicate records must not trigger a refresh loop")
 
         let records = try repository.records()
-        XCTAssertEqual(records, [event])
+        XCTAssertEqual(records, [event, anotherEvent])
         let encoded = try XCTUnwrap(
             defaults.data(
                 forKey: "org.mnemosynebiosciences.pistis.local-history.v1"

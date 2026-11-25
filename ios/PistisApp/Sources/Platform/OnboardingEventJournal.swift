@@ -398,9 +398,15 @@ final class OnboardingEventUploadClient {
     }
 }
 
-@MainActor
 protocol OnboardingEventRecording: AnyObject {
-    func append(_ event: OnboardingEvent) throws
+    @MainActor func append(_ event: OnboardingEvent) throws
+    @MainActor func record(_ event: OnboardingEvent)
+}
+
+extension OnboardingEventRecording {
+    @MainActor func record(_ event: OnboardingEvent) {
+        try? append(event)
+    }
 }
 
 /// Redacted, bounded local outbox. This is intentionally separate from the
@@ -408,8 +414,8 @@ protocol OnboardingEventRecording: AnyObject {
 /// while this store is an ephemeral diagnostic queue and is never
 /// authoritative. Unacknowledged rows remain available for the bounded retry
 /// path until the 48-hour retention boundary.
-@MainActor
-final class OnboardingEventJournal: OnboardingEventRecording {
+// The queue serializes all access to the retained outbox.
+final class OnboardingEventJournal: OnboardingEventRecording, @unchecked Sendable {
     static let shared = OnboardingEventJournal()
     static let journalDidChangeNotification = Notification.Name(
         "org.mnemosynebiosciences.pistis.onboarding-event-journal-changed"
@@ -418,6 +424,7 @@ final class OnboardingEventJournal: OnboardingEventRecording {
     static let maximumEncodedBytes = 32_768
     static let retentionMillis: UInt64 = 48 * 60 * 60 * 1_000
 
+    private let queue = DispatchQueue(label: "pistis.onboarding-event-journal", qos: .utility)
     private let defaults: UserDefaults
     private let key = "org.mnemosynebiosciences.pistis.onboarding-event-journal.v1"
     private let nowUnixMillis: @Sendable () -> UInt64
@@ -432,10 +439,14 @@ final class OnboardingEventJournal: OnboardingEventRecording {
         self.nowUnixMillis = nowUnixMillis
         // Remove expired material as soon as the app constructs the journal;
         // `events()` also repeats this check before every read or append.
-        try? _ = events()
+        queue.async { [self] in _ = try? retainedEvents() }
     }
 
     func events() throws -> [OnboardingEvent] {
+        try queue.sync { try retainedEvents() }
+    }
+
+    private func retainedEvents() throws -> [OnboardingEvent] {
         guard let data = defaults.data(forKey: key) else { return [] }
         guard data.count <= Self.maximumEncodedBytes else {
             throw PlatformFailure.invalidConfiguration
@@ -462,7 +473,15 @@ final class OnboardingEventJournal: OnboardingEventRecording {
     }
 
     func append(_ event: OnboardingEvent) throws {
-        var retained = try events()
+        try queue.sync { try appendRetained(event) }
+    }
+
+    func record(_ event: OnboardingEvent) {
+        queue.async { [self] in try? appendRetained(event) }
+    }
+
+    private func appendRetained(_ event: OnboardingEvent) throws {
+        var retained = try retainedEvents()
         if let existing = retained.first(where: { $0.id == event.id }) {
             guard existing == event else { throw PlatformFailure.invalidConfiguration }
             return
@@ -478,16 +497,17 @@ final class OnboardingEventJournal: OnboardingEventRecording {
         }
         guard !ids.isEmpty else { return }
         let acknowledged = Set(ids)
-        try persist(try events().filter { !acknowledged.contains($0.id) })
+        try queue.sync {
+            try persist(try retainedEvents().filter { !acknowledged.contains($0.id) })
+        }
     }
 
     /// Erase the bounded, non-authoritative onboarding diagnostic outbox.
     func resetAllLocalEvents() {
-        defaults.removeObject(forKey: key)
-        NotificationCenter.default.post(
-            name: Self.journalDidChangeNotification,
-            object: nil
-        )
+        queue.sync {
+            defaults.removeObject(forKey: key)
+            notifyChange()
+        }
     }
 
     private func persist(_ events: [OnboardingEvent]) throws {
@@ -498,10 +518,13 @@ final class OnboardingEventJournal: OnboardingEventRecording {
             throw PlatformFailure.invalidConfiguration
         }
         defaults.set(encoded, forKey: key)
-        NotificationCenter.default.post(
-            name: Self.journalDidChangeNotification,
-            object: nil
-        )
+        notifyChange()
+    }
+
+    private func notifyChange() {
+        DispatchQueue.main.async {
+            NotificationCenter.default.post(name: Self.journalDidChangeNotification, object: nil)
+        }
     }
 }
 

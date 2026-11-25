@@ -135,6 +135,7 @@ struct ScanView: View {
     @State private var importingOfflinePresentation = false
     @State private var importingAppAttestReplacement = false
     @State private var firstDeviceScanRequest: FirstDeviceScanRequest?
+    @State private var siteRootNextQRRequested = false
     @State private var finalIdentityQRRequested = false
     @State private var scanFailure: PlatformFailure?
     @AccessibilityFocusState private var scanFailureFocused: Bool
@@ -377,10 +378,19 @@ struct ScanView: View {
         .sheet(item: reviewBinding) { request in
             ApprovalView(request: request, coordinator: ceremony)
         }
-        .sheet(item: siteRootReviewBinding) { review in
+        .sheet(item: siteRootReviewBinding, onDismiss: {
+            if siteRootNextQRRequested {
+                siteRootNextQRRequested = false
+                startScanning()
+            }
+        }) { review in
             SiteRootDelegationReviewView(
                 review: review,
                 coordinator: siteRootCeremony,
+                scanNextQR: {
+                    siteRootNextQRRequested = true
+                    resetSiteRoot()
+                },
                 showInstallations: showInstallations
             )
         }
@@ -675,7 +685,7 @@ struct ScanView: View {
         } set: { value in
             if value == nil {
                 resetSiteRoot()
-                startScanning()
+                if !siteRootNextQRRequested { startScanning() }
             }
         }
     }
@@ -1335,6 +1345,7 @@ private struct ReadinessRow: View {
 private struct SiteRootDelegationReviewView: View {
     let review: SiteRootDelegationReview
     @ObservedObject var coordinator: SiteRootDelegationCoordinator
+    let scanNextQR: () -> Void
     let showInstallations: () -> Void
     @Environment(\.dismiss) private var dismiss
 
@@ -1447,7 +1458,7 @@ private struct SiteRootDelegationReviewView: View {
                 if case let .submitted(completion) = coordinator.phase {
                     MnPrimaryButton(completion.actionTitle) {
                         if completion.scansNextQR {
-                            dismiss()
+                            scanNextQR()
                         } else {
                             coordinator.reset()
                             dismiss()

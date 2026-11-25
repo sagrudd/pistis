@@ -56,6 +56,7 @@ enum SiteX509BrokerContinuationPhaseV1: String, Sendable {
 enum SiteX509BrokerApprovalStageV1: Equatable, Sendable {
     case reservingApproval
     case awaitingFaceID
+    case signingInitialProof
     case submittingInitialProof
     case awaitingContinuation(SiteX509BrokerContinuationPhaseV1)
     case authorizingContinuation(SiteX509BrokerContinuationPhaseV1)
@@ -68,6 +69,7 @@ enum SiteX509BrokerApprovalStageV1: Equatable, Sendable {
         switch self {
         case .reservingApproval: "reserve"
         case .awaitingFaceID: "face-id"
+        case .signingInitialProof: "initial-signing"
         case .submittingInitialProof: "initial-proof"
         case let .awaitingContinuation(phase): "\(phase.rawValue)-await"
         case let .authorizingContinuation(phase): "\(phase.rawValue)-authorize"
@@ -1057,8 +1059,8 @@ struct SiteRootConvergenceServiceV2: Sendable {
     private let continuationTransport: (any MonasSiteX509BrokerContinuing)?
     private let store: SiteRootConvergenceAckStoreV2
     private let scopedStorage: ScopedAppAttestStore
-    private let brokerAuthorizationFactory: @Sendable (
-        SiteX509FirstProvisionBrokerPresentationV1
+    private let brokerAuthorizationFactory: @MainActor @Sendable (
+        SiteX509FirstProvisionBrokerPresentationV1, () -> Void
     ) async throws -> BrokerSiteX509AuthorizationV1
 
     init(
@@ -1088,7 +1090,7 @@ struct SiteRootConvergenceServiceV2: Sendable {
             ?? (transport as? any MonasSiteX509BrokerContinuing)
         self.store = store
         self.scopedStorage = scopedStorage
-        brokerAuthorizationFactory = { presentation in
+        brokerAuthorizationFactory = { presentation, _ in
             BrokerSiteX509AuthorizationV1(
                 detachedCOSE: try await brokerProofFactory(presentation), ceremony: nil
             )
@@ -1236,7 +1238,9 @@ struct SiteRootConvergenceServiceV2: Sendable {
         progress(.reservingApproval)
         try await transport.reserveSiteX509FirstProvisionBroker(presentation)
         progress(.awaitingFaceID)
-        let authorization = try await brokerAuthorizationFactory(presentation)
+        let authorization = try await brokerAuthorizationFactory(presentation) {
+            progress(.signingInitialProof)
+        }
         progress(.submittingInitialProof)
         try await transport.submitSiteX509FirstProvisionBroker(
             presentation, detachedCOSE: authorization.detachedCOSE
@@ -1385,32 +1389,37 @@ struct SiteRootConvergenceServiceV2: Sendable {
         }
     }
 
+    @MainActor
     private static func makeBrokerAuthorization(
-        _ presentation: SiteX509FirstProvisionBrokerPresentationV1
+        _ presentation: SiteX509FirstProvisionBrokerPresentationV1,
+        didAuthenticate: () -> Void
     ) async throws -> BrokerSiteX509AuthorizationV1 {
         let ceremony = try await FaceIDCeremonyContext.authenticate(
             reason: "Approve fresh Site X.509 root and issuer custody"
         )
-        let siteRoot = try SecureEnclaveSigner(
-            namespace: "site-root-delegation-v1",
-            authenticationReason: "Approve fresh Site X.509 root and issuer custody"
-        )
-        guard try siteRoot.hasExistingKey() else { throw PlatformFailure.keyNotFound }
-        let publicKey = try siteRoot.publicKey(using: ceremony)
-        try validateBrokerEnrolledSiteRootPublicKeyID(
-            presentation.enrolledSiteRootPublicKeyID,
-            actualPublicKeyCompressedSEC1: publicKey.compressedSEC1
-        )
-        let target = Data(SHA256.hash(data: publicKey.compressedSEC1))
-        let protected = try DetachedES256Cose.protectedHeaders(
-            kid: target, contentType: SiteRootConvergenceProfileV2.x509ContentType
-        )
-        let structure = try DetachedES256Cose.signatureStructure(
-            protected: protected, payload: presentation.challenge
-        )
-        let signature = try siteRoot.sign(message: structure, using: ceremony)
-        let cose = try DetachedES256Cose.envelope(protected: protected, signature: signature)
-        return BrokerSiteX509AuthorizationV1(detachedCOSE: cose, ceremony: ceremony)
+        didAuthenticate()
+        return try await securityWorker {
+            let siteRoot = try SecureEnclaveSigner(
+                namespace: "site-root-delegation-v1",
+                authenticationReason: "Approve fresh Site X.509 root and issuer custody"
+            )
+            guard try siteRoot.hasExistingKey() else { throw PlatformFailure.keyNotFound }
+            let publicKey = try siteRoot.publicKey(using: ceremony)
+            try validateBrokerEnrolledSiteRootPublicKeyID(
+                presentation.enrolledSiteRootPublicKeyID,
+                actualPublicKeyCompressedSEC1: publicKey.compressedSEC1
+            )
+            let target = Data(SHA256.hash(data: publicKey.compressedSEC1))
+            let protected = try DetachedES256Cose.protectedHeaders(
+                kid: target, contentType: SiteRootConvergenceProfileV2.x509ContentType
+            )
+            let structure = try DetachedES256Cose.signatureStructure(
+                protected: protected, payload: presentation.challenge
+            )
+            let signature = try siteRoot.sign(message: structure, using: ceremony)
+            let cose = try DetachedES256Cose.envelope(protected: protected, signature: signature)
+            return BrokerSiteX509AuthorizationV1(detachedCOSE: cose, ceremony: ceremony)
+        }
     }
 
     @MainActor
@@ -1430,9 +1439,9 @@ struct SiteRootConvergenceServiceV2: Sendable {
                 correlation: correlation, phase: phase
             ) else { continue }
             progress(.authorizingContinuation(phase))
-            let submission = try authorizer.attendedUnlock(
-                brokered.payload, role: role
-            )
+            let submission = try await Self.securityWorker {
+                try authorizer.attendedUnlock(brokered.payload, role: role)
+            }
             progress(.submittingContinuation(phase))
             try await transport.submitSiteX509Continuation(
                 correlation: correlation, phase: phase,
@@ -1441,13 +1450,17 @@ struct SiteRootConvergenceServiceV2: Sendable {
             )
         }
 
-        try authorizer.prepareAckRegistration(expectedSiteUUID: expectedSiteUUID)
+        try await Self.securityWorker {
+            try authorizer.prepareAckRegistration(expectedSiteUUID: expectedSiteUUID)
+        }
         progress(.awaitingContinuation(.ackRegistration))
         if let brokered = try await transport.awaitSiteX509Continuation(
             correlation: correlation, phase: .ackRegistration
         ) {
             progress(.authorizingContinuation(.ackRegistration))
-            let submission = try authorizer.ackRegistration(brokered.payload)
+            let submission = try await Self.securityWorker {
+                try authorizer.ackRegistration(brokered.payload)
+            }
             progress(.submittingContinuation(.ackRegistration))
             try await transport.submitSiteX509Continuation(
                 correlation: correlation, phase: .ackRegistration,
@@ -1461,7 +1474,9 @@ struct SiteRootConvergenceServiceV2: Sendable {
             correlation: correlation, phase: .leafApproval
         ) {
             progress(.authorizingContinuation(.leafApproval))
-            let submission = try authorizer.leafApproval(brokered.payload)
+            let submission = try await Self.securityWorker {
+                try authorizer.leafApproval(brokered.payload)
+            }
             progress(.submittingContinuation(.leafApproval))
             try await transport.submitSiteX509Continuation(
                 correlation: correlation, phase: .leafApproval,
@@ -1476,7 +1491,7 @@ struct SiteRootConvergenceServiceV2: Sendable {
         progress: @escaping @MainActor @Sendable (SiteRootAcknowledgementStage) -> Void = { _ in }
     ) async throws {
         await progress(.preparing)
-        let record = try await Self.acknowledgementWorker {
+        let record = try await Self.securityWorker {
             try BrokerV2Feature.enabled ? store.current(siteUUID: presentation.assertion.siteUUID) : store.current()
         }
         let ceremony = try await FaceIDCeremonyContext.authenticate(
@@ -1484,7 +1499,7 @@ struct SiteRootConvergenceServiceV2: Sendable {
             onPrompt: { progress(.awaitingFaceID) }
         )
         await progress(.signing)
-        try await Self.acknowledgementWorker {
+        try await Self.securityWorker {
             let siteRoot = try SecureEnclaveSigner(
                 namespace: "site-root-delegation-v1",
                 authenticationReason: "Approve this exact Site Root HTTPS convergence"
@@ -1510,7 +1525,7 @@ struct SiteRootConvergenceServiceV2: Sendable {
 
     // Security.framework keychain and Secure Enclave operations are synchronous.
     // They must not occupy the executor rendering the progress dialog.
-    private static func acknowledgementWorker<T: Sendable>(
+    private static func securityWorker<T: Sendable>(
         _ work: @escaping @Sendable () async throws -> T
     ) async throws -> T {
         let task = Task.detached(priority: .userInitiated) {

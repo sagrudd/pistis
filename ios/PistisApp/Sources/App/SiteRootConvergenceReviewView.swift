@@ -5,6 +5,7 @@ struct SiteRootConvergenceReviewView: View {
     @ObservedObject var coordinator: SiteRootConvergenceCoordinator
     let scanFinalIdentityQR: () -> Void
     @Environment(\.dismiss) private var dismiss
+    @State private var siteX509StageStartedAt = Date()
     @State private var slowAcknowledgementStage: SiteRootAcknowledgementStage?
 
     var body: some View {
@@ -84,7 +85,23 @@ struct SiteRootConvergenceReviewView: View {
                 .accessibilityElement(children: .combine)
                 .accessibilityAddTraits(.updatesFrequently)
             }
-        case .authenticating, .siteX509Progress, .submitting, .unlockingBundleReceipt:
+        case let .siteX509Progress(stage):
+            TimelineView(.periodic(from: Date(), by: 1)) { context in
+                VStack(alignment: .leading, spacing: MnSpacing.x2) {
+                    HStack(spacing: MnSpacing.x3) {
+                        ProgressView().accessibilityHidden(true)
+                        Text(stage.label)
+                    }
+                    if context.date.timeIntervalSince(siteX509StageStartedAt) >= 2 {
+                        Text("Still waiting in this step. Keep Pistis open.")
+                            .font(.footnote)
+                    }
+                }
+                .accessibilityElement(children: .combine)
+            }
+            .id(stage.supportStage)
+            .onAppear { siteX509StageStartedAt = Date() }
+        case .authenticating, .submitting, .unlockingBundleReceipt:
             HStack(spacing: MnSpacing.x3) {
                 ProgressView()
                 Text(phaseLabel)
@@ -224,6 +241,8 @@ extension SiteX509BrokerApprovalStageV1 {
             "Reserving this one-use Site X.509 approval"
         case .awaitingFaceID:
             "Waiting for Face ID"
+        case .signingInitialProof:
+            "Face ID accepted · signing the Site X.509 approval"
         case .submittingInitialProof:
             "Face ID accepted · submitting the Site X.509 approval"
         case .custodyChallenge: "Connecting to the retained custody authority"

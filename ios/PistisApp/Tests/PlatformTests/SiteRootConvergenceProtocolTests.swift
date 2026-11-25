@@ -884,21 +884,25 @@ private final class RecordingContinuationAuthorizer:
     func attendedUnlock(
         _: Data, role: SiteX509AttendedUnlockRoleV2
     ) throws -> Data {
+        XCTAssertFalse(Thread.isMainThread)
         events.append("authorize-\(role == .root ? "root" : "issuer")")
         return Data("unlock-submission".utf8)
     }
 
     func prepareAckRegistration(expectedSiteUUID: String) throws {
+        XCTAssertFalse(Thread.isMainThread)
         XCTAssertEqual(expectedSiteUUID, "02020202-0202-0202-0202-020202020202")
         events.append("prepare-ack")
     }
 
     func ackRegistration(_: Data) throws -> Data {
+        XCTAssertFalse(Thread.isMainThread)
         events.append("authorize-ack")
         return Data("ack-registration-submission".utf8)
     }
 
     func leafApproval(_: Data) throws -> Data {
+        XCTAssertFalse(Thread.isMainThread)
         events.append("authorize-leaf")
         return Data("leaf-submission".utf8)
     }

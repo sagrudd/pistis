@@ -66,15 +66,24 @@ final class SiteRootBrokerV2PreparerTests: XCTestCase {
         GenesisBrokerURLProtocol.delegationOverride = "{\"schema\":\"monas.site-root-genesis-registration-result.v1\",\"canonical_delegation_base64url\":\"\(SiteRootBrokerPresentationV2.encode(Data(canonical.utf8)))\",\"device_key_id\":\"\(registration.deviceKeyID)\",\"site_trust_domain\":\"\(presentation.site)\",\"submit_url\":\"https://customer.example.test/auth/pistis/site-root-delegations/v1/submit\",\"reference\":\"\(presentation.reference)\"}"
         let storage = ScopedAppAttestStore(persistence: ScopedMemoryPersistence())
         let legacy = PreparationTestLegacyStore(), service = PreparationTestAppleService()
+        let signerEntered = expectation(description: "Device signer entered")
+        let allowSigning = DispatchSemaphore(value: 0)
         let coordinator = SiteRootDelegationCoordinator(testBroker: broker,
             appAttestClient: AppleAppAttestClient(service: service, keyIDStore: legacy),
-            producer: ControlledBrokerRoot(registration: registration), storage: storage,
+            producer: ControlledBrokerRoot(registration: registration, beforeProof: {
+                signerEntered.fulfill()
+                XCTAssertEqual(allowSigning.wait(timeout: .now() + 2), .success)
+            }), storage: storage,
             eventRecorder: ControlledBrokerEventSink(), nowMillis: { 1_900_000_000_000 })
         let url = URL(fileURLWithPath: #filePath).deletingLastPathComponent()
             .deletingLastPathComponent().appendingPathComponent("Fixtures/broker-v2-qr.json")
         coordinator.accept(qrText: try String(contentsOf: url, encoding: .utf8))
         guard case .review = coordinator.phase else { return XCTFail("normal scan did not reach review") }
-        await coordinator.approve()
+        let approval = Task { await coordinator.approve() }
+        await fulfillment(of: [signerEntered], timeout: 1)
+        XCTAssertEqual(coordinator.phase, .signing)
+        allowSigning.signal()
+        await approval.value
         XCTAssertEqual(coordinator.phase, .submitted(.proofQueued))
         XCTAssertEqual(GenesisBrokerURLProtocol.requests().map { $0.url?.path }, [
             MonasSiteRootGenesisBrokerEndpointV1.registrationPath,
@@ -428,9 +437,16 @@ final class SiteRootBrokerV2PreparerTests: XCTestCase {
 
 private struct ControlledBrokerRoot: BrokerV2SiteRootProducing {
     let registration: SiteRootKeyRegistrationV1
-    func register() throws -> SiteRootKeyRegistrationV1 { registration }
+    var beforeProof: (@Sendable () -> Void)? = nil
+
+    func register() throws -> SiteRootKeyRegistrationV1 {
+        XCTAssertFalse(Thread.isMainThread, "Site Root key creation blocks the calling thread")
+        return registration
+    }
     func prove(_ presentation: SiteRootDelegationPresentationV1) throws -> SiteRootDelegationSubmissionV1 {
-        SiteRootDelegationSubmissionV1(schema: SiteRootDelegationSubmissionV1.schema,
+        XCTAssertFalse(Thread.isMainThread, "Site Root signing blocks the calling thread")
+        beforeProof?()
+        return SiteRootDelegationSubmissionV1(schema: SiteRootDelegationSubmissionV1.schema,
             reference: presentation.reference, canonicalDelegationJSON: presentation.canonicalDelegationJSON,
             coseSign1: Data([1, 2, 3]), correlation: presentation.correlation)
     }

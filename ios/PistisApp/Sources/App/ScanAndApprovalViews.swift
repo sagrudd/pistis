@@ -1412,10 +1412,13 @@ private struct SiteRootDelegationReviewView: View {
                             completion.heading,
                             orientation: completion.orientation
                         )
-                        MnStatusLabel(text: "Verified by Monas", kind: .success)
+                        MnStatusLabel(
+                            text: completion.scansNextQR ? "Received by the install service" : "Verified by Monas",
+                            kind: .success
+                        )
                         MnPanel {
                             VStack(alignment: .leading, spacing: MnSpacing.x4) {
-                                MnEvidenceRow(label: "Site Root proof", value: "Accepted")
+                                MnEvidenceRow(label: "Site Root proof", value: completion.scansNextQR ? "Submitted" : "Accepted")
                                 Divider()
                                 MnEvidenceRow(label: completion.evidenceLabel, value: completion.evidenceValue)
                                 Divider()
@@ -1424,16 +1427,6 @@ private struct SiteRootDelegationReviewView: View {
                         }
                         Text(completion.detail)
                             .font(.footnote)
-                        MnPrimaryButton(completion.actionTitle) {
-                            if completion.scansNextQR {
-                                // Dismissing this sheet runs the existing scanner reset.
-                                dismiss()
-                            } else {
-                                coordinator.reset()
-                                dismiss()
-                                showInstallations()
-                            }
-                        }
                     case let .failed(failure):
                         MnStatusLabel(text: "Site Root ceremony stopped safely", kind: .danger)
                         if let progress = coordinator.firstDeviceProgress {
@@ -1449,6 +1442,21 @@ private struct SiteRootDelegationReviewView: View {
                     }
                 }
                 .padding(MnMetrics.screenGutter)
+            }
+            .safeAreaInset(edge: .bottom) {
+                if case let .submitted(completion) = coordinator.phase {
+                    MnPrimaryButton(completion.actionTitle) {
+                        if completion.scansNextQR {
+                            dismiss()
+                        } else {
+                            coordinator.reset()
+                            dismiss()
+                            showInstallations()
+                        }
+                    }
+                    .padding(MnMetrics.screenGutter)
+                    .background(.regularMaterial)
+                }
             }
             .navigationTitle("Site Root")
             .navigationBarTitleDisplayMode(.inline)

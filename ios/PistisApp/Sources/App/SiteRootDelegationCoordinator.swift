@@ -117,6 +117,7 @@ final class SiteRootDelegationCoordinator: ObservableObject {
     private let testLegacyInventoryCount: (() async throws -> Int)?
 #endif
     private var pending: PendingPresentation?
+    private var approvalInFlight = false
     private var eventAttemptID = UUID()
     private var eventFlow: OnboardingEventFlow = .siteRootDelegation
     private var eventAuthority: OnboardingEventAuthority = .configuredSiteRoot
@@ -264,11 +265,14 @@ final class SiteRootDelegationCoordinator: ObservableObject {
     }
 
     func approve() async {
+        guard !approvalInFlight else { return }
         guard let pending else {
             recordFailure(.invalidConfiguration, review: presentedReview)
             phase = .failed(.invalidConfiguration)
             return
         }
+        approvalInFlight = true
+        defer { approvalInFlight = false }
         do {
             switch pending {
             case let .delegation(qrPresentation):
@@ -404,7 +408,9 @@ final class SiteRootDelegationCoordinator: ObservableObject {
         phase = .registeringFirstDevice
         enterStage(.siteRootKey)
         setFirstDeviceStage(.creatingSiteRootKey)
-        let root = try producer.register()
+        let root = try await Task.detached(priority: .userInitiated) {
+            try producer.register()
+        }.value
         enterStage(.appAttest)
         setFirstDeviceStage(.preparingAppAttest)
         let clock: @Sendable () -> UInt64 = {
@@ -420,17 +426,21 @@ final class SiteRootDelegationCoordinator: ObservableObject {
                                       storage: storage, nowMillis: clock)
         }
         enterStage(.delegationPoll)
+        setFirstDeviceStage(.waitingForMonasDelegation)
         let delegation = try await broker.pollV2(presentation: presentation, attemptID: attempt, storage: storage)
         try storage.beginSubmittedPoll(attemptID: attempt, expected: retained)
         defer { storage.endDispatch() }
         phase = .signing
         enterStage(.siteRootProof)
         setFirstDeviceStage(.signingInitialProof)
-        let proof = try producer.prove(delegation)
+        let proof = try await Task.detached(priority: .userInitiated) {
+            try producer.prove(delegation)
+        }.value
         setFirstDeviceStage(.submittingInitialProof)
         try storage.markInitialProofSubmitted(attemptID: attempt, expected: retained)
         try await broker.submitInitialStaticCompletion(
             MonasSiteRootDelegationSubmissionRequestV1(endpoint: delegation.submitURL, submission: proof))
+        pending = nil
         firstDeviceProgress = nil
         phase = .submitted(.proofQueued)
     }

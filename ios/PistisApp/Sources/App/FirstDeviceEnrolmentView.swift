@@ -447,6 +447,14 @@ final class FirstDeviceEnrolmentFlow: ObservableObject {
         do {
             enterStage(.deviceRegistration)
             let inventory = try await InstallationTrustKeychain.shared.enrollmentInventoryRecords()
+            guard !inventory.contains(where: { record in
+                if record.installationID == presentation.installationID { return true }
+                guard case let .current(existing) = record else { return false }
+                return existing.matchesEndpoint(
+                    origin: presentation.httpsOrigin.absoluteString,
+                    spkiSHA256: presentation.tlsSPKISHA256
+                )
+            }) else { throw PlatformFailure.installationAlreadyEnrolled }
             stagedAttemptID = try await resolveAdmission(
                 presentation: presentation, existingIDs: inventory.map(\.installationID)
             )

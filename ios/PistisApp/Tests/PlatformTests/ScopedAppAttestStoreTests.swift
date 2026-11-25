@@ -224,6 +224,13 @@ final class ScopedAppAttestStoreTests: XCTestCase {
 
     func testAdditionalEnrollmentPreservesAAndRejectsSameIDConflict() throws {
         let a = try stagedOutput(marker: 1), b = try stagedOutput(marker: 2)
+        let duplicateEndpoint = try AuthenticatedEnrollmentOutput(
+            trust: b.trust, responseContext: b.responseContext, allowedHosts: a.allowedHosts,
+            httpsOrigin: a.httpsOrigin, tlsSPKISHA256: a.tlsSPKISHA256
+        )
+        XCTAssertThrowsError(try InstallationTrustKeychain.addingAdditionalEnrollment(duplicateEndpoint, to: [a])) {
+            XCTAssertEqual($0 as? PlatformFailure, .installationAlreadyEnrolled)
+        }
         let records = try InstallationTrustKeychain.addingAdditionalEnrollment(b, to: [a])
         XCTAssertEqual(records, [a, b])
         XCTAssertEqual(try InstallationTrustKeychain.addingAdditionalEnrollment(b, to: records), records)
@@ -365,7 +372,7 @@ final class ScopedAppAttestStoreTests: XCTestCase {
             trust: trust, responseContext: DeviceResponseContext(
                 deviceID: Data(repeating: 9, count: 16), deviceKeyID: Data(repeating: 10, count: 32),
                 userID: user, externalIdentityID: identity),
-            allowedHosts: ["pistis.example.test"], httpsOrigin: "https://pistis.example.test",
+            allowedHosts: ["pistis-\(marker).example.test"], httpsOrigin: "https://pistis-\(marker).example.test",
             tlsSPKISHA256: Data(repeating: 11, count: 32))
     }
 

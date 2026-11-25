@@ -46,6 +46,10 @@ struct AuthenticatedEnrollmentOutput: Codable, Equatable, Sendable {
         self.tlsSPKISHA256 = tlsSPKISHA256
     }
 
+    func matchesEndpoint(origin: String, spkiSHA256: Data) -> Bool {
+        httpsOrigin == origin && tlsSPKISHA256 == spkiSHA256
+    }
+
     private enum CodingKeys: String, CodingKey, CaseIterable {
         case storageProfile
         case trust
@@ -458,7 +462,12 @@ actor InstallationTrustKeychain: InstallationTrustStoring {
         var records = current
         if let existing = records.first(where: { $0.trust.installationID == output.trust.installationID }) {
             guard existing == output else { throw PlatformFailure.invalidConfiguration }
-        } else { records.append(output) }
+        } else {
+            guard !records.contains(where: {
+                $0.matchesEndpoint(origin: output.httpsOrigin, spkiSHA256: output.tlsSPKISHA256)
+            }) else { throw PlatformFailure.installationAlreadyEnrolled }
+            records.append(output)
+        }
         return records
     }
 

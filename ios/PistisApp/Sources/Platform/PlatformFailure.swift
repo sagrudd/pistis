@@ -90,6 +90,7 @@ enum PlatformFailure: Error, Equatable, Sendable {
     /// accepted handle must be polled; begin must never be issued again.
     case providerStatusRetryRequired
     case enrolmentRequired
+    case installationAlreadyEnrolled
     case existingEnrolmentMustBeRemoved
     case enrolmentReceiptInvalid
     case enrolmentStorageFailed
@@ -144,6 +145,8 @@ extension PlatformFailure {
             "The host did not return a verifiable enrolment response. This exact attempt was retained; retry once or cancel and scan a fresh invitation."
         case .providerStatusRetryRequired:
             "The host accepted this enrolment attempt, but its provider status could not be verified. Retry provider status; do not begin again or rescan."
+        case .installationAlreadyEnrolled:
+            "This installation is already enrolled on this iPhone. Open Installations to use its existing entry."
         case .existingEnrolmentMustBeRemoved:
             "An existing Pistis identity already occupies this device. Remove or revoke it before beginning a new enrolment."
         case .enrolmentReceiptInvalid:

@@ -596,7 +596,7 @@ extension PlatformFailure {
         case .invalidOAuthCallback, .oauthStateMismatch, .oauthDenied,
              .enrolmentBeginRetryRequired, .providerStatusRetryRequired,
              .enrolmentRequired,
-             .existingEnrolmentMustBeRemoved, .enrolmentReceiptInvalid:
+             .installationAlreadyEnrolled, .existingEnrolmentMustBeRemoved, .enrolmentReceiptInvalid:
             .provider
         case .enrolmentStorageFailed:
             .storage

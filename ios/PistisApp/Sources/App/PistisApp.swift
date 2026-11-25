@@ -60,10 +60,22 @@ struct PistisApp: App {
 
     var body: some Scene {
         WindowGroup {
-            AppContainerView(siteRootTransportStore: siteRootTransportStore)
+            rootView
                 // ADR 0007 deliberately defines no unreviewed dark palette.
                 .preferredColorScheme(.light)
         }
+    }
+
+    @ViewBuilder private var rootView: some View {
+#if DEBUG && targetEnvironment(simulator)
+        if ProcessInfo.processInfo.arguments.contains("--test-site-root-next-qr") {
+            ScanView(siteRootTransport: UnavailableMonasSiteRootDelegationTransport(), routeToProviderEnrolment: {})
+        } else {
+            AppContainerView(siteRootTransportStore: siteRootTransportStore)
+        }
+#else
+        AppContainerView(siteRootTransportStore: siteRootTransportStore)
+#endif
     }
 }
 

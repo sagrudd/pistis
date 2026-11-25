@@ -445,6 +445,13 @@ final class SiteRootDelegationCoordinator: ObservableObject {
         phase = .submitted(.proofQueued)
     }
 
+#if DEBUG && targetEnvironment(simulator)
+    func presentSubmittedProofForScannerTest() {
+        presentedReview = SiteRootDelegationReview(scannerTest: ())
+        phase = .submitted(.proofQueued)
+    }
+#endif
+
     func reset() {
         pending = nil
         firstDeviceTransport = nil
@@ -857,6 +864,15 @@ struct SiteRootDelegationReview: Equatable, Identifiable {
         destination = URL(string: MonasSiteRootGenesisBrokerEndpointV1.origin)?.host ?? "unavailable"
         isFirstDevice = true
     }
+
+#if DEBUG && targetEnvironment(simulator)
+    fileprivate init(scannerTest _: Void) {
+        reference = "Simulator"
+        deviceKeyFingerprint = "Simulator"
+        destination = "example.test"
+        isFirstDevice = true
+    }
+#endif
 
     private static func redact(_ value: String) -> String {
         guard value.count > 12 else { return "redacted" }

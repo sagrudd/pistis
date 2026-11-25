@@ -4,6 +4,33 @@ import XCTest
 final class PistisUITests: XCTestCase {
     private var settingsNavigationContrastFindings = 0
 
+    func testNextQRReopensScannerWithinTwoSeconds() throws {
+#if targetEnvironment(simulator)
+        let application = XCUIApplication()
+        application.launchArguments.append("--test-site-root-next-qr")
+        application.launch()
+        let nextQR = application.buttons["Scan next QR"]
+        XCTAssertTrue(nextQR.waitForExistence(timeout: 5))
+        XCTAssertTrue(nextQR.isHittable)
+        let failure = application.staticTexts.matching(
+            NSPredicate(
+                format: "label BEGINSWITH %@ OR label BEGINSWITH %@",
+                "No supported camera is available.", "Camera access is disabled."
+            )
+        ).firstMatch
+        XCTAssertFalse(failure.exists)
+
+        nextQR.tap()
+
+        // The simulator has no camera. This state requires the newly opened
+        // scanner to attempt capture and return its native camera error.
+        XCTAssertTrue(failure.waitForExistence(timeout: 2))
+        XCTAssertFalse(nextQR.exists)
+#else
+        throw XCTSkip("The scanner fixture is simulator-only")
+#endif
+    }
+
     func testPrimarySurfacesPassNativeAccessibilityAudit() throws {
         let application = XCUIApplication()
         application.launch()

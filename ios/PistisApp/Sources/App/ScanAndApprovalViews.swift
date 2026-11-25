@@ -131,7 +131,7 @@ struct ScanView: View {
     private let routeToProviderEnrolment: () -> Void
     private let prepareOrdinaryLogin: (AuthenticatedEnrollmentOutput) async throws -> Void
     private let ordinaryLoginCompleted: () -> Void
-    @State private var scanning = true
+    @State private var scanning: Bool
     @State private var importingOfflinePresentation = false
     @State private var importingAppAttestReplacement = false
     @State private var firstDeviceScanRequest: FirstDeviceScanRequest?
@@ -170,11 +170,24 @@ struct ScanView: View {
         _baseCampVaultSuccessor = StateObject(
             wrappedValue: BaseCampVaultSuccessorCoordinatorV1(transport: retainedTransport)
         )
+#if DEBUG && targetEnvironment(simulator)
+        let testingNextQR = ProcessInfo.processInfo.arguments.contains("--test-site-root-next-qr")
+        _scanning = State(initialValue: !testingNextQR)
+        _siteRootCeremony = StateObject(wrappedValue: {
+            let coordinator = SiteRootDelegationCoordinator(
+                transport: siteRootTransport, authorityCustodyMode: authorityCustodyMode
+            )
+            if testingNextQR { coordinator.presentSubmittedProofForScannerTest() }
+            return coordinator
+        }())
+#else
+        _scanning = State(initialValue: true)
         _siteRootCeremony = StateObject(
             wrappedValue: SiteRootDelegationCoordinator(
                 transport: siteRootTransport, authorityCustodyMode: authorityCustodyMode
             )
         )
+#endif
         let recoveryService: any MTGSRecoveryExecuting
         if let pinned = siteRootTransport as? MonasSiteRootDelegationTransport,
            let production = try? ProductionMTGSRecoveryService(siteRootTransport: pinned)
@@ -346,7 +359,13 @@ struct ScanView: View {
             appAttestReplacement.restoreRetainedSubmission()
             readiness = await PasswordlessReadinessProbe.current()
         }
-        .onAppear { startScanning() }
+        .onAppear {
+#if DEBUG && targetEnvironment(simulator)
+            if ProcessInfo.processInfo.arguments.contains("--test-site-root-next-qr"),
+               siteRootCeremony.presentedReview != nil { return }
+#endif
+            startScanning()
+        }
         .onDisappear {
             stopScanning()
             siteRootConvergence.cancelStandaloneUnlock()

@@ -26,6 +26,7 @@ final class SiteRootConvergenceCoordinator: ObservableObject {
         case idle
         case review(SiteRootConvergenceReview)
         case authenticating
+        case acknowledgementProgress(SiteRootAcknowledgementStage)
         case siteX509Progress(SiteX509BrokerApprovalStageV1)
         case unlockingBundleReceipt
         case submitting
@@ -250,7 +251,10 @@ final class SiteRootConvergenceCoordinator: ObservableObject {
                     self.phase = .siteX509Progress($0)
                 }
             case let .acknowledgement(value):
-                try await service.acknowledge(value)
+                try await service.acknowledge(value) { stage in
+                    guard self.operationID == operation else { return }
+                    self.phase = .acknowledgementProgress(stage)
+                }
                 custodyVerified = false
             }
             if pending.requiresBroker && shouldRecordLegacyProgress(for: pending) {

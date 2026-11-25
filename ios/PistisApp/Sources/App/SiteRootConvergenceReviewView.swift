@@ -5,6 +5,7 @@ struct SiteRootConvergenceReviewView: View {
     @ObservedObject var coordinator: SiteRootConvergenceCoordinator
     let scanFinalIdentityQR: () -> Void
     @Environment(\.dismiss) private var dismiss
+    @State private var slowAcknowledgementStage: SiteRootAcknowledgementStage?
 
     var body: some View {
         NavigationStack {
@@ -33,6 +34,7 @@ struct SiteRootConvergenceReviewView: View {
                         .disabled(isBusy)
                 }
             }
+            .interactiveDismissDisabled(isBusy && isAcknowledgement)
             .mnScreenBackground()
         }
     }
@@ -58,6 +60,29 @@ struct SiteRootConvergenceReviewView: View {
         case .review:
             MnPrimaryButton(buttonTitle, systemImage: "faceid") {
                 Task { await coordinator.approve() }
+            }
+        case let .acknowledgementProgress(stage):
+            MnPanel {
+                VStack(alignment: .leading, spacing: MnSpacing.x3) {
+                    HStack(spacing: MnSpacing.x3) {
+                        ProgressView().accessibilityHidden(true)
+                        Text(stage.title)
+                    }
+                    Text(stage.detail).font(.footnote)
+                    if slowAcknowledgementStage == stage {
+                        Text(stage.slowGuidance).font(.footnote)
+                    }
+                }
+                .task(id: stage) {
+                    do {
+                        try await Task.sleep(for: .seconds(15))
+                        if !Task.isCancelled { slowAcknowledgementStage = stage }
+                    } catch {
+                        // A later phase owns its own delay.
+                    }
+                }
+                .accessibilityElement(children: .combine)
+                .accessibilityAddTraits(.updatesFrequently)
             }
         case .authenticating, .siteX509Progress, .submitting, .unlockingBundleReceipt:
             HStack(spacing: MnSpacing.x3) {
@@ -137,9 +162,16 @@ struct SiteRootConvergenceReviewView: View {
         coordinator.phase == .authenticating || coordinator.phase == .submitting
             || coordinator.phase == .unlockingBundleReceipt
             || {
-                if case .siteX509Progress = coordinator.phase { return true }
-                return false
+                switch coordinator.phase {
+                case .acknowledgementProgress, .siteX509Progress: true
+                default: false
+                }
             }()
+    }
+
+    private var isAcknowledgement: Bool {
+        if case .acknowledgement = review.kind { return true }
+        return false
     }
 
     private var phaseLabel: String {
@@ -148,6 +180,39 @@ struct SiteRootConvergenceReviewView: View {
         case let .siteX509Progress(stage): stage.label
         case .unlockingBundleReceipt: "Unlocking the Site Root receipt authority"
         default: "Submitting exact proof"
+        }
+    }
+}
+
+private extension SiteRootAcknowledgementStage {
+    var title: String {
+        switch self {
+        case .preparing: "Preparing approval"
+        case .awaitingFaceID: "Waiting for Face ID"
+        case .signing: "Signing the acknowledgement"
+        case .waitingForMonas: "Waiting for Monas"
+        }
+    }
+
+    var slowGuidance: String {
+        switch self {
+        case .preparing:
+            "The installation check is taking longer than expected. Keep this screen open."
+        case .awaitingFaceID:
+            "Pistis has not received a Face ID result. If the prompt has not appeared, keep this screen open without starting another approval."
+        case .signing:
+            "Signing is still in progress. Keep this screen open without starting another approval."
+        case .waitingForMonas:
+            "Pistis has not received confirmation from Monas. Keep this screen open without submitting again."
+        }
+    }
+
+    var detail: String {
+        switch self {
+        case .preparing: "Pistis is checking this installation before requesting Face ID."
+        case .awaitingFaceID: "Follow the Face ID prompt to approve this exact acknowledgement."
+        case .signing: "Face ID accepted. Keep Pistis open while it signs the acknowledgement."
+        case .waitingForMonas: "Pistis is submitting the signed acknowledgement. Keep this screen open until Monas confirms."
         }
     }
 }

@@ -1,3 +1,7 @@
+## Pistis iOS 0.32.9 (89)
+
+- Show progress while preparing, approving, signing and submitting a Site Root acknowledgement.
+
 ## Pistis iOS 0.32.7 (87)
 
 - Open fixed Monas renewal presentations from the Scan tab and return the existing response QR.

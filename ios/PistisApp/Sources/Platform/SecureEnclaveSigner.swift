@@ -60,7 +60,10 @@ final class FaceIDCeremonyContext: @unchecked Sendable {
         self.authenticatedAt = authenticatedAt
     }
 
-    static func authenticate(reason: String) async throws -> FaceIDCeremonyContext {
+    static func authenticate(
+        reason: String,
+        onPrompt: (@MainActor @Sendable () -> Void)? = nil
+    ) async throws -> FaceIDCeremonyContext {
         guard !reason.isEmpty else { throw PlatformFailure.invalidConfiguration }
         let context = LAContext()
         var authenticated = false
@@ -75,6 +78,7 @@ final class FaceIDCeremonyContext: @unchecked Sendable {
             throw map(error)
         }
         do {
+            if let onPrompt { await onPrompt() }
             let repliedAt = try await withCheckedThrowingContinuation {
                 (continuation: CheckedContinuation<ContinuousClock.Instant, any Error>) in
                 context.evaluatePolicy(

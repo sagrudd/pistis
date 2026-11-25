@@ -1471,30 +1471,57 @@ struct SiteRootConvergenceServiceV2: Sendable {
         }
     }
 
-    func acknowledge(_ presentation: SiteRootConvergenceAckPresentationV2) async throws {
-        let record = try BrokerV2Feature.enabled ? store.current(siteUUID: presentation.assertion.siteUUID) : store.current()
-        let ceremony = try await FaceIDCeremonyContext.authenticate(
-            reason: "Approve this exact Site Root HTTPS convergence"
-        )
-        let siteRoot = try SecureEnclaveSigner(
-            namespace: "site-root-delegation-v1",
-            authenticationReason: "Approve this exact Site Root HTTPS convergence"
-        )
-        let ack = try SecureEnclaveSigner(
-            namespace: "site-root-convergence-ack-v2",
-            authenticationReason: "Approve this exact Site Root HTTPS convergence"
-        )
-        guard try siteRoot.hasExistingKey(), try ack.hasExistingKey() else {
-            throw PlatformFailure.keyNotFound
+    func acknowledge(
+        _ presentation: SiteRootConvergenceAckPresentationV2,
+        progress: @MainActor @Sendable (SiteRootAcknowledgementStage) -> Void = { _ in }
+    ) async throws {
+        await progress(.preparing)
+        let record = try await Self.acknowledgementWorker {
+            try BrokerV2Feature.enabled ? store.current(siteUUID: presentation.assertion.siteUUID) : store.current()
         }
-        let siteRootPublic = try siteRoot.publicKey(using: ceremony).compressedSEC1
-        let ackPublic = try ack.publicKey(using: ceremony).compressedSEC1
-        try await RetainedSiteRootAcknowledgementV2.submit(
-            presentation, record: record, siteRootPublic: siteRootPublic,
-            ackPublic: ackPublic, nowMilliseconds: Self.nowUnixSeconds() * 1_000,
-            sign: { try ack.sign(message: $0, using: ceremony) },
-            send: { try await self.transport.submitAck($0, endpoint: $1) }
+        let ceremony = try await FaceIDCeremonyContext.authenticate(
+            reason: "Approve this exact Site Root HTTPS convergence",
+            onPrompt: { progress(.awaitingFaceID) }
         )
+        await progress(.signing)
+        try await Self.acknowledgementWorker {
+            let siteRoot = try SecureEnclaveSigner(
+                namespace: "site-root-delegation-v1",
+                authenticationReason: "Approve this exact Site Root HTTPS convergence"
+            )
+            let ack = try SecureEnclaveSigner(
+                namespace: "site-root-convergence-ack-v2",
+                authenticationReason: "Approve this exact Site Root HTTPS convergence"
+            )
+            guard try siteRoot.hasExistingKey(), try ack.hasExistingKey() else {
+                throw PlatformFailure.keyNotFound
+            }
+            let siteRootPublic = try siteRoot.publicKey(using: ceremony).compressedSEC1
+            let ackPublic = try ack.publicKey(using: ceremony).compressedSEC1
+            try await RetainedSiteRootAcknowledgementV2.submit(
+                presentation, record: record, siteRootPublic: siteRootPublic,
+                ackPublic: ackPublic, nowMilliseconds: Self.nowUnixSeconds() * 1_000,
+                sign: { try ack.sign(message: $0, using: ceremony) },
+                progress: progress,
+                send: { try await self.transport.submitAck($0, endpoint: $1) }
+            )
+        }
+    }
+
+    // Security.framework keychain and Secure Enclave operations are synchronous.
+    // They must not occupy the executor rendering the progress dialog.
+    private static func acknowledgementWorker<T: Sendable>(
+        _ work: @escaping @Sendable () async throws -> T
+    ) async throws -> T {
+        let task = Task.detached(priority: .userInitiated) {
+            try Task.checkCancellation()
+            return try await work()
+        }
+        return try await withTaskCancellationHandler {
+            try await task.value
+        } onCancel: {
+            task.cancel()
+        }
     }
 
     private static func siteRootDeviceKeyID(_ publicKey: Data) -> String {

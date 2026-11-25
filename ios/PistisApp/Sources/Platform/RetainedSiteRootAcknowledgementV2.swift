@@ -1,6 +1,13 @@
 import CryptoKit
 import Foundation
 
+enum SiteRootAcknowledgementStage: Equatable, Sendable {
+    case preparing
+    case awaitingFaceID
+    case signing
+    case waitingForMonas
+}
+
 /// Existing protected registration continuity, not a new registration authority.
 enum RetainedSiteRootAcknowledgementV2 {
     static func submit(
@@ -10,6 +17,7 @@ enum RetainedSiteRootAcknowledgementV2 {
         ackPublic: Data,
         nowMilliseconds: UInt64,
         sign: (Data) throws -> Data,
+        progress: @MainActor @Sendable (SiteRootAcknowledgementStage) -> Void = { _ in },
         send: (Data, URL) async throws -> Void
     ) async throws {
         try Task.checkCancellation()
@@ -38,6 +46,7 @@ enum RetainedSiteRootAcknowledgementV2 {
         let proof = try DetachedES256Cose.envelope(protected: headers, signature: signature)
         let signed = presentation.unsignedPXRA + proof
         guard signed.count <= 768 else { throw PlatformFailure.invalidConfiguration }
+        await progress(.waitingForMonas)
         try Task.checkCancellation()
         try await send(signed, presentation.submissionURL)
     }

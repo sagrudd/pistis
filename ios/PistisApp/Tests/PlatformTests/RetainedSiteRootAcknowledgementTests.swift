@@ -64,6 +64,56 @@ final class RetainedSiteRootAcknowledgementTests: XCTestCase {
         XCTAssertEqual(sends, 1)
     }
 
+    @MainActor
+    private final class ProgressLog {
+        var stages: [SiteRootAcknowledgementStage] = []
+    }
+
+    func testDelayedAcknowledgementRemainsWaitingForMonasUntilAccepted() async throws {
+        let value = try presentation()
+        let sitePublic = P256.Signing.PrivateKey().publicKey.compressedRepresentation
+        let ack = P256.Signing.PrivateKey()
+        let ackPublic = ack.publicKey.compressedRepresentation
+        let record = SiteRootConvergenceAckRecordV2(
+            siteUUID: value.assertion.siteUUIDText,
+            targetIDB64URL: SiteRootConvergenceEncoding.encode(Data(SHA256.hash(data: sitePublic))),
+            ackPublicKeyB64URL: SiteRootConvergenceEncoding.encode(ackPublic),
+            generation: 1
+        )
+        let log = await MainActor.run { ProgressLog() }
+        let (submitted, reportSubmission) = AsyncStream<Void>.makeStream()
+        let (accepted, releaseAcceptance) = AsyncStream<Void>.makeStream()
+        let nowMilliseconds = now
+        let task = Task {
+            defer { reportSubmission.finish() }
+            try await RetainedSiteRootAcknowledgementV2.submit(
+                value, record: record, siteRootPublic: sitePublic, ackPublic: ackPublic,
+                nowMilliseconds: nowMilliseconds,
+                sign: { try P256Format.rawSignature(fromStrictDER: ack.signature(for: $0).derRepresentation) },
+                progress: { log.stages.append($0) },
+                send: { _, _ in
+                    reportSubmission.yield(())
+                    var confirmation = accepted.makeAsyncIterator()
+                    _ = await confirmation.next()
+                }
+            )
+        }
+        defer {
+            releaseAcceptance.finish()
+            reportSubmission.finish()
+            task.cancel()
+        }
+        var submission = submitted.makeAsyncIterator()
+        let didSubmit = await submission.next()
+        XCTAssertNotNil(didSubmit)
+        let whileWaiting = await MainActor.run { log.stages }
+        XCTAssertEqual(whileWaiting, [.waitingForMonas])
+        releaseAcceptance.yield(())
+        try await task.value
+        let afterAcceptance = await MainActor.run { log.stages }
+        XCTAssertEqual(afterAcceptance, [.waitingForMonas])
+    }
+
     func testWrongRetainedBindingsAndExpiredPresentationDenyBeforeSigning() async throws {
         let value = try presentation()
         let site = P256.Signing.PrivateKey().publicKey.compressedRepresentation
@@ -118,7 +168,7 @@ final class RetainedSiteRootAcknowledgementTests: XCTestCase {
             .deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent()
             .appendingPathComponent("Sources/Platform/SiteRootConvergenceService.swift")
         let text = try String(contentsOf: source, encoding: .utf8)
-        let start = try XCTUnwrap(text.range(of: "    func acknowledge(_ presentation:"))
+        let start = try XCTUnwrap(text.range(of: "    func acknowledge("))
         let end = try XCTUnwrap(text.range(of: "    private static func siteRootDeviceKeyID", range: start.upperBound..<text.endIndex))
         let route = String(text[start.lowerBound..<end.lowerBound])
         XCTAssertTrue(route.contains("store.current(siteUUID: presentation.assertion.siteUUID)"))

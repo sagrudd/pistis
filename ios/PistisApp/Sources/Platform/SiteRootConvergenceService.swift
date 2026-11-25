@@ -1473,7 +1473,7 @@ struct SiteRootConvergenceServiceV2: Sendable {
 
     func acknowledge(
         _ presentation: SiteRootConvergenceAckPresentationV2,
-        progress: @MainActor @Sendable (SiteRootAcknowledgementStage) -> Void = { _ in }
+        progress: @escaping @MainActor @Sendable (SiteRootAcknowledgementStage) -> Void = { _ in }
     ) async throws {
         await progress(.preparing)
         let record = try await Self.acknowledgementWorker {

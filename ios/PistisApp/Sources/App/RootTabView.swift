@@ -84,6 +84,7 @@ struct RootTabView: View {
     @State private var reconciliationMessage: String?
     @State private var selectedTab = Tab.scan
     @State private var providerEnrolmentRequested = false
+    @State private var providerEnrolmentRouteID = UUID()
     @State private var bindingAttemptID: UUID?
     @State private var receiptProvisionScan: ReceiptProvisionScanContext?
     @State private var pendingBrokerCustodyCount = 0
@@ -115,6 +116,8 @@ struct RootTabView: View {
                     forgetExpired: forgetExpiredIdentity,
                     providerEnrolmentRequested: $providerEnrolmentRequested,
                     bindingAttemptID: bindingAttemptID,
+                    providerEnrolmentRouteID: providerEnrolmentRouteID,
+                    openFreshEnrolment: routeToProviderEnrolment,
                     clearBindingAttempt: { bindingAttemptID = nil },
                     scanReceiptQR: { context in
                         receiptProvisionScan = context
@@ -372,6 +375,7 @@ struct RootTabView: View {
 
     private func openProviderEnrolment(bindingAttempt: UUID?) {
         bindingAttemptID = bindingAttempt
+        providerEnrolmentRouteID = UUID()
         selectedTab = .identities
         // Let the Identities NavigationStack become visible before presenting
         // the existing signed-presentation flow. The redacted local Site Root

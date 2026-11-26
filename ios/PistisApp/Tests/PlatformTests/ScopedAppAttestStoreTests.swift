@@ -352,6 +352,12 @@ final class ScopedAppAttestStoreTests: XCTestCase {
         let restarted = ScopedAppAttestStore(persistence: persistence)
         XCTAssertEqual(try restarted.stagedEnrollment(attemptID: attempt), receipt)
         XCTAssertEqual(try restarted.soleRecoverablePresentation()?.attemptID, attempt)
+        XCTAssertEqual(
+            try restarted.soleRecoverablePresentation(matching: "PISTIS1:test")?.attemptID,
+            attempt
+        )
+        XCTAssertNil(try restarted.soleRecoverablePresentation(matching: "PISTIS1:fresh"))
+        XCTAssertEqual(try restarted.stagedEnrollment(attemptID: attempt), receipt)
         try restarted.resetAll()
         XCTAssertNil(try restarted.stagedEnrollment(attemptID: attempt))
     }

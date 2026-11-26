@@ -724,3 +724,5 @@ a diagnosis of expiry or certificate failure. Use the native redacted record
 to distinguish the underlying cause.
 
 First-device Begin failures show the verified Monas host and distinguish a request timeout, failed connection, TLS error, HTTP status, or invalid response. The iOS system log records the stage and bounded detail with the host marked private. Credentials and response bodies stay out of the log.
+
+First-device enrolment opens the scanner. Resume a retained receipt explicitly, or scan its exact invitation. A different signed invitation starts a separate attempt and preserves the retained receipt.

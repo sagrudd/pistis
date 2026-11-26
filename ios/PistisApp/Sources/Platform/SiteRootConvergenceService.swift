@@ -701,7 +701,24 @@ struct MonasSiteRootConvergenceTransport: MonasSiteRootConvergenceSubmitting, Se
             SiteRootConvergenceProfileV2.pxraContentType, forHTTPHeaderField: "Content-Type"
         )
         request.setValue("no-store", forHTTPHeaderField: "Cache-Control")
-        _ = try await response(request, endpoint: endpoint, maximum: 1_024)
+        let result: (Data, URLResponse)
+        do {
+            result = try await session.data(for: request)
+        } catch {
+            try Task.checkCancellation()
+            throw SiteRootAcknowledgementFailure.transport
+        }
+        let (data, response) = result
+        guard let http = response as? HTTPURLResponse, http.url == endpoint else {
+            throw SiteRootAcknowledgementFailure.invalidResponse
+        }
+        guard http.statusCode == 200 else {
+            throw SiteRootAcknowledgementFailure.http(http.statusCode)
+        }
+        guard data.count <= 1_024,
+              http.value(forHTTPHeaderField: "Cache-Control")?
+                .lowercased().contains("no-store") == true
+        else { throw SiteRootAcknowledgementFailure.invalidResponse }
     }
 
     func fetchBundleReceiptUnlock(nowUnixSeconds: UInt64) async throws
@@ -1492,7 +1509,12 @@ struct SiteRootConvergenceServiceV2: Sendable {
     ) async throws {
         await progress(.preparing)
         let record = try await Self.securityWorker {
-            try BrokerV2Feature.enabled ? store.current(siteUUID: presentation.assertion.siteUUID) : store.current()
+            do {
+                return try BrokerV2Feature.enabled
+                    ? store.current(siteUUID: presentation.assertion.siteUUID) : store.current()
+            } catch PlatformFailure.siteRootAuthorityUnavailable {
+                throw SiteRootAcknowledgementFailure.registrationUnavailable
+            }
         }
         let ceremony = try await FaceIDCeremonyContext.authenticate(
             reason: "Approve this exact Site Root HTTPS convergence",

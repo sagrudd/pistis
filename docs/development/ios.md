@@ -728,3 +728,5 @@ First-device Begin failures show the verified Monas host and distinguish a reque
 First-device enrolment opens the scanner. Resume a retained receipt explicitly, or scan its exact invitation. A different signed invitation starts a separate attempt and preserves the retained receipt.
 
 The GitHub registration screen leads directly to receipt-key scanning. The receipt provisioning request uses the exact enrolment origin and pinned certificate on the matching site.
+
+Fresh setup uses five numbered QR steps and a consistent Scan next QR action. The final acknowledgement shows distinct redacted support codes for a missing signer registration, a failed connection, an HTTP rejection, or an invalid response.

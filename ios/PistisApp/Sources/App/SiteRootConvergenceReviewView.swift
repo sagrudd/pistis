@@ -3,6 +3,7 @@ import SwiftUI
 struct SiteRootConvergenceReviewView: View {
     let review: SiteRootConvergenceReview
     @ObservedObject var coordinator: SiteRootConvergenceCoordinator
+    var scanReceiptUnlock: (() -> Void)? = nil
     var scanReceiptAcknowledgement: (() -> Void)? = nil
     var finishReceiptAcknowledgement: (() -> Void)? = nil
     let scanFinalIdentityQR: () -> Void
@@ -112,8 +113,8 @@ struct SiteRootConvergenceReviewView: View {
             MnPanel {
                 VStack(alignment: .leading, spacing: MnSpacing.x3) {
                     MnStatusLabel(text: "Custody verified", kind: .success)
-                    Text("Scan the final signed identity QR on the same Monas install page.")
-                    MnPrimaryButton("Scan final QR", systemImage: "qrcode.viewfinder") {
+                    Text("When the install page shows the identity QR, scan it to register your administrator (3/5).")
+                    MnPrimaryButton(FreshInstallQRStep.scanNext, systemImage: "qrcode.viewfinder") {
                         scanFinalIdentityQR()
                         dismiss()
                     }
@@ -125,7 +126,7 @@ struct SiteRootConvergenceReviewView: View {
                     MnStatusLabel(text: "Verified and accepted", kind: .success)
                     if let scanReceiptAcknowledgement {
                         Text("Receipt key approved. When the install window shows the acknowledgement QR, scan it to confirm installation.")
-                        MnPrimaryButton("Scan next QR", systemImage: "qrcode.viewfinder") {
+                        MnPrimaryButton(FreshInstallQRStep.scanNext, systemImage: "qrcode.viewfinder") {
                             scanReceiptAcknowledgement()
                             dismiss()
                         }
@@ -156,7 +157,15 @@ struct SiteRootConvergenceReviewView: View {
                             Task { await coordinator.retryBrokerCustody() }
                         }
                     }
-                    MnPrimaryButton("Close", systemImage: "xmark") { dismiss() }
+                    if coordinator.mayScanReceiptUnlock, let scanReceiptUnlock {
+                        Text("The receipt key was approved. Wait for the install window to show its unlock QR, then scan it to finish step 4/5.")
+                        MnPrimaryButton(FreshInstallQRStep.scanNext, systemImage: "qrcode.viewfinder") {
+                            scanReceiptUnlock()
+                            dismiss()
+                        }
+                    } else {
+                        MnPrimaryButton("Close", systemImage: "xmark") { dismiss() }
+                    }
                 }
             }
         default: EmptyView()
@@ -165,10 +174,10 @@ struct SiteRootConvergenceReviewView: View {
 
     private var title: String {
         switch review.kind {
-        case .bundleReceiptUnlock: "Unlock Site Root receipt signer"
-        case .bundleReceiptProvision: "Provision Site Root receipt custody"
-        case .siteX509Provision: "Provision Site X.509 custody"
-        case .acknowledgement: "Approve signed HTTPS convergence"
+        case .bundleReceiptUnlock: scanReceiptAcknowledgement != nil ? FreshInstallQRStep.approveReceiptKey.heading : "Unlock Site Root receipt signer"
+        case .bundleReceiptProvision: scanReceiptAcknowledgement != nil ? FreshInstallQRStep.approveReceiptKey.heading : "Approve the receipt key"
+        case .siteX509Provision: coordinator.selectedTransportRoute == .broker ? FreshInstallQRStep.approveCertificates.heading : "Provision Site X.509 custody"
+        case .acknowledgement: finishReceiptAcknowledgement != nil ? FreshInstallQRStep.confirmInstallation.heading : "Approve signed HTTPS convergence"
         }
     }
 
@@ -181,7 +190,7 @@ struct SiteRootConvergenceReviewView: View {
         case .siteX509Provision:
             "Approve one atomic transaction for distinct fresh root and issuer keys."
         case .acknowledgement:
-            "Register the protected acknowledgement key and sign this exact Site Root result."
+            "Confirm that this iPhone trusts the installation shown in the install window."
         }
     }
 

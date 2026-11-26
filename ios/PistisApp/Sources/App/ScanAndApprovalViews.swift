@@ -132,6 +132,7 @@ struct ScanView: View {
     private let receiptHandoffFinished: (UUID) -> Void
     @State private var sheetReceiptProvisionScan: ReceiptProvisionScanContext?
     @State private var awaitingReceiptAcknowledgement = false
+    @State private var awaitingReceiptUnlock = false
     @State private var completedReceiptScan: ReceiptProvisionScanContext?
     private let routeToProviderEnrolment: () -> Void
     private let prepareOrdinaryLogin: (AuthenticatedEnrollmentOutput) async throws -> Void
@@ -434,7 +435,11 @@ struct ScanView: View {
             SiteRootConvergenceReviewView(
                 review: review,
                 coordinator: siteRootConvergence,
+                scanReceiptUnlock: activeReceiptScan != nil && !awaitingReceiptAcknowledgement ? {
+                    awaitingReceiptUnlock = true
+                } : nil,
                 scanReceiptAcknowledgement: activeReceiptScan != nil && !awaitingReceiptAcknowledgement ? {
+                    awaitingReceiptUnlock = false
                     awaitingReceiptAcknowledgement = true
                 } : nil,
                 finishReceiptAcknowledgement: activeReceiptScan != nil && awaitingReceiptAcknowledgement ? {
@@ -481,6 +486,7 @@ struct ScanView: View {
                 sheetReceiptProvisionScan = nil
                 completedReceiptScan = nil
                 awaitingReceiptAcknowledgement = false
+                awaitingReceiptUnlock = false
                 startScanning()
             }
         }
@@ -491,6 +497,7 @@ struct ScanView: View {
                 sheetReceiptProvisionScan = context
                 completedReceiptScan = nil
                 awaitingReceiptAcknowledgement = false
+                awaitingReceiptUnlock = false
             }
         }
         .fileImporter(
@@ -518,16 +525,20 @@ struct ScanView: View {
     private var scannerHeading: String {
         guard activeReceiptScan != nil else { return "Scan a Pistis or Monas request" }
         return awaitingReceiptAcknowledgement
-            ? "Step 5 of 5 · Confirm installation" : "Step 4 of 5 · Receipt key"
+            ? FreshInstallQRStep.confirmInstallation.heading : FreshInstallQRStep.approveReceiptKey.heading
     }
 
     private var scannerInstruction: String {
         guard activeReceiptScan != nil else {
             return "Point the camera at a supported QR code. Captured frames are not saved."
         }
-        return awaitingReceiptAcknowledgement
-            ? "Scan the acknowledgement QR from the same install window."
-            : "Scan the receipt-key QR from the same install window."
+        if awaitingReceiptAcknowledgement {
+            return "Scan the acknowledgement QR from the same install window."
+        }
+        if awaitingReceiptUnlock {
+            return "Scan the receipt-unlock QR from the same install window. If Monas already shows the acknowledgement QR, scan that instead."
+        }
+        return "Scan the receipt-key QR from the same install window."
     }
 
     private func handleScan(_ result: Result<ScannedQRPayload, PlatformFailure>) {
@@ -535,12 +546,23 @@ struct ScanView: View {
         switch result {
         case let .success(payload):
             scanFailure = nil
+            var mayAdvanceToAcknowledgement = false
             if activeReceiptScan != nil {
                 let schema = awaitingReceiptAcknowledgement
                     ? SiteRootConvergenceProfileV2.ackSchema
-                    : SiteRootConvergenceProfileV2.provisionSchema
+                    : (awaitingReceiptUnlock
+                        ? SiteRootBundleReceiptUnlockDescriptorV1.schema
+                        : SiteRootConvergenceProfileV2.provisionSchema)
                 guard let object = try? SiteRootConvergenceEncoding.object(payload.text, maximumBytes: 8_192),
-                      SiteRootConvergenceEncoding.string(object, "schema") == schema else {
+                      let scannedSchema = SiteRootConvergenceEncoding.string(object, "schema")
+                else {
+                    scanFailure = .qrPayloadUnsupported
+                    scanning = false
+                    return
+                }
+                mayAdvanceToAcknowledgement = awaitingReceiptUnlock
+                    && scannedSchema == SiteRootConvergenceProfileV2.ackSchema
+                guard scannedSchema == schema || mayAdvanceToAcknowledgement else {
                     scanFailure = .qrPayloadUnsupported
                     scanning = false
                     return
@@ -587,7 +609,9 @@ struct ScanView: View {
                 case .siteRootConvergence:
                     if payload.text.contains(SiteRootBundleReceiptUnlockDescriptorV1.schema) {
                         Task {
-                            await siteRootConvergence.acceptStandaloneUnlock(qrText: payload.text)
+                            await siteRootConvergence.acceptStandaloneUnlock(
+                                qrText: payload.text, receiptProvisionScan: activeReceiptScan
+                            )
                             if case let .failed(failure) = siteRootConvergence.phase {
                                 scanFailure = failure
                             }
@@ -600,6 +624,10 @@ struct ScanView: View {
                     )
                     if case let .failed(failure) = siteRootConvergence.phase {
                         scanFailure = failure
+                    } else if mayAdvanceToAcknowledgement,
+                              siteRootConvergence.presentedReview != nil {
+                        awaitingReceiptUnlock = false
+                        awaitingReceiptAcknowledgement = true
                     }
                     return
                 case .mtgsRecovery:
@@ -1443,9 +1471,9 @@ private struct SiteRootDelegationReviewView: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: MnSpacing.x4) {
                     MnSectionHeading(
-                        review.isFirstDevice
-                            ? "Register first Site Root device"
-                            : "Review Site Root delegation",
+                        coordinator.isValidatedBrokerFirstDevice
+                            ? FreshInstallQRStep.registerPhone.heading
+                            : (review.isFirstDevice ? "Register first Site Root device" : "Review Site Root delegation"),
                         orientation: review.isFirstDevice
                             ? "Face ID creates or uses this iPhone’s protected Site Root key. Monas then issues one exact, short-lived delegation."
                             : "Face ID signs one exact, short-lived Monas delegation. It does not grant authority on its own."
@@ -1509,7 +1537,7 @@ private struct SiteRootDelegationReviewView: View {
                         )
                     case let .submitted(completion):
                         MnSectionHeading(
-                            completion.heading,
+                            completion.scansNextQR ? FreshInstallQRStep.registerPhone.heading : completion.heading,
                             orientation: completion.orientation
                         )
                         MnStatusLabel(
@@ -1626,7 +1654,7 @@ extension SiteRootDelegationCoordinator.Completion {
     var orientation: String {
         switch self {
         case .proofQueued:
-            "The install service received the proof. When the same Monas install window shows the next protected QR, choose Scan next QR."
+            "The install service received this iPhone’s proof. When the install window shows the certificate QR (2/5), choose Scan next QR."
         case .siteTrustEstablished:
             "Monas accepted this first-device proof and created Site Trust and custody. This installation is recorded as setup in progress; identity enrolment is the next ceremony."
         case .sessionEstablished:
@@ -1665,7 +1693,7 @@ extension SiteRootDelegationCoordinator.Completion {
 
     var actionTitle: String {
         switch self {
-        case .proofQueued: "Scan next QR"
+        case .proofQueued: FreshInstallQRStep.scanNext
         case .siteTrustEstablished: "View setup progress"
         case .sessionEstablished: "View installation"
         }

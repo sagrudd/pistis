@@ -132,6 +132,7 @@ struct ScanView: View {
     private let receiptHandoffFinished: (UUID) -> Void
     @State private var sheetReceiptProvisionScan: ReceiptProvisionScanContext?
     @State private var awaitingReceiptAcknowledgement = false
+    @State private var awaitingReceiptUnlock = false
     @State private var completedReceiptScan: ReceiptProvisionScanContext?
     private let routeToProviderEnrolment: () -> Void
     private let prepareOrdinaryLogin: (AuthenticatedEnrollmentOutput) async throws -> Void
@@ -434,7 +435,11 @@ struct ScanView: View {
             SiteRootConvergenceReviewView(
                 review: review,
                 coordinator: siteRootConvergence,
+                scanReceiptUnlock: activeReceiptScan != nil && !awaitingReceiptAcknowledgement ? {
+                    awaitingReceiptUnlock = true
+                } : nil,
                 scanReceiptAcknowledgement: activeReceiptScan != nil && !awaitingReceiptAcknowledgement ? {
+                    awaitingReceiptUnlock = false
                     awaitingReceiptAcknowledgement = true
                 } : nil,
                 finishReceiptAcknowledgement: activeReceiptScan != nil && awaitingReceiptAcknowledgement ? {
@@ -481,6 +486,7 @@ struct ScanView: View {
                 sheetReceiptProvisionScan = nil
                 completedReceiptScan = nil
                 awaitingReceiptAcknowledgement = false
+                awaitingReceiptUnlock = false
                 startScanning()
             }
         }
@@ -491,6 +497,7 @@ struct ScanView: View {
                 sheetReceiptProvisionScan = context
                 completedReceiptScan = nil
                 awaitingReceiptAcknowledgement = false
+                awaitingReceiptUnlock = false
             }
         }
         .fileImporter(
@@ -525,9 +532,13 @@ struct ScanView: View {
         guard activeReceiptScan != nil else {
             return "Point the camera at a supported QR code. Captured frames are not saved."
         }
-        return awaitingReceiptAcknowledgement
-            ? "Scan the acknowledgement QR from the same install window."
-            : "Scan the receipt-key QR from the same install window."
+        if awaitingReceiptAcknowledgement {
+            return "Scan the acknowledgement QR from the same install window."
+        }
+        if awaitingReceiptUnlock {
+            return "Scan the receipt-unlock QR from the same install window. If Monas already shows the acknowledgement QR, scan that instead."
+        }
+        return "Scan the receipt-key QR from the same install window."
     }
 
     private func handleScan(_ result: Result<ScannedQRPayload, PlatformFailure>) {
@@ -535,12 +546,23 @@ struct ScanView: View {
         switch result {
         case let .success(payload):
             scanFailure = nil
+            var mayAdvanceToAcknowledgement = false
             if activeReceiptScan != nil {
                 let schema = awaitingReceiptAcknowledgement
                     ? SiteRootConvergenceProfileV2.ackSchema
-                    : SiteRootConvergenceProfileV2.provisionSchema
+                    : (awaitingReceiptUnlock
+                        ? SiteRootBundleReceiptUnlockDescriptorV1.schema
+                        : SiteRootConvergenceProfileV2.provisionSchema)
                 guard let object = try? SiteRootConvergenceEncoding.object(payload.text, maximumBytes: 8_192),
-                      SiteRootConvergenceEncoding.string(object, "schema") == schema else {
+                      let scannedSchema = SiteRootConvergenceEncoding.string(object, "schema")
+                else {
+                    scanFailure = .qrPayloadUnsupported
+                    scanning = false
+                    return
+                }
+                mayAdvanceToAcknowledgement = awaitingReceiptUnlock
+                    && scannedSchema == SiteRootConvergenceProfileV2.ackSchema
+                guard scannedSchema == schema || mayAdvanceToAcknowledgement else {
                     scanFailure = .qrPayloadUnsupported
                     scanning = false
                     return
@@ -587,7 +609,9 @@ struct ScanView: View {
                 case .siteRootConvergence:
                     if payload.text.contains(SiteRootBundleReceiptUnlockDescriptorV1.schema) {
                         Task {
-                            await siteRootConvergence.acceptStandaloneUnlock(qrText: payload.text)
+                            await siteRootConvergence.acceptStandaloneUnlock(
+                                qrText: payload.text, receiptProvisionScan: activeReceiptScan
+                            )
                             if case let .failed(failure) = siteRootConvergence.phase {
                                 scanFailure = failure
                             }
@@ -600,6 +624,10 @@ struct ScanView: View {
                     )
                     if case let .failed(failure) = siteRootConvergence.phase {
                         scanFailure = failure
+                    } else if mayAdvanceToAcknowledgement,
+                              siteRootConvergence.presentedReview != nil {
+                        awaitingReceiptUnlock = false
+                        awaitingReceiptAcknowledgement = true
                     }
                     return
                 case .mtgsRecovery:

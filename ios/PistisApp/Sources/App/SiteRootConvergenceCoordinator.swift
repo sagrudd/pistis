@@ -37,6 +37,7 @@ final class SiteRootConvergenceCoordinator: ObservableObject {
 
     @Published private(set) var phase: Phase = .idle
     @Published private(set) var supportCode: String?
+    @Published private(set) var mayScanReceiptUnlock = false
     @Published private(set) var presentedReview: SiteRootConvergenceReview?
     private let service: SiteRootConvergenceServiceV2?
     private let brokerService: SiteRootConvergenceServiceV2?
@@ -211,18 +212,36 @@ final class SiteRootConvergenceCoordinator: ObservableObject {
         }
     }
 
-    func acceptStandaloneUnlock(qrText: String) async {
+    func acceptStandaloneUnlock(
+        qrText: String, receiptProvisionScan: ReceiptProvisionScanContext? = nil
+    ) async {
         guard phase == .idle else { return }
         let operation = operationID
         standaloneUnlock = true
         phase = .unlockingBundleReceipt
         do {
             _ = try SiteRootBundleReceiptUnlockDescriptorV1(qrText: qrText)
-            guard standaloneUnlockAvailable, let service else {
-                throw PlatformFailure.siteRootBindingUnavailable
+            let unlockService: SiteRootConvergenceServiceV2
+            if let context = receiptProvisionScan {
+                let transport = try MonasSiteRootConvergenceTransport(
+                    authorityOrigin: context.origin,
+                    expectedSPKISHA256: context.leafSPKI
+                )
+                unlockService = SiteRootConvergenceServiceV2(transport: transport)
+            } else {
+                guard standaloneUnlockAvailable, let service else {
+                    throw PlatformFailure.siteRootBindingUnavailable
+                }
+                unlockService = service
             }
-            let value = try await service.fetchStandaloneBundleReceiptUnlock()
+            let value = try await unlockService.fetchStandaloneBundleReceiptUnlock()
             guard operationID == operation, !Task.isCancelled else { return }
+            if let context = receiptProvisionScan {
+                guard value.siteTrustDomain == context.site else {
+                    throw PlatformFailure.siteRootBindingUnavailable
+                }
+                receiptHandoffService = unlockService
+            }
             let review = SiteRootConvergenceReview(
                 site: value.siteTrustDomain,
                 expiresAt: Date(timeIntervalSince1970: TimeInterval(value.expiresAtUnixSeconds)),
@@ -248,6 +267,7 @@ final class SiteRootConvergenceCoordinator: ObservableObject {
         let operation = operationID
         phase = .authenticating
         supportCode = nil
+        mayScanReceiptUnlock = false
         do {
             let custodyVerified: Bool
             switch pending {
@@ -298,6 +318,9 @@ final class SiteRootConvergenceCoordinator: ObservableObject {
             phase = .failed(.siteRootAuthorityUnavailable)
         } catch let failure as PlatformFailure {
             guard operationID == operation else { return }
+            if case .provision = pending, phase == .unlockingBundleReceipt {
+                mayScanReceiptUnlock = true
+            }
             recordSupportCode(failure)
             retainSafeBrokerRetry(for: pending)
             self.pending = nil
@@ -372,6 +395,7 @@ final class SiteRootConvergenceCoordinator: ObservableObject {
     func reset() {
         operationID = UUID()
         standaloneUnlock = false
+        mayScanReceiptUnlock = false
         brokerCustodyRetry = nil
         pending = nil
         receiptHandoffService = nil

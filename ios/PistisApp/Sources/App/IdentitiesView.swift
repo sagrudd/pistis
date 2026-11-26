@@ -5,6 +5,9 @@ struct IdentitiesView: View {
     let loadFailure: Bool
     let forgetExpired: (UUID) async throws -> Void
     @Binding var providerEnrolmentRequested: Bool
+    let bindingAttemptID: UUID?
+    let clearBindingAttempt: () -> Void
+    let scanReceiptQR: (ReceiptProvisionScanContext) -> Void
 
     var body: some View {
         ScrollView {
@@ -90,8 +93,11 @@ struct IdentitiesView: View {
                 forgetExpired: forgetExpired
             )
         }
+        .onChange(of: providerEnrolmentRequested) { _, shown in
+            if !shown { clearBindingAttempt() }
+        }
         .navigationDestination(isPresented: $providerEnrolmentRequested) {
-            FirstDeviceEnrolmentView()
+            FirstDeviceEnrolmentView(bindingAttemptID: bindingAttemptID, scanReceiptQR: scanReceiptQR)
         }
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {

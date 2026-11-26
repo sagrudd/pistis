@@ -204,6 +204,19 @@ final class SiteRootConvergenceProtocolTests: XCTestCase {
             QRPayloadProfile.pistisAuthenticationOrMonasSiteRoot.accepts(qr)
         )
         XCTAssertEqual(MonasJSONScanRoute.classify(qr), .siteRootConvergence)
+        let origin = try XCTUnwrap(URL(string: "https://192.168.0.6:8443"))
+        let pin = Data(repeating: 1, count: 32)
+        let fresh = SiteRootConvergenceCoordinator(transport: nil)
+        fresh.accept(qrText: qr, receiptProvisionScan: .init(
+            origin: origin, leafSPKI: pin, site: "site-unrelated", attemptID: UUID()
+        ))
+        XCTAssertEqual(fresh.phase, .failed(.siteRootBindingUnavailable))
+        fresh.reset()
+        fresh.accept(qrText: qr, receiptProvisionScan: .init(
+            origin: origin, leafSPKI: pin,
+            site: "site-cb5fc980-8a52-427a-83d1-a5e6a54b6642", attemptID: UUID()
+        ))
+        XCTAssertNotNil(fresh.presentedReview)
         coordinator.accept(qrText: qr)
 
         XCTAssertEqual(coordinator.selectedTransportRoute, .direct)

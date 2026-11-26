@@ -43,6 +43,7 @@ final class SiteRootConvergenceCoordinator: ObservableObject {
     private let authorityOrigin: URL?
     private let standaloneUnlockAvailable: Bool
     private var pending: Pending?
+    private var receiptHandoffService: SiteRootConvergenceServiceV2?
     private var operationID = UUID()
     private var standaloneUnlock = false
     private var brokerCustodyRetry: (correlation: Data, siteUUID: String)?
@@ -95,11 +96,14 @@ final class SiteRootConvergenceCoordinator: ObservableObject {
         }
     }
 
-    func accept(qrText: String) {
+    func accept(
+        qrText: String, receiptProvisionScan: ReceiptProvisionScanContext? = nil
+    ) {
         guard phase == .idle else {
             phase = .failed(.siteRootAuthorityUnavailable)
             return
         }
+        receiptHandoffService = nil
         do {
             let seconds = try Self.nowSeconds()
             let review: SiteRootConvergenceReview
@@ -143,6 +147,16 @@ final class SiteRootConvergenceCoordinator: ObservableObject {
                 let presentation = try SiteRootBundleReceiptProvisionPresentationV1(
                     qrText: qrText, nowUnixSeconds: seconds
                 )
+                if let context = receiptProvisionScan {
+                    guard context.site == presentation.siteTrustDomain else {
+                        throw PlatformFailure.siteRootBindingUnavailable
+                    }
+                    let transport = try MonasSiteRootConvergenceTransport(
+                        authorityOrigin: context.origin,
+                        expectedSPKISHA256: context.leafSPKI
+                    )
+                    receiptHandoffService = SiteRootConvergenceServiceV2(transport: transport)
+                }
                 pending = .provision(presentation)
                 review = SiteRootConvergenceReview(
                     site: presentation.siteTrustDomain,
@@ -154,14 +168,24 @@ final class SiteRootConvergenceCoordinator: ObservableObject {
                     )
                 )
             } else {
-                guard let authorityOrigin else {
+                guard let origin = receiptProvisionScan?.origin ?? authorityOrigin else {
                     throw PlatformFailure.siteRootAuthorityUnavailable
                 }
                 let presentation = try SiteRootConvergenceAckPresentationV2(
                     qrText: qrText,
-                    authorityOrigin: authorityOrigin,
+                    authorityOrigin: origin,
                     nowUnixMilliseconds: seconds * 1_000
                 )
+                if let context = receiptProvisionScan {
+                    guard context.site == "site-" + presentation.assertion.siteUUIDText else {
+                        throw PlatformFailure.siteRootBindingUnavailable
+                    }
+                    let transport = try MonasSiteRootConvergenceTransport(
+                        authorityOrigin: context.origin,
+                        expectedSPKISHA256: context.leafSPKI
+                    )
+                    receiptHandoffService = SiteRootConvergenceServiceV2(transport: transport)
+                }
                 pending = .acknowledgement(presentation)
                 review = SiteRootConvergenceReview(
                     site: presentation.assertion.siteUUIDText,
@@ -345,6 +369,7 @@ final class SiteRootConvergenceCoordinator: ObservableObject {
         standaloneUnlock = false
         brokerCustodyRetry = nil
         pending = nil
+        receiptHandoffService = nil
         presentedReview = nil
         phase = .idle
     }
@@ -363,6 +388,7 @@ final class SiteRootConvergenceCoordinator: ObservableObject {
 
     private func selectedService(for pending: Pending?) -> SiteRootConvergenceServiceV2? {
         guard let pending else { return nil }
+        if let receiptHandoffService { return receiptHandoffService }
         switch pending.transportRoute {
         case .direct: return service
         case .broker: return brokerService

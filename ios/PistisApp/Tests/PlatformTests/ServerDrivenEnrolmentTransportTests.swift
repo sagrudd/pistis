@@ -67,9 +67,29 @@ final class ServerDrivenEnrolmentTransportTests: XCTestCase {
         }
     }
 
+    func testProviderBeginKeepsOnlyTheHTTPStatusForSupport() async throws {
+        let configuration = URLSessionConfiguration.ephemeral
+        configuration.protocolClasses = [UnavailableProviderURLProtocol.self]
+        let transport = try ServerDrivenEnrolmentTransport(
+            presentation: try sharedPresentation(), configuration: configuration
+        )
+        let publicKey = P256.Signing.PrivateKey().publicKey.compressedRepresentation
+        do {
+            _ = try await transport.begin(
+                operationID: Data(repeating: 1, count: 16),
+                deviceKeyID: derivedKeyID(publicKey),
+                devicePublicKey: publicKey,
+                keyAssurance: "secure-enclave-biometry-current-set"
+            )
+            XCTFail("HTTP 503 cannot produce a provider handle")
+        } catch let failure as EnrolmentBeginDiagnostic {
+            XCTAssertEqual(failure.supportDetail, "HTTP 503")
+        }
+    }
+
     func testProviderStatusKeepsOnlyTheHTTPStatusForSupport() async throws {
         let configuration = URLSessionConfiguration.ephemeral
-        configuration.protocolClasses = [UnavailableProviderStatusURLProtocol.self]
+        configuration.protocolClasses = [UnavailableProviderURLProtocol.self]
         let transport = try ServerDrivenEnrolmentTransport(
             presentation: try sharedPresentation(), configuration: configuration
         )
@@ -200,8 +220,13 @@ final class ServerDrivenEnrolmentTransportTests: XCTestCase {
                 keyAssurance: "secure-enclave-biometry-current-set"
             )
             XCTFail("redirect must fail")
-        } catch {
-            XCTAssertEqual(error as? PlatformFailure, .productionEnvelopeUnavailable)
+        } catch let failure as EnrolmentBeginDiagnostic {
+            switch failure {
+            case .http(307), .timeout, .response:
+                break
+            default:
+                XCTFail("unexpected redirect diagnostic: \(failure.supportDetail)")
+            }
         }
     }
 }
@@ -405,7 +430,7 @@ private final class RetainedEnrolmentURLProtocol: URLProtocol, @unchecked Sendab
     }
 }
 
-private final class UnavailableProviderStatusURLProtocol: URLProtocol, @unchecked Sendable {
+private final class UnavailableProviderURLProtocol: URLProtocol, @unchecked Sendable {
     override class func canInit(with request: URLRequest) -> Bool { true }
 
     override class func canonicalRequest(for request: URLRequest) -> URLRequest { request }

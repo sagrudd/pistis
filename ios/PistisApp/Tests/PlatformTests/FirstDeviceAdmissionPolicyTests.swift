@@ -31,6 +31,31 @@ final class FirstDeviceAdmissionPolicyTests: XCTestCase {
             existingIDs: [a], admission: accepted, pendingIsSubmitted: true))
     }
     @MainActor
+    func testExpiredScannedInvitationCannotBegin() async throws {
+        let fixtureURL = URL(fileURLWithPath: #filePath).deletingLastPathComponent()
+            .appendingPathComponent("../../../../fixtures/protocol-v4/first-device/presentation-positive.json")
+            .standardizedFileURL
+        let fixture = try XCTUnwrap(JSONSerialization.jsonObject(with: Data(contentsOf: fixtureURL)) as? [String: Any])
+        let qr = try XCTUnwrap(fixture["qr_text"] as? String)
+        let ms = try XCTUnwrap(fixture["now_ms"] as? NSNumber)
+        var clock = Date(timeIntervalSince1970: ms.doubleValue / 1_000)
+        let flow = FirstDeviceEnrolmentFlow(
+            testingScopedStore: ScopedAppAttestStore(persistence: ScopedMemoryPersistence()),
+            additionalAdmission: { _ in XCTFail("An expired invitation cannot reach admission"); return nil },
+            now: { clock },
+            eventRecorder: AdmissionEventSink()
+        )
+        flow.handleScan(.success(ScannedQRPayload(text: qr)))
+        let invitation = try XCTUnwrap(flow.presentation)
+        clock = Date(timeIntervalSince1970: Double(invitation.expiresAtMilliseconds) / 1_000 + 1)
+        await flow.begin()
+        XCTAssertEqual(flow.failure, .authenticationRequestExpired)
+        flow.scanNewInvitation()
+        XCTAssertNil(flow.presentation)
+        XCTAssertNil(flow.failure)
+    }
+
+    @MainActor
     func testScannedSignedV4UsesControlledSubmittedAttemptWithoutReplacingA() async throws {
         let fixtureURL = URL(fileURLWithPath: #filePath).deletingLastPathComponent()
             .appendingPathComponent("../../../../fixtures/protocol-v4/first-device/presentation-positive.json")

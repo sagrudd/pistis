@@ -730,3 +730,5 @@ First-device enrolment opens the scanner. Resume a retained receipt explicitly, 
 The GitHub registration screen leads directly to receipt-key scanning. The receipt provisioning request uses the exact enrolment origin and pinned certificate on the matching site.
 
 Fresh setup uses five numbered QR steps and a consistent Scan next QR action. The final acknowledgement shows distinct redacted support codes for a missing signer registration, a failed connection, an HTTP rejection, or an invalid response.
+
+Opening a fresh administrator QR scanner replaces the previous enrolment screen. Pistis refuses to send Begin for an expired invitation and offers a new scan.

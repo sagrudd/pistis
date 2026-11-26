@@ -6,6 +6,8 @@ struct IdentitiesView: View {
     let forgetExpired: (UUID) async throws -> Void
     @Binding var providerEnrolmentRequested: Bool
     let bindingAttemptID: UUID?
+    let providerEnrolmentRouteID: UUID
+    let openFreshEnrolment: () -> Void
     let clearBindingAttempt: () -> Void
     let scanReceiptQR: (ReceiptProvisionScanContext) -> Void
 
@@ -98,12 +100,11 @@ struct IdentitiesView: View {
         }
         .navigationDestination(isPresented: $providerEnrolmentRequested) {
             FirstDeviceEnrolmentView(bindingAttemptID: bindingAttemptID, scanReceiptQR: scanReceiptQR)
+                .id(providerEnrolmentRouteID)
         }
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
-                Button {
-                    providerEnrolmentRequested = true
-                } label: {
+                Button(action: openFreshEnrolment) {
                     Label("Enrol first device", systemImage: "plus")
                         .frame(minWidth: MnMetrics.minimumTarget, minHeight: MnMetrics.minimumTarget)
                 }

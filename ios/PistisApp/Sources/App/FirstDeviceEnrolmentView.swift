@@ -149,6 +149,11 @@ struct FirstDeviceEnrolmentView: View {
                                     .buttonStyle(.borderedProminent)
                                     .tint(MnColor.action)
                                     .disabled(flow.busy)
+                                } else if flow.failure == .authenticationRequestExpired {
+                                    Button("Scan a new invitation") {
+                                        flow.scanNewInvitation()
+                                    }
+                                    .buttonStyle(.borderedProminent)
                                 } else {
                                     Text(
                                         "The signed installation identity, application configuration, HTTPS origin and certificate key have been verified."
@@ -577,6 +582,13 @@ final class FirstDeviceEnrolmentFlow: ObservableObject {
             await checkVerification()
             return
         }
+        let time = now().timeIntervalSince1970 * 1_000
+        guard time.isFinite, time >= 0,
+              time < Double(presentation.expiresAtMilliseconds) else {
+            fail(PlatformFailure.authenticationRequestExpired)
+            status = "This invitation expired. Scan the identity QR from the current install window."
+            return
+        }
         busy = true
         defer { busy = false }
         var retainExactAttempt = false
@@ -797,6 +809,21 @@ final class FirstDeviceEnrolmentFlow: ObservableObject {
             }
             fail(error)
         }
+    }
+
+    func scanNewInvitation() {
+        guard !busy, failure == .authenticationRequestExpired,
+              handle == nil, !awaitingAuthorityBinding else { return }
+        presentation = nil
+        transport = nil
+        verifiedScan = nil
+        stagedAttemptID = nil
+        devicePublicKey = nil
+        deviceKeyID = nil
+        beginRetry.reset()
+        providerContinuation.reset()
+        failure = nil
+        status = "Ready to scan a new invitation"
     }
 
     func cancel() async {

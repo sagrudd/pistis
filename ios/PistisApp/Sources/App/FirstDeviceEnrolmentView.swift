@@ -49,7 +49,12 @@ struct FirstDeviceEnrolmentView: View {
                         .textSelection(.enabled)
                 }
 
-                if flow.presentation == nil {
+                if flow.presentation == nil && bindingAttemptID != nil {
+                    Button("Retry setup check") {
+                        flow.restorePendingAuthorityBinding(attemptID: bindingAttemptID)
+                    }
+                    .buttonStyle(.bordered)
+                } else if flow.presentation == nil {
                     QRScannerCameraView(
                         profile: .pistisAuthenticationV2,
                         onResult: flow.handleScan
@@ -355,6 +360,9 @@ final class FirstDeviceEnrolmentFlow: ObservableObject {
                       try scopedStore.stagedEnrollment(attemptID: attemptID) != nil
                 else { throw PlatformFailure.siteRootBindingUnavailable }
                 stored = try scopedStore.provisionalPresentation(attemptID: attemptID)
+                guard stored?.attemptID == attemptID else {
+                    throw PlatformFailure.siteRootBindingUnavailable
+                }
             } else {
                 stored = try scopedStore.soleRecoverablePresentation()
             }

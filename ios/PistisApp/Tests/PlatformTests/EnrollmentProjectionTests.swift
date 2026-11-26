@@ -14,6 +14,45 @@ final class EnrollmentProjectionTests: XCTestCase {
         XCTAssertEqual(store.state, .loaded(.empty))
     }
 
+    func testGitHubAccountAndLocalExpirySurviveStorageRoundTrip() throws {
+        let expiry = Date(timeIntervalSince1970: 2_000_000_000)
+        let proof = try GitHubStableIdentityProof(numericSubject: UInt64.max, displayLogin: "octocat")
+        let output = try fixtureEnrollment(expiresAt: expiry, githubAccount: proof)
+        let decoded = try JSONDecoder().decode(
+            AuthenticatedEnrollmentOutput.self, from: JSONEncoder().encode(output)
+        )
+        let current = try XCTUnwrap(EnrollmentProjection(enrollment: decoded, now: expiry.addingTimeInterval(-1)).identities.first)
+        XCTAssertEqual(current.displayName, "octocat")
+        XCTAssertEqual(current.githubAccountID, UInt64.max)
+        XCTAssertEqual(current.expiresAt, expiry)
+        XCTAssertEqual(current.status, "Enrolled")
+        let expired = try XCTUnwrap(EnrollmentProjection(enrollment: decoded, now: expiry).identities.first)
+        XCTAssertEqual(expired.status, "Expired")
+        XCTAssertTrue(expired.allowsLocalForget)
+        let older = try JSONDecoder().decode(
+            AuthenticatedEnrollmentOutput.self, from: JSONEncoder().encode(fixtureEnrollment())
+        )
+        XCTAssertNil(older.githubAccount)
+        XCTAssertNil(EnrollmentProjection(enrollment: older).identities.first?.githubAccountID)
+    }
+
+    func testGitHubGroupingKeepsInstallationAssociationsDistinct() throws {
+        let proof = try GitHubStableIdentityProof(numericSubject: 42, displayLogin: "octocat")
+        let a = try fixtureEnrollment(githubAccount: proof)
+        let b = try fixtureEnrollment(installationByte: 9, githubAccount: proof)
+        let unknown = try fixtureEnrollment(installationByte: 7)
+        let groups = IdentityAccountGroup.group(EnrollmentProjection(
+            inventories: [.current(a), .current(b), .current(unknown)]
+        ).identities)
+        XCTAssertEqual(groups.count, 2)
+        XCTAssertEqual(groups[0].title, "octocat")
+        XCTAssertEqual(groups[0].installations.map(\.installationName), ["Laboratory Jenkins", "Remote Jenkins"])
+        XCTAssertEqual(Set(groups[0].installations.map(\.installationID)).count, 2)
+        let remaining = IdentityAccountGroup.group(EnrollmentProjection(inventories: [.current(b)]).identities)
+        XCTAssertEqual(remaining.first?.githubAccountID, 42)
+        XCTAssertEqual(remaining.first?.installations.first?.installationName, "Remote Jenkins")
+    }
+
     func testVerifiedEnrollmentProjectsOnlyPublicHomeScreenFacts() async throws {
         let enrollment = try fixtureEnrollment()
         let store = EnrollmentProjectionStore { .current(enrollment) }
@@ -447,7 +486,8 @@ final class EnrollmentProjectionTests: XCTestCase {
         expiresAt: Date = Date(timeIntervalSince1970: 2_000_000_000),
         installationByte: UInt8 = 0x01,
         userByte: UInt8 = 0x02,
-        identityByte: UInt8 = 0x03
+        identityByte: UInt8 = 0x03,
+        githubAccount: GitHubStableIdentityProof? = nil
     ) throws -> AuthenticatedEnrollmentOutput {
         try AuthenticatedEnrollmentOutput(
             trust: InstallationTrustRecord(
@@ -476,7 +516,8 @@ final class EnrollmentProjectionTests: XCTestCase {
             ),
             allowedHosts: ["pistis.example.test"],
             httpsOrigin: "https://pistis.example.test",
-            tlsSPKISHA256: Data(repeating: 0x0b, count: 32)
+            tlsSPKISHA256: Data(repeating: 0x0b, count: 32),
+            githubAccount: githubAccount
         )
     }
 

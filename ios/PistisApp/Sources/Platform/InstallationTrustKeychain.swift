@@ -22,13 +22,15 @@ struct AuthenticatedEnrollmentOutput: Codable, Equatable, Sendable {
     /// SHA-256 of the exact DER SubjectPublicKeyInfo for the presented TLS
     /// leaf. This is public endpoint identity, not a credential.
     let tlsSPKISHA256: Data
+    let githubAccount: GitHubStableIdentityProof?
 
     init(
         trust: InstallationTrustRecord,
         responseContext: DeviceResponseContext,
         allowedHosts: Set<String>,
         httpsOrigin: String,
-        tlsSPKISHA256: Data
+        tlsSPKISHA256: Data,
+        githubAccount: GitHubStableIdentityProof? = nil
     ) throws {
         guard trust.userID == responseContext.userID,
               trust.externalIdentityID == responseContext.externalIdentityID,
@@ -44,6 +46,7 @@ struct AuthenticatedEnrollmentOutput: Codable, Equatable, Sendable {
         self.allowedHosts = allowedHosts
         self.httpsOrigin = canonicalOrigin
         self.tlsSPKISHA256 = tlsSPKISHA256
+        self.githubAccount = githubAccount
     }
 
     func matchesEndpoint(origin: String, spkiSHA256: Data) -> Bool {
@@ -57,12 +60,14 @@ struct AuthenticatedEnrollmentOutput: Codable, Equatable, Sendable {
         case allowedHosts
         case httpsOrigin
         case tlsSPKISHA256
+        case githubAccount
     }
 
     init(from decoder: any Decoder) throws {
         let untyped = try decoder.container(keyedBy: TrustCodingKey.self)
-        guard Set(untyped.allKeys.map(\.stringValue))
-            == Set(CodingKeys.allCases.map(\.rawValue))
+        let keys = Set(untyped.allKeys.map(\.stringValue))
+        let accepted = Set(CodingKeys.allCases.map(\.rawValue))
+        guard keys == accepted || keys == accepted.subtracting([CodingKeys.githubAccount.rawValue])
         else {
             throw DecodingError.dataCorrupted(
                 .init(codingPath: decoder.codingPath, debugDescription: "invalid trust fields")
@@ -82,7 +87,8 @@ struct AuthenticatedEnrollmentOutput: Codable, Equatable, Sendable {
             ),
             allowedHosts: container.decode(Set<String>.self, forKey: .allowedHosts),
             httpsOrigin: container.decode(String.self, forKey: .httpsOrigin),
-            tlsSPKISHA256: container.decode(Data.self, forKey: .tlsSPKISHA256)
+            tlsSPKISHA256: container.decode(Data.self, forKey: .tlsSPKISHA256),
+            githubAccount: container.decodeIfPresent(GitHubStableIdentityProof.self, forKey: .githubAccount)
         )
     }
 }

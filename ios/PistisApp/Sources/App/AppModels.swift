@@ -5,8 +5,45 @@ struct IdentitySummary: Identifiable, Hashable {
     let provider: String
     let displayName: String
     let stableSubject: String
+    let githubAccountID: UInt64?
+    let installationID: UUID
+    let installationName: String
+    let installationHost: String
+    let expiresAt: Date
     let status: String
     let allowsLocalForget: Bool
+}
+
+struct IdentityAccountGroup: Identifiable {
+    enum Key: Hashable {
+        case github(UInt64)
+        case unlabelled(UUID)
+    }
+
+    let id: Key
+    let installations: [IdentitySummary]
+
+    var githubAccountID: UInt64? {
+        if case let .github(id) = id { return id }
+        return nil
+    }
+
+    var title: String {
+        installations.first { $0.displayName != "GitHub account" }?.displayName ?? "GitHub account"
+    }
+
+    static func group(_ identities: [IdentitySummary]) -> [Self] {
+        func key(_ identity: IdentitySummary) -> Key {
+            identity.githubAccountID.map(Key.github) ?? .unlabelled(identity.installationID)
+        }
+        let groups = Dictionary(grouping: identities, by: key)
+        var seen = Set<Key>()
+        return identities.compactMap { identity in
+            let id = key(identity)
+            guard seen.insert(id).inserted, let installations = groups[id] else { return nil }
+            return Self(id: id, installations: installations)
+        }
+    }
 }
 
 struct InstallationSummary: Identifiable, Hashable {

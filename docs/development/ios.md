@@ -732,3 +732,6 @@ The GitHub registration screen leads directly to receipt-key scanning. The recei
 Fresh setup uses five numbered QR steps and a consistent Scan next QR action. The final acknowledgement shows distinct redacted support codes for a missing signer registration, a failed connection, an HTTP rejection, or an invalid response.
 
 Opening a fresh administrator QR scanner replaces the previous enrolment screen. Pistis refuses to send Begin for an expired invitation and offers a new scan.
+
+New GitHub enrolments store the verified numeric ID and the username returned during verification as display metadata. The identity detail also shows the locally retained enrolment expiry. Existing records without display metadata remain readable.
+Verified GitHub accounts group their local installation associations by numeric account ID. Removing one eligible local enrolment is scoped to its installation ID.

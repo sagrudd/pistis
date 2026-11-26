@@ -113,7 +113,7 @@ struct RootTabView: View {
                 IdentitiesView(
                     identities: projection.identities,
                     loadFailure: enrollment.state == .failed,
-                    forgetExpired: forgetExpiredIdentity,
+                    forgetExpired: forgetExpired,
                     providerEnrolmentRequested: $providerEnrolmentRequested,
                     bindingAttemptID: bindingAttemptID,
                     providerEnrolmentRouteID: providerEnrolmentRouteID,
@@ -739,47 +739,6 @@ struct RootTabView: View {
         )
         reconciliationMessage = "Using \(installationID.uuidString) for new requests."
         await enrollment.refresh()
-    }
-
-    private func forgetExpiredIdentity(_ externalIdentityID: UUID) async throws {
-        let identifier = externalIdentityID.data
-    guard
-      let inventory = try await InstallationTrustKeychain.shared
-            .enrollmentInventoryRecords()
-            .first(where: { record in
-                switch record {
-                case let .current(stored):
-                    return stored.trust.externalIdentityID == identifier
-                case let .legacy(stored):
-                    return stored.trust.externalIdentityID == identifier
-                }
-            })
-        else { throw PlatformFailure.invalidConfiguration }
-        switch inventory {
-    case .current(let stored):
-            guard stored.trust.externalIdentityID == identifier,
-                  InstallationTrustKeychain.allowsLocalForget(
-                      active: stored.trust.active,
-                      expiresAt: stored.trust.expiresAt,
-                      now: Date()
-                  )
-            else { throw PlatformFailure.invalidConfiguration }
-            try await forgetStoredEnrollment(
-                stored,
-                historyAction: "Local provider account forgotten",
-                authenticationReason: "Forget this expired Pistis provider account",
-                verification: "Expired identity, trust and local device key removed"
-            )
-    case .legacy(let stored):
-            guard stored.trust.externalIdentityID == identifier else {
-                throw PlatformFailure.invalidConfiguration
-            }
-            try await forgetLegacyEnrollment(
-                stored,
-                historyAction: "Incompatible provider enrolment removed",
-                authenticationReason: "Remove this incompatible Pistis account"
-            )
-        }
     }
 
     private func forgetStoredEnrollment(

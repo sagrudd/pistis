@@ -55,35 +55,32 @@ struct IdentitiesView: View {
                     }
                 }
 
-                ForEach(identities) { identity in
-                    NavigationLink(value: identity) {
-                        MnPanel {
-                            HStack(alignment: .top, spacing: MnSpacing.x3) {
-                                Image(systemName: identity.provider == "GitHub" ? "chevron.left.forwardslash.chevron.right" : "person.crop.circle")
-                                    .font(.title2)
-                                    .foregroundStyle(MnColor.action)
-                                    .frame(width: MnMetrics.minimumTarget, height: MnMetrics.minimumTarget)
-                                    .accessibilityHidden(true)
-                                VStack(alignment: .leading, spacing: MnSpacing.x2) {
-                                    Text(identity.displayName)
-                                        .font(.headline)
-                                    Text(identity.provider)
-                                        .font(.subheadline)
-                                    Text(identity.stableSubject)
-                                        .font(.caption)
-                                        .foregroundStyle(MnColor.textPrimary)
-                                    MnStatusLabel(text: identity.status, kind: .success)
+                ForEach(IdentityAccountGroup.group(identities)) { account in
+                    MnPanel {
+                        VStack(alignment: .leading, spacing: MnSpacing.x3) {
+                            Text(account.title).font(.headline)
+                            Text(account.githubAccountID.map { "GitHub account ID \($0)" } ?? "GitHub account ID not recorded")
+                                .font(.caption)
+                            ForEach(account.installations, id: \.installationID) { identity in
+                                Divider()
+                                NavigationLink(value: identity) {
+                                    HStack {
+                                        VStack(alignment: .leading, spacing: MnSpacing.x2) {
+                                            Text(identity.installationName).font(.subheadline)
+                                            Text(identity.installationHost).font(.caption)
+                                            MnStatusLabel(
+                                                text: identity.status,
+                                                kind: identity.status == "Enrolled" ? .success : .warning
+                                            )
+                                        }
+                                        Spacer()
+                                        Image(systemName: "chevron.right").accessibilityHidden(true)
+                                    }
                                 }
-                                Spacer()
-                                Image(systemName: "chevron.right")
-                                    .foregroundStyle(.secondary)
-                                    .accessibilityHidden(true)
+                                .buttonStyle(.plain)
                             }
                         }
                     }
-                    .buttonStyle(.plain)
-                    .accessibilityLabel("\(identity.provider), \(identity.displayName), \(identity.status)")
-                    .accessibilityHint("Shows identity evidence")
                 }
             }
             .padding(MnMetrics.screenGutter)
@@ -122,17 +119,28 @@ private struct IdentityDetailView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: MnSpacing.x4) {
-                MnStatusLabel(text: identity.status, kind: .success)
+                MnStatusLabel(text: identity.status, kind: identity.status == "Enrolled" ? .success : .warning)
                 MnPanel {
                     VStack(alignment: .leading, spacing: MnSpacing.x4) {
                         MnEvidenceRow(label: "Provider", value: identity.provider)
                         Divider()
-                        MnEvidenceRow(label: "Display name", value: identity.displayName)
+                        MnEvidenceRow(label: "GitHub username", value: identity.displayName == "GitHub account" ? "Not recorded" : identity.displayName)
                         Divider()
-                        MnEvidenceRow(label: "Stable provider identity", value: identity.stableSubject)
+                        MnEvidenceRow(label: "GitHub account ID", value: identity.githubAccountID.map(String.init) ?? "Not recorded")
+                        Divider()
+                        MnEvidenceRow(label: "Installation", value: identity.installationName)
+                        Divider()
+                        MnEvidenceRow(label: "Host", value: identity.installationHost)
+                        Divider()
+                        MnEvidenceRow(label: "Pistis identity", value: identity.stableSubject)
+                        Divider()
+                        MnEvidenceRow(
+                            label: "Enrolment expires",
+                            value: identity.expiresAt.formatted(date: .abbreviated, time: .shortened)
+                        )
                     }
                 }
-                Text("Provider display names may change. Pistis binds the stable provider identity shown above.")
+                Text("GitHub usernames can change. Use the numeric account ID to identify the account. The expiry applies to this Pistis enrolment.")
                     .font(.footnote)
                     .foregroundStyle(MnColor.textPrimary)
                 if identity.allowsLocalForget {
@@ -143,17 +151,17 @@ private struct IdentityDetailView: View {
                             Text(
                                 isIncompatible
                                     ? "This older provider enrolment cannot authorise in the current app. Removing it deletes the phone’s local identity, trust and device key so you can re-enrol; authority-side revocation remains separate."
-                                    : "This expired provider account cannot authorise. Forgetting it removes this phone’s cached identity, trust and device key; it does not delete authority audit history or change server state."
+                                    : "This enrolment cannot authorise. Removing it deletes the identity, trust and device key stored on this phone."
                             )
                             DestructiveConfirmationButton(
                                 label: isIncompatible
                                     ? "Remove local account"
-                                    : "Remove expired local account",
+                                    : "Remove local enrolment",
                                 confirmationTitle: "Remove this local account?",
                                 confirmationMessage:
-                                    "This removes only the account, trust and device key stored on this phone. Authority records and server sessions are unchanged."
+                                    "Remove \(identity.displayName) from \(identity.installationName) (\(identity.installationHost)) on this phone? Other installations stay enrolled."
                             ) {
-                                try await forgetExpired(identity.id)
+                                try await forgetExpired(identity.installationID)
                             }
                         }
                     }

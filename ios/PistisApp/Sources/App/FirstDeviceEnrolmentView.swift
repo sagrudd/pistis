@@ -783,6 +783,7 @@ final class FirstDeviceEnrolmentFlow: ObservableObject {
             }
             try await completeEnrolment(
                 subject: approval.subject,
+                login: approval.login,
                 policyGeneration: approval.policyGeneration,
                 authorityChallenge: approval.authorityChallenge,
                 challengeExpiry: approval.challengeExpiry
@@ -853,6 +854,7 @@ final class FirstDeviceEnrolmentFlow: ObservableObject {
 
     private func completeEnrolment(
         subject: UInt64,
+        login: String?,
         policyGeneration: UInt64,
         authorityChallenge: Data,
         challengeExpiry: UInt64
@@ -860,6 +862,12 @@ final class FirstDeviceEnrolmentFlow: ObservableObject {
         guard let presentation, let transport, let handle,
               let devicePublicKey, let deviceKeyID
         else { throw PlatformFailure.invalidConfiguration }
+        let githubAccount: GitHubStableIdentityProof
+        if let labelled = try? GitHubStableIdentityProof(numericSubject: subject, displayLogin: login) {
+            githubAccount = labelled
+        } else {
+            githubAccount = try GitHubStableIdentityProof(numericSubject: subject, displayLogin: nil)
+        }
         let binding = try EnrolmentBindingInput(
             operationID: handle.operationID,
             presentation: presentation,
@@ -920,7 +928,8 @@ final class FirstDeviceEnrolmentFlow: ObservableObject {
             ),
             allowedHosts: receipt.allowedHTTPSHosts,
             httpsOrigin: presentation.httpsOrigin.absoluteString,
-            tlsSPKISHA256: presentation.tlsSPKISHA256
+            tlsSPKISHA256: presentation.tlsSPKISHA256,
+            githubAccount: githubAccount
         )
         do {
             if let attemptID = stagedAttemptID {

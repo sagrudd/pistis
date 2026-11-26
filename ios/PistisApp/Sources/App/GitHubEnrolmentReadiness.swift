@@ -54,7 +54,7 @@ struct GitHubEnrolmentConfiguration: Equatable, Sendable {
 /// Credential-free result returned by the trusted exchange/binding authority.
 ///
 /// The mobile app never receives a provider access token through this port.
-struct GitHubStableIdentityProof: Equatable, Sendable {
+struct GitHubStableIdentityProof: Codable, Equatable, Sendable {
     let numericSubject: UInt64
     let displayLogin: String?
 
@@ -72,6 +72,14 @@ struct GitHubStableIdentityProof: Equatable, Sendable {
         self.numericSubject = numericSubject
         self.displayLogin = displayLogin
     }
+    init(from decoder: any Decoder) throws {
+        let values = try decoder.container(keyedBy: CodingKeys.self)
+        try self.init(
+            numericSubject: values.decode(UInt64.self, forKey: .numericSubject),
+            displayLogin: values.decodeIfPresent(String.self, forKey: .displayLogin)
+        )
+    }
+
 }
 
 enum GitHubEnrolmentState: Equatable, Sendable {

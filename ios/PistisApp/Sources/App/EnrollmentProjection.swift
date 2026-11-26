@@ -38,9 +38,14 @@ struct EnrollmentProjection: Equatable {
             IdentitySummary(
                 id: externalIdentityID,
                 provider: "GitHub",
-                displayName: "GitHub account",
+                displayName: enrollment.githubAccount?.displayLogin ?? "GitHub account",
                 stableSubject: stableSubject,
-                status: isCurrent ? "Enrolled" : "Expired",
+                githubAccountID: enrollment.githubAccount?.numericSubject,
+                installationID: installationID,
+                installationName: trust.displayName,
+                installationHost: host,
+                expiresAt: trust.expiresAt,
+                status: isCurrent ? "Enrolled" : (now >= trust.expiresAt ? "Expired" : "Inactive"),
                 allowsLocalForget: !isCurrent
       )
         ]
@@ -85,6 +90,11 @@ struct EnrollmentProjection: Equatable {
                 provider: "GitHub",
                 displayName: "GitHub account",
                 stableSubject: stableSubject,
+                githubAccountID: nil,
+                installationID: installationID,
+                installationName: trust.displayName,
+                installationHost: host,
+                expiresAt: trust.expiresAt,
                 status: "Re-enrolment required",
                 allowsLocalForget: true
       )
@@ -161,7 +171,7 @@ struct EnrollmentProjection: Equatable {
         }
 
         var identityIDs = Set<UUID>()
-        identities = projectedIdentities.filter { identityIDs.insert($0.id).inserted }
+        identities = projectedIdentities.filter { identityIDs.insert($0.installationID).inserted }
         var installationIDs = Set<UUID>()
         var mergedInstallations = projectedInstallations.filter {
             installationIDs.insert($0.id).inserted

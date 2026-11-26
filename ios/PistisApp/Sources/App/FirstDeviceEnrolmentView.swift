@@ -1,4 +1,5 @@
 import CryptoKit
+import OSLog
 import Security
 import SwiftUI
 import PistisCore
@@ -519,6 +520,13 @@ final class FirstDeviceEnrolmentFlow: ObservableObject {
         } catch {
             if retainExactAttempt {
                 fail(PlatformFailure.enrolmentBeginRetryRequired)
+                if let diagnostic = error as? EnrolmentBeginDiagnostic,
+                   let host = presentation.httpsOrigin.host {
+                    let detail = diagnostic.supportDetail
+                    Logger(subsystem: "mnemosyne.pistis", category: "enrolment")
+                        .error("first-device begin host=\(host, privacy: .private) detail=\(detail, privacy: .public)")
+                    status = "Could not begin enrolment on \(host) (\(detail)). Tap Begin secure enrolment to retry this attempt."
+                }
             } else {
                 await discardUnenrolledKey(after: .beginFailure)
                 fail(error)

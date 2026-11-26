@@ -44,6 +44,42 @@ enum ProviderStatusRequestFailure: Error, Equatable {
     }
 }
 
+enum EnrolmentBeginDiagnostic: Error {
+    case http(Int)
+    case timeout
+    case unreachable
+    case tls
+    case transport
+    case response
+
+    init(transportError: URLError) {
+        switch transportError.code {
+        case .timedOut:
+            self = .timeout
+        case .cannotFindHost, .dnsLookupFailed, .cannotConnectToHost,
+             .networkConnectionLost, .notConnectedToInternet:
+            self = .unreachable
+        case .secureConnectionFailed, .serverCertificateHasBadDate,
+             .serverCertificateUntrusted, .serverCertificateHasUnknownRoot,
+             .serverCertificateNotYetValid:
+            self = .tls
+        default:
+            self = .transport
+        }
+    }
+
+    var supportDetail: String {
+        switch self {
+        case let .http(status): "HTTP \(status)"
+        case .timeout: "request timed out"
+        case .unreachable: "network connection failed"
+        case .tls: "secure connection could not be established"
+        case .transport: "request could not complete"
+        case .response: "response could not be verified"
+        }
+    }
+}
+
 /// Closed ADR 0027 mobile port to the enrolment-only Monas process.
 ///
 /// The adapter handle, GitHub token, refresh token, raw provider response and
@@ -57,6 +93,7 @@ struct ServerDrivenEnrolmentTransport: Sendable {
 
     private let presentation: VerifiedFirstDevicePresentation
     private let session: URLSession
+    private let sessionDelegate: PinnedEnrolmentSessionDelegate
 
     init(
         presentation: VerifiedFirstDevicePresentation,
@@ -66,12 +103,13 @@ struct ServerDrivenEnrolmentTransport: Sendable {
         configuration.httpShouldSetCookies = false
         configuration.urlCache = nil
         configuration.requestCachePolicy = .reloadIgnoringLocalCacheData
+        sessionDelegate = try PinnedEnrolmentSessionDelegate(
+            origin: presentation.httpsOrigin,
+            expectedSPKISHA256: presentation.tlsSPKISHA256
+        )
         session = URLSession(
             configuration: configuration,
-            delegate: try PinnedEnrolmentSessionDelegate(
-                origin: presentation.httpsOrigin,
-                expectedSPKISHA256: presentation.tlsSPKISHA256
-            ),
+            delegate: sessionDelegate,
             delegateQueue: nil
         )
     }
@@ -130,7 +168,7 @@ struct ServerDrivenEnrolmentTransport: Sendable {
               let expires = number(object["expires_at_ms"]),
               let pollAfter = number(object["poll_after_ms"]),
               (1_000 ... 60_000).contains(pollAfter)
-        else { throw PlatformFailure.productionEnvelopeUnavailable }
+        else { throw EnrolmentBeginDiagnostic.response }
         return ProviderVerificationHandle(
             operationID: operationID,
             providerVerificationID: verificationID,
@@ -302,6 +340,7 @@ struct ServerDrivenEnrolmentTransport: Sendable {
                 maximumBytes: maximumResponseBytes
             ).values
         } catch {
+            if path == Self.beginPath { throw EnrolmentBeginDiagnostic.response }
             throw PlatformFailure.productionEnvelopeUnavailable
         }
     }
@@ -328,19 +367,31 @@ struct ServerDrivenEnrolmentTransport: Sendable {
         request.setValue("application/json", forHTTPHeaderField: "Accept")
         request.setValue("no-store", forHTTPHeaderField: "Cache-Control")
         let isProviderStatus = path == Self.statusPath
+        let isBegin = path == Self.beginPath
+        if isBegin { _ = sessionDelegate.takeServerTrustRejection() }
         let data: Data
         let response: URLResponse
         do {
             (data, response) = try await session.data(for: request)
+        } catch let error as URLError where isBegin {
+            if sessionDelegate.takeServerTrustRejection() {
+                throw EnrolmentBeginDiagnostic.tls
+            }
+            throw EnrolmentBeginDiagnostic(transportError: error)
         } catch {
+            if isBegin { throw EnrolmentBeginDiagnostic.transport }
             if isProviderStatus { throw ProviderStatusRequestFailure.transport }
             throw PlatformFailure.productionEnvelopeUnavailable
         }
         guard let http = response as? HTTPURLResponse, http.url == endpoint else {
+            if isBegin { throw EnrolmentBeginDiagnostic.response }
             if isProviderStatus { throw ProviderStatusRequestFailure.response }
             throw PlatformFailure.productionEnvelopeUnavailable
         }
         guard (200 ... 299).contains(http.statusCode) else {
+            if isBegin, (100 ... 599).contains(http.statusCode) {
+                throw EnrolmentBeginDiagnostic.http(http.statusCode)
+            }
             if isProviderStatus, (100 ... 599).contains(http.statusCode) {
                 throw ProviderStatusRequestFailure.http(http.statusCode)
             }
@@ -350,6 +401,7 @@ struct ServerDrivenEnrolmentTransport: Sendable {
               http.value(forHTTPHeaderField: "Cache-Control")?
                   .lowercased().contains("no-store") == true
         else {
+            if isBegin { throw EnrolmentBeginDiagnostic.response }
             if isProviderStatus { throw ProviderStatusRequestFailure.response }
             throw PlatformFailure.productionEnvelopeUnavailable
         }

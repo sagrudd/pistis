@@ -129,7 +129,7 @@ struct ScanView: View {
     private let expectedSiteRootAuthorityHost: String?
     private let showInstallations: () -> Void
     private let receiptProvisionScan: ReceiptProvisionScanContext?
-    private let receiptHandoffFinished: () -> Void
+    private let receiptHandoffFinished: (UUID) -> Void
     @State private var sheetReceiptProvisionScan: ReceiptProvisionScanContext?
     @State private var awaitingReceiptAcknowledgement = false
     @State private var completedReceiptScan: ReceiptProvisionScanContext?
@@ -151,7 +151,7 @@ struct ScanView: View {
         expectedSiteRootAuthorityHost: String? = nil,
         authorityCustodyMode: FirstAuthorityCustodyModeV2 = .rotation,
         receiptProvisionScan: ReceiptProvisionScanContext? = nil,
-        receiptHandoffFinished: @escaping () -> Void = {},
+        receiptHandoffFinished: @escaping (UUID) -> Void = { _ in },
         showInstallations: @escaping () -> Void = {},
         routeToProviderEnrolment: @escaping () -> Void,
         prepareOrdinaryLogin: @escaping (AuthenticatedEnrollmentOutput) async throws -> Void = { _ in },
@@ -438,10 +438,11 @@ struct ScanView: View {
                     awaitingReceiptAcknowledgement = true
                 } : nil,
                 finishReceiptAcknowledgement: activeReceiptScan != nil && awaitingReceiptAcknowledgement ? {
-                    completedReceiptScan = activeReceiptScan
+                    guard let context = activeReceiptScan else { return }
+                    completedReceiptScan = context
                     sheetReceiptProvisionScan = nil
                     awaitingReceiptAcknowledgement = false
-                    receiptHandoffFinished()
+                    receiptHandoffFinished(context.attemptID)
                 } : nil
             ) {
                 finalIdentityQRRequested = true
@@ -538,7 +539,8 @@ struct ScanView: View {
                 let schema = awaitingReceiptAcknowledgement
                     ? SiteRootConvergenceProfileV2.ackSchema
                     : SiteRootConvergenceProfileV2.provisionSchema
-                guard payload.text.contains(schema) else {
+                guard let object = try? SiteRootConvergenceEncoding.object(payload.text, maximumBytes: 8_192),
+                      SiteRootConvergenceEncoding.string(object, "schema") == schema else {
                     scanFailure = .qrPayloadUnsupported
                     scanning = false
                     return

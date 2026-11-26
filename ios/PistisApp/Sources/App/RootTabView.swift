@@ -84,6 +84,7 @@ struct RootTabView: View {
     @State private var reconciliationMessage: String?
     @State private var selectedTab = Tab.scan
     @State private var providerEnrolmentRequested = false
+    @State private var bindingAttemptID: UUID?
     @State private var receiptProvisionScan: ReceiptProvisionScanContext?
     @State private var pendingBrokerCustodyCount = 0
     @State private var pendingBrokerFingerprint = ""
@@ -113,6 +114,8 @@ struct RootTabView: View {
                     loadFailure: enrollment.state == .failed,
                     forgetExpired: forgetExpiredIdentity,
                     providerEnrolmentRequested: $providerEnrolmentRequested,
+                    bindingAttemptID: bindingAttemptID,
+                    clearBindingAttempt: { bindingAttemptID = nil },
                     scanReceiptQR: { context in
                         receiptProvisionScan = context
                         selectedTab = .scan
@@ -185,7 +188,10 @@ struct RootTabView: View {
                     expectedSiteRootAuthorityHost: authorityCustodyContinuationHost,
                     authorityCustodyMode: authorityCustodyMode,
                     receiptProvisionScan: receiptProvisionScan,
-                    receiptHandoffFinished: { receiptProvisionScan = nil },
+                    receiptHandoffFinished: { attempt in
+                        receiptProvisionScan = nil
+                        openProviderEnrolment(bindingAttempt: attempt)
+                    },
                     showInstallations: {
                         authorityCustodyContinuationHost = nil
                         authorityCustodyMode = .rotation
@@ -360,7 +366,12 @@ struct RootTabView: View {
         }
     }
 
-  private func routeToProviderEnrolment() {
+    private func routeToProviderEnrolment() {
+        openProviderEnrolment(bindingAttempt: nil)
+    }
+
+    private func openProviderEnrolment(bindingAttempt: UUID?) {
+        bindingAttemptID = bindingAttempt
         selectedTab = .identities
         // Let the Identities NavigationStack become visible before presenting
         // the existing signed-presentation flow. The redacted local Site Root

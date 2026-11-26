@@ -133,9 +133,12 @@ struct SiteRootConvergenceReviewView: View {
                         if finishReceiptAcknowledgement != nil {
                             Text("Approval sent. Keep the install window open until Monas confirms setup and shows the login address.")
                         }
-                        MnPrimaryButton("Done", systemImage: "checkmark") {
-                            finishReceiptAcknowledgement?()
+                        MnPrimaryButton(
+                            finishReceiptAcknowledgement == nil ? "Done" : "Continue setup",
+                            systemImage: "checkmark"
+                        ) {
                             dismiss()
+                            finishReceiptAcknowledgement?()
                         }
                     }
                 }

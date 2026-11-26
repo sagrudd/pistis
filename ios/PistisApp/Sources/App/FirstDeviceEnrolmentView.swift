@@ -8,6 +8,7 @@ struct ReceiptProvisionScanContext: Equatable {
     let origin: URL
     let leafSPKI: Data
     let site: String
+    let attemptID: UUID
 }
 
 /// Attended first-device enrolment through a scanned, authority-signed
@@ -17,14 +18,17 @@ struct FirstDeviceEnrolmentView: View {
     @Environment(\.openURL) private var openURL
     @Environment(\.dismiss) private var dismiss
     private let initialQRText: String?
+    private let bindingAttemptID: UUID?
     @State private var showingRetainedReceipt = false
     private let scanReceiptQR: (ReceiptProvisionScanContext) -> Void
 
     init(
         initialQRText: String? = nil,
+        bindingAttemptID: UUID? = nil,
         scanReceiptQR: @escaping (ReceiptProvisionScanContext) -> Void
     ) {
         self.initialQRText = initialQRText
+        self.bindingAttemptID = bindingAttemptID
         self.scanReceiptQR = scanReceiptQR
     }
 
@@ -32,10 +36,8 @@ struct FirstDeviceEnrolmentView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: MnSpacing.x4) {
                 MnSectionHeading(
-                    flow.awaitingAuthorityBinding ? "Step 4 of 5 · Receipt key" : "Step 3 of 5 · Register your administrator",
-                    orientation: flow.awaitingAuthorityBinding
-                        ? "GitHub registration is complete. Scan the receipt-key QR shown in the same install window."
-                        : "Scan the identity QR and approve the one-time GitHub code."
+                    stepHeading,
+                    orientation: stepInstruction
                 )
                 MnStatusLabel(
                     text: flow.status,
@@ -67,20 +69,28 @@ struct FirstDeviceEnrolmentView: View {
                     }
                 } else {
                     if flow.awaitingAuthorityBinding {
-                        Button("Scan next QR") {
-                            if let context = flow.receiptProvisionScanContext() {
-                                scanReceiptQR(context)
-                                dismiss()
-                            }
-                        }
-                        .buttonStyle(.borderedProminent)
-                        .tint(MnColor.action)
-                        .disabled(flow.busy)
-                        if showingRetainedReceipt {
-                            Button("Verify installation authority") {
+                        if bindingAttemptID != nil {
+                            Button("Finish setup") {
                                 Task { await flow.retryAuthorityBinding() }
                             }
+                            .buttonStyle(.borderedProminent)
                             .disabled(flow.busy)
+                        } else {
+                            Button("Scan next QR") {
+                                if let context = flow.receiptProvisionScanContext() {
+                                    scanReceiptQR(context)
+                                    dismiss()
+                                }
+                            }
+                            .buttonStyle(.borderedProminent)
+                            .tint(MnColor.action)
+                            .disabled(flow.busy)
+                            if showingRetainedReceipt {
+                                Button("Verify installation authority") {
+                                    Task { await flow.retryAuthorityBinding() }
+                                }
+                                .disabled(flow.busy)
+                            }
                         }
                     }
                     MnPanel {
@@ -94,7 +104,9 @@ struct FirstDeviceEnrolmentView: View {
                                 value: flow.presentation?.httpsOrigin.host ?? ""
                             )
                             if flow.awaitingAuthorityBinding {
-                                Text("Your signed receipt is saved. Setup continues with the receipt-key QR.")
+                                Text(bindingAttemptID == nil
+                                     ? "Your signed receipt is saved. Setup continues with the receipt-key QR."
+                                     : "Confirm the signed installation on this device.")
                                     .font(.footnote)
                             } else if flow.prompt == nil && flow.verifiedSubject == nil {
                                 Text("Cryptographic host identity verified")
@@ -189,9 +201,30 @@ struct FirstDeviceEnrolmentView: View {
         .navigationTitle("Enrol first device")
         .mnScreenBackground()
         .task {
-            if let initialQRText { await flow.handleInitialScanAndBegin(initialQRText) }
-            else { flow.checkForPendingAuthorityBinding() }
+            if let bindingAttemptID {
+                flow.restorePendingAuthorityBinding(attemptID: bindingAttemptID)
+            } else if let initialQRText {
+                await flow.handleInitialScanAndBegin(initialQRText)
+            } else {
+                flow.checkForPendingAuthorityBinding()
+            }
         }
+    }
+
+    private var stepHeading: String {
+        if bindingAttemptID != nil { return "Step 5 of 5 · Finish setup" }
+        if flow.awaitingAuthorityBinding { return "Step 4 of 5 · Receipt key" }
+        return "Step 3 of 5 · Register your administrator"
+    }
+
+    private var stepInstruction: String {
+        if bindingAttemptID != nil {
+            return "Once the install page confirms setup, tap Finish setup to make this installation available for login."
+        }
+        if flow.awaitingAuthorityBinding {
+            return "GitHub registration is complete. Scan the receipt-key QR shown in the same install window."
+        }
+        return "Scan the identity QR and approve the one-time GitHub code."
     }
 
 }
@@ -313,10 +346,19 @@ final class FirstDeviceEnrolmentFlow: ObservableObject {
             (try? scopedStore.soleRecoverablePresentation()) != nil
     }
 
-    func restorePendingAuthorityBinding() {
+    func restorePendingAuthorityBinding(attemptID: UUID? = nil) {
         guard BrokerV2Feature.enabled, presentation == nil else { return }
         do {
-            guard let stored = try scopedStore.soleRecoverablePresentation() else { return }
+            let stored: ProvisionalBrokerPresentation?
+            if let attemptID {
+                guard try scopedStore.statusPending(attemptID: attemptID) != nil,
+                      try scopedStore.stagedEnrollment(attemptID: attemptID) != nil
+                else { throw PlatformFailure.siteRootBindingUnavailable }
+                stored = try scopedStore.provisionalPresentation(attemptID: attemptID)
+            } else {
+                stored = try scopedStore.soleRecoverablePresentation()
+            }
+            guard let stored else { throw PlatformFailure.siteRootBindingUnavailable }
             presentation = try ProvisionalPresentationRecovery.verify(stored,
                 expectedAppConfigurationDigest: GitHubEnrolmentConfiguration.reviewedAppConfigurationDigest)
             stagedAttemptID = stored.attemptID
@@ -337,7 +379,8 @@ final class FirstDeviceEnrolmentFlow: ObservableObject {
             return ReceiptProvisionScanContext(
                 origin: presentation.httpsOrigin,
                 leafSPKI: presentation.tlsSPKISHA256,
-                site: pending.siteClaim
+                site: pending.siteClaim,
+                attemptID: attempt
             )
         } catch {
             fail(error)

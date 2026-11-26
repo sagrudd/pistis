@@ -84,6 +84,7 @@ struct RootTabView: View {
     @State private var reconciliationMessage: String?
     @State private var selectedTab = Tab.scan
     @State private var providerEnrolmentRequested = false
+    @State private var receiptProvisionScan: ReceiptProvisionScanContext?
     @State private var pendingBrokerCustodyCount = 0
     @State private var pendingBrokerFingerprint = ""
     @State private var pendingBrokerFingerprintRequested = false
@@ -111,7 +112,11 @@ struct RootTabView: View {
                     identities: projection.identities,
                     loadFailure: enrollment.state == .failed,
                     forgetExpired: forgetExpiredIdentity,
-                    providerEnrolmentRequested: $providerEnrolmentRequested
+                    providerEnrolmentRequested: $providerEnrolmentRequested,
+                    scanReceiptQR: { context in
+                        receiptProvisionScan = context
+                        selectedTab = .scan
+                    }
                 )
             }
             .tabItem {
@@ -179,6 +184,8 @@ struct RootTabView: View {
                     siteRootTransport: siteRootTransport,
                     expectedSiteRootAuthorityHost: authorityCustodyContinuationHost,
                     authorityCustodyMode: authorityCustodyMode,
+                    receiptProvisionScan: receiptProvisionScan,
+                    receiptHandoffFinished: { receiptProvisionScan = nil },
                     showInstallations: {
                         authorityCustodyContinuationHost = nil
                         authorityCustodyMode = .rotation

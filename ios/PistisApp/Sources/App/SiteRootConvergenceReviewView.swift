@@ -3,6 +3,8 @@ import SwiftUI
 struct SiteRootConvergenceReviewView: View {
     let review: SiteRootConvergenceReview
     @ObservedObject var coordinator: SiteRootConvergenceCoordinator
+    var scanReceiptAcknowledgement: (() -> Void)? = nil
+    var finishReceiptAcknowledgement: (() -> Void)? = nil
     let scanFinalIdentityQR: () -> Void
     @Environment(\.dismiss) private var dismiss
     @State private var siteX509StageStartedAt = Date()
@@ -121,7 +123,21 @@ struct SiteRootConvergenceReviewView: View {
             MnPanel {
                 VStack(alignment: .leading, spacing: MnSpacing.x3) {
                     MnStatusLabel(text: "Verified and accepted", kind: .success)
-                    MnPrimaryButton("Done", systemImage: "checkmark") { dismiss() }
+                    if let scanReceiptAcknowledgement {
+                        Text("Receipt key approved. When the install window shows the acknowledgement QR, scan it to confirm installation.")
+                        MnPrimaryButton("Scan next QR", systemImage: "qrcode.viewfinder") {
+                            scanReceiptAcknowledgement()
+                            dismiss()
+                        }
+                    } else {
+                        if finishReceiptAcknowledgement != nil {
+                            Text("Approval sent. Keep the install window open until Monas confirms setup and shows the login address.")
+                        }
+                        MnPrimaryButton("Done", systemImage: "checkmark") {
+                            finishReceiptAcknowledgement?()
+                            dismiss()
+                        }
+                    }
                 }
             }
         case let .failed(failure):

@@ -128,6 +128,11 @@ struct ScanView: View {
     private let appAttestReplacementTransport: MonasAppAttestTransport?
     private let expectedSiteRootAuthorityHost: String?
     private let showInstallations: () -> Void
+    private let receiptProvisionScan: ReceiptProvisionScanContext?
+    private let receiptHandoffFinished: () -> Void
+    @State private var sheetReceiptProvisionScan: ReceiptProvisionScanContext?
+    @State private var awaitingReceiptAcknowledgement = false
+    @State private var completedReceiptScan: ReceiptProvisionScanContext?
     private let routeToProviderEnrolment: () -> Void
     private let prepareOrdinaryLogin: (AuthenticatedEnrollmentOutput) async throws -> Void
     private let ordinaryLoginCompleted: () -> Void
@@ -145,6 +150,8 @@ struct ScanView: View {
         siteRootTransport: any MonasSiteRootCeremonyTransport,
         expectedSiteRootAuthorityHost: String? = nil,
         authorityCustodyMode: FirstAuthorityCustodyModeV2 = .rotation,
+        receiptProvisionScan: ReceiptProvisionScanContext? = nil,
+        receiptHandoffFinished: @escaping () -> Void = {},
         showInstallations: @escaping () -> Void = {},
         routeToProviderEnrolment: @escaping () -> Void,
         prepareOrdinaryLogin: @escaping (AuthenticatedEnrollmentOutput) async throws -> Void = { _ in },
@@ -152,6 +159,8 @@ struct ScanView: View {
     ) {
         self.siteRootTransport = siteRootTransport
         self.expectedSiteRootAuthorityHost = expectedSiteRootAuthorityHost
+        self.receiptProvisionScan = receiptProvisionScan
+        self.receiptHandoffFinished = receiptHandoffFinished
         self.showInstallations = showInstallations
         self.routeToProviderEnrolment = routeToProviderEnrolment
         self.prepareOrdinaryLogin = prepareOrdinaryLogin
@@ -252,8 +261,8 @@ struct ScanView: View {
                     }
 
                     MnSectionHeading(
-                        "Scan a Pistis or Monas request",
-                        orientation: "Point the camera at a supported QR code. Captured frames are not saved."
+                        scannerHeading,
+                        orientation: scannerInstruction
                     )
 
                     ZStack {
@@ -422,7 +431,19 @@ struct ScanView: View {
                 routeToProviderEnrolment()
             }
         }) { review in
-            SiteRootConvergenceReviewView(review: review, coordinator: siteRootConvergence) {
+            SiteRootConvergenceReviewView(
+                review: review,
+                coordinator: siteRootConvergence,
+                scanReceiptAcknowledgement: activeReceiptScan != nil && !awaitingReceiptAcknowledgement ? {
+                    awaitingReceiptAcknowledgement = true
+                } : nil,
+                finishReceiptAcknowledgement: activeReceiptScan != nil && awaitingReceiptAcknowledgement ? {
+                    completedReceiptScan = activeReceiptScan
+                    sheetReceiptProvisionScan = nil
+                    awaitingReceiptAcknowledgement = false
+                    receiptHandoffFinished()
+                } : nil
+            ) {
                 finalIdentityQRRequested = true
             }
         }
@@ -454,8 +475,22 @@ struct ScanView: View {
                 coordinator: baseCampVaultSuccessor
             )
         }
-        .sheet(item: $firstDeviceScanRequest) { request in
-            FirstDeviceEnrolmentView(initialQRText: request.qrText)
+        .onChange(of: receiptProvisionScan) { _, context in
+            if context != nil {
+                sheetReceiptProvisionScan = nil
+                completedReceiptScan = nil
+                awaitingReceiptAcknowledgement = false
+                startScanning()
+            }
+        }
+        .sheet(item: $firstDeviceScanRequest, onDismiss: {
+            if sheetReceiptProvisionScan != nil { startScanning() }
+        }) { request in
+            FirstDeviceEnrolmentView(initialQRText: request.qrText) { context in
+                sheetReceiptProvisionScan = context
+                completedReceiptScan = nil
+                awaitingReceiptAcknowledgement = false
+            }
         }
         .fileImporter(
             isPresented: $importingOfflinePresentation,
@@ -474,11 +509,41 @@ struct ScanView: View {
     }
 
     @MainActor
+    private var activeReceiptScan: ReceiptProvisionScanContext? {
+        let context = sheetReceiptProvisionScan ?? receiptProvisionScan
+        return context == completedReceiptScan ? nil : context
+    }
+
+    private var scannerHeading: String {
+        guard activeReceiptScan != nil else { return "Scan a Pistis or Monas request" }
+        return awaitingReceiptAcknowledgement
+            ? "Step 5 of 5 · Confirm installation" : "Step 4 of 5 · Receipt key"
+    }
+
+    private var scannerInstruction: String {
+        guard activeReceiptScan != nil else {
+            return "Point the camera at a supported QR code. Captured frames are not saved."
+        }
+        return awaitingReceiptAcknowledgement
+            ? "Scan the acknowledgement QR from the same install window."
+            : "Scan the receipt-key QR from the same install window."
+    }
+
     private func handleScan(_ result: Result<ScannedQRPayload, PlatformFailure>) {
         scanning = false
         switch result {
         case let .success(payload):
             scanFailure = nil
+            if activeReceiptScan != nil {
+                let schema = awaitingReceiptAcknowledgement
+                    ? SiteRootConvergenceProfileV2.ackSchema
+                    : SiteRootConvergenceProfileV2.provisionSchema
+                guard payload.text.contains(schema) else {
+                    scanFailure = .qrPayloadUnsupported
+                    scanning = false
+                    return
+                }
+            }
             if payload.text.hasPrefix(FixedMonasLeafRenewalWireProfile.presentationQRPrefix) {
                 fixedMonasRenewal.accept(qrText: payload.text)
                 if case .failed = fixedMonasRenewal.phase {
@@ -527,7 +592,10 @@ struct ScanView: View {
                         }
                         return
                     }
-                    siteRootConvergence.accept(qrText: payload.text)
+                    siteRootConvergence.accept(
+                        qrText: payload.text,
+                        receiptProvisionScan: activeReceiptScan
+                    )
                     if case let .failed(failure) = siteRootConvergence.phase {
                         scanFailure = failure
                     }

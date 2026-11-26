@@ -291,6 +291,11 @@ final class SiteRootConvergenceCoordinator: ObservableObject {
             guard operationID == operation else { return }
             self.pending = nil
             phase = custodyVerified ? .awaitingFinalIdentityQR : .completed
+        } catch let failure as SiteRootAcknowledgementFailure {
+            guard operationID == operation else { return }
+            supportCode = failure.supportCode
+            self.pending = nil
+            phase = .failed(.siteRootAuthorityUnavailable)
         } catch let failure as PlatformFailure {
             guard operationID == operation else { return }
             recordSupportCode(failure)

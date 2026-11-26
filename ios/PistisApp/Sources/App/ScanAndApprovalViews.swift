@@ -518,7 +518,7 @@ struct ScanView: View {
     private var scannerHeading: String {
         guard activeReceiptScan != nil else { return "Scan a Pistis or Monas request" }
         return awaitingReceiptAcknowledgement
-            ? "Step 5 of 5 · Confirm installation" : "Step 4 of 5 · Receipt key"
+            ? FreshInstallQRStep.confirmInstallation.heading : FreshInstallQRStep.approveReceiptKey.heading
     }
 
     private var scannerInstruction: String {
@@ -1443,9 +1443,9 @@ private struct SiteRootDelegationReviewView: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: MnSpacing.x4) {
                     MnSectionHeading(
-                        review.isFirstDevice
-                            ? "Register first Site Root device"
-                            : "Review Site Root delegation",
+                        coordinator.isValidatedBrokerFirstDevice
+                            ? FreshInstallQRStep.registerPhone.heading
+                            : (review.isFirstDevice ? "Register first Site Root device" : "Review Site Root delegation"),
                         orientation: review.isFirstDevice
                             ? "Face ID creates or uses this iPhone’s protected Site Root key. Monas then issues one exact, short-lived delegation."
                             : "Face ID signs one exact, short-lived Monas delegation. It does not grant authority on its own."
@@ -1509,7 +1509,7 @@ private struct SiteRootDelegationReviewView: View {
                         )
                     case let .submitted(completion):
                         MnSectionHeading(
-                            completion.heading,
+                            completion.scansNextQR ? FreshInstallQRStep.registerPhone.heading : completion.heading,
                             orientation: completion.orientation
                         )
                         MnStatusLabel(
@@ -1626,7 +1626,7 @@ extension SiteRootDelegationCoordinator.Completion {
     var orientation: String {
         switch self {
         case .proofQueued:
-            "The install service received the proof. When the same Monas install window shows the next protected QR, choose Scan next QR."
+            "The install service received this iPhone’s proof. When the install window shows the certificate QR (2/5), choose Scan next QR."
         case .siteTrustEstablished:
             "Monas accepted this first-device proof and created Site Trust and custody. This installation is recorded as setup in progress; identity enrolment is the next ceremony."
         case .sessionEstablished:
@@ -1665,7 +1665,7 @@ extension SiteRootDelegationCoordinator.Completion {
 
     var actionTitle: String {
         switch self {
-        case .proofQueued: "Scan next QR"
+        case .proofQueued: FreshInstallQRStep.scanNext
         case .siteTrustEstablished: "View setup progress"
         case .sessionEstablished: "View installation"
         }

@@ -305,7 +305,7 @@ struct RootTabView: View {
                 stage = $0
                 pendingBrokerCustodyMessage = $0.label
             }
-            pendingBrokerCustodyMessage = "Custody verified. Scan the final signed identity QR on the same Monas install page."
+            pendingBrokerCustodyMessage = "Certificates approved. Scan the identity QR (3/5) from the same install window."
             pendingBrokerFinalQRAvailable = true
         } catch {
             let code = SiteX509BrokerApprovalStageV1.supportCode(stage: stage, error: error)

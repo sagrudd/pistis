@@ -4,6 +4,28 @@ import Security
 import SwiftUI
 import PistisCore
 
+enum FreshInstallQRStep: Int {
+    case registerPhone = 1
+    case approveCertificates
+    case registerAdministrator
+    case approveReceiptKey
+    case confirmInstallation
+
+    var heading: String {
+        let title: String
+        switch self {
+        case .registerPhone: title = "Register this iPhone"
+        case .approveCertificates: title = "Approve certificates"
+        case .registerAdministrator: title = "Register your administrator"
+        case .approveReceiptKey: title = "Approve the receipt key"
+        case .confirmInstallation: title = "Confirm installation"
+        }
+        return "\(rawValue)/5 · \(title)"
+    }
+
+    static let scanNext = "Scan next QR"
+}
+
 struct ReceiptProvisionScanContext: Equatable {
     let origin: URL
     let leafSPKI: Data
@@ -81,7 +103,7 @@ struct FirstDeviceEnrolmentView: View {
                             .buttonStyle(.borderedProminent)
                             .disabled(flow.busy)
                         } else {
-                            Button("Scan next QR") {
+                            Button(FreshInstallQRStep.scanNext) {
                                 if let context = flow.receiptProvisionScanContext() {
                                     scanReceiptQR(context)
                                     dismiss()
@@ -217,9 +239,9 @@ struct FirstDeviceEnrolmentView: View {
     }
 
     private var stepHeading: String {
-        if bindingAttemptID != nil { return "Step 5 of 5 · Finish setup" }
-        if flow.awaitingAuthorityBinding { return "Step 4 of 5 · Receipt key" }
-        return "Step 3 of 5 · Register your administrator"
+        if bindingAttemptID != nil { return FreshInstallQRStep.confirmInstallation.heading }
+        if flow.awaitingAuthorityBinding { return FreshInstallQRStep.approveReceiptKey.heading }
+        return FreshInstallQRStep.registerAdministrator.heading
     }
 
     private var stepInstruction: String {

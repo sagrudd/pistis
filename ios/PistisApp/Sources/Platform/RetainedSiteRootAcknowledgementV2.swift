@@ -8,6 +8,22 @@ enum SiteRootAcknowledgementStage: Equatable, Sendable {
     case waitingForMonas
 }
 
+enum SiteRootAcknowledgementFailure: Error {
+    case registrationUnavailable
+    case transport
+    case http(Int)
+    case invalidResponse
+
+    var supportCode: String {
+        switch self {
+        case .registrationUnavailable: "ACK-REGISTRATION-UNAVAILABLE"
+        case .transport: "ACK-CONNECTION-FAILED"
+        case let .http(status): "ACK-HTTP-\(status)"
+        case .invalidResponse: "ACK-RESPONSE-INVALID"
+        }
+    }
+}
+
 /// Existing protected registration continuity, not a new registration authority.
 enum RetainedSiteRootAcknowledgementV2 {
     static func submit(

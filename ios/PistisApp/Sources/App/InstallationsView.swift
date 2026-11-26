@@ -65,7 +65,7 @@ struct InstallationsView: View {
                 Text(pendingCustodyMessage).textSelection(.enabled)
             }
             if let scanFinalIdentityQR {
-                Button("Scan final QR", action: scanFinalIdentityQR)
+                Button(FreshInstallQRStep.scanNext, action: scanFinalIdentityQR)
             }
             ForEach(installations) { installation in
                 NavigationLink {

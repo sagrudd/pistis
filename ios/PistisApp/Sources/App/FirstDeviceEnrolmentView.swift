@@ -44,6 +44,10 @@ struct FirstDeviceEnrolmentView: View {
                         "The signed invitation, server origin, application configuration and expiry are verified before Pistis contacts the server."
                     )
                     .font(.footnote)
+                    if flow.canRestorePendingAuthorityBinding {
+                        Button("Resume retained receipt") { flow.restorePendingAuthorityBinding() }
+                            .buttonStyle(.bordered)
+                    }
                 } else {
                     if flow.awaitingAuthorityBinding {
                         Button("Verify installation authority") {
@@ -160,7 +164,7 @@ struct FirstDeviceEnrolmentView: View {
         .mnScreenBackground()
         .task {
             if let initialQRText { await flow.handleInitialScanAndBegin(initialQRText) }
-            else { flow.restorePendingAuthorityBinding() }
+            else { flow.checkForPendingAuthorityBinding() }
         }
     }
 
@@ -275,6 +279,14 @@ final class FirstDeviceEnrolmentFlow: ObservableObject {
         return "\(code)/\(providerStatusFailure.supportSuffix)"
     }
 
+    @Published private(set) var canRestorePendingAuthorityBinding = false
+
+    func checkForPendingAuthorityBinding() {
+        guard BrokerV2Feature.enabled else { return }
+        canRestorePendingAuthorityBinding =
+            (try? scopedStore.soleRecoverablePresentation()) != nil
+    }
+
     func restorePendingAuthorityBinding() {
         guard BrokerV2Feature.enabled, presentation == nil else { return }
         do {
@@ -365,13 +377,27 @@ final class FirstDeviceEnrolmentFlow: ObservableObject {
                     GitHubEnrolmentConfiguration.reviewedAppConfigurationDigest,
                 now: verifiedAt
             )
+            let retained = BrokerV2Feature.enabled
+                ? try scopedStore.soleRecoverablePresentation(matching: payload.text)
+                : nil
+            if let retained {
+                guard retained.installationID == verified.installationID,
+                      retained.presentationDigest == verified.presentationDigest
+                else { throw PlatformFailure.siteRootBindingUnavailable }
+            }
+            let verifiedTransport = try ServerDrivenEnrolmentTransport(presentation: verified)
             verifiedScan = (payload.text, UInt64(verifiedAt.timeIntervalSince1970 * 1_000))
             eventReferenceDigest = verified.presentationDigest
             recordEvent(kind: .qrValidated, outcome: .accepted)
             presentation = verified
-            transport = try ServerDrivenEnrolmentTransport(
-                presentation: verified
-            )
+            transport = verifiedTransport
+            if let retained {
+                stagedAttemptID = retained.attemptID
+                awaitingAuthorityBinding = true
+                status = "Receipt retained; verify installation authority"
+                failure = nil
+                return
+            }
             status = "Cryptographic host identity verified"
             failure = nil
         } catch {
@@ -382,20 +408,7 @@ final class FirstDeviceEnrolmentFlow: ObservableObject {
     func handleInitialScanAndBegin(_ qrText: String) async {
         guard presentation == nil else { return }
         handleScan(.success(ScannedQRPayload(text: qrText)))
-        guard let presentation else { return }
-        if BrokerV2Feature.enabled {
-            do {
-                if let stored = try scopedStore.soleRecoverablePresentation() {
-                    guard stored.installationID == presentation.installationID,
-                          stored.presentationDigest == presentation.presentationDigest,
-                          stored.qrText == qrText else { throw PlatformFailure.siteRootBindingUnavailable }
-                    stagedAttemptID = stored.attemptID
-                    awaitingAuthorityBinding = true
-                    status = "Receipt retained; verify installation authority"
-                    return
-                }
-            } catch { fail(error); return }
-        }
+        guard presentation != nil, failure == nil, !awaitingAuthorityBinding else { return }
         await begin()
     }
 

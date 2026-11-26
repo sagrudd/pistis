@@ -598,14 +598,19 @@ final class ScopedAppAttestStore: @unchecked Sendable {
         try withLock { try read(ProvisionalBrokerPresentation.self, account: "provisional." + attemptID.uuidString) }
     }
 
-    func soleRecoverablePresentation() throws -> ProvisionalBrokerPresentation? {
+    func soleRecoverablePresentation(
+        matching qrText: String? = nil
+    ) throws -> ProvisionalBrokerPresentation? {
         try withLock {
             var matches: [ProvisionalBrokerPresentation] = []
             for (account, data) in try persistence.entries() where account.hasPrefix("provisional.") {
                 let value = try JSONDecoder().decode(ProvisionalBrokerPresentation.self, from: data)
                 guard account == "provisional." + value.attemptID.uuidString else { throw PlatformFailure.invalidConfiguration }
+                guard qrText == nil || value.qrText == qrText else { continue }
                 if try read(UUID.self, account: submitted(value.attemptID)) == value.attemptID,
                    try readData(account: staged(value.attemptID)) != nil,
+                   try readData(account: cancelled(value.attemptID)) == nil,
+                   try readData(account: completed(value.attemptID)) == nil,
                    try read(ScopedStagedEnrollment.self, account: enrollment(value.attemptID)) != nil {
                     matches.append(value)
                 }

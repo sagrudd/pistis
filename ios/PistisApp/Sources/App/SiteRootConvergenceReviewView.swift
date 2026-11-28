@@ -273,6 +273,7 @@ extension SiteX509BrokerApprovalStageV1 {
             "Face ID accepted · signing the Site X.509 approval"
         case .submittingInitialProof:
             "Face ID accepted · submitting the Site X.509 approval"
+        case .awaitingNativeActivation: "Waiting for Monas to activate the approved certificate"
         case .custodyChallenge: "Connecting to the retained custody authority"
         case .custodyAssertion: "Verifying this iPhone with App Attest"
         case .custodyRotation: "Completing authority custody"

@@ -729,7 +729,7 @@ First-device enrolment opens the scanner. Resume a retained receipt explicitly, 
 
 The GitHub registration screen leads directly to receipt-key scanning. The receipt provisioning request uses the exact enrolment origin and pinned certificate on the matching site.
 
-Fresh setup uses five numbered QR steps and a consistent Scan next QR action. The final acknowledgement shows distinct redacted support codes for a missing signer registration, a failed connection, an HTTP rejection, or an invalid response.
+Fresh setup uses five numbered QR steps and a consistent Scan next QR action. In step two, Pistis waits for the broker to confirm that Monas activated the approved certificate before connecting to the pinned custody endpoint. The wait never resubmits the approval. The final acknowledgement shows distinct redacted support codes for a missing signer registration, a failed connection, an HTTP rejection, or an invalid response.
 
 Opening a fresh administrator QR scanner replaces the previous enrolment screen. Pistis refuses to send Begin for an expired invitation and offers a new scan.
 

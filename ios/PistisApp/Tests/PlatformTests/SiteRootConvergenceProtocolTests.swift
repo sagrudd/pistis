@@ -553,6 +553,41 @@ final class SiteRootConvergenceProtocolTests: XCTestCase {
     }
 
     @MainActor
+    func testRetryBrokerCustodyWaitsForLeafAcknowledgementWithoutResubmitting() async throws {
+        let events = LockedContinuationEvents()
+        let transport = RecordingContinuationTransport(events: events, leafAcknowledged: false)
+        let storage = ScopedAppAttestStore(persistence: ScopedMemoryPersistence())
+        let pending = ScopedAppAttestPending(
+            attemptID: UUID(), correlation: Data(repeating: 0x52, count: 32),
+            registrationReference: "reference-b", siteClaim: "site-02020202-0202-0202-0202-020202020202",
+            appClaim: AppleAppAttestRegistrationEnvelope.reviewedAppIdentifier,
+            environmentClaim: "Production", keyID: Data(repeating: 0x22, count: 32).base64EncodedString(),
+            preparedRegistration: Data([1])
+        )
+        try storage.stage(pending)
+        try storage.markSubmitted(attemptID: pending.attemptID)
+        try storage.stageProvisionalLeaf(ProvisionalLeafHandoff(
+            attemptID: pending.attemptID, wrapper: Data([1]), verifiedAtSeconds: 1
+        ), pending: pending)
+        let service = SiteRootConvergenceServiceV2(
+            transport: RecordingBrokerTransport(recorder: BrokerAttemptRecorder()),
+            continuationTransport: transport, scopedStorage: storage, brokerProofFactory: { _ in Data() }
+        )
+        var progress: [SiteX509BrokerApprovalStageV1] = []
+
+        do {
+            try await service.retryProvisionalBrokerCustody(
+                pending: pending, progress: { progress.append($0) }
+            )
+            XCTFail("An unacknowledged leaf must stop before native custody")
+        } catch PlatformFailure.siteRootAuthorityUnavailable {
+            XCTAssertEqual(progress, [.awaitingNativeActivation])
+            XCTAssertEqual(events.values(), ["await-leaf-approval"])
+            XCTAssertEqual(try storage.recoverableBrokerCustodyAttempts(), [pending])
+        }
+    }
+
+    @MainActor
     func testBrokerContinuationAcceptsSharedV2LeafHandoff() async throws {
         let url = URL(fileURLWithPath: #filePath).deletingLastPathComponent()
             .deletingLastPathComponent().appendingPathComponent("Fixtures/leaf-v2-ipv4.json")

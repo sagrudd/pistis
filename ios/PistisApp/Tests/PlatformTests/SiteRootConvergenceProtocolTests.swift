@@ -499,6 +499,7 @@ final class SiteRootConvergenceProtocolTests: XCTestCase {
             expectedSiteUUID: "02020202-0202-0202-0202-020202020202",
             transport: transport,
             authorizer: authorizer,
+            awaitNativeActivation: true,
             progress: { progress.append($0) }
         )
 
@@ -507,7 +508,7 @@ final class SiteRootConvergenceProtocolTests: XCTestCase {
             "await-issuer-unlock", "authorize-issuer", "submit-issuer-unlock",
             "prepare-ack", "await-ack-registration", "authorize-ack",
             "submit-ack-registration", "await-leaf-approval", "authorize-leaf",
-            "submit-leaf-approval",
+            "submit-leaf-approval", "await-leaf-approval",
         ])
         XCTAssertEqual(progress, [
             .awaitingContinuation(.rootUnlock),
@@ -522,7 +523,68 @@ final class SiteRootConvergenceProtocolTests: XCTestCase {
             .awaitingContinuation(.leafApproval),
             .authorizingContinuation(.leafApproval),
             .submittingContinuation(.leafApproval),
+            .awaitingNativeActivation,
         ])
+    }
+
+    @MainActor
+    func testBrokerContinuationRejectsRepeatedLeafPresentationBeforeNativeActivation() async throws {
+        let events = LockedContinuationEvents()
+        let transport = RecordingContinuationTransport(events: events, leafAcknowledged: false)
+        let authorizer = RecordingContinuationAuthorizer(events: events)
+        let service = SiteRootConvergenceServiceV2(
+            transport: RecordingBrokerTransport(recorder: BrokerAttemptRecorder())
+        )
+
+        do {
+            try await service.continueBrokerSiteX509(
+                correlation: Data(repeating: 0x52, count: 32),
+                expectedSiteUUID: "02020202-0202-0202-0202-020202020202",
+                transport: transport,
+                authorizer: authorizer,
+                awaitNativeActivation: true
+            )
+            XCTFail("Unacknowledged leaf approval must not return to native custody")
+        } catch PlatformFailure.siteRootAuthorityUnavailable {
+            XCTAssertEqual(events.values().filter { $0 == "authorize-leaf" }, ["authorize-leaf"])
+            XCTAssertEqual(events.values().filter { $0 == "submit-leaf-approval" }, ["submit-leaf-approval"])
+            XCTAssertEqual(events.values().last, "await-leaf-approval")
+        }
+    }
+
+    @MainActor
+    func testRetryBrokerCustodyWaitsForLeafAcknowledgementWithoutResubmitting() async throws {
+        let events = LockedContinuationEvents()
+        let transport = RecordingContinuationTransport(events: events, leafAcknowledged: false)
+        let storage = ScopedAppAttestStore(persistence: ScopedMemoryPersistence())
+        let pending = ScopedAppAttestPending(
+            attemptID: UUID(), correlation: Data(repeating: 0x52, count: 32),
+            registrationReference: "reference-b", siteClaim: "site-02020202-0202-0202-0202-020202020202",
+            appClaim: AppleAppAttestRegistrationEnvelope.reviewedAppIdentifier,
+            environmentClaim: "Production", keyID: Data(repeating: 0x22, count: 32).base64EncodedString(),
+            preparedRegistration: Data([1])
+        )
+        try storage.stage(pending)
+        try storage.markSubmitted(attemptID: pending.attemptID)
+        try storage.stageProvisionalLeaf(ProvisionalLeafHandoff(
+            attemptID: pending.attemptID, wrapper: Data([1]), verifiedAtSeconds: 1
+        ), pending: pending)
+        let service = SiteRootConvergenceServiceV2(
+            transport: RecordingBrokerTransport(recorder: BrokerAttemptRecorder()),
+            continuationTransport: transport, scopedStorage: storage, brokerProofFactory: { _ in Data() }
+        )
+        var progress: [SiteX509BrokerApprovalStageV1] = []
+
+        do {
+            try await service.retryProvisionalBrokerCustody(
+                pending: pending, progress: { progress.append($0) }
+            )
+            XCTFail("An unacknowledged leaf must stop before native custody")
+        } catch PlatformFailure.siteRootAuthorityUnavailable {
+            XCTAssertEqual(progress, [.awaitingNativeActivation])
+            XCTAssertEqual(events.values(), ["await-leaf-approval"])
+            XCTAssertEqual(try storage.recoverableBrokerCustodyAttempts(), [pending])
+        }
     }
 
     @MainActor
@@ -854,11 +916,17 @@ private final class LockedContinuationEvents: @unchecked Sendable {
 private struct RecordingContinuationTransport: MonasSiteX509BrokerContinuing {
     let events: LockedContinuationEvents
     var leafPayload: Data? = nil
+    var leafAcknowledged = true
 
     func awaitSiteX509Continuation(
-        correlation _: Data, phase: SiteX509BrokerContinuationPhaseV1
+        correlation: Data, phase: SiteX509BrokerContinuationPhaseV1
     ) async throws -> SiteX509BrokerContinuationPresentationV1? {
+        XCTAssertEqual(correlation, Data(repeating: 0x52, count: 32))
         events.append("await-\(phase.rawValue)")
+        if leafAcknowledged, phase == .leafApproval,
+           events.values().contains("submit-leaf-approval") {
+            return nil
+        }
         let payload = phase == .leafApproval ? (leafPayload ?? Data("presentation-\(phase.rawValue)".utf8)) : Data("presentation-\(phase.rawValue)".utf8)
         return SiteX509BrokerContinuationPresentationV1(
             payload: payload, sha256: Data(SHA256.hash(data: payload))

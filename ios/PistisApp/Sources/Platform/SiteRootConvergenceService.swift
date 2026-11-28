@@ -61,6 +61,7 @@ enum SiteX509BrokerApprovalStageV1: Equatable, Sendable {
     case awaitingContinuation(SiteX509BrokerContinuationPhaseV1)
     case authorizingContinuation(SiteX509BrokerContinuationPhaseV1)
     case submittingContinuation(SiteX509BrokerContinuationPhaseV1)
+    case awaitingNativeActivation
     case custodyChallenge
     case custodyAssertion
     case custodyRotation
@@ -74,6 +75,7 @@ enum SiteX509BrokerApprovalStageV1: Equatable, Sendable {
         case let .awaitingContinuation(phase): "\(phase.rawValue)-await"
         case let .authorizingContinuation(phase): "\(phase.rawValue)-authorize"
         case let .submittingContinuation(phase): "\(phase.rawValue)-submit"
+        case .awaitingNativeActivation: "native-activation"
         case .custodyChallenge: "custody-challenge"
         case .custodyAssertion: "custody-assertion"
         case .custodyRotation: "custody-rotation"
@@ -1272,6 +1274,7 @@ struct SiteRootConvergenceServiceV2: Sendable {
                 authorizer: SecureEnclaveSiteX509BrokerContinuationAuthorizerV2(
                     ceremony: ceremony, store: store, pendingBrokerAttempt: pending, scopedStorage: scopedStorage
                 ),
+                awaitNativeActivation: pending != nil,
                 progress: progress
             )
             guard let pending else { return false }
@@ -1305,6 +1308,7 @@ struct SiteRootConvergenceServiceV2: Sendable {
             authorizer: SecureEnclaveSiteX509BrokerContinuationAuthorizerV2(
                 ceremony: ceremony, store: store, pendingBrokerAttempt: pending, scopedStorage: scopedStorage
             ),
+            awaitNativeActivation: pending != nil,
             progress: progress
         )
         guard let pending else { return false }
@@ -1377,7 +1381,7 @@ struct SiteRootConvergenceServiceV2: Sendable {
     @MainActor
     func retryProvisionalBrokerCustody(correlation: Data, siteUUID: String,
                                       progress: (SiteX509BrokerApprovalStageV1) -> Void) async throws {
-        let storage = ScopedAppAttestStore()
+        let storage = scopedStorage
         guard let pending = try storage.submittedBrokerAttempt(correlation: correlation, siteUUID: siteUUID),
               try storage.provisionalLeaf(attemptID: pending.attemptID) != nil else {
             throw PlatformFailure.siteRootBindingUnavailable
@@ -1388,13 +1392,19 @@ struct SiteRootConvergenceServiceV2: Sendable {
     @MainActor
     func retryProvisionalBrokerCustody(pending: ScopedAppAttestPending,
                                       progress: (SiteX509BrokerApprovalStageV1) -> Void = { _ in }) async throws {
-        let storage = ScopedAppAttestStore()
+        let storage = scopedStorage
         guard try storage.recoverableBrokerCustodyAttempts().contains(pending) else {
             throw PlatformFailure.siteRootBindingUnavailable
         }
         try storage.requireFreshCustodyStep("assertion", pending: pending)
         try storage.beginSubmittedPoll(attemptID: pending.attemptID, expected: pending)
         defer { storage.endDispatch() }
+        guard let continuationTransport else {
+            throw PlatformFailure.siteRootAuthorityUnavailable
+        }
+        try await waitForNativeActivation(
+            correlation: pending.correlation, transport: continuationTransport, progress: progress
+        )
         try await continueProvisionalBrokerCustody(pending, storage: storage, progress: progress)
     }
 
@@ -1445,6 +1455,7 @@ struct SiteRootConvergenceServiceV2: Sendable {
         expectedSiteUUID: String,
         transport: any MonasSiteX509BrokerContinuing,
         authorizer: any SiteX509BrokerContinuationAuthorizingV2,
+        awaitNativeActivation: Bool = false,
         progress: (SiteX509BrokerApprovalStageV1) -> Void = { _ in }
     ) async throws {
         for (phase, role) in [
@@ -1500,6 +1511,27 @@ struct SiteRootConvergenceServiceV2: Sendable {
                 presentationSHA256: brokered.sha256,
                 submission: submission
             )
+            if awaitNativeActivation {
+                try await waitForNativeActivation(
+                    correlation: correlation, transport: transport, progress: progress
+                )
+            }
+        }
+    }
+
+    @MainActor
+    private func waitForNativeActivation(
+        correlation: Data,
+        transport: any MonasSiteX509BrokerContinuing,
+        progress: (SiteX509BrokerApprovalStageV1) -> Void
+    ) async throws {
+        // Submission only queues the proof. The host acknowledges this
+        // exact phase after its pinned custody endpoint is listening.
+        progress(.awaitingNativeActivation)
+        guard try await transport.awaitSiteX509Continuation(
+            correlation: correlation, phase: .leafApproval
+        ) == nil else {
+            throw PlatformFailure.siteRootAuthorityUnavailable
         }
     }
 
